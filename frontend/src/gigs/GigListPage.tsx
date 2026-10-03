@@ -51,6 +51,7 @@ export function GigListPage() {
   };
 
   useEffect(() => {
+    if ((params.get('q') ?? '') === q) return;
     setParams(
       (prev) => {
         const next = new URLSearchParams(prev);
@@ -60,7 +61,7 @@ export function GigListPage() {
       },
       { replace: true },
     );
-  }, [q, setParams]);
+  }, [q, params, setParams]);
 
   const query: GigListQuery = deletedView
     ? { year, status: 'ALL', deleted: true, q: q || undefined }

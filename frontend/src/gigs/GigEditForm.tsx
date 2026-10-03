@@ -11,6 +11,7 @@ import { centsToInput, formatMoney } from '../lib/format';
 import { parseMoneyField } from '../lib/moneyField';
 import { useReference } from '../reference/useReference';
 import { PartnerOptions, TechnicalSetupPicker } from './formParts';
+import { useApplyGig } from './queries';
 
 export type EditSection = 'basic' | 'price';
 
@@ -26,6 +27,7 @@ export function GigEditForm({ gig, section, onSaved, onCancel }: Props) {
   const { t } = useTranslation();
   const lang = useLang();
   const { data: reference } = useReference();
+  const applyGig = useApplyGig();
   const [lineupName, setLineupName] = useState(gig.lineupName);
   const [venue, setVenue] = useState(gig.venue);
   const [technicalSetup, setTechnicalSetup] = useState<TechnicalSetup[]>(gig.technicalSetup);
@@ -39,7 +41,10 @@ export function GigEditForm({ gig, section, onSaved, onCancel }: Props) {
 
   const save = useMutation({
     mutationFn: (body: GigUpdate) => gigsApi.update(gig.id, body),
-    onSuccess: (result) => onSaved(result, gig),
+    onSuccess: (result) => {
+      applyGig(result.gig, gig.id);
+      onSaved(result, gig);
+    },
   });
   const errors = { ...(save.isError ? apiFieldErrors(t, save.error) : {}), ...localErrors };
   const hasFieldErrors = Object.keys(errors).length > 0;
