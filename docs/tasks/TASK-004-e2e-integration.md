@@ -1,7 +1,7 @@
 # TASK-004: End-to-end tests against the real stack
 
 - **owner:** backend (integration; may create `e2e/` at the repo root)
-- **status:** todo
+- **status:** done
 - **spec:** all approved UCs; docs/api-contract.md
 - **depends on:** all TASK-00x and TASK-10x (merged)
 
