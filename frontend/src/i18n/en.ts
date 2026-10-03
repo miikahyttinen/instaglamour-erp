@@ -1,6 +1,7 @@
 // English UI texts. Must have exactly the same keys as fi.ts (checked by i18n.test.ts).
 import { en as hoursEn } from '../features/hours/i18n';
 import { en as yearEn } from '../features/year/i18n';
+import { en as budgetEN } from '../features/budget/i18n';
 import type { Resources } from './fi';
 import { en as tasksEn } from '../features/tasks/i18n';
 
@@ -374,6 +375,7 @@ const en: Resources = {
   },
   ...tasksEn,
   year: yearEn,
+  budget: budgetEN,
 };
 
 export default en;

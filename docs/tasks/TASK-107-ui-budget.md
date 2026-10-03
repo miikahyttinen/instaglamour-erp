@@ -1,7 +1,7 @@
 # TASK-107: UI budget
 
 - **owner:** ui
-- **status:** todo
+- **status:** done
 - **spec:** UC-020
 - **depends on:** TASK-101 (merged)
 

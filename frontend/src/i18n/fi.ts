@@ -4,6 +4,7 @@ import { fi as yearFi } from '../features/year/i18n';
 
 import { fi as tasksFi } from '../features/tasks/i18n';
 import { fi as hoursFi } from '../features/hours/i18n';
+import { fi as budgetFI } from '../features/budget/i18n';
 
 const fi = {
   ...hoursFi,
@@ -375,6 +376,7 @@ const fi = {
   },
   ...tasksFi,
   year: yearFi,
+  budget: budgetFI,
 };
 
 export default fi;
