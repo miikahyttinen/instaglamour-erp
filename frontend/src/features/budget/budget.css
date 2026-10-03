@@ -1,0 +1,161 @@
+/* Budget page (UC-020). Phone: every category is a card with labelled lines.
+   Desktop (≥ 900 px): a normal table. */
+
+.budget-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 0.75rem;
+}
+
+/* ---------- Phone: rows become cards ---------- */
+
+.budget-table thead {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.budget-table tbody,
+.budget-table tfoot,
+.budget-table tr,
+.budget-table th,
+.budget-table td {
+  display: block;
+}
+.budget-row {
+  margin: 0 0 0.75rem;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.budget-row-dirty {
+  border-color: var(--primary);
+}
+.budget-totals {
+  background: var(--bg);
+  font-weight: 700;
+}
+.budget-category {
+  display: flex !important;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.25rem;
+  font-size: 1.05rem;
+  text-align: left;
+}
+.budget-category .badge {
+  font-size: 0.75rem;
+}
+.budget-table td[data-label] {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 11rem);
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.2rem 0;
+  text-align: right;
+}
+.budget-table td[data-label]::before {
+  content: attr(data-label);
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 400;
+  text-align: left;
+}
+.budget-table td[data-label] .field-error {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+.budget-table .budget-na {
+  display: none;
+}
+.budget-variance {
+  font-variant-numeric: tabular-nums;
+}
+.budget-actions-inner {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+.budget-actions .field-error {
+  text-align: right;
+}
+
+/* ---------- Desktop: table ---------- */
+
+@media (min-width: 900px) {
+  .budget-table {
+    display: table;
+  }
+  .budget-table thead {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
+    display: table-header-group;
+  }
+  .budget-table tbody {
+    display: table-row-group;
+  }
+  .budget-table tfoot {
+    display: table-footer-group;
+  }
+  .budget-table tr,
+  .budget-row {
+    display: table-row;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+  }
+  .budget-table th,
+  .budget-table td,
+  .budget-table td[data-label],
+  .budget-table .budget-na {
+    display: table-cell;
+    padding: 0.4rem 0.35rem;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  .budget-table thead th {
+    font-size: 0.85rem;
+    color: var(--muted);
+    vertical-align: bottom;
+  }
+  .budget-table td[data-label]::before {
+    content: none;
+  }
+  .budget-category {
+    display: table-cell !important;
+    font-size: 1rem;
+    min-width: 9rem;
+  }
+  .budget-category .badge {
+    margin-left: 0.4rem;
+  }
+  .budget-table .money-input input {
+    min-width: 7rem;
+  }
+  .budget-table td.num {
+    vertical-align: middle;
+    white-space: nowrap;
+  }
+  .budget-row-dirty > * {
+    background: var(--info-bg);
+  }
+  .budget-totals > * {
+    border-top: 2px solid var(--text);
+  }
+  .budget-actions-inner {
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    margin-top: 0;
+  }
+}

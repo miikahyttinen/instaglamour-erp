@@ -1,5 +1,6 @@
 // Finnish UI texts (default language). Terms follow docs/glossary.md.
 // en.ts must have exactly the same keys (checked by i18n.test.ts).
+import { fi as budgetFI } from '../features/budget/i18n';
 
 const fi = {
   app: {
@@ -368,6 +369,7 @@ const fi = {
     joinsLoadIn: 'Roudaus ja soundcheck',
     actualCents: 'Toteuma',
   },
+  budget: budgetFI,
 };
 
 export default fi;

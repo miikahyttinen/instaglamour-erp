@@ -4,6 +4,7 @@ import { AuthProvider } from './auth/AuthProvider';
 import { RequireAuth } from './auth/RequireAuth';
 import { SignInPage } from './auth/SignInPage';
 import { GigsRoutes } from './gigs/GigsRoutes';
+import { BudgetPage } from './features/budget/BudgetPage';
 import { AppShell } from './layout/AppShell';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { PlaceholderPage } from './pages/PlaceholderPage';
@@ -24,7 +25,7 @@ export function AppRoutes() {
         <Route path="people/*" element={<PlaceholderPage page="people" />} />
         <Route path="tasks/*" element={<PlaceholderPage page="tasks" />} />
         <Route path="hours/*" element={<PlaceholderPage page="hours" />} />
-        <Route path="budget/*" element={<PlaceholderPage page="budget" />} />
+        <Route path="budget/*" element={<BudgetPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>
