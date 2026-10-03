@@ -3,7 +3,8 @@ import { http } from 'msw';
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { BudgetRowUpdate } from '../../api/types';
 import { formatMoney } from '../../lib/format';
-import { budgetStore, resetMockBudget, setMockBudget } from '../../mocks/budgetHandlers';
+import { setMockBudget } from '../../mocks/budgetHandlers';
+import { budgetAmounts } from '../../mocks/budgetStore';
 import { db } from '../../mocks/data';
 import { errorResponse } from '../../mocks/util';
 import { server } from '../../mocks/server';
@@ -47,7 +48,6 @@ function capturePuts() {
 }
 
 beforeEach(() => {
-  resetMockBudget();
   server.events.removeAllListeners();
 });
 
@@ -129,7 +129,7 @@ describe('budget page', () => {
         body: { budgetExpenseCents: 300000, budgetIncomeCents: 0, actualExpenseCents: 10000, actualIncomeCents: 0 },
       },
     ]);
-    expect(budgetStore.get(`${YEAR}:${A}`)?.budgetExpenseCents).toBe(300000);
+    expect(budgetAmounts(db.budget, YEAR, A)?.budgetExpenseCents).toBe(300000);
     expect(screen.getByLabelText('Budjetti, kulut, Kategoria A')).toHaveValue('3000,00');
     expect(cells(rowOf('Yhteensä'))[0]).toBe(fi(300000));
     expect(cells(rowOf('Yhteensä'))[4]).toBe(fi(280000));

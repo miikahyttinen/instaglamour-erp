@@ -3,7 +3,7 @@ import { http } from 'msw';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { HourEntry } from '../../api/types';
 import { db } from '../../mocks/data';
-import { hoursMockEntries, resetHoursMock } from '../../mocks/hoursHandlers';
+import { hoursStateWith } from '../../mocks/hoursStore';
 import { server } from '../../mocks/server';
 import { errorResponse } from '../../mocks/util';
 import { renderApp, signInMock } from '../../test/renderApp';
@@ -32,7 +32,7 @@ function signInForYear() {
 }
 
 beforeEach(() => {
-  resetHoursMock(entries());
+  db.hours = hoursStateWith(entries());
 });
 
 describe('my hours (UC-018)', () => {
@@ -70,7 +70,7 @@ describe('my hours (UC-018)', () => {
     expect(within(february).getByText('Admin work')).toBeInTheDocument();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     await waitFor(() => expect(text(screen.getByTestId('hours-year-total'))).toBe('5,5 h'));
-    const saved = hoursMockEntries().find((e) => e.comment === 'Admin work');
+    const saved = db.hours.entries.find((e) => e.comment === 'Admin work');
     expect(saved).toMatchObject({ date: `${YEAR}-02-14`, hours: 1.25, partnerId: db.partners[0]!.id });
     vi.useRealTimers();
   });
@@ -79,7 +79,7 @@ describe('my hours (UC-018)', () => {
     signInForYear();
     const { user } = renderApp('/hours');
     await screen.findByRole('region', { name: 'Maaliskuu' });
-    const before = hoursMockEntries().length;
+    const before = db.hours.entries.length;
 
     await user.click(screen.getByRole('button', { name: 'Lisää tunnit' }));
     const dialog = screen.getByRole('dialog');
@@ -90,7 +90,7 @@ describe('my hours (UC-018)', () => {
     expect(within(dialog).getByLabelText('Kommentti')).toHaveAttribute('aria-invalid', 'true');
     expect(within(dialog).getByLabelText('Tunnit')).toHaveAttribute('aria-invalid', 'true');
     expect(within(dialog).getByText('Tunnit 0,25–24 neljännestunnin tarkkuudella.')).toBeInTheDocument();
-    expect(hoursMockEntries()).toHaveLength(before);
+    expect(db.hours.entries).toHaveLength(before);
   });
 
   it('translates field codes from the server and never shows its message', async () => {
@@ -130,7 +130,7 @@ describe('my hours (UC-018)', () => {
     await waitFor(() =>
       expect(text(within(march).getByLabelText('Kuukausi yhteensä Maaliskuu'))).toBe('2,5 h'),
     );
-    expect(hoursMockEntries().find((e) => e.id === 'e3')?.hours).toBe(2.5);
+    expect(db.hours.entries.find((e) => e.id === 'e3')?.hours).toBe(2.5);
   });
 
   it('deletes an own entry after confirmation', async () => {
@@ -143,7 +143,7 @@ describe('my hours (UC-018)', () => {
 
     await waitFor(() => expect(screen.queryByRole('region', { name: 'Maaliskuu' })).not.toBeInTheDocument());
     expect(text(screen.getByTestId('hours-year-total'))).toBe('3,5 h');
-    expect(hoursMockEntries().some((e) => e.id === 'e3')).toBe(false);
+    expect(db.hours.entries.some((e) => e.id === 'e3')).toBe(false);
   });
 
   it('shows a translated error when the server refuses (FORBIDDEN)', async () => {
@@ -158,7 +158,7 @@ describe('my hours (UC-018)', () => {
   });
 
   it('shows an empty state for a year without entries', async () => {
-    resetHoursMock([]);
+    db.hours = hoursStateWith([]);
     signInForYear();
     renderApp('/hours');
     expect(await screen.findByText(`Ei tuntikirjauksia vuonna ${YEAR}.`)).toBeInTheDocument();

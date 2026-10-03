@@ -1,12 +1,13 @@
 // Mock for the Year page (UC-022): GET /api/years/{year}.
-// Gig figures and upcoming gigs come from the shared mock gig store (db.gigs), so they match
-// the gig list. Hours and budget have their own small synthetic figures here (BR-090: round
-// dummy amounts) until the hours/budget mocks exist; only the current year has them.
+// Every figure comes from the shared mock stores (db.gigs, db.hours, db.budget), so it matches
+// the gig list, hours totals and budget pages. Synthetic data only (BR-090).
 import { http, HttpResponse } from 'msw';
-import type { BudgetAmounts, GigSummary, YearPage } from '../api/types';
+import type { GigSummary, YearPage } from '../api/types';
 import { todayIso } from '../lib/format';
+import { budgetOfYear } from './budgetStore';
 import { db } from './data';
 import { toSummary, yearTotals, type GigState } from './gigStore';
+import { hoursTotals } from './hoursStore';
 import { errorResponse, unauthenticated } from './util';
 
 /** Next 5 non-deleted SOLD gigs with startDate ≥ today, regardless of year (contract). */
@@ -18,31 +19,20 @@ export function upcomingGigs(state: GigState, today = todayIso()): GigSummary[] 
     .map((g) => toSummary(state, g, today));
 }
 
-const EMPTY_BUDGET: BudgetAmounts = {
-  budgetExpenseCents: 0,
-  budgetIncomeCents: 0,
-  actualExpenseCents: 0,
-  actualIncomeCents: 0,
-};
-
-/** Synthetic hours and fixed budget totals: only the current calendar year has data. */
+/** Hours and budget totals from the hours and budget mock stores, as on their own pages. */
 function hoursAndBudget(year: number): Pick<YearPage, 'hours' | 'budget'> {
-  if (year !== new Date().getFullYear()) {
-    return { hours: { partners: [], grandTotal: 0 }, budget: EMPTY_BUDGET };
-  }
-  const [a, b, c] = db.partners;
-  const partners = [
-    { partnerId: a?.id, total: 12.5 },
-    { partnerId: b?.id, total: 8 },
-    { partnerId: c?.id, total: 0 },
-  ].filter((p): p is { partnerId: string; total: number } => Boolean(p.partnerId));
+  const hours = hoursTotals(db.hours, db.partners, year);
+  const { totals } = budgetOfYear(db.budget, db.reference.budgetCategories, year);
   return {
-    hours: { partners, grandTotal: partners.reduce((s, p) => s + p.total, 0) },
+    hours: {
+      partners: hours.partners.map(({ partnerId, total }) => ({ partnerId, total })),
+      grandTotal: hours.grandTotal,
+    },
     budget: {
-      budgetExpenseCents: 100000,
-      budgetIncomeCents: 20000,
-      actualExpenseCents: 70000,
-      actualIncomeCents: 10000,
+      budgetExpenseCents: totals.budgetExpenseCents,
+      budgetIncomeCents: totals.budgetIncomeCents,
+      actualExpenseCents: totals.actualExpenseCents,
+      actualIncomeCents: totals.actualIncomeCents,
     },
   };
 }

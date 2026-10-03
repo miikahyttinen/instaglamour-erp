@@ -52,7 +52,7 @@ Try `/login?error=WRONG_DOMAIN` (or `NOT_A_PARTNER`, `SIGN_IN_FAILED`) to see th
 | `src/reference/useReference.ts` | Reference data, loaded once per session and cached |
 | `src/i18n/` | `fi.ts` / `en.ts` texts (glossary terms), label helpers for codes and errors |
 | `src/lib/format.ts` | Money (cents), date, hours and percent formatting per language |
-| `src/mocks/` | MSW handlers and synthetic data (browser worker + Node server for tests). Gig rules live in `gigStore.ts`, demo gigs in `gigSeed.ts` |
+| `src/mocks/` | MSW handlers and synthetic data (browser worker + Node server for tests). All state is in `db` (`data.ts`); `resetMockDb()` resets every store. Gig rules live in `gigStore.ts`, demo gigs in `gigSeed.ts`; tasks, hours and budget in `tasksStore.ts`, `hoursStore.ts`, `budgetStore.ts`. The year mock is computed from these stores |
 | `src/features/gigs/` | Gig list, new gig, gig page (costs, attachments, history, move/cancel/delete dialogs) |
 | `src/components/` | Shared `Dialog`, `Field`, `MoneyInput` |
 | `src/pages/` | Placeholder pages (the rest come in TASK-103) |

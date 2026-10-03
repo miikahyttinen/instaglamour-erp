@@ -4,6 +4,8 @@ import { describe, expect, it, vi } from 'vitest';
 import type { YearPage } from '../../api/types';
 import { formatHours, formatMoney, todayIso } from '../../lib/format';
 import { db } from '../../mocks/data';
+import { setMockBudget } from '../../mocks/budgetHandlers';
+import { hoursStateWith } from '../../mocks/hoursStore';
 import { errorResponse } from '../../mocks/util';
 import { mockYearPage } from '../../mocks/yearHandlers';
 import { server } from '../../mocks/server';
@@ -118,6 +120,31 @@ describe('year page', () => {
     expect(tileValue('Myytyjen keikkojen summa')).toBe(fiMoney(expected.soldGigsSumCents));
     expect(tileValue('Kulut, budjetti')).toBe(fiMoney(expected.budgetedCostsCents));
     expect(tileValue('Kate, budjetti')).toBe(fiMoney(expected.marginBudgetCents));
+  });
+
+  it('hours and budget figures come from the hours and budget mock stores', async () => {
+    signInFor(TEST_YEAR);
+    const [a, b] = db.partners;
+    db.hours = hoursStateWith([
+      { id: 'h1', partnerId: a!.id, date: `${TEST_YEAR}-02-01`, comment: 'Planning', hours: 2 },
+      { id: 'h2', partnerId: a!.id, date: `${TEST_YEAR}-05-01`, comment: 'Admin', hours: 1.5 },
+      { id: 'h3', partnerId: b!.id, date: `${TEST_YEAR}-03-01`, comment: 'Planning', hours: 4 },
+      { id: 'h4', partnerId: b!.id, date: `${TEST_YEAR - 1}-03-01`, comment: 'Old year', hours: 8 },
+    ]);
+    const [catA, catB] = db.reference.budgetCategories;
+    setMockBudget(TEST_YEAR, catA!.id, { budgetExpenseCents: 100000, actualExpenseCents: 20000 });
+    setMockBudget(TEST_YEAR, catB!.id, { budgetIncomeCents: 30000, actualIncomeCents: 10000 });
+    renderApp('/');
+    await screen.findByText('Myytyjen keikkojen summa');
+
+    expect(tileValue('Partner A')).toBe(formatHours(3.5, 'fi'));
+    expect(tileValue('Partner B')).toBe('4 h');
+    expect(tileValue('Partner C')).toBe('0 h');
+    expect(tileValue('Yhteensä')).toBe(formatHours(7.5, 'fi'));
+    expect(rowText(/Kulut/)).toBe(`Kulut${fiMoney(100000)}${fiMoney(20000)}`);
+    expect(rowText(/Tuotot/)).toBe(`Tuotot${fiMoney(30000)}${fiMoney(10000)}`);
+    const gigs = mockYearPage(TEST_YEAR).gigs;
+    expect(tileValue('Vuoden tulos')).toBe(fiMoney(gigs.soldGigsSumCents - gigs.actualCostsCents + 10000 - 20000));
   });
 
   it('figures link to their pages', async () => {
