@@ -1,7 +1,7 @@
 # TASK-106: UI hours
 
 - **owner:** ui
-- **status:** todo
+- **status:** done
 - **spec:** UC-018, UC-019
 - **depends on:** TASK-101 (merged)
 

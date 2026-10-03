@@ -1,8 +1,10 @@
 // English UI texts. Must have exactly the same keys as fi.ts (checked by i18n.test.ts).
+import { en as hoursEn } from '../features/hours/i18n';
 import type { Resources } from './fi';
 import { en as tasksEn } from '../features/tasks/i18n';
 
 const en: Resources = {
+  ...hoursEn,
   app: {
     name: 'Instaglamour ERP',
     loading: 'Loading…',

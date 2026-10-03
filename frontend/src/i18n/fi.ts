@@ -2,8 +2,10 @@
 // en.ts must have exactly the same keys (checked by i18n.test.ts).
 
 import { fi as tasksFi } from '../features/tasks/i18n';
+import { fi as hoursFi } from '../features/hours/i18n';
 
 const fi = {
+  ...hoursFi,
   app: {
     name: 'Instaglamour ERP',
     loading: 'Ladataan…',
