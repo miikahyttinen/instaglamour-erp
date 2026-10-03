@@ -1,27 +1,15 @@
 import { http, HttpResponse } from 'msw';
-import type { ErrorCode, FieldCode } from '../api/enums';
+import type { FieldCode } from '../api/enums';
 import { LANGUAGES } from '../api/enums';
-import type { ApiErrorBody, DevLoginRequest, Partner, ReferenceData, UpdateMeRequest } from '../api/types';
+import type { DevLoginRequest, ReferenceData, UpdateMeRequest } from '../api/types';
 import { db, setMockSession } from './data';
+import { attachmentHandlers, costLineHandlers, gigHandlers, peopleHandlers } from './gigHandlers';
+import { currentPartner, errorResponse, unauthenticated } from './util';
 
-// Mock handlers for the contract sections built so far: Auth & me, Reference data.
-// Later tasks add their own handler arrays here.
+// Mock handlers per contract section. Each section has a handler array included in
+// `handlers`. Gigs, cost lines, attachments and people live in gigHandlers.ts.
 
-export function errorResponse(
-  status: number,
-  code: ErrorCode,
-  message: string,
-  fields?: Record<string, FieldCode>,
-) {
-  const body: ApiErrorBody = { error: { code, message, ...(fields ? { fields } : {}) } };
-  return HttpResponse.json(body, { status });
-}
-
-export function currentPartner(): Partner | undefined {
-  return db.partners.find((p) => p.id === db.sessionPartnerId);
-}
-
-const unauthenticated = () => errorResponse(401, 'UNAUTHENTICATED', 'No session');
+export { currentPartner, errorResponse };
 
 export const authHandlers = [
   http.post('/api/auth/dev-login', async ({ request }) => {
@@ -72,4 +60,11 @@ export const referenceHandlers = [
   }),
 ];
 
-export const handlers = [...authHandlers, ...referenceHandlers];
+export const handlers = [
+  ...authHandlers,
+  ...referenceHandlers,
+  ...gigHandlers,
+  ...costLineHandlers,
+  ...attachmentHandlers,
+  ...peopleHandlers,
+];
