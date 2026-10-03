@@ -7,7 +7,7 @@ English), MSW mocks, Vitest + React Testing Library, ESLint. Mobile-first (works
 
 ```sh
 npm install
-npm run dev        # dev server on http://localhost:5173, proxies /api → http://localhost:3000
+npm run dev        # dev server on http://localhost:5173, proxies /api → http://localhost:3000 (configurable, see "Other ports")
 npm run dev:mock   # same, but /api is answered by in-browser mocks + dev login shown
 npm test           # Vitest (uses the same mocks through msw/node)
 npm run lint       # ESLint (no warnings allowed) + TypeScript type check
@@ -38,6 +38,22 @@ Try `/login?error=WRONG_DOMAIN` (or `NOT_A_PARTNER`, `SIGN_IN_FAILED`) to see th
 3. For dev login set `VITE_DEV_LOGIN=true` here **and** `DEV_LOGIN_ENABLED=true` in the backend `.env`.
 4. `npm run dev` and open http://localhost:5173. All `/api` calls go through the Vite proxy,
    so the session cookie is same-origin.
+
+### Other ports
+
+The dev server reads two optional variables (shell or `.env.local`; see `.env.example`).
+Unset or empty means the default.
+
+| Variable | Default | What |
+|---|---|---|
+| `VITE_API_PROXY_TARGET` | `http://localhost:3000` | Where the dev server proxies `/api` |
+| `VITE_PORT` | `5173` | Dev server port (an invalid value stops the server with an error) |
+
+```sh
+VITE_API_PROXY_TARGET=http://localhost:3100 VITE_PORT=5273 npm run dev
+```
+
+`--port` on the command line still wins over `VITE_PORT`.
 
 ## Structure
 
