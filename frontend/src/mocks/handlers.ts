@@ -5,6 +5,7 @@ import type { DevLoginRequest, ReferenceData, UpdateMeRequest } from '../api/typ
 import { db, setMockSession } from './data';
 import { attachmentHandlers, costLineHandlers, gigHandlers, peopleHandlers } from './gigHandlers';
 import { currentPartner, errorResponse, unauthenticated } from './util';
+import { yearHandlers } from './yearHandlers';
 
 // Mock handlers per contract section. Each section has a handler array included in
 // `handlers`. Gigs, cost lines, attachments and people live in gigHandlers.ts.
@@ -67,4 +68,5 @@ export const handlers = [
   ...costLineHandlers,
   ...attachmentHandlers,
   ...peopleHandlers,
+  ...yearHandlers,
 ];
