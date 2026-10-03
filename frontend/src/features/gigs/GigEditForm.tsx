@@ -1,15 +1,15 @@
 import { useMutation } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { TechnicalSetup } from '../api/enums';
-import { gigsApi } from '../api/endpoints';
-import type { GigDetail, GigUpdate, GigUpdateResponse } from '../api/types';
-import { Field, MoneyInput } from '../components/fields';
-import { apiErrorMessage, apiFieldErrors } from '../i18n/labels';
-import { useLang } from '../i18n/useLang';
-import { centsToInput, formatMoney } from '../lib/format';
-import { parseMoneyField } from '../lib/moneyField';
-import { useReference } from '../reference/useReference';
+import type { TechnicalSetup } from '../../api/enums';
+import { gigsApi } from '../../api/endpoints';
+import type { GigDetail, GigUpdate, GigUpdateResponse } from '../../api/types';
+import { Field, MoneyInput } from '../../components/fields';
+import { apiErrorMessage, apiFieldErrors } from '../../i18n/labels';
+import { useLang } from '../../i18n/useLang';
+import { centsToInput, formatMoney } from '../../lib/format';
+import { parseMoneyField } from '../../lib/moneyField';
+import { useReference } from '../../reference/useReference';
 import { PartnerOptions, TechnicalSetupPicker } from './formParts';
 import { useApplyGig } from './queries';
 

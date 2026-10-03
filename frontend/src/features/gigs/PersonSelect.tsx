@@ -1,9 +1,10 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { peopleApi } from '../api/endpoints';
-import type { Id, Person } from '../api/types';
-import { apiErrorMessage, apiFieldErrors } from '../i18n/labels';
+import { peopleApi } from '../../api/endpoints';
+import type { Id, Person } from '../../api/types';
+import { apiErrorMessage, apiFieldErrors } from '../../i18n/labels';
+import { peopleKeys } from '../people/queries';
 import { peopleKey } from './queries';
 
 const NEW = '__new__';
@@ -34,7 +35,7 @@ export function PersonSelect({ id, label, value, people, onChange, disabled }: P
       queryClient.setQueryData<Person[]>(peopleKey, (prev) =>
         [...(prev ?? []), person].sort((a, b) => a.name.localeCompare(b.name)),
       );
-      void queryClient.invalidateQueries({ queryKey: ['people'] });
+      void queryClient.invalidateQueries({ queryKey: peopleKeys.all });
       setCreating(false);
       setName('');
       onChange(person.id);

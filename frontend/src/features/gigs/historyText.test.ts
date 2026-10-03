@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { GIG_EVENT_TYPES } from '../api/enums';
-import type { GigEvent, Partner, Person } from '../api/types';
-import i18n from '../i18n';
+import { GIG_EVENT_TYPES } from '../../api/enums';
+import type { GigEvent, Partner, Person } from '../../api/types';
+import i18n from '../../i18n';
 import { describeEvent, matchesFilter } from './historyText';
 
 const partners = [

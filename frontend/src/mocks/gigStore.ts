@@ -202,19 +202,24 @@ function overlaps(a: MockGig, b: MockGig): boolean {
   return a.startDate <= bEnd && b.startDate <= aEnd;
 }
 
-/** One warning per (person, other gig) where the person is on another active, overlapping gig. */
+/**
+ * One warning per (person, other gig) where a person on one of `lines` also has a line on
+ * another active, overlapping gig. Performers only: just musician-role lines count, on both
+ * sides; Office, Sales, Production and expense lines never warn (BR-022).
+ */
 export function doubleBookingWarnings(
   state: GigState,
   gig: MockGig,
-  personIds: (Id | null)[],
+  lines: Pick<CostLine, 'type' | 'personId'>[],
 ): PersonDoubleBookedWarning[] {
   const warnings: PersonDoubleBookedWarning[] = [];
-  const unique = [...new Set(personIds.filter((p): p is Id => p !== null))];
+  const performerIds = lines.filter((l) => isMusicianRole(l.type)).map((l) => l.personId);
+  const unique = [...new Set(performerIds.filter((p): p is Id => p !== null))];
   for (const personId of unique) {
     for (const other of state.gigs) {
       if (other.id === gig.id || other.deletedAt !== null || other.status !== 'SOLD') continue;
       if (!overlaps(gig, other)) continue;
-      if (!linesOf(state, other.id).some((l) => l.personId === personId)) continue;
+      if (!linesOf(state, other.id).some((l) => l.personId === personId && isMusicianRole(l.type))) continue;
       warnings.push({
         code: 'PERSON_DOUBLE_BOOKED',
         personId,

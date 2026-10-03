@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { invalidateYearData, rootKeys } from '../../api/cache';
 import { budgetApi } from '../../api/endpoints';
 import type { BudgetResponse, BudgetRow, BudgetRowUpdate, Id } from '../../api/types';
 
-export const budgetKey = (year: number) => ['budget', year] as const;
+export const budgetKey = (year: number) => [...rootKeys.budget, year] as const;
 
 export function useBudget(year: number) {
   return useQuery({ queryKey: budgetKey(year), queryFn: () => budgetApi.get(year) });
@@ -46,10 +47,8 @@ export function useSaveBudgetRow(year: number, categoryId: Id) {
     mutationFn: (body: BudgetRowUpdate) => budgetApi.putRow(year, categoryId, body),
     onSuccess: (row) => {
       queryClient.setQueryData<BudgetResponse>(budgetKey(year), (old) => (old ? withRow(old, row) : old));
-      // The year page uses budget actuals (BR-063); let it refetch (its key starts with "year").
-      void queryClient.invalidateQueries({
-        predicate: (q) => typeof q.queryKey[0] === 'string' && q.queryKey[0].startsWith('year'),
-      });
+      // The year page shows budget totals and uses actuals in the year result (BR-063).
+      void invalidateYearData(queryClient, 'budget');
     },
   });
 }
@@ -60,6 +59,7 @@ export function useCopyBudget(year: number) {
     mutationFn: () => budgetApi.copyFromPrevious(year),
     onSuccess: (data) => {
       queryClient.setQueryData(budgetKey(year), data);
+      void invalidateYearData(queryClient, 'budget');
     },
   });
 }

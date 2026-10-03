@@ -702,6 +702,8 @@ label.switch input {
 }
 .gig-flags {
   display: inline-flex;
+  flex-wrap: wrap;
+  max-width: 100%;
   gap: 0.25rem;
 }
 .gig-people {

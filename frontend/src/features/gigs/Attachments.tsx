@@ -1,14 +1,14 @@
 import { useMutation } from '@tanstack/react-query';
 import { useRef, useState, type ChangeEvent, type MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { attachmentsApi } from '../api/endpoints';
-import type { Attachment, GigDetail } from '../api/types';
-import { Dialog } from '../components/Dialog';
-import { mocksEnabled } from '../config';
-import { apiErrorMessage } from '../i18n/labels';
-import { useLang } from '../i18n/useLang';
-import { formatDateTime } from '../lib/format';
-import { usePartner } from '../reference/useReference';
+import { attachmentsApi } from '../../api/endpoints';
+import type { Attachment, GigDetail } from '../../api/types';
+import { Dialog } from '../../components/Dialog';
+import { mocksEnabled } from '../../config';
+import { apiErrorMessage } from '../../i18n/labels';
+import { useLang } from '../../i18n/useLang';
+import { formatDateTime } from '../../lib/format';
+import { usePartner } from '../../reference/useReference';
 import { ATTACHMENT_ACCEPT, attachmentProblem } from './attachmentRules';
 import { useApplyGig } from './queries';
 

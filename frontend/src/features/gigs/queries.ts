@@ -1,12 +1,13 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback } from 'react';
-import { gigsApi, peopleApi } from '../api/endpoints';
-import type { GigDetail, GigListQuery, Id, Person } from '../api/types';
+import { invalidateYearData, rootKeys } from '../../api/cache';
+import { gigsApi, peopleApi } from '../../api/endpoints';
+import type { GigDetail, GigListQuery, Id, Person } from '../../api/types';
 
 export const gigKeys = {
   all: ['gigs'] as const,
-  lists: ['gigs', 'list'] as const,
-  list: (query: GigListQuery) => ['gigs', 'list', query] as const,
+  lists: rootKeys.gigLists,
+  list: (query: GigListQuery) => [...rootKeys.gigLists, query] as const,
   detail: (id: Id) => ['gigs', 'detail', id] as const,
   history: (id: Id) => ['gigs', 'history', id] as const,
 };
@@ -41,7 +42,7 @@ export function personName(people: Person[] | undefined, id: Id | null): string 
 
 /**
  * After any gig mutation: put the returned gig in the cache (or refetch it when the response
- * has no gig) and refresh lists, history and year totals.
+ * has no gig) and refresh its history, the gig lists, person cost lines and the year page.
  */
 export function useApplyGig() {
   const queryClient = useQueryClient();
@@ -49,10 +50,8 @@ export function useApplyGig() {
     (gig: GigDetail | null, gigId: Id) => {
       if (gig) queryClient.setQueryData(gigKeys.detail(gig.id), gig);
       else void queryClient.invalidateQueries({ queryKey: gigKeys.detail(gigId) });
-      void queryClient.invalidateQueries({ queryKey: gigKeys.lists });
       void queryClient.invalidateQueries({ queryKey: gigKeys.history(gigId) });
-      void queryClient.invalidateQueries({ queryKey: ['years'] });
-      void queryClient.invalidateQueries({ queryKey: ['people', 'cost-lines'] });
+      void invalidateYearData(queryClient, 'gigs');
     },
     [queryClient],
   );

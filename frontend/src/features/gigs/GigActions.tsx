@@ -2,11 +2,11 @@ import { useMutation } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { gigsApi } from '../api/endpoints';
-import type { GigDetail, GigWithWarnings, Warning } from '../api/types';
-import { Dialog } from '../components/Dialog';
-import { Field } from '../components/fields';
-import { apiErrorMessage, apiFieldErrors } from '../i18n/labels';
+import { gigsApi } from '../../api/endpoints';
+import type { GigDetail, GigWithWarnings, Warning } from '../../api/types';
+import { Dialog } from '../../components/Dialog';
+import { Field } from '../../components/fields';
+import { apiErrorMessage, apiFieldErrors } from '../../i18n/labels';
 import { useApplyGig } from './queries';
 
 type ActionDialog = 'move' | 'cancel' | 'uncancel' | 'delete' | null;

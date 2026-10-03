@@ -1,9 +1,9 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { http } from 'msw';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { setLanguage } from '../../i18n';
 import { errorResponse } from '../../mocks/util';
-import { resetTasksMock, tasksDb } from '../../mocks/tasksHandlers';
+import { db } from '../../mocks/data';
 import { server } from '../../mocks/server';
 import { renderApp, signInMock } from '../../test/renderApp';
 
@@ -18,8 +18,6 @@ async function openPage() {
   await screen.findByText('Task 1');
   return utils;
 }
-
-beforeEach(() => resetTasksMock());
 
 describe('tasks page', () => {
   it('shows open tasks by default, overdue first and highlighted', async () => {
@@ -53,7 +51,7 @@ describe('tasks page', () => {
     const { user } = await openPage();
     await user.click(screen.getByRole('button', { name: 'Merkitse tehdyksi: Task 2' }));
     await waitFor(() => expect(screen.queryByText('Task 2')).not.toBeInTheDocument());
-    const stored = tasksDb.tasks.find((t) => t.title === 'Task 2')!;
+    const stored = db.tasks.tasks.find((t) => t.title === 'Task 2')!;
     expect(stored.status).toBe('DONE');
     expect(stored.completedAt).not.toBeNull();
 
@@ -75,7 +73,7 @@ describe('tasks page', () => {
     // Missing title → translated error, nothing sent.
     await user.click(within(dialog).getByRole('button', { name: 'Tallenna' }));
     expect(within(dialog).getByText('Pakollinen tieto.')).toBeInTheDocument();
-    expect(tasksDb.tasks).toHaveLength(4);
+    expect(db.tasks.tasks).toHaveLength(4);
 
     await user.type(within(dialog).getByLabelText('Otsikko'), 'Task 5');
     await user.type(within(dialog).getByLabelText('Eräpäivä'), '2099-01-01');
@@ -84,7 +82,7 @@ describe('tasks page', () => {
 
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
     expect(await screen.findByText('Task 5')).toBeInTheDocument();
-    const created = tasksDb.tasks.find((t) => t.title === 'Task 5')!;
+    const created = db.tasks.tasks.find((t) => t.title === 'Task 5')!;
     expect(created).toMatchObject({
       ownerId: '00000000-0000-4000-8000-00000000000a',
       dueDate: '2099-01-01',
@@ -115,12 +113,12 @@ describe('tasks page', () => {
     expect(within(dialog).getByText('Poistetaanko tehtävä ”Task 2”?')).toBeInTheDocument();
 
     await user.click(within(dialog).getByRole('button', { name: 'Peruuta' }));
-    expect(tasksDb.tasks).toHaveLength(4);
+    expect(db.tasks.tasks).toHaveLength(4);
 
     await user.click(within(dialog).getByRole('button', { name: 'Poista' }));
     await user.click(within(dialog).getByRole('button', { name: 'Kyllä, poista' }));
     await waitFor(() => expect(screen.queryByText('Task 2')).not.toBeInTheDocument());
-    expect(tasksDb.tasks.some((t) => t.title === 'Task 2')).toBe(false);
+    expect(db.tasks.tasks.some((t) => t.title === 'Task 2')).toBe(false);
   });
 
   it('shows translated field errors from the server, never its message', async () => {

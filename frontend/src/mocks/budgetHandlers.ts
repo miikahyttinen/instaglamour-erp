@@ -1,62 +1,20 @@
-// Mock handlers for the Budget section of the contract (UC-020). Synthetic data only (BR-090).
+// Mock handlers for the Budget section of the contract (UC-020). State: db.budget
+// (budgetStore.ts). Synthetic data only (BR-090).
 import { http, HttpResponse } from 'msw';
 import type { FieldCode } from '../api/enums';
-import type { BudgetAmounts, BudgetResponse, BudgetRow } from '../api/types';
+import type { BudgetAmounts } from '../api/types';
+import { BUDGET_AMOUNT_FIELDS, budgetOfYear, budgetRow, setBudgetAmounts } from './budgetStore';
 import { db } from './data';
 import { currentPartner, errorResponse, unauthenticated, validationError } from './util';
 
-const AMOUNT_FIELDS = [
-  'budgetExpenseCents',
-  'budgetIncomeCents',
-  'actualExpenseCents',
-  'actualIncomeCents',
-] as const;
 const BUDGET_FIELDS = ['budgetExpenseCents', 'budgetIncomeCents'] as const;
 
-const ZERO: BudgetAmounts = {
-  budgetExpenseCents: 0,
-  budgetIncomeCents: 0,
-  actualExpenseCents: 0,
-  actualIncomeCents: 0,
-};
+const rowFor = (year: number, categoryId: string) => budgetRow(db.budget, year, categoryId);
+const budgetFor = (year: number) => budgetOfYear(db.budget, db.reference.budgetCategories, year);
 
-/** Stored amounts keyed by `${year}:${categoryId}`. Missing = zeros. */
-export const budgetStore = new Map<string, BudgetAmounts>();
-
-const key = (year: number, categoryId: string) => `${year}:${categoryId}`;
-
+/** Sets stored amounts of one category (tests). */
 export function setMockBudget(year: number, categoryId: string, amounts: Partial<BudgetAmounts>): void {
-  budgetStore.set(key(year, categoryId), { ...ZERO, ...budgetStore.get(key(year, categoryId)), ...amounts });
-}
-
-/** Resets the budget store to its seed: the current year has numbers, the next year is empty. */
-export function resetMockBudget(): void {
-  budgetStore.clear();
-  const year = new Date().getFullYear();
-  const [a, b, c] = db.reference.budgetCategories;
-  if (a) setMockBudget(year, a.id, { budgetExpenseCents: 100000, actualExpenseCents: 90000 });
-  if (b) setMockBudget(year, b.id, { budgetIncomeCents: 200000, actualIncomeCents: 100000 });
-  if (c) setMockBudget(year, c.id, { actualExpenseCents: 10000 });
-}
-resetMockBudget();
-
-function withVariance<T extends BudgetAmounts>(a: T) {
-  return {
-    ...a,
-    varianceExpenseCents: a.budgetExpenseCents - a.actualExpenseCents,
-    varianceIncomeCents: a.budgetIncomeCents - a.actualIncomeCents,
-  };
-}
-
-function rowFor(year: number, categoryId: string): BudgetRow {
-  return withVariance({ categoryId, year, ...ZERO, ...budgetStore.get(key(year, categoryId)) });
-}
-
-function budgetFor(year: number): BudgetResponse {
-  const rows = db.reference.budgetCategories.map((c) => rowFor(year, c.id));
-  const sums = { ...ZERO };
-  for (const row of rows) for (const f of AMOUNT_FIELDS) sums[f] += row[f];
-  return { year, rows, totals: withVariance(sums) };
+  setBudgetAmounts(db.budget, year, categoryId, amounts);
 }
 
 function parseYear(value: string | null): number | null {
@@ -79,7 +37,7 @@ export const budgetHandlers = [
     if (year === null) return invalidYear();
     const body = (await request.json()) as Record<string, unknown>;
     const fields: Record<string, FieldCode> = {};
-    for (const f of AMOUNT_FIELDS) {
+    for (const f of BUDGET_AMOUNT_FIELDS) {
       const v = body[f];
       if (v === undefined || v === null) fields[f] = 'REQUIRED';
       else if (typeof v !== 'number' || !Number.isInteger(v)) fields[f] = 'INVALID_VALUE';
@@ -92,7 +50,7 @@ export const budgetHandlers = [
       for (const f of BUDGET_FIELDS) if (body[f] !== 0) fields[f] = 'INVALID_VALUE';
       if (Object.keys(fields).length > 0) return validationError(fields);
     }
-    const amounts = Object.fromEntries(AMOUNT_FIELDS.map((f) => [f, body[f]])) as unknown as BudgetAmounts;
+    const amounts = Object.fromEntries(BUDGET_AMOUNT_FIELDS.map((f) => [f, body[f]])) as unknown as BudgetAmounts;
     setMockBudget(year, category.id, amounts);
     return HttpResponse.json(rowFor(year, category.id));
   }),

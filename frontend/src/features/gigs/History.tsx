@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { Id, Person } from '../api/types';
-import { apiErrorMessage } from '../i18n/labels';
-import { useLang } from '../i18n/useLang';
-import { formatDateTime } from '../lib/format';
-import { useReference } from '../reference/useReference';
+import type { Id, Person } from '../../api/types';
+import { apiErrorMessage } from '../../i18n/labels';
+import { useLang } from '../../i18n/useLang';
+import { formatDateTime } from '../../lib/format';
+import { useReference } from '../../reference/useReference';
 import { describeEvent, HISTORY_FILTERS, matchesFilter, type HistoryFilter } from './historyText';
 import { useGigHistory } from './queries';
 

@@ -1,8 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { rootKeys, useInvalidateYearData } from '../../api/cache';
 import { hoursApi } from '../../api/endpoints';
 import type { HourEntryCreate, HourEntryUpdate, Id } from '../../api/types';
 
-export const hoursKey = ['hours'] as const;
+export const hoursKey = rootKeys.hours;
 
 export function useHourEntries(year: number, partnerId: Id | null) {
   return useQuery({
@@ -21,13 +22,8 @@ export function useHoursTotals(year: number) {
 
 /** After a change: refetch every hours list and total, and the year page (hours sum). */
 function useInvalidateHours() {
-  const queryClient = useQueryClient();
-  return () =>
-    Promise.all([
-      queryClient.invalidateQueries({ queryKey: hoursKey }),
-      queryClient.invalidateQueries({ queryKey: ['years'] }),
-      queryClient.invalidateQueries({ queryKey: ['year'] }),
-    ]);
+  const invalidate = useInvalidateYearData();
+  return () => invalidate('hours');
 }
 
 export function useCreateHourEntry() {

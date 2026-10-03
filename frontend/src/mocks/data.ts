@@ -6,8 +6,11 @@ import {
   TECHNICAL_SETUPS,
 } from '../api/enums';
 import type { Partner, ReferenceData } from '../api/types';
+import { seedBudget, type BudgetState } from './budgetStore';
 import { seedGigState } from './gigSeed';
 import { emptyGigState, type GigState } from './gigStore';
+import { seedHours, type HoursState } from './hoursStore';
+import { seedTasks, type TasksState } from './tasksStore';
 
 export interface MockDb {
   partners: Partner[];
@@ -16,6 +19,9 @@ export interface MockDb {
   reference: Omit<ReferenceData, 'partners'>;
   /** Gigs, cost lines, attachments, history and people. */
   gigs: GigState;
+  tasks: TasksState;
+  hours: HoursState;
+  budget: BudgetState;
 }
 
 const SESSION_KEY = 'mock-session-partner-id';
@@ -114,6 +120,9 @@ export const db: MockDb = {
   sessionPartnerId: readStoredSession(),
   reference: startReference,
   gigs: initialGigs(startPartners, startReference),
+  tasks: seedTasks(),
+  hours: seedHours(startPartners),
+  budget: seedBudget(startReference.budgetCategories),
 };
 
 /** Sets the mock session; kept in sessionStorage so a browser reload stays signed in. */
@@ -127,10 +136,13 @@ export function setMockSession(partnerId: string | null): void {
   }
 }
 
-/** Resets all mock state (used between tests). */
+/** Resets every mock store to its seed (used between tests). */
 export function resetMockDb(): void {
   db.partners = initialPartners();
   db.reference = initialReference();
   db.gigs = initialGigs(db.partners, db.reference);
+  db.tasks = seedTasks();
+  db.hours = seedHours(db.partners);
+  db.budget = seedBudget(db.reference.budgetCategories);
   setMockSession(null);
 }

@@ -1,78 +1,12 @@
-// Mock handlers + synthetic data for the Tasks section of docs/api-contract.md (UC-017).
-// Synthetic data only (BR-090).
+// Mock handlers for the Tasks section of docs/api-contract.md (UC-017). State: db.tasks
+// (tasksStore.ts). Synthetic data only (BR-090).
 import { http, HttpResponse } from 'msw';
 import type { FieldCode } from '../api/enums';
 import type { Task, TaskCreate, TaskUpdate } from '../api/types';
 import { todayIso } from '../lib/format';
 import { db } from './data';
+import type { StoredTask } from './tasksStore';
 import { currentPartner, errorResponse, unauthenticated, validationError } from './util';
-
-interface StoredTask extends Omit<Task, 'overdue'> {
-  createdAt: number;
-}
-
-const PARTNER_A = '00000000-0000-4000-8000-00000000000a';
-const PARTNER_B = '00000000-0000-4000-8000-00000000000b';
-
-function isoOffset(days: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() + days);
-  return todayIso(d);
-}
-
-function initialTasks(): StoredTask[] {
-  const base = Date.UTC(2026, 0, 1);
-  return [
-    {
-      id: '00000000-0000-4000-8000-000000000501',
-      title: 'Task 1',
-      description: 'Description 1',
-      dueDate: isoOffset(-3),
-      ownerId: PARTNER_A,
-      status: 'OPEN',
-      completedAt: null,
-      createdAt: base,
-    },
-    {
-      id: '00000000-0000-4000-8000-000000000502',
-      title: 'Task 2',
-      description: null,
-      dueDate: isoOffset(7),
-      ownerId: PARTNER_B,
-      status: 'OPEN',
-      completedAt: null,
-      createdAt: base + 1,
-    },
-    {
-      id: '00000000-0000-4000-8000-000000000503',
-      title: 'Task 3',
-      description: null,
-      dueDate: null,
-      ownerId: PARTNER_A,
-      status: 'OPEN',
-      completedAt: null,
-      createdAt: base + 2,
-    },
-    {
-      id: '00000000-0000-4000-8000-000000000504',
-      title: 'Task 4',
-      description: null,
-      dueDate: isoOffset(-10),
-      ownerId: PARTNER_B,
-      status: 'DONE',
-      completedAt: new Date(base).toISOString(),
-      createdAt: base + 3,
-    },
-  ];
-}
-
-export const tasksDb: { tasks: StoredTask[]; nextId: number } = { tasks: initialTasks(), nextId: 1 };
-
-/** Resets the task mock store (call in tests' beforeEach). */
-export function resetTasksMock(): void {
-  tasksDb.tasks = initialTasks();
-  tasksDb.nextId = 1;
-}
 
 function toDto({ createdAt: _createdAt, ...task }: StoredTask, today: string): Task {
   return { ...task, overdue: task.status === 'OPEN' && task.dueDate !== null && task.dueDate < today };
@@ -110,7 +44,7 @@ export const tasksHandlers = [
       return validationError({ status: 'INVALID_VALUE' });
     }
     const today = todayIso();
-    const list = tasksDb.tasks
+    const list = db.tasks.tasks
       .filter((t) => status === 'ALL' || t.status === status)
       .filter((t) => !ownerId || t.ownerId === ownerId)
       .map((t) => ({ stored: t, dto: toDto(t, today) }))
@@ -136,7 +70,7 @@ export const tasksHandlers = [
     const fields = validate(body, true);
     if (Object.keys(fields).length > 0) return validationError(fields);
     const task: StoredTask = {
-      id: `00000000-0000-4000-8000-${String(900000000000 + tasksDb.nextId++)}`,
+      id: `00000000-0000-4000-8000-${String(900000000000 + db.tasks.nextId++)}`,
       title: body.title.trim(),
       description: emptyToNull(body.description),
       dueDate: body.dueDate ?? null,
@@ -145,7 +79,7 @@ export const tasksHandlers = [
       completedAt: null,
       createdAt: Date.now(),
     };
-    tasksDb.tasks.push(task);
+    db.tasks.tasks.push(task);
     return HttpResponse.json(toDto(task, todayIso()), { status: 201 });
   }),
 
@@ -154,7 +88,7 @@ export const tasksHandlers = [
     const body = (await request.json()) as TaskUpdate;
     const fields = validate(body, false);
     if (Object.keys(fields).length > 0) return validationError(fields);
-    const task = tasksDb.tasks.find((t) => t.id === params.id);
+    const task = db.tasks.tasks.find((t) => t.id === params.id);
     if (!task) return errorResponse(404, 'NOT_FOUND', 'Task not found');
     if (body.title !== undefined) task.title = body.title.trim();
     if (body.ownerId !== undefined) task.ownerId = body.ownerId;
@@ -169,9 +103,9 @@ export const tasksHandlers = [
 
   http.delete('/api/tasks/:id', ({ params }) => {
     if (!currentPartner()) return unauthenticated();
-    const index = tasksDb.tasks.findIndex((t) => t.id === params.id);
+    const index = db.tasks.tasks.findIndex((t) => t.id === params.id);
     if (index < 0) return errorResponse(404, 'NOT_FOUND', 'Task not found');
-    tasksDb.tasks.splice(index, 1);
+    db.tasks.tasks.splice(index, 1);
     return new HttpResponse(null, { status: 204 });
   }),
 ];

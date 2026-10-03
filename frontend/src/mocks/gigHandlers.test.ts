@@ -138,6 +138,43 @@ describe('gig mocks', () => {
     expect(moved.warnings).toEqual([]);
   });
 
+  it('double booking counts performers only: SALES on one gig + VOC on another never warns (BR-022)', async () => {
+    const person = db.gigs.people.find((p) => p.name === 'Person 1')!;
+    const gigA = await gigsApi.create(gigInput({ startDate: `${YEAR}-08-01` }));
+    const gigB = await gigsApi.create(gigInput({ startDate: `${YEAR}-08-01` }));
+
+    const sales = await costLinesApi.create(gigA.id, { type: 'SALES', personId: person.id, budgetedCents: 1000 });
+    expect(sales.warnings).toEqual([]);
+    const voc = await costLinesApi.update(line(gigB, 'VOC').id, { personId: person.id });
+    expect(voc.warnings).toEqual([]);
+    // Internal line added while the person already performs elsewhere: no warning either.
+    const production = await costLinesApi.create(gigA.id, {
+      type: 'PRODUCTION',
+      personId: person.id,
+      budgetedCents: 1000,
+    });
+    expect(production.warnings).toEqual([]);
+    // Seller and producer are the same partner on both gigs: moving never warns about them.
+    expect((await gigsApi.move(gigA.id, { startDate: `${YEAR}-08-01` })).warnings).toEqual([]);
+  });
+
+  it('double booking warns when the person is VOC on both gigs (BR-022)', async () => {
+    const person = db.gigs.people.find((p) => p.name === 'Person 1')!;
+    const gigA = await gigsApi.create(gigInput({ startDate: `${YEAR}-08-01` }));
+    const gigB = await gigsApi.create(gigInput({ startDate: `${YEAR}-08-01` }));
+    await costLinesApi.update(line(gigA, 'VOC').id, { personId: person.id });
+    const result = await costLinesApi.update(line(gigB, 'VOC').id, { personId: person.id });
+    expect(result.warnings).toEqual([
+      {
+        code: 'PERSON_DOUBLE_BOOKED',
+        personId: person.id,
+        otherGigId: gigA.id,
+        otherGigStartDate: `${YEAR}-08-01`,
+        otherGigLineupName: 'Template A',
+      },
+    ]);
+  });
+
   it('moves unpaid Sales/Production lines on seller/producer change (BR-027)', async () => {
     const gig = await gigsApi.create(gigInput());
     // A paid sales line and a split production line of someone else stay.

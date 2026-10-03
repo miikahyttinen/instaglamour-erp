@@ -1,9 +1,9 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { db } from '../mocks/data';
-import { addCostLine, payCostLine } from '../mocks/gigStore';
-import { addMockGig, partnerA, partnerB, staffMockGig, TEST_YEAR } from '../test/gigFixtures';
-import { renderApp, signInMock } from '../test/renderApp';
+import { db } from '../../mocks/data';
+import { addCostLine, payCostLine } from '../../mocks/gigStore';
+import { addMockGig, partnerA, partnerB, staffMockGig, TEST_YEAR } from '../../test/gigFixtures';
+import { renderApp, signInMock } from '../../test/renderApp';
 
 const section = (name: string) => screen.getByRole('heading', { name, level: 2 }).closest('details')!;
 const historyItems = () =>
@@ -138,8 +138,8 @@ describe('gig page (UC-004, UC-007)', () => {
     expect(await screen.findByText('Keikka siirretty.')).toBeInTheDocument();
     const warning = screen.getByText('Päällekkäinen keikka').closest('[role="alert"]')!;
     expect(warning).toHaveTextContent('Person 1 on samaan aikaan myös keikalla (1.7.2030): Template B');
-    // Partner A is on both gigs' Sales/Production lines, so they are warned about too.
-    expect(warning).toHaveTextContent('Partner A on samaan aikaan myös keikalla');
+    // Partner A is on both gigs' Sales/Production lines: internal lines never warn (BR-022).
+    expect(warning).not.toHaveTextContent('Partner A');
     expect(within(warning as HTMLElement).getAllByRole('link', { name: 'Template B' })[0]).toHaveAttribute(
       'href',
       `/gigs/${other.id}`,

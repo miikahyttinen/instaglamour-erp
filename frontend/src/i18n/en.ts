@@ -1,13 +1,12 @@
 // English UI texts. Must have exactly the same keys as fi.ts (checked by i18n.test.ts).
+import { en as budgetEn } from '../features/budget/i18n';
 import { en as hoursEn } from '../features/hours/i18n';
-import { en as yearEn } from '../features/year/i18n';
-import { en as budgetEN } from '../features/budget/i18n';
-import type { Resources } from './fi';
+import { en as peopleEn } from '../features/people/i18n';
 import { en as tasksEn } from '../features/tasks/i18n';
-import { en as people } from '../features/people/i18n';
+import { en as yearEn } from '../features/year/i18n';
+import type { Resources } from './fi';
 
 const en: Resources = {
-  ...hoursEn,
   app: {
     name: 'Instaglamour ERP',
     loading: 'Loading…',
@@ -60,7 +59,6 @@ const en: Resources = {
     tasks: 'Tasks',
     hours: 'Hours {{year}}',
     budget: 'Budget {{year}}',
-    comingSoon: 'This view is coming soon.',
     notFound: 'Page not found.',
     backHome: 'Go to home',
   },
@@ -374,10 +372,11 @@ const en: Resources = {
     joinsLoadIn: 'Load-in & soundcheck',
     actualCents: 'Actual',
   },
-  ...tasksEn,
   year: yearEn,
-  budget: budgetEN,
-  ...people,
+  ...peopleEn,
+  ...tasksEn,
+  ...hoursEn,
+  budget: budgetEn,
 };
 
 export default en;

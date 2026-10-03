@@ -2,19 +2,19 @@ import { http, HttpResponse } from 'msw';
 import type { FieldCode } from '../api/enums';
 import { LANGUAGES } from '../api/enums';
 import type { DevLoginRequest, ReferenceData, UpdateMeRequest } from '../api/types';
-import { db, setMockSession } from './data';
-import { tasksHandlers } from './tasksHandlers';
-import { hoursHandlers } from './hoursHandlers';
 import { budgetHandlers } from './budgetHandlers';
+import { db, setMockSession } from './data';
 import { attachmentHandlers, costLineHandlers, gigHandlers } from './gigHandlers';
+import { hoursHandlers } from './hoursHandlers';
 import { peopleHandlers } from './peopleHandlers';
+import { tasksHandlers } from './tasksHandlers';
 import { currentPartner, errorResponse, unauthenticated } from './util';
 import { yearHandlers } from './yearHandlers';
 
 // Mock handlers per contract section. Each section has a handler array included in
-// `handlers`. Gigs, cost lines and attachments live in gigHandlers.ts, people in peopleHandlers.ts.
-
-export { currentPartner, errorResponse };
+// `handlers`: auth and reference here, the features in <feature>Handlers.ts (gigHandlers.ts
+// also has cost lines and attachments), registered in navigation order. Mock state is in
+// `db` (data.ts).
 
 export const authHandlers = [
   http.post('/api/auth/dev-login', async ({ request }) => {
@@ -68,12 +68,12 @@ export const referenceHandlers = [
 export const handlers = [
   ...authHandlers,
   ...referenceHandlers,
+  ...yearHandlers,
   ...gigHandlers,
   ...costLineHandlers,
   ...attachmentHandlers,
   ...peopleHandlers,
   ...tasksHandlers,
   ...hoursHandlers,
-  ...yearHandlers,
   ...budgetHandlers,
 ];
