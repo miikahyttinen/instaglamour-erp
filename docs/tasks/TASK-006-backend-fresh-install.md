@@ -1,7 +1,7 @@
 # TASK-006: Backend installs on a fresh checkout (e2e finding F-002)
 
 - **owner:** backend
-- **status:** todo
+- **status:** done
 - **spec:** e2e/FINDINGS.md F-002
 - **depends on:** none
 
