@@ -1,5 +1,6 @@
 // English UI texts. Must have exactly the same keys as fi.ts (checked by i18n.test.ts).
 import type { Resources } from './fi';
+import { en as tasksEn } from '../features/tasks/i18n';
 
 const en: Resources = {
   app: {
@@ -368,6 +369,7 @@ const en: Resources = {
     joinsLoadIn: 'Load-in & soundcheck',
     actualCents: 'Actual',
   },
+  ...tasksEn,
 };
 
 export default en;
