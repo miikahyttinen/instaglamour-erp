@@ -1,7 +1,7 @@
 # TASK-005: Double-booking warning for performers only
 
 - **owner:** backend
-- **status:** todo
+- **status:** done
 - **spec:** BR-022 (updated), UC-005 AC-5, api-contract.md → Warning format
 - **depends on:** TASK-002
 
