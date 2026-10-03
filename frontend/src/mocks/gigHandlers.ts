@@ -311,11 +311,7 @@ export const gigHandlers = [
       { from, to: { startDate: gig.startDate, endDate: gig.endDate } },
       reasonOf(body),
     );
-    const warnings = doubleBookingWarnings(
-      db.gigs,
-      gig,
-      linesOf(db.gigs, gig.id).map((l) => l.personId),
-    );
+    const warnings = doubleBookingWarnings(db.gigs, gig, linesOf(db.gigs, gig.id));
     return withWarnings(gig, warnings);
   }),
 
@@ -415,7 +411,7 @@ export const costLineHandlers = [
       me.id,
     );
     touch(gig);
-    return withWarnings(gig, doubleBookingWarnings(db.gigs, gig, [line.personId]));
+    return withWarnings(gig, doubleBookingWarnings(db.gigs, gig, [line]));
   }),
 
   http.patch('/api/cost-lines/:id', async ({ params, request }) => {
@@ -458,7 +454,7 @@ export const costLineHandlers = [
       me.id,
     );
     touch(gig);
-    const warnings = personChanged ? doubleBookingWarnings(db.gigs, gig, [line.personId]) : [];
+    const warnings = personChanged ? doubleBookingWarnings(db.gigs, gig, [line]) : [];
     return withWarnings(gig, warnings);
   }),
 

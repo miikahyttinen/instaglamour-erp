@@ -107,7 +107,7 @@ export function seedGigState(
   g4.deletedAt = nowTs();
   logEvent(state, g4.id, 'DELETED', a.id, {}, 'Duplicate entry.');
 
-  // 5. and 6. Same date: assigning Person 1 to gig 6 warns about gig 5 (BR-022).
+  // 5. and 6. Same date: assigning Person 1 to a musician line of gig 6 warns about gig 5 (BR-022).
   const g5 = createGig(
     state,
     { ...base, startDate: `${year}-11-20`, venue: 'Venue Z', producerId: b.id, priceCents: 300000 },
