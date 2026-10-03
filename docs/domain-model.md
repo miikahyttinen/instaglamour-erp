@@ -157,6 +157,8 @@ Types: `CREATED`, `UPDATED`, `MOVED`, `CANCELLED`, `UNCANCELLED`, `DELETED`, `RE
 | code | string | stable id |
 | name_fi, name_en | string | |
 | budgeted | bool | false = actuals only (e.g. `FUEL`) |
+| active | bool | inactive categories are hidden |
+| sort_order | int | display order |
 
 ## BudgetYear
 One row per category per year. All four numbers are typed in by partners.
@@ -188,4 +190,5 @@ FI/EN labels live in the translation files.
 
 ## Change log
 - 2026-10-03 – First draft and iterations (PM)
+- 2026-10-03 – BudgetCategory active/sort_order (PM)
 - 2026-10-03 – Simplified MVP: no Played status, price + additional sales fields, one notes field, one cost list, paid timestamp, plain attachments, seed-only templates/settings, simple people/tasks, budget as one row per category per year (PM)

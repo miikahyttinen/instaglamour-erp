@@ -16,6 +16,7 @@
 | Auth | httpOnly session cookie set by the backend. Every endpoint except `/api/auth/*` returns **401** without a valid session. |
 | Concurrency | Last save wins. |
 | Deleted gigs | Excluded from every list, sum and overlap check unless stated. |
+| Today | "Today" (played, overdue, upcoming, default year) is the date in Europe/Helsinki. |
 
 ### Error format
 ```json
@@ -67,7 +68,7 @@ overlaps (`endDate` null = one day).
 {
   "id": "…", "startDate": "2026-05-01", "endDate": null, "year": 2026,
   "status": "SOLD", "played": false,
-  "lineupTemplateId": "…", "lineupName": "Template A", "venue": "Venue X",
+  "lineupTemplateId": "…", "lineupName": "Template A",  // lineupTemplateId: null for a custom lineup "venue": "Venue X",
   "technicalSetup": ["HOUSE_TECH"], "sellerId": "…", "producerId": "…",
   "priceCents": 100000, "additionalSalesCents": 0, "additionalSalesDescription": null,
   "notes": null,
@@ -83,7 +84,7 @@ overlaps (`endDate` null = one day).
 - `notFullyStaffed` (BR-023): some musician-role line has `personId = null`.
 
 ### GigDetail
-`GigSummary` + `"costLines": [CostLine]` (ordered by creation) + `"attachments": [Attachment]` (non-deleted, newest first).
+`GigSummary` + `"costLines": [CostLine]` (ordered by creation time, then id; lines created together keep their creation order) + `"attachments": [Attachment]` (non-deleted, newest first).
 
 ### CostLine
 ```json
@@ -149,11 +150,11 @@ Variance = budget − actual (BR-060).
 | Method & path | Request | Response |
 |---|---|---|
 | `GET /api/auth/google/start` | — | 302 to Google |
-| `GET /api/auth/google/callback` | Google params | Valid → session cookie + 302 to `/`. Wrong domain → 302 `/login?error=WRONG_DOMAIN`. Not a partner → 302 `/login?error=NOT_A_PARTNER`. Failure → 302 `/login?error=SIGN_IN_FAILED` |
-| `POST /api/auth/dev-login` | `{ "email" }` | 200 `Partner`. **Exists only when `DEV_LOGIN_ENABLED=true`** in `.env`; otherwise 404. Email must be a registered partner (else 403) |
+| `GET /api/auth/google/callback` | Google params | Valid → session cookie + 302 to `{FRONTEND_URL}/`. Wrong domain → 302 `{FRONTEND_URL}/login?error=WRONG_DOMAIN`. Not a partner → `…?error=NOT_A_PARTNER`. Failure → `…?error=SIGN_IN_FAILED` |
+| `POST /api/auth/dev-login` | `{ "email" }` | 200 `Partner`. Missing/blank email → 400 `email: REQUIRED`. **Exists only when `DEV_LOGIN_ENABLED=true`** in `.env`; otherwise 404. Email must be a registered partner (else 403) |
 | `POST /api/auth/logout` | — | 204, cookie cleared |
 | `GET /api/me` | — | 200 `Partner` |
-| `PATCH /api/me` | `{ "language"?: "fi"\|"en", "selectedYear"?: int }` | 200 `Partner` |
+| `PATCH /api/me` | `{ "language"?: "fi"\|"en", "selectedYear"?: int }` | 200 `Partner`. `selectedYear` integer 2000–2100, else 400 `INVALID_VALUE` |
 
 Session lifetime: 30 days sliding.
 
@@ -166,11 +167,11 @@ Session lifetime: 30 days sliding.
 ```json
 {
   "partners": [Partner],
-  "lineupTemplates": [{ "id": "…", "name": "Template A", "roles": [{ "role": "VOC", "defaultFeeCents": 30000 }] }],
+  "lineupTemplates": [{ "id": "…", "name": "Template A", "roles": [{ "role": "VOC", "defaultFeeCents": 30000 }] }],  // roles are musician roles only, in template order
   "settings": { "officeDefaultCents": 0, "salesDefaultCents": 0, "productionDefaultCents": 0, "loadInDeductionCents": 0 },
   "costTypes": { "musicianRoles": ["VOC", "…"], "internalRoles": ["OFFICE", "SALES", "PRODUCTION"], "expenseCategories": ["FUEL", "…"] },
   "technicalSetups": ["HOUSE_TECH", "…"],
-  "budgetCategories": [{ "id": "…", "code": "INSURANCE", "nameFi": "…", "nameEn": "…", "budgeted": true }]
+  "budgetCategories": [{ "id": "…", "code": "INSURANCE", "nameFi": "…", "nameEn": "…", "budgeted": true }]  // active categories only, in sortOrder
 }
 ```
 
@@ -300,3 +301,4 @@ Duplicate = case-insensitive exact name match with another person.
 
 ## Change log
 - 2026-10-03 – First version (PM)
+- 2026-10-03 – Clarifications after wave 1, no behaviour changes: Helsinki "today", FRONTEND_URL redirects, dev-login and selectedYear validation, nullable lineupTemplateId, template roles, active budget categories, cost line order (PM)

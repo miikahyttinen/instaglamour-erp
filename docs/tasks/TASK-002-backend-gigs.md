@@ -29,4 +29,4 @@ All gig-related endpoints with their business rules and the complete history log
 People, tasks, hours, budget, year endpoints (TASK-003). Frontend.
 
 ## Notes
-Synthetic test data only (BR-090). Wrap each mutation + its event in one transaction.
+Synthetic test data only (BR-090). Cost lines created in one request must keep their order (contract: creation time, then id). Wrap each mutation + its event in one transaction.

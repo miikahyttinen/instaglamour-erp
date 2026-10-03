@@ -1,7 +1,7 @@
 # TASK-101: UI foundation — scaffold, i18n, sign-in, app shell with year selector
 
 - **owner:** ui
-- **status:** todo
+- **status:** done
 - **spec:** UC-001, use-cases/README.md (NFR-1…NFR-6), glossary.md
 - **depends on:** none (build against the contract with mocks)
 
