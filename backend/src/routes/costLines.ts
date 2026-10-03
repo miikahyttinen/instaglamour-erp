@@ -57,8 +57,8 @@ export function costLineRoutes(app: FastifyInstance, deps: AppDeps): void {
     warnings,
   });
 
-  const warningsFor = (gig: Gig, personId: string | null) =>
-    doubleBookingWarnings(db, { gigId: gig.id, startDate: gig.startDate, endDate: gig.endDate, personIds: [personId] });
+  const warningsFor = (gig: Gig, line: { type: string; personId: string | null }) =>
+    doubleBookingWarnings(db, { gigId: gig.id, startDate: gig.startDate, endDate: gig.endDate, lines: [line] });
 
   // ---------------------------------------------------------------- add
   app.post<IdParams>('/api/gigs/:id/cost-lines', async (request) => {
@@ -95,7 +95,7 @@ export function costLineRoutes(app: FastifyInstance, deps: AppDeps): void {
         details: { costLineId: line.id, type: line.type, personId, budgetedCents: line.budgetedCents },
       });
     });
-    return result(gig.id, await warningsFor(gig, personId));
+    return result(gig.id, await warningsFor(gig, { type: body.type, personId }));
   });
 
   // ---------------------------------------------------------------- edit
@@ -152,7 +152,7 @@ export function costLineRoutes(app: FastifyInstance, deps: AppDeps): void {
       });
     }
 
-    const warnings = personId !== line.personId ? await warningsFor(line.gig, personId) : [];
+    const warnings = personId !== line.personId ? await warningsFor(line.gig, { type: line.type, personId }) : [];
     return result(line.gigId, warnings);
   });
 
