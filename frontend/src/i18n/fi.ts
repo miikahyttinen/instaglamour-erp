@@ -1,6 +1,8 @@
 // Finnish UI texts (default language). Terms follow docs/glossary.md.
 // en.ts must have exactly the same keys (checked by i18n.test.ts).
 
+import { fi as tasksFi } from '../features/tasks/i18n';
+
 const fi = {
   app: {
     name: 'Instaglamour ERP',
@@ -368,6 +370,7 @@ const fi = {
     joinsLoadIn: 'Roudaus ja soundcheck',
     actualCents: 'Toteuma',
   },
+  ...tasksFi,
 };
 
 export default fi;
