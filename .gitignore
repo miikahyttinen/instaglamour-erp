@@ -1,0 +1,19 @@
+# Local business data — never commit (see docs/business-rules.md BR-090)
+*.xlsx
+*.xls
+*.csv
+seed.local.*
+**/seed/local/
+uploads/
+storage/
+
+# Secrets / environment
+.env
+.env.*
+!.env.example
+
+# Tooling
+node_modules/
+dist/
+coverage/
+.DS_Store
