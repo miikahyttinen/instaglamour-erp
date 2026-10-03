@@ -7,6 +7,7 @@ import { attachmentHandlers, costLineHandlers, gigHandlers, peopleHandlers } fro
 import { tasksHandlers } from './tasksHandlers';
 import { hoursHandlers } from './hoursHandlers';
 import { currentPartner, errorResponse, unauthenticated } from './util';
+import { yearHandlers } from './yearHandlers';
 
 // Mock handlers per contract section. Each section has a handler array included in
 // `handlers`. Gigs, cost lines, attachments and people live in gigHandlers.ts.
@@ -71,4 +72,5 @@ export const handlers = [
   ...peopleHandlers,
   ...tasksHandlers,
   ...hoursHandlers,
+  ...yearHandlers,
 ];

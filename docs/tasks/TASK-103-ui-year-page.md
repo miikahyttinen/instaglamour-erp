@@ -1,7 +1,7 @@
 # TASK-103: UI year page (home)
 
 - **owner:** ui
-- **status:** todo
+- **status:** done
 - **spec:** UC-022
 - **depends on:** TASK-101 (merged)
 

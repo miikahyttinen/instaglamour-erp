@@ -5,6 +5,7 @@ import { RequireAuth } from './auth/RequireAuth';
 import { SignInPage } from './auth/SignInPage';
 import { TasksPage } from './features/tasks/TasksPage';
 import { HoursRoutes } from './features/hours/HoursRoutes';
+import { YearPage } from './features/year/YearPage';
 import { GigsRoutes } from './gigs/GigsRoutes';
 import { AppShell } from './layout/AppShell';
 import { NotFoundPage } from './pages/NotFoundPage';
@@ -21,7 +22,7 @@ export function AppRoutes() {
           </RequireAuth>
         }
       >
-        <Route index element={<PlaceholderPage page="year" />} />
+        <Route index element={<YearPage />} />
         <Route path="gigs/*" element={<GigsRoutes />} />
         <Route path="people/*" element={<PlaceholderPage page="people" />} />
         <Route path="tasks/*" element={<TasksPage />} />
