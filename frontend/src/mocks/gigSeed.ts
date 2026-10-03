@@ -1,0 +1,135 @@
+// Synthetic demo gigs for `npm run dev:mock` and tests (BR-090: no real names or numbers).
+// Dates are in the current year so the default gig list shows something.
+import type { LineupTemplate, Partner, Person, Settings } from '../api/types';
+import type { GigState, NewGigInput } from './gigStore';
+import {
+  addAttachment,
+  addCostLine,
+  createGig,
+  linesOf,
+  logEvent,
+  nowTs,
+  payCostLine,
+} from './gigStore';
+
+/** Fixed ids of the synthetic people (Person 1…9). */
+export const PERSON_IDS = Array.from(
+  { length: 9 },
+  (_, i) => `00000000-0000-4000-8000-0000000003${String(i + 1).padStart(2, '0')}`,
+);
+
+export function seedPeople(partners: Partner[]): Person[] {
+  return [
+    ...partners.map((p) => ({ id: p.personId, name: p.name, active: true })),
+    ...PERSON_IDS.map((id, i) => ({ id, name: `Person ${i + 1}`, active: i < 8 })),
+  ];
+}
+
+export function seedGigState(
+  state: GigState,
+  partners: Partner[],
+  reference: { lineupTemplates: LineupTemplate[]; settings: Settings },
+  year = new Date().getFullYear(),
+): void {
+  state.people = seedPeople(partners);
+  const [a, b] = partners;
+  if (!a || !b) return;
+  const ctx = { templates: reference.lineupTemplates, settings: reference.settings, partners };
+  const [templateA, templateB] = reference.lineupTemplates;
+  const base: NewGigInput = {
+    startDate: `${year}-01-01`,
+    endDate: null,
+    lineupTemplateId: templateA?.id ?? null,
+    lineupName: null,
+    venue: 'Venue X',
+    technicalSetup: [],
+    sellerId: a.id,
+    producerId: a.id,
+    priceCents: 100000,
+    additionalSalesCents: 0,
+    additionalSalesDescription: null,
+    notes: null,
+  };
+  const staff = (gigId: string, people: string[]) => {
+    const musicianLines = linesOf(state, gigId).filter((l) => l.joinsLoadIn !== null);
+    musicianLines.forEach((line, i) => {
+      line.personId = people[i] ?? null;
+    });
+  };
+
+  // 1. Fully staffed, everything paid.
+  const g1 = createGig(
+    state,
+    { ...base, startDate: `${year}-02-14`, priceCents: 200000, technicalSetup: ['HOUSE_TECH'] },
+    a.id,
+    ctx,
+  );
+  staff(g1.id, PERSON_IDS.slice(0, 4));
+  linesOf(state, g1.id).forEach((line) => payCostLine(state, line, line.budgetedCents, a.id));
+
+  // 2. Two-day gig with additional sales; keys not staffed.
+  const g2 = createGig(
+    state,
+    {
+      ...base,
+      startDate: `${year}-05-01`,
+      endDate: `${year}-05-02`,
+      lineupTemplateId: templateB?.id ?? null,
+      venue: 'Venue Y',
+      sellerId: b.id,
+      technicalSetup: ['OWN_PA', 'VAN'],
+      additionalSalesCents: 10000,
+      additionalSalesDescription: 'Additional set',
+    },
+    a.id,
+    ctx,
+  );
+  staff(g2.id, [PERSON_IDS[0]!]);
+  addCostLine(state, g2, { type: 'FUEL', personId: null, description: null, budgetedCents: 10000 }, a.id);
+
+  // 3. Cancelled; price adjusted to what is still billed.
+  const g3 = createGig(
+    state,
+    { ...base, startDate: `${year}-08-15`, venue: 'Venue V', priceCents: 10000, notes: 'Partial fee billed.' },
+    b.id,
+    ctx,
+  );
+  g3.status = 'CANCELLED';
+  logEvent(state, g3.id, 'CANCELLED', b.id, {}, 'Event called off by the client.');
+
+  // 4. Deleted by mistake (shows in Gigs → Deleted).
+  const g4 = createGig(
+    state,
+    { ...base, startDate: `${year}-09-05`, lineupTemplateId: null, lineupName: 'Custom lineup', venue: 'Venue U' },
+    a.id,
+    ctx,
+  );
+  g4.deletedAt = nowTs();
+  logEvent(state, g4.id, 'DELETED', a.id, {}, 'Duplicate entry.');
+
+  // 5. and 6. Same date: assigning Person 1 to gig 6 warns about gig 5 (BR-022).
+  const g5 = createGig(
+    state,
+    { ...base, startDate: `${year}-11-20`, venue: 'Venue Z', producerId: b.id, priceCents: 300000 },
+    a.id,
+    ctx,
+  );
+  staff(g5.id, PERSON_IDS.slice(0, 4));
+  addCostLine(state, g5, { type: 'FOOD', personId: null, description: 'Catering', budgetedCents: 10000 }, a.id);
+  addAttachment(
+    state,
+    g5,
+    {
+      filename: 'contract.pdf',
+      contentType: 'application/pdf',
+      content: new Blob(['%PDF-1.4 synthetic test file'], { type: 'application/pdf' }),
+    },
+    a.id,
+  );
+  createGig(
+    state,
+    { ...base, startDate: `${year}-11-20`, lineupTemplateId: templateB?.id ?? null, venue: 'Venue W', sellerId: b.id, producerId: b.id },
+    b.id,
+    ctx,
+  );
+}

@@ -52,8 +52,11 @@ Try `/login?error=WRONG_DOMAIN` (or `NOT_A_PARTNER`, `SIGN_IN_FAILED`) to see th
 | `src/reference/useReference.ts` | Reference data, loaded once per session and cached |
 | `src/i18n/` | `fi.ts` / `en.ts` texts (glossary terms), label helpers for codes and errors |
 | `src/lib/format.ts` | Money (cents), date, hours and percent formatting per language |
-| `src/mocks/` | MSW handlers and synthetic data (browser worker + Node server for tests) |
-| `src/pages/` | Placeholder pages (real ones come in TASK-102 / TASK-103) |
+| `src/mocks/` | MSW handlers and synthetic data (browser worker + Node server for tests). Gig rules live in `gigStore.ts`, demo gigs in `gigSeed.ts` |
+| `src/gigs/` | Gig list, new gig, gig page (costs, attachments, history, move/cancel/delete dialogs) |
+| `src/components/` | Shared `Dialog`, `Field`, `MoneyInput` |
+| `src/pages/` | Placeholder pages (the rest come in TASK-103) |
+| `src/test/` | Test setup, `renderApp`, `gigFixtures` (synthetic gigs), `testFile` for uploads |
 
 ## Conventions
 
@@ -69,3 +72,7 @@ Try `/login?error=WRONG_DOMAIN` (or `NOT_A_PARTNER`, `SIGN_IN_FAILED`) to see th
   round dummy amounts). No real names, domains or business numbers (BR-090).
 - To add mocks for a new contract section, add a handler array in `src/mocks/handlers.ts`
   and include it in `handlers`.
+- Upload tests use Node's `FormData`/`File` (set in `src/test/setup.ts`) because Vitest's
+  jsdom → Node fetch bridge drops file names and bytes. Create test files with `testFile()`.
+- With mocks on, attachment downloads are fetched and opened as a blob URL (the mock
+  service worker can't answer a plain navigation). Against the backend they are normal links.

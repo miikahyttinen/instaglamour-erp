@@ -6,12 +6,16 @@ import {
   TECHNICAL_SETUPS,
 } from '../api/enums';
 import type { Partner, ReferenceData } from '../api/types';
+import { seedGigState } from './gigSeed';
+import { emptyGigState, type GigState } from './gigStore';
 
 export interface MockDb {
   partners: Partner[];
   /** Partner id of the signed-in mock user, or null. */
   sessionPartnerId: string | null;
   reference: Omit<ReferenceData, 'partners'>;
+  /** Gigs, cost lines, attachments, history and people. */
+  gigs: GigState;
 }
 
 const SESSION_KEY = 'mock-session-partner-id';
@@ -96,10 +100,20 @@ function readStoredSession(): string | null {
   }
 }
 
+function initialGigs(partners: Partner[], reference: MockDb['reference']): GigState {
+  const state = emptyGigState();
+  seedGigState(state, partners, reference);
+  return state;
+}
+
+const startPartners = initialPartners();
+const startReference = initialReference();
+
 export const db: MockDb = {
-  partners: initialPartners(),
+  partners: startPartners,
   sessionPartnerId: readStoredSession(),
-  reference: initialReference(),
+  reference: startReference,
+  gigs: initialGigs(startPartners, startReference),
 };
 
 /** Sets the mock session; kept in sessionStorage so a browser reload stays signed in. */
@@ -117,5 +131,6 @@ export function setMockSession(partnerId: string | null): void {
 export function resetMockDb(): void {
   db.partners = initialPartners();
   db.reference = initialReference();
+  db.gigs = initialGigs(db.partners, db.reference);
   setMockSession(null);
 }
