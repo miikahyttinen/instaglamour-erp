@@ -17,6 +17,7 @@
 | Concurrency | Last save wins. |
 | Deleted gigs | Excluded from every list, sum and overlap check unless stated. |
 | Today | "Today" (played, overdue, upcoming, default year) is the date in Europe/Helsinki. |
+| Year params | `year` in paths/queries: 4-digit integer, else 400 `INVALID_VALUE`. Unknown ids in filters → empty result; malformed ids → 400 `INVALID_VALUE`. |
 | No-op requests | A request that changes nothing returns 200 and writes no history event. |
 | Check order | Validation (400) → existence (404) → state (409). |
 
@@ -143,7 +144,7 @@ overlaps (`endDate` null = one day).
   "varianceExpenseCents": 0, "varianceIncomeCents": 0
 }
 ```
-Variance = budget − actual (BR-060).
+Variance = budget − actual (BR-060). Inactive categories are excluded from rows and totals; `PUT` on an inactive category → 404.
 
 ---
 
@@ -303,5 +304,6 @@ Duplicate = case-insensitive exact name match with another person.
 
 ## Change log
 - 2026-10-03 – First version (PM)
+- 2026-10-03 – Clarifications after TASK-003: inactive budget categories, `year` = 4-digit integer in queries, unknown filter ids return empty lists (PM)
 - 2026-10-03 – Clarifications after TASK-002: no-op requests, check order, deleted view, re-pay, NOT_EDITABLE type, upload codes (PM)
 - 2026-10-03 – Clarifications after wave 1, no behaviour changes: Helsinki "today", FRONTEND_URL redirects, dev-login and selectedYear validation, nullable lineupTemplateId, template roles, active budget categories, cost line order (PM)

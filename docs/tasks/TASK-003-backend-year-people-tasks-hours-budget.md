@@ -1,7 +1,7 @@
 # TASK-003: Backend year page, people, tasks, hours, budget
 
 - **owner:** backend
-- **status:** todo
+- **status:** done
 - **spec:** UC-014, UC-017, UC-018, UC-019, UC-020, UC-022; business-rules.md
 - **depends on:** TASK-002
 
