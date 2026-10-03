@@ -1,7 +1,7 @@
 # TASK-001: Backend foundation — scaffold, schema, seed, auth, reference data
 
 - **owner:** backend
-- **status:** todo
+- **status:** done
 - **spec:** docs/use-cases/UC-001-login-and-language.md, docs/use-cases/UC-024-load-seed-data.md, docs/domain-model.md
 - **depends on:** none
 
