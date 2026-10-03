@@ -1,7 +1,7 @@
 # TASK-109: Configurable API proxy target (e2e finding F-001)
 
 - **owner:** ui
-- **status:** todo
+- **status:** done
 - **spec:** e2e/FINDINGS.md F-001
 - **depends on:** none
 
