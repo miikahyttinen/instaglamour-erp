@@ -1,5 +1,6 @@
 /** GET /api/reference (docs/api-contract.md "Reference data"). */
 import type { FastifyInstance } from 'fastify';
+import { loadActiveBudgetCategories } from '../budget/store.js';
 import { EXPENSE_CATEGORIES, INTERNAL_ROLES, MUSICIAN_ROLES, SETTING_KEYS, TECHNICAL_SETUPS } from '../domain/enums.js';
 import { toPartnerDto } from '../serializers.js';
 import type { AppDeps } from '../app.js';
@@ -32,7 +33,7 @@ export function referenceRoutes(app: FastifyInstance, deps: AppDeps): void {
       db.partner.findMany({ include: { person: true }, orderBy: { person: { name: 'asc' } } }),
       db.lineupTemplate.findMany({ include: { roles: { orderBy: { position: 'asc' } } }, orderBy: { name: 'asc' } }),
       loadFeeSettings(db),
-      db.budgetCategory.findMany({ orderBy: [{ sortOrder: 'asc' }, { code: 'asc' }] }),
+      loadActiveBudgetCategories(db),
     ]);
     return {
       partners: partners.map((p) => toPartnerDto(p)),

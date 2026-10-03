@@ -74,6 +74,17 @@ describe('GET /api/reference', () => {
     expect(body.budgetCategories.find((c: { code: string }) => c.code === 'FUEL')).toMatchObject({ budgeted: false });
   });
 
+  it('lists active budget categories only, in sort order', async () => {
+    await testDb().budgetCategory.update({ where: { code: 'RENT' }, data: { active: false } });
+    const cookie = await login(app, 'partner.a@example.com');
+    const body = (await app.inject({ method: 'GET', url: '/api/reference', headers: { cookie } })).json();
+    const codes = body.budgetCategories.map((c: { code: string }) => c.code);
+    expect(codes).toHaveLength(9);
+    expect(codes).not.toContain('RENT');
+    const active = await testDb().budgetCategory.findMany({ where: { active: true }, orderBy: [{ sortOrder: 'asc' }, { code: 'asc' }] });
+    expect(codes).toEqual(active.map((c) => c.code));
+  });
+
   it('returns 401 without a session', async () => {
     const res = await app.inject({ method: 'GET', url: '/api/reference' });
     expect(res.statusCode).toBe(401);

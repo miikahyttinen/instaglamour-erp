@@ -7,7 +7,16 @@ import { dateFromIso, isoFromDate, todayIso } from '../domain/dates.js';
 import { isNotFullyStaffed, yearGigSummary } from '../domain/gigEconomics.js';
 import type { CostType, Prisma } from '../generated/prisma/client.js';
 import { AppError, notFound, parseInput, validationError, type FieldCode } from '../http/errors.js';
-import { isoDate, LONG_TEXT_MAX, money, optionalText, reasonBody, requiredText, technicalSetup } from '../gigs/schemas.js';
+import {
+  isoDate,
+  LONG_TEXT_MAX,
+  money,
+  optionalText,
+  reasonBody,
+  requiredText,
+  technicalSetup,
+  yearString,
+} from '../gigs/schemas.js';
 import { compareCostLines, toGigDetailDto, toGigEventDto, toGigSummaryDto } from '../gigs/serialize.js';
 import {
   assertNotDeleted,
@@ -23,10 +32,7 @@ import { loadFeeSettings } from './reference.js';
 type IdParams = { Params: { id: string } };
 
 const listQuery = z.object({
-  year: z
-    .string()
-    .regex(/^\d{4}$/, { message: 'INVALID_VALUE' })
-    .transform(Number),
+  year: yearString,
   status: z.enum(['SOLD', 'CANCELLED', 'ALL'], { message: 'INVALID_VALUE' }).default('SOLD'),
   when: z.enum(['all', 'upcoming', 'past'], { message: 'INVALID_VALUE' }).default('all'),
   sellerId: z.string().refine(isUuid, { message: 'INVALID_VALUE' }).optional(),
