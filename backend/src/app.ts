@@ -1,11 +1,15 @@
 import cookie from '@fastify/cookie';
+import multipart from '@fastify/multipart';
 import Fastify, { type FastifyInstance, type FastifyServerOptions } from 'fastify';
 import { createGoogleAuthClient, type GoogleAuthClient } from './auth/google.js';
 import { resolveSession, type PartnerWithPerson } from './auth/session.js';
 import type { AppConfig } from './config.js';
 import type { Db } from './db.js';
 import { registerErrorHandling, unauthenticated } from './http/errors.js';
+import { attachmentRoutes } from './routes/attachments.js';
 import { authRoutes } from './routes/auth.js';
+import { costLineRoutes } from './routes/costLines.js';
+import { gigRoutes } from './routes/gigs.js';
 import { meRoutes } from './routes/me.js';
 import { referenceRoutes } from './routes/reference.js';
 
@@ -43,6 +47,8 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
   const app = Fastify({ logger: options.logger ?? false, trustProxy: true });
 
   await app.register(cookie, { secret: deps.config.sessionSecret });
+  // Attachments are streamed to disk; size and file count limits are set per request.
+  await app.register(multipart);
   registerErrorHandling(app);
 
   app.decorateRequest('partner', null);
@@ -65,6 +71,9 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
   authRoutes(app, deps);
   meRoutes(app, deps);
   referenceRoutes(app, deps);
+  gigRoutes(app, deps);
+  costLineRoutes(app, deps);
+  attachmentRoutes(app, deps);
 
   return app;
 }

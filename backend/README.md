@@ -49,7 +49,7 @@ outside local development.**
 | `AUTH_ALLOWED_DOMAIN` | Only verified Google accounts in this domain may sign in (BR-070) |
 | `DEV_LOGIN_ENABLED` | `true` registers `POST /api/auth/dev-login` (otherwise 404) |
 | `FRONTEND_URL` | Where the Google callback redirects (`/` or `/login?error=…`), e.g. `http://localhost:5173` |
-| `UPLOAD_DIR` | Attachment storage, outside the repository |
+| `UPLOAD_DIR` | Attachment storage, outside the repository (created on first upload; tests use a temp dir) |
 
 ## Sign-in
 
@@ -67,7 +67,9 @@ prisma/            schema.prisma + migrations (never edit an applied migration; 
 seed/              seed command, format (README.md), synthetic example
 src/app.ts         Fastify app: cookies, auth gate, error handler, routes
 src/auth/          Google OAuth + sessions
-src/domain/        shared enums (CostType, TechnicalSetup…), dates, default cost lines
+src/domain/        shared enums (CostType, TechnicalSetup…), dates, default cost lines,
+                   gig economics / year gig sums (gigEconomics.ts), load-in switch (loadIn.ts)
+src/gigs/          gig data access (events, double-booking check, year gigs), input schemas, serializers
 src/http/errors.ts contract error format + zod → field codes (`parseInput`)
 src/routes/        endpoints
 test/              Vitest (integration tests use the test database)
