@@ -1,0 +1,129 @@
+// Fixed code lists from docs/domain-model.md and docs/api-contract.md.
+// Each list is the single source for its union type, and the i18n test checks that every
+// code has an FI and EN label.
+
+export const LANGUAGES = ['fi', 'en'] as const;
+export type Language = (typeof LANGUAGES)[number];
+
+export const MUSICIAN_ROLES = [
+  'VOC',
+  'BACKING_VOC',
+  'BASS',
+  'GUITAR',
+  'DRUMS',
+  'KEYS',
+  'PIANO',
+  'MIX',
+  'HORN_1',
+  'HORN_2',
+  'SAX',
+  'TRUMPET',
+  'TROMBONE',
+  'VIOLIN',
+  'DJ',
+  'TECHNICIAN',
+  'OTHER_ROLE',
+] as const;
+export type MusicianRole = (typeof MUSICIAN_ROLES)[number];
+
+export const INTERNAL_ROLES = ['OFFICE', 'SALES', 'PRODUCTION'] as const;
+export type InternalRole = (typeof INTERNAL_ROLES)[number];
+
+export const EXPENSE_CATEGORIES = [
+  'FUEL',
+  'VEHICLE',
+  'TRAVEL',
+  'PARKING',
+  'ACCOMMODATION',
+  'FOOD',
+  'EQUIPMENT_RENTAL',
+  'ARRANGEMENT',
+  'LEAD_FEE',
+  'OTHER',
+] as const;
+export type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number];
+
+export const COST_TYPES = [...MUSICIAN_ROLES, ...INTERNAL_ROLES, ...EXPENSE_CATEGORIES] as const;
+export type CostType = MusicianRole | InternalRole | ExpenseCategory;
+
+export const TECHNICAL_SETUPS = [
+  'HOUSE_TECH',
+  'HOUSE_TECHNICIAN',
+  'SET_A',
+  'SET_B',
+  'SET_C',
+  'OWN_PA',
+  'VAN',
+] as const;
+export type TechnicalSetup = (typeof TECHNICAL_SETUPS)[number];
+
+export const GIG_STATUSES = ['SOLD', 'CANCELLED'] as const;
+export type GigStatus = (typeof GIG_STATUSES)[number];
+
+/** Display status: a SOLD gig with a past date is shown as "played" (BR-010). */
+export const GIG_DISPLAY_STATUSES = ['SOLD', 'PLAYED', 'CANCELLED'] as const;
+export type GigDisplayStatus = (typeof GIG_DISPLAY_STATUSES)[number];
+
+export const TASK_STATUSES = ['OPEN', 'DONE'] as const;
+export type TaskStatus = (typeof TASK_STATUSES)[number];
+
+export const GIG_EVENT_TYPES = [
+  'CREATED',
+  'UPDATED',
+  'MOVED',
+  'CANCELLED',
+  'UNCANCELLED',
+  'DELETED',
+  'RESTORED',
+  'COST_ADDED',
+  'COST_UPDATED',
+  'COST_REMOVED',
+  'COST_PAID',
+  'COST_UNPAID',
+  'ATTACHMENT_ADDED',
+  'ATTACHMENT_REMOVED',
+] as const;
+export type GigEventType = (typeof GIG_EVENT_TYPES)[number];
+
+export const ERROR_CODES = [
+  'VALIDATION_ERROR',
+  'UNAUTHENTICATED',
+  'FORBIDDEN',
+  'NOT_FOUND',
+  'INVALID_STATUS_TRANSITION',
+  'GIG_DELETED',
+  'COST_NOT_PAYABLE',
+  'BUDGET_NOT_EMPTY',
+  'FILE_TOO_LARGE',
+  'UNSUPPORTED_FILE_TYPE',
+] as const;
+export type ErrorCode = (typeof ERROR_CODES)[number];
+
+export const FIELD_CODES = [
+  'REQUIRED',
+  'INVALID_DATE',
+  'END_BEFORE_START',
+  'NEGATIVE_AMOUNT',
+  'INVALID_VALUE',
+  'DESCRIPTION_REQUIRED',
+  'INVALID_HOURS',
+  'TOO_LONG',
+  'UNKNOWN_REFERENCE',
+  'NOT_EDITABLE',
+] as const;
+export type FieldCode = (typeof FIELD_CODES)[number];
+
+export const WARNING_CODES = ['PERSON_DOUBLE_BOOKED', 'DUPLICATE_NAME'] as const;
+export type WarningCode = (typeof WARNING_CODES)[number];
+
+/** `?error=` codes on /login after the Google callback. */
+export const SIGN_IN_ERROR_CODES = ['WRONG_DOMAIN', 'NOT_A_PARTNER', 'SIGN_IN_FAILED'] as const;
+export type SignInErrorCode = (typeof SIGN_IN_ERROR_CODES)[number];
+
+export function isMusicianRole(type: CostType): type is MusicianRole {
+  return (MUSICIAN_ROLES as readonly string[]).includes(type);
+}
+
+export function isSignInErrorCode(value: string | null): value is SignInErrorCode {
+  return value !== null && (SIGN_IN_ERROR_CODES as readonly string[]).includes(value);
+}

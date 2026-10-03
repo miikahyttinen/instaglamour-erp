@@ -1,0 +1,28 @@
+import { render } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
+import { App } from '../App';
+import { db, setMockSession } from '../mocks/data';
+import { createQueryClient } from '../queryClient';
+
+export const PARTNER_A_EMAIL = 'partner.a@example.com';
+
+/** Signs in the given synthetic partner in the mock backend (default: Partner A). */
+export function signInMock(email = PARTNER_A_EMAIL) {
+  const partner = db.partners.find((p) => p.email === email);
+  if (!partner) throw new Error(`No mock partner ${email}`);
+  setMockSession(partner.id);
+  return partner;
+}
+
+/** Renders the whole app at `path` with a fresh query client and the MSW mock backend. */
+export function renderApp(path = '/') {
+  const queryClient = createQueryClient({ retry: false });
+  const user = userEvent.setup();
+  const result = render(
+    <MemoryRouter initialEntries={[path]}>
+      <App queryClient={queryClient} />
+    </MemoryRouter>,
+  );
+  return { ...result, user, queryClient };
+}
