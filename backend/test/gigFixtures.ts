@@ -87,7 +87,10 @@ export function call(s: Session, method: Method, url: string, payload?: unknown)
   });
 }
 
-export async function createGig(s: Session, overrides: Record<string, unknown> = {}) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped JSON response body
+export type Json = any;
+
+export async function createGig(s: Session, overrides: Record<string, unknown> = {}): Promise<Json> {
   const res = await call(s, 'POST', '/api/gigs', gigBody(s.world, overrides));
   if (res.statusCode !== 201) throw new Error(`create gig failed: ${res.statusCode} ${res.body}`);
   return res.json();
@@ -96,7 +99,7 @@ export async function createGig(s: Session, overrides: Record<string, unknown> =
 export async function history(s: Session, gigId: string) {
   const res = await call(s, 'GET', `/api/gigs/${gigId}/history`);
   if (res.statusCode !== 200) throw new Error(`history failed: ${res.statusCode} ${res.body}`);
-  return res.json() as { type: string; reason: string | null; partnerId: string; details: Record<string, unknown> }[];
+  return res.json<{ type: string; reason: string | null; partnerId: string; details: Record<string, unknown> }[]>();
 }
 
 export const UNKNOWN_ID = '00000000-0000-4000-8000-000000000000';

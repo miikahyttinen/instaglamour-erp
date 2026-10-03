@@ -73,9 +73,13 @@ export function costLineRoutes(app: FastifyInstance, deps: AppDeps): void {
     if (Object.keys(fields).length > 0) throw validationError(fields);
 
     const personId = body.personId ?? null;
+    // A new line goes last: its creation time is after every existing line of the gig.
+    const latest = gig.costLines.reduce((max, l) => Math.max(max, l.createdAt.getTime()), 0);
+    const createdAt = new Date(Math.max(Date.now(), latest + 1));
     await inTransaction(db, async (tx) => {
       const line = await tx.costLine.create({
         data: {
+          createdAt,
           gigId: gig.id,
           type: body.type,
           personId,
