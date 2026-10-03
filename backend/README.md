@@ -18,6 +18,11 @@ npm run db:seed               # seed/seed.local.json if present, else seed/seed.
 npm run dev                   # API on http://localhost:3000
 ```
 
+`npm install` / `npm ci` (and `npm run build`) work without `.env`: `prisma generate` doesn't
+connect to the database, so `prisma.config.ts` uses a placeholder URL for `generate` only.
+`db:migrate`, `db:seed`, `dev` and `start` still need a real `DATABASE_URL` and fail with an
+error naming it when it's missing (`npm test` uses `TEST_DATABASE_URL`).
+
 For local work without Google, set `DEV_LOGIN_ENABLED=true` in `.env` and sign in with
 `POST /api/auth/dev-login {"email": "partner.a@example.com"}` (example seed). **Never enable it
 outside local development.**
