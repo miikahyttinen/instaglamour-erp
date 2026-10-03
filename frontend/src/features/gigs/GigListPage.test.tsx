@@ -1,10 +1,10 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { formatMoney } from '../lib/format';
-import { db } from '../mocks/data';
-import { logEvent } from '../mocks/gigStore';
-import { addMockGig, partnerA, partnerB, staffMockGig, TEST_YEAR } from '../test/gigFixtures';
-import { renderApp, signInMock } from '../test/renderApp';
+import { formatMoney } from '../../lib/format';
+import { db } from '../../mocks/data';
+import { logEvent } from '../../mocks/gigStore';
+import { addMockGig, partnerA, partnerB, staffMockGig, TEST_YEAR } from '../../test/gigFixtures';
+import { renderApp, signInMock } from '../../test/renderApp';
 
 const fi = (cents: number) => formatMoney(cents, 'fi').replace(/\s/g, ' ');
 const rows = () => within(screen.getByRole('list', { name: 'Keikkalista' })).getAllByRole('listitem');

@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
 import type { Id, PersonCostLine } from '../../api/types';
 import { useSelectedYear } from '../../auth/SignedInContext';
-import { StatusBadge } from '../../gigs/StatusBadge';
+import { StatusBadge } from '../gigs/StatusBadge';
 import { costTypeLabel } from '../../i18n/labels';
 import { useLang } from '../../i18n/useLang';
 import { formatDate, formatMoney } from '../../lib/format';

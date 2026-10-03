@@ -1,8 +1,8 @@
 import type { TFunction } from 'i18next';
-import type { CostType, GigEventType, Language, TechnicalSetup } from '../api/enums';
-import type { DateRange, FieldChange, GigEvent, Partner, Person } from '../api/types';
-import { costTypeLabel, gigEventTypeLabel, technicalSetupLabel } from '../i18n/labels';
-import { formatDateRange, formatMoney } from '../lib/format';
+import type { CostType, GigEventType, Language, TechnicalSetup } from '../../api/enums';
+import type { DateRange, FieldChange, GigEvent, Partner, Person } from '../../api/types';
+import { costTypeLabel, gigEventTypeLabel, technicalSetupLabel } from '../../i18n/labels';
+import { formatDateRange, formatMoney } from '../../lib/format';
 
 export interface HistoryContext {
   partners: Partner[] | undefined;

@@ -1,9 +1,9 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { db } from '../mocks/data';
-import { addCostLine, payCostLine } from '../mocks/gigStore';
-import { addMockGig, partnerA, partnerB, staffMockGig, TEST_YEAR } from '../test/gigFixtures';
-import { renderApp, signInMock } from '../test/renderApp';
+import { db } from '../../mocks/data';
+import { addCostLine, payCostLine } from '../../mocks/gigStore';
+import { addMockGig, partnerA, partnerB, staffMockGig, TEST_YEAR } from '../../test/gigFixtures';
+import { renderApp, signInMock } from '../../test/renderApp';
 
 const section = (name: string) => screen.getByRole('heading', { name, level: 2 }).closest('details')!;
 const historyItems = () =>

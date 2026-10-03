@@ -1,11 +1,11 @@
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
-import type { GigDetail, GigUpdateResponse, Person, Warning } from '../api/types';
-import { apiErrorMessage, costTypeLabel, gigDisplayStatus, technicalSetupLabel } from '../i18n/labels';
-import { useLang } from '../i18n/useLang';
-import { formatDate, formatDateRange, formatMoney, formatPercent } from '../lib/format';
-import { useReference } from '../reference/useReference';
+import type { GigDetail, GigUpdateResponse, Person, Warning } from '../../api/types';
+import { apiErrorMessage, costTypeLabel, gigDisplayStatus, technicalSetupLabel } from '../../i18n/labels';
+import { useLang } from '../../i18n/useLang';
+import { formatDate, formatDateRange, formatMoney, formatPercent } from '../../lib/format';
+import { useReference } from '../../reference/useReference';
 import { Attachments } from './Attachments';
 import { CostList } from './CostList';
 import { GigActions } from './GigActions';

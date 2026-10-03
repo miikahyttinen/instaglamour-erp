@@ -53,7 +53,7 @@ Try `/login?error=WRONG_DOMAIN` (or `NOT_A_PARTNER`, `SIGN_IN_FAILED`) to see th
 | `src/i18n/` | `fi.ts` / `en.ts` texts (glossary terms), label helpers for codes and errors |
 | `src/lib/format.ts` | Money (cents), date, hours and percent formatting per language |
 | `src/mocks/` | MSW handlers and synthetic data (browser worker + Node server for tests). Gig rules live in `gigStore.ts`, demo gigs in `gigSeed.ts` |
-| `src/gigs/` | Gig list, new gig, gig page (costs, attachments, history, move/cancel/delete dialogs) |
+| `src/features/gigs/` | Gig list, new gig, gig page (costs, attachments, history, move/cancel/delete dialogs) |
 | `src/components/` | Shared `Dialog`, `Field`, `MoneyInput` |
 | `src/pages/` | Placeholder pages (the rest come in TASK-103) |
 | `src/test/` | Test setup, `renderApp`, `gigFixtures` (synthetic gigs), `testFile` for uploads |

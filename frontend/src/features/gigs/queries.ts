@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback } from 'react';
-import { gigsApi, peopleApi } from '../api/endpoints';
-import type { GigDetail, GigListQuery, Id, Person } from '../api/types';
+import { gigsApi, peopleApi } from '../../api/endpoints';
+import type { GigDetail, GigListQuery, Id, Person } from '../../api/types';
 
 export const gigKeys = {
   all: ['gigs'] as const,

@@ -1,11 +1,11 @@
 import { screen, within } from '@testing-library/react';
 import { http } from 'msw';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { db } from '../mocks/data';
-import { errorResponse } from '../mocks/handlers';
-import { server } from '../mocks/server';
-import { partnerA, partnerB, TEST_YEAR } from '../test/gigFixtures';
-import { renderApp, signInMock } from '../test/renderApp';
+import { db } from '../../mocks/data';
+import { errorResponse } from '../../mocks/handlers';
+import { server } from '../../mocks/server';
+import { partnerA, partnerB, TEST_YEAR } from '../../test/gigFixtures';
+import { renderApp, signInMock } from '../../test/renderApp';
 
 const gigCount = () => db.gigs.gigs.length;
 const lines = () => within(screen.getByRole('list', { name: 'Kulut ja miehitys' })).getAllByRole('listitem');

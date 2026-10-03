@@ -1,9 +1,9 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { peopleApi } from '../api/endpoints';
-import type { Id, Person } from '../api/types';
-import { apiErrorMessage, apiFieldErrors } from '../i18n/labels';
+import { peopleApi } from '../../api/endpoints';
+import type { Id, Person } from '../../api/types';
+import { apiErrorMessage, apiFieldErrors } from '../../i18n/labels';
 import { peopleKey } from './queries';
 
 const NEW = '__new__';

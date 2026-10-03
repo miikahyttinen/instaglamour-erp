@@ -1,9 +1,9 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { db } from '../mocks/data';
-import { addCostLine } from '../mocks/gigStore';
-import { addMockGig, mockLine, partnerA, staffMockGig, TEST_YEAR } from '../test/gigFixtures';
-import { renderApp, signInMock } from '../test/renderApp';
+import { db } from '../../mocks/data';
+import { addCostLine } from '../../mocks/gigStore';
+import { addMockGig, mockLine, partnerA, staffMockGig, TEST_YEAR } from '../../test/gigFixtures';
+import { renderApp, signInMock } from '../../test/renderApp';
 
 const costs = () => screen.getByRole('list', { name: 'Kulut ja miehitys' });
 const line = (name: string) => within(costs()).getByRole('listitem', { name });

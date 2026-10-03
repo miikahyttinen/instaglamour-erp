@@ -1,17 +1,17 @@
 import { useMutation } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { CostType } from '../api/enums';
-import { isMusicianRole } from '../api/enums';
-import { costLinesApi } from '../api/endpoints';
-import type { CostLine, GigDetail, GigWithWarnings, Person, Warning } from '../api/types';
-import { Dialog } from '../components/Dialog';
-import { Field, MoneyInput } from '../components/fields';
-import { apiErrorMessage, apiFieldErrors, costTypeLabel } from '../i18n/labels';
-import { useLang } from '../i18n/useLang';
-import { centsToInput, formatDateTime, formatMoney } from '../lib/format';
-import { parseMoneyField } from '../lib/moneyField';
-import { usePartner, useReference } from '../reference/useReference';
+import type { CostType } from '../../api/enums';
+import { isMusicianRole } from '../../api/enums';
+import { costLinesApi } from '../../api/endpoints';
+import type { CostLine, GigDetail, GigWithWarnings, Person, Warning } from '../../api/types';
+import { Dialog } from '../../components/Dialog';
+import { Field, MoneyInput } from '../../components/fields';
+import { apiErrorMessage, apiFieldErrors, costTypeLabel } from '../../i18n/labels';
+import { useLang } from '../../i18n/useLang';
+import { centsToInput, formatDateTime, formatMoney } from '../../lib/format';
+import { parseMoneyField } from '../../lib/moneyField';
+import { usePartner, useReference } from '../../reference/useReference';
 import { PersonSelect } from './PersonSelect';
 import { personName, useApplyGig } from './queries';
 

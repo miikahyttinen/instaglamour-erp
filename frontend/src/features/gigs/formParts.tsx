@@ -1,8 +1,8 @@
 import { useTranslation } from 'react-i18next';
-import type { TechnicalSetup } from '../api/enums';
-import { TECHNICAL_SETUPS } from '../api/enums';
-import type { Partner } from '../api/types';
-import { technicalSetupLabel } from '../i18n/labels';
+import type { TechnicalSetup } from '../../api/enums';
+import { TECHNICAL_SETUPS } from '../../api/enums';
+import type { Partner } from '../../api/types';
+import { technicalSetupLabel } from '../../i18n/labels';
 
 interface TechnicalSetupPickerProps {
   value: TechnicalSetup[];

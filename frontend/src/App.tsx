@@ -6,7 +6,7 @@ import { SignInPage } from './auth/SignInPage';
 import { TasksPage } from './features/tasks/TasksPage';
 import { HoursRoutes } from './features/hours/HoursRoutes';
 import { YearPage } from './features/year/YearPage';
-import { GigsRoutes } from './gigs/GigsRoutes';
+import { GigsRoutes } from './features/gigs/GigsRoutes';
 import { BudgetPage } from './features/budget/BudgetPage';
 import { PeopleRoutes } from './features/people/PeopleRoutes';
 import { AppShell } from './layout/AppShell';
