@@ -80,3 +80,24 @@ test('upload, download and remove a PDF attachment', async ({ page }, testInfo) 
   // A removed attachment is no longer downloadable.
   expect((await page.request.get(href ?? '')).status()).toBe(404);
 });
+
+// The server detects the type from the content (UC-008): a text file named .pdf passes the
+// browser's check, the backend answers 415 and the UI shows the translated message.
+test('a fake PDF is refused by the server with a translated message', async ({ page }, testInfo) => {
+  await signIn(page);
+  const venue = `Venue ${tagOf(testInfo)}-${suffix()}`;
+  const gig = await createGigViaApi(page, { startDate: '2026-11-28', venue });
+  await page.goto(`/gigs/${gig.id}`);
+  const [response] = await Promise.all([
+    page.waitForResponse((r) => r.url().endsWith(`/api/gigs/${gig.id}/attachments`)),
+    page.getByLabel('Lisää tiedosto', { exact: true }).setInputFiles({
+      name: 'not-really.pdf',
+      mimeType: 'application/pdf',
+      buffer: Buffer.from('plain synthetic text, not a PDF'),
+    }),
+  ]);
+  expect(response.status()).toBe(415);
+  expect((await response.json()).error.code).toBe('UNSUPPORTED_FILE_TYPE');
+  await expect(page.getByRole('alert')).toHaveText('Sallitut tiedostotyypit: PDF, DOCX, PNG ja JPG.');
+  await expect(page.getByText('Ei liitteitä.')).toBeVisible();
+});

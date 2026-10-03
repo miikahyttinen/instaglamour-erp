@@ -1,6 +1,6 @@
 import type { Locator, Page } from '@playwright/test';
 import { api, expect, expectNoHorizontalScroll, fiInput, fiMoney, goNav, SEED, signIn, tagOf, test } from './helpers';
-import { suffix } from './gigs';
+import { createGigViaApi, suffix } from './gigs';
 
 function costLine(page: Page, label: string): Locator {
   return page.getByRole('list', { name: 'Kulut ja miehitys' }).getByRole('listitem', { name: label, exact: true });
@@ -95,4 +95,40 @@ test('create a gig from a template, staff it, switch load-in, mark paid', async 
   await expect(history.getByText('Kuluriviä muutettu').first()).toBeVisible();
   await expect(history.getByText('Keikka luotu')).toBeVisible();
   await expectNoHorizontalScroll(page, 'gig page after edits');
+
+  // Without a reload, the gig list summary and the year page (both loaded earlier in this session)
+  // show the new figures.
+  const year = await api(page).get('/years/2026');
+  expect(year.gigs.soldGigsSumCents).toBeGreaterThanOrEqual(priceCents);
+  await page.getByRole('link', { name: '‹ Keikat' }).click();
+  const summary = page.getByRole('region', { name: 'Vuosi yhteensä' });
+  await expect(summary).toContainText(`Myytyjen keikkojen summa${fiMoney(year.gigs.soldGigsSumCents)}`);
+  await expect(summary).toContainText(`Kulut, toteuma${fiMoney(year.gigs.actualCostsCents)}`);
+  await expect(page.getByRole('link', { name: `${SEED.templateB.name} · ${venue}` })).toBeVisible();
+  await goNav(page, 'Vuosi');
+  const gigsRegion = page.getByRole('region', { name: 'Keikat' });
+  await expect(gigsRegion.getByRole('link', { name: `Keikkoja ${year.gigs.gigCount}` })).toBeVisible();
+  await expect(
+    gigsRegion.getByRole('link', { name: `Myytyjen keikkojen summa ${fiMoney(year.gigs.soldGigsSumCents)}` }),
+  ).toBeVisible();
+  await expect(
+    gigsRegion.getByRole('link', { name: `Kulut, toteuma ${fiMoney(year.gigs.actualCostsCents)}` }),
+  ).toBeVisible();
+});
+
+// Double booking (BR-022): assigning someone who already plays a seed gig that day warns but saves.
+test('double booking shows a warning naming the other gig', async ({ page }, testInfo) => {
+  await signIn(page);
+  const venue = `Venue ${tagOf(testInfo)}-${suffix()}`;
+  // The example seed has Person 1 on vocals at Venue X on 2026-10-17 (Template A).
+  const gig = await createGigViaApi(page, { startDate: '2026-10-17', venue });
+
+  await page.goto(`/gigs/${gig.id}`);
+  const guitar = costLine(page, 'Kitara');
+  await guitar.getByLabel('Henkilö: Kitara').selectOption({ label: 'Person 1' });
+  const warning = page.getByRole('alert').filter({ hasText: 'Päällekkäinen keikka' });
+  await expect(warning).toContainText('Person 1 on samaan aikaan myös keikalla (17.10.2026):');
+  await expect(warning.getByRole('link', { name: 'Template A' })).toBeVisible();
+  await expect(guitar.getByLabel('Henkilö: Kitara').locator('option:checked')).toHaveText('Person 1');
+  await expectNoHorizontalScroll(page, 'gig page with warning');
 });

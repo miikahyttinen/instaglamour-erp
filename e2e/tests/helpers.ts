@@ -114,5 +114,25 @@ export function api(page: Page) {
   };
 }
 
-export const test = base;
+/**
+ * Every test fails on uncaught page errors and console errors (React warnings, failed renders).
+ * "Failed to load resource" lines are skipped: they are the browser's log of expected 4xx answers
+ * (401 after sign-out, 415 for a refused upload…), which the tests assert explicitly.
+ */
+export const test = base.extend<{ consoleGuard: void }>({
+  consoleGuard: [
+    async ({ page }, use) => {
+      const problems: string[] = [];
+      page.on('pageerror', (err) => problems.push(`pageerror: ${err.message}`));
+      page.on('console', (msg) => {
+        if (msg.type() === 'error' && !msg.text().startsWith('Failed to load resource')) {
+          problems.push(`console.error: ${msg.text()}`);
+        }
+      });
+      await use();
+      expect(problems, 'browser errors during the test').toEqual([]);
+    },
+    { auto: true },
+  ],
+});
 export { expect };

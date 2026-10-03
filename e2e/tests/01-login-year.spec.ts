@@ -29,4 +29,33 @@ test('dev login shows the year page with figures from the backend', async ({ pag
   await expect(budget.getByRole('link', { name: `Vuoden tulos ${fiMoney(year.yearResultCents)}` })).toBeVisible();
 
   await expectNoHorizontalScroll(page, 'year page');
+
+  // Sign out (UC-001 A2): back to the sign-in page, and the API refuses without a session.
+  await page.getByRole('button', { name: 'Valikko' }).click();
+  await page.getByRole('button', { name: 'Kirjaudu ulos' }).click();
+  await expect(page).toHaveURL(/\/login/);
+  expect((await page.request.get('/api/me')).status()).toBe(401);
+});
+
+// An expired session while using the app leads to the sign-in page with a notice.
+test('an ended session sends the user to sign in', async ({ page, context }) => {
+  await signIn(page, PARTNER_A);
+  await page.goto('/tasks');
+  await expect(page.getByRole('heading', { level: 1, name: 'Tehtävät' })).toBeVisible();
+  await context.clearCookies();
+  await page.getByRole('button', { name: 'Tehdyt', exact: true }).click(); // triggers GET /api/tasks → 401
+  await expect(page).toHaveURL(/\/login/);
+  await expect(page.getByRole('status').filter({ hasText: 'Istunto on päättynyt. Kirjaudu uudelleen.' })).toBeVisible();
+  // Signing in again returns to where the user was.
+  await page.getByLabel('Sähköposti').fill(PARTNER_A);
+  await page.getByRole('button', { name: 'Kirjaudu', exact: true }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Tehtävät' })).toBeVisible();
+});
+
+test('dev login with an unknown email is refused', async ({ page }) => {
+  await page.goto('/login');
+  await page.getByLabel('Sähköposti').fill('someone@example.com');
+  await page.getByRole('button', { name: 'Kirjaudu', exact: true }).click();
+  await expect(page.getByRole('alert')).toHaveText('Sinulla ei ole käyttöoikeutta.');
+  await expect(page).toHaveURL(/\/login/);
 });
