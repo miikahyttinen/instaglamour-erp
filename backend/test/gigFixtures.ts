@@ -50,9 +50,9 @@ export interface Session {
   world: World;
 }
 
-export async function startSession(): Promise<Session> {
+export async function startSession(config: Parameters<typeof testApp>[0] = {}): Promise<Session> {
   const world = await seedGigWorld();
-  const app = await testApp();
+  const app = await testApp(config);
   const cookie = await login(app, 'partner.a@example.com');
   return { app, cookie, world };
 }
