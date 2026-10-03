@@ -48,8 +48,9 @@ The UI translates `code` and the field codes; it never shows `message` to users.
 ```json
 { "code": "PERSON_DOUBLE_BOOKED", "personId": "…", "otherGigId": "…", "otherGigStartDate": "2026-05-01", "otherGigLineupName": "…" }
 ```
-Double booking (BR-022): same person on another non-cancelled, non-deleted gig whose date range
-overlaps (`endDate` null = one day).
+Double booking (BR-022): only **musician-role** lines count, on both sides. Warn when a person on a musician-role line
+also has a musician-role line on another non-cancelled, non-deleted gig whose date range overlaps (`endDate` null = one day).
+Internal roles (OFFICE, SALES, PRODUCTION) and expenses never warn.
 
 ---
 
@@ -304,6 +305,7 @@ Duplicate = case-insensitive exact name match with another person.
 
 ## Change log
 - 2026-10-03 – First version (PM)
+- 2026-10-03 – Double booking for musician-role lines only (owner decision, behaviour change) (PM)
 - 2026-10-03 – Clarifications after TASK-003: inactive budget categories, `year` = 4-digit integer in queries, unknown filter ids return empty lists (PM)
 - 2026-10-03 – Clarifications after TASK-002: no-op requests, check order, deleted view, re-pay, NOT_EDITABLE type, upload codes (PM)
 - 2026-10-03 – Clarifications after wave 1, no behaviour changes: Helsinki "today", FRONTEND_URL redirects, dev-login and selectedYear validation, nullable lineupTemplateId, template roles, active budget categories, cost line order (PM)

@@ -41,10 +41,11 @@ Staffing a gig, planning a cost, or paying.
 - [ ] AC-2: With line amount A and deduction D, switching load-in off gives max(A − D, 0); switching on restores A exactly, even if the setting changed in between.
 - [ ] AC-3: Mark paid stores actual amount, paid time and partner; shown on the line; logged.
 - [ ] AC-4: FUEL lines cannot be marked paid (UI and API).
-- [ ] AC-5: Overlap warning names the other gig and doesn't block.
+- [ ] AC-5: Overlap warning (musician roles only) names the other gig and doesn't block; Office/Sales/Production never warn.
 - [ ] AC-6: "Not fully staffed" disappears when every musician-role line has a person.
 - [ ] AC-7: Every change is in the history.
 
 ## Change log
 - 2026-10-03 – First version and iterations (PM)
 - 2026-10-03 – Simplified MVP (PM)
+- 2026-10-03 – Double booking for performers only (PM)

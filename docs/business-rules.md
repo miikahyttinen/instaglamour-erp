@@ -39,7 +39,7 @@ Rules only — concrete values are seeded settings (`domain-model.md`).
 |---|---|
 | BR-020 | A gig created from a template gets one cost line per template role (no person) with the role's default fee and `joins_load_in = true`. |
 | BR-021 | Every new gig gets `OFFICE`, `SALES` (person = seller) and `PRODUCTION` (person = producer) lines with the default fees from settings. |
-| BR-022 | Adding a person who is on another non-cancelled, non-deleted gig with overlapping dates shows a warning naming that gig; it doesn't block. |
+| BR-022 | Double booking applies to **performers only** (musician-role lines: musicians, Mix, DJ, Technician…). Putting a person on a musician-role line when they already have a musician-role line on another non-cancelled, non-deleted gig with overlapping dates shows a warning naming that gig; it doesn't block. Internal lines (Office, Sales, Production) and expenses never trigger or count towards the warning. |
 | BR-023 | A gig with a musician-role line without a person is "not fully staffed". |
 | BR-024 | One person may have several lines on a gig; several people may share a role (e.g. Production split). |
 | BR-025 | **Mark paid:** one action in the UI sets `actual_amount` (default = budgeted amount, editable), `paid_at` = now and `paid_by` = the partner, and logs `COST_PAID`. **Unmark** clears them and logs `COST_UNPAID`. |
@@ -81,3 +81,4 @@ Rules only — concrete values are seeded settings (`domain-model.md`).
 ## Change log
 - 2026-10-03 – First draft and iterations (PM)
 - 2026-10-03 – Simplified MVP rules (PM)
+- 2026-10-03 – BR-022: double booking for performers only (owner decision) (PM)
