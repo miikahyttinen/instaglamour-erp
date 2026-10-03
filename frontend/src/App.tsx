@@ -3,6 +3,7 @@ import { Route, Routes } from 'react-router-dom';
 import { AuthProvider } from './auth/AuthProvider';
 import { RequireAuth } from './auth/RequireAuth';
 import { SignInPage } from './auth/SignInPage';
+import { HoursRoutes } from './features/hours/HoursRoutes';
 import { GigsRoutes } from './gigs/GigsRoutes';
 import { AppShell } from './layout/AppShell';
 import { NotFoundPage } from './pages/NotFoundPage';
@@ -23,7 +24,7 @@ export function AppRoutes() {
         <Route path="gigs/*" element={<GigsRoutes />} />
         <Route path="people/*" element={<PlaceholderPage page="people" />} />
         <Route path="tasks/*" element={<PlaceholderPage page="tasks" />} />
-        <Route path="hours/*" element={<PlaceholderPage page="hours" />} />
+        <Route path="hours/*" element={<HoursRoutes />} />
         <Route path="budget/*" element={<PlaceholderPage page="budget" />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>

@@ -1,0 +1,119 @@
+import { useState, type FormEvent } from 'react';
+import { useTranslation } from 'react-i18next';
+import type { HourEntry } from '../../api/types';
+import { Dialog } from '../../components/Dialog';
+import { Field } from '../../components/fields';
+import { apiErrorMessage, apiFieldErrors } from '../../i18n/labels';
+import { useLang } from '../../i18n/useLang';
+import { todayIso } from '../../lib/format';
+import { hoursToInput, validateHourForm, type HourFormValues } from './hoursLogic';
+import { useCreateHourEntry, useUpdateHourEntry } from './queries';
+
+interface Props {
+  /** Entry to edit; omitted for a new entry. */
+  entry?: HourEntry;
+  onClose: () => void;
+  onSaved: (entry: HourEntry) => void;
+}
+
+/** Add / edit an own hour entry (UC-018). Date defaults to today. */
+export function HourEntryForm({ entry, onClose, onSaved }: Props) {
+  const { t } = useTranslation();
+  const lang = useLang();
+  const create = useCreateHourEntry();
+  const update = useUpdateHourEntry();
+  const mutation = entry ? update : create;
+  const [values, setValues] = useState<HourFormValues>(() => ({
+    date: entry?.date ?? todayIso(),
+    comment: entry?.comment ?? '',
+    hours: entry ? hoursToInput(entry.hours, lang) : '',
+  }));
+  const [clientErrors, setClientErrors] = useState<Record<string, string>>({});
+
+  const serverErrors = mutation.isError ? apiFieldErrors(t, mutation.error) : {};
+  const errors = { ...serverErrors, ...clientErrors };
+  const generalError =
+    mutation.isError && Object.keys(serverErrors).length === 0
+      ? apiErrorMessage(t, mutation.error)
+      : null;
+
+  const set = (key: keyof HourFormValues) => (value: string) => {
+    setValues((v) => ({ ...v, [key]: value }));
+    if (mutation.isError) mutation.reset();
+    setClientErrors((e) => {
+      const next = { ...e };
+      delete next[key];
+      return next;
+    });
+  };
+
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    const { fields, body } = validateHourForm(values);
+    const translated: Record<string, string> = {};
+    for (const [key, code] of Object.entries(fields)) translated[key] = t(`fields.${code}`);
+    setClientErrors(translated);
+    if (!body) return;
+    mutation.reset();
+    const done = { onSuccess: onSaved };
+    if (entry) update.mutate({ id: entry.id, body }, done);
+    else create.mutate(body, done);
+  };
+
+  return (
+    <Dialog title={t(entry ? 'hours.editTitle' : 'hours.addTitle')} onClose={onClose}>
+      <form className="form" onSubmit={submit} noValidate>
+        <Field label={t('hours.date')} error={errors.date}>
+          {(props) => (
+            <input
+              type="date"
+              value={values.date}
+              onChange={(e) => set('date')(e.target.value)}
+              required
+              {...props}
+            />
+          )}
+        </Field>
+        <Field label={t('hours.comment')} error={errors.comment}>
+          {(props) => (
+            <input
+              type="text"
+              value={values.comment}
+              maxLength={500}
+              onChange={(e) => set('comment')(e.target.value)}
+              required
+              {...props}
+            />
+          )}
+        </Field>
+        <Field label={t('hours.hours')} error={errors.hours} hint={t('hours.hoursHint')}>
+          {(props) => (
+            <input
+              type="text"
+              inputMode="decimal"
+              autoComplete="off"
+              className="hours-input"
+              value={values.hours}
+              onChange={(e) => set('hours')(e.target.value)}
+              required
+              {...props}
+            />
+          )}
+        </Field>
+        {generalError && (
+          <p className="notice notice-error" role="alert">
+            {generalError}
+          </p>
+        )}
+        <div className="form-actions">
+          <button type="submit" className="btn btn-primary" disabled={mutation.isPending}>
+            {mutation.isPending ? t('common.saving') : t('common.save')}
+          </button>
+          <button type="button" className="btn" onClick={onClose}>
+            {t('common.cancel')}
+          </button>
+        </div>
+      </form>
+    </Dialog>
+  );
+}

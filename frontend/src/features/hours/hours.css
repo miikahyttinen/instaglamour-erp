@@ -1,0 +1,153 @@
+/* Hours feature (TASK-106). Mobile-first; desktop tweaks at ≥ 900 px. */
+
+.hours-tabs {
+  display: flex;
+  gap: 0.25rem;
+  margin: 0 0 1rem;
+  border-bottom: 1px solid var(--border);
+}
+.hours-tabs a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap);
+  padding: 0 0.85rem;
+  color: var(--muted);
+  text-decoration: none;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -1px;
+}
+.hours-tabs a.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+  font-weight: 700;
+}
+
+.hours-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+.hours-page .stat {
+  margin: 0;
+}
+.hours-grand {
+  margin-bottom: 1rem !important;
+}
+
+.hours-month,
+.hours-partner {
+  margin: 0 0 1.25rem;
+}
+.hours-month-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.hours-month-head h2 {
+  margin: 0;
+}
+.hours-month-head .num {
+  font-weight: 700;
+}
+
+.hour-entries {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.hour-entry {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    'date amount'
+    'comment comment'
+    'actions actions';
+  gap: 0.15rem 0.75rem;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.hour-date {
+  grid-area: date;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+.hour-comment {
+  grid-area: comment;
+  overflow-wrap: anywhere;
+}
+.hour-amount {
+  grid-area: amount;
+  font-weight: 600;
+}
+.hour-actions {
+  grid-area: actions;
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.hours-month-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+}
+.hours-month-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--tap);
+  min-width: 0;
+  padding: 0.3rem 0.2rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+.hours-month-cell .num {
+  text-align: center;
+  font-size: 0.9rem;
+}
+.hours-month-cell[aria-pressed='true'] {
+  border-color: var(--primary);
+  background: var(--info-bg);
+}
+.hours-month-detail {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  border-radius: var(--radius);
+  background: var(--bg);
+}
+
+.hours-input {
+  max-width: 10rem;
+}
+
+@media (min-width: 600px) {
+  .hours-month-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 900px) {
+  .hours-month-grid {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+  }
+  .hour-entry {
+    grid-template-columns: 9rem minmax(0, 1fr) 5rem auto;
+    grid-template-areas: 'date comment amount actions';
+    align-items: center;
+  }
+  .hour-actions {
+    margin-top: 0;
+  }
+}
