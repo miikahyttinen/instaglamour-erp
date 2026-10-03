@@ -1,7 +1,7 @@
 # TASK-108: UI integration polish
 
 - **owner:** ui
-- **status:** todo
+- **status:** done
 - **spec:** NFR-1…NFR-6, UC-022 (consistency), developer reports from TASK-102…107
 - **depends on:** TASK-102…TASK-107 (merged)
 
