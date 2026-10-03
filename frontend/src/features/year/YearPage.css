@@ -1,0 +1,97 @@
+/* Year page (UC-022). Phone first: one column; two columns from 900 px. */
+
+.year-grid {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.year-section {
+  min-width: 0;
+}
+
+.year-section-head a {
+  color: inherit;
+  text-decoration: none;
+}
+.year-section-head a:hover {
+  color: var(--primary);
+}
+
+.year-tiles {
+  list-style: none;
+  padding: 0;
+}
+.year-tile-wide {
+  grid-column: 1 / -1;
+}
+
+.year-tile {
+  display: flex;
+  flex-direction: column;
+  min-height: var(--tap);
+  color: inherit;
+  text-decoration: none;
+}
+.year-tile:hover {
+  outline: 1px solid var(--primary);
+}
+.year-tile-label {
+  font-size: 0.8rem;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.year-tile-value {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.year-budget-table {
+  margin-bottom: 0.5rem;
+}
+.year-budget-table a {
+  color: inherit;
+  text-decoration: none;
+}
+.year-result {
+  margin: 0;
+}
+
+.year-upcoming {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.year-upcoming-link {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.75rem;
+  min-height: var(--tap);
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: inherit;
+  text-decoration: none;
+}
+.year-upcoming-link:hover {
+  border-color: var(--primary);
+}
+.year-upcoming-date {
+  font-weight: 600;
+  white-space: nowrap;
+}
+.year-upcoming-name {
+  flex: 1 1 10rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (min-width: 900px) {
+  .year-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.5rem 2rem;
+  }
+}

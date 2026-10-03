@@ -1,4 +1,5 @@
 // English UI texts. Must have exactly the same keys as fi.ts (checked by i18n.test.ts).
+import { en as yearEn } from '../features/year/i18n';
 import type { Resources } from './fi';
 
 const en: Resources = {
@@ -368,6 +369,7 @@ const en: Resources = {
     joinsLoadIn: 'Load-in & soundcheck',
     actualCents: 'Actual',
   },
+  year: yearEn,
 };
 
 export default en;
