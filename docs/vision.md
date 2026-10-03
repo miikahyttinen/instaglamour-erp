@@ -1,6 +1,6 @@
 # Vision
 
-- **Status:** Review
+- **Status:** Approved
 
 ## Problem
 Instaglamour runs its business in a spreadsheet. It is visual but has no data model: data spread

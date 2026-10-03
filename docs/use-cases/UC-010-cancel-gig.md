@@ -1,6 +1,6 @@
 # UC-010: Cancel gig
 
-- **Status:** Review
+- **Status:** Approved
 - **Phase:** 1
 - **Primary actor:** Partner
 - **Replaces:** renaming the gig sheet

@@ -5,29 +5,29 @@ Actor is a signed-in partner unless stated.
 
 | ID | Use case | Status |
 |---|---|---|
-| UC-001 | Sign in, sign out, choose language | R |
-| UC-022 | Year page (home) | R |
+| UC-001 | Sign in, sign out, choose language | A |
+| UC-022 | Year page (home) | A |
 | **Gigs** ||
-| UC-002 | Create gig | R |
-| UC-003 | View gig list | R |
-| UC-004 | View and edit gig | R |
-| UC-005 | Manage gig costs and staffing | R |
-| UC-007 | Manage price and additional sales | R |
-| UC-008 | Manage gig attachments | R |
-| UC-009 | Move gig | R |
-| UC-010 | Cancel gig | R |
-| UC-012 | Uncancel gig | R |
-| UC-013 | View gig history | R |
-| UC-025 | Delete and restore gig | R |
+| UC-002 | Create gig | A |
+| UC-003 | View gig list | A |
+| UC-004 | View and edit gig | A |
+| UC-005 | Manage gig costs and staffing | A |
+| UC-007 | Manage price and additional sales | A |
+| UC-008 | Manage gig attachments | A |
+| UC-009 | Move gig | A |
+| UC-010 | Cancel gig | A |
+| UC-012 | Uncancel gig | A |
+| UC-013 | View gig history | A |
+| UC-025 | Delete and restore gig | A |
 | **People, tasks, hours** ||
-| UC-014 | Manage people | R |
-| UC-017 | Manage tasks | R |
-| UC-018 | Log own hours | R |
-| UC-019 | View hours totals | R |
+| UC-014 | Manage people | A |
+| UC-017 | Manage tasks | A |
+| UC-018 | Log own hours | A |
+| UC-019 | View hours totals | A |
 | **Budget** ||
-| UC-020 | Manage yearly budget | R |
+| UC-020 | Manage yearly budget | A |
 | **Development** ||
-| UC-024 | Load local seed data | R |
+| UC-024 | Load local seed data | A |
 
 Retired: UC-006 (→ UC-005), UC-011 (no Played status), UC-015 (no customer register),
 UC-016 and UC-026 (seed only), UC-021 (→ UC-020), UC-023 (→ UC-022).

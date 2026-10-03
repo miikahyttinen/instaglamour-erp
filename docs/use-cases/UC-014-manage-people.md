@@ -1,6 +1,6 @@
 # UC-014: Manage people
 
-- **Status:** Review
+- **Status:** Approved
 - **Phase:** 1
 - **Primary actor:** Partner
 - **Replaces:** names typed on gig sheets

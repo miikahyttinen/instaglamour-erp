@@ -1,6 +1,6 @@
 # UC-025: Delete and restore gig
 
-- **Status:** Review
+- **Status:** Approved
 - **Phase:** 1
 - **Primary actor:** Partner
 - **Replaces:** deleting a row/sheet

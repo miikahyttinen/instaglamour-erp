@@ -1,6 +1,6 @@
 # UC-009: Move gig
 
-- **Status:** Review
+- **Status:** Approved
 - **Phase:** 1
 - **Primary actor:** Partner
 - **Replaces:** editing the date

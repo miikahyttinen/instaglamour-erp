@@ -1,6 +1,6 @@
 # Business rules
 
-- **Status:** Review
+- **Status:** Approved
 
 Rules only — concrete values are seeded settings (`domain-model.md`).
 

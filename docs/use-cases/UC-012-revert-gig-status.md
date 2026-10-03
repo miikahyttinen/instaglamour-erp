@@ -1,6 +1,6 @@
 # UC-012: Uncancel gig
 
-- **Status:** Review
+- **Status:** Approved
 - **Phase:** 1
 - **Primary actor:** Partner
 - **Replaces:** —

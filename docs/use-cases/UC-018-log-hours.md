@@ -1,6 +1,6 @@
 # UC-018: Log own hours
 
-- **Status:** Review
+- **Status:** Approved
 - **Phase:** 1
 - **Primary actor:** Partner
 - **Replaces:** the hours sheet

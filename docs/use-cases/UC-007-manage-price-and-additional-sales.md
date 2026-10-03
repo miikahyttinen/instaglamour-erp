@@ -1,6 +1,6 @@
 # UC-007: Manage price and additional sales
 
-- **Status:** Review
+- **Status:** Approved
 - **Phase:** 1
 - **Primary actor:** Partner
 - **Replaces:** price column + breakdowns in notes

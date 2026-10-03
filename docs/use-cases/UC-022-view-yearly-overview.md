@@ -1,6 +1,6 @@
 # UC-022: Year page (home)
 
-- **Status:** Review
+- **Status:** Approved
 - **Phase:** 1
 - **Primary actor:** Partner
 - **Replaces:** adding up across sheets

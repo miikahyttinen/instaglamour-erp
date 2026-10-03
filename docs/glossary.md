@@ -1,6 +1,6 @@
 # Glossary
 
-- **Status:** Review
+- **Status:** Approved
 
 Code, API and specs use the English term; the UI shows the user's language.
 

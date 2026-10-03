@@ -1,6 +1,6 @@
 # UC-004: View and edit gig
 
-- **Status:** Review
+- **Status:** Approved
 - **Phase:** 1
 - **Primary actor:** Partner
 - **Replaces:** a gig sheet

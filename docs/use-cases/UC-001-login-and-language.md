@@ -1,6 +1,6 @@
 # UC-001: Sign in, sign out, choose language
 
-- **Status:** Review
+- **Status:** Approved
 - **Phase:** 1
 - **Primary actor:** Partner
 - **Replaces:** — (no access control today)

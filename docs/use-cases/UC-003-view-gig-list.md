@@ -1,6 +1,6 @@
 # UC-003: View gig list
 
-- **Status:** Review
+- **Status:** Approved
 - **Phase:** 1
 - **Primary actor:** Partner
 - **Replaces:** the main sheet

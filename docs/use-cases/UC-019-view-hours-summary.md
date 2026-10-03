@@ -1,6 +1,6 @@
 # UC-019: View hours totals
 
-- **Status:** Review
+- **Status:** Approved
 - **Phase:** 1
 - **Primary actor:** Partner
 - **Replaces:** sums of the hours sheet

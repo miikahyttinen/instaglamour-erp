@@ -1,6 +1,6 @@
 # UC-024: Load local seed data
 
-- **Status:** Review
+- **Status:** Approved
 - **Phase:** 1
 - **Primary actor:** Developer
 - **Replaces:** —

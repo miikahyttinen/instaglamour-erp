@@ -1,6 +1,6 @@
 # UC-020: Manage yearly budget
 
-- **Status:** Review
+- **Status:** Approved
 - **Phase:** 1
 - **Primary actor:** Partner
 - **Replaces:** the fixed costs and income sheet

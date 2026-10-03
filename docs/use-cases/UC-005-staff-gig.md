@@ -1,6 +1,6 @@
 # UC-005: Manage gig costs and staffing
 
-- **Status:** Review
+- **Status:** Approved
 - **Phase:** 1
 - **Primary actor:** Partner
 - **Replaces:** gig sheet rows (musicians, office, sales, production, other costs)

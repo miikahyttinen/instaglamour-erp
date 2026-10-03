@@ -1,6 +1,6 @@
 # UC-017: Manage tasks
 
-- **Status:** Review
+- **Status:** Approved
 - **Phase:** 1
 - **Primary actor:** Partner
 - **Replaces:** the tasks sheet

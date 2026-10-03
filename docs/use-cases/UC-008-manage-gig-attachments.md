@@ -1,6 +1,6 @@
 # UC-008: Manage gig attachments
 
-- **Status:** Review
+- **Status:** Approved
 - **Phase:** 1
 - **Primary actor:** Partner
 - **Replaces:** contracts stored elsewhere

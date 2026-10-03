@@ -1,6 +1,6 @@
 # UC-013: View gig history
 
-- **Status:** Review
+- **Status:** Approved
 - **Phase:** 1
 - **Primary actor:** Partner
 - **Replaces:** —

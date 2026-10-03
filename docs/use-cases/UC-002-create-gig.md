@@ -1,6 +1,6 @@
 # UC-002: Create gig
 
-- **Status:** Review
+- **Status:** Approved
 - **Phase:** 1
 - **Primary actor:** Partner
 - **Replaces:** new row on the main sheet + copied gig sheet

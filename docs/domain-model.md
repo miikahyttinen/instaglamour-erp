@@ -1,6 +1,6 @@
 # Domain model
 
-- **Status:** Review
+- **Status:** Approved
 
 > This repository contains no real names, customer data or business figures (BR-090).
 > Business values (default fees, deduction, sign-in domain, budget categories, templates)
