@@ -1,0 +1,19 @@
+{
+  "name": "instaglamour-erp-e2e",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "prepare-db": "node scripts/prepare.mjs",
+    "e2e": "node scripts/prepare.mjs && playwright test",
+    "e2e:headed": "node scripts/prepare.mjs && playwright test --headed",
+    "e2e:report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@types/node": "^24.19.1"
+  }
+}
