@@ -1,7 +1,7 @@
 # TASK-102: UI gigs — list, create, gig page, costs, attachments, history
 
 - **owner:** ui
-- **status:** todo
+- **status:** done
 - **spec:** UC-002, UC-003, UC-004, UC-005, UC-007, UC-008, UC-009, UC-010, UC-012, UC-013, UC-025
 - **depends on:** TASK-101
 
