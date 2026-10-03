@@ -2,7 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import { http } from 'msw';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from '../../mocks/data';
-import { errorResponse } from '../../mocks/handlers';
+import { errorResponse } from '../../mocks/util';
 import { server } from '../../mocks/server';
 import { testFile } from '../../test/files';
 import { addMockGig, TEST_YEAR } from '../../test/gigFixtures';

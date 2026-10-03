@@ -1,14 +1,14 @@
 // Finnish UI texts (default language). Terms follow docs/glossary.md.
 // en.ts must have exactly the same keys (checked by i18n.test.ts).
+// Gig texts are below; the other features keep theirs in features/<feature>/i18n.ts and are
+// registered at the end in navigation order.
+import { fi as budgetFi } from '../features/budget/i18n';
+import { fi as hoursFi } from '../features/hours/i18n';
+import { fi as peopleFi } from '../features/people/i18n';
+import { fi as tasksFi } from '../features/tasks/i18n';
 import { fi as yearFi } from '../features/year/i18n';
 
-import { fi as tasksFi } from '../features/tasks/i18n';
-import { fi as hoursFi } from '../features/hours/i18n';
-import { fi as budgetFI } from '../features/budget/i18n';
-import { fi as people } from '../features/people/i18n';
-
 const fi = {
-  ...hoursFi,
   app: {
     name: 'Instaglamour ERP',
     loading: 'Ladataan…',
@@ -61,7 +61,6 @@ const fi = {
     tasks: 'Tehtävät',
     hours: 'Tunnit {{year}}',
     budget: 'Budjetti {{year}}',
-    comingSoon: 'Tämä näkymä on tulossa.',
     notFound: 'Sivua ei löytynyt.',
     backHome: 'Etusivulle',
   },
@@ -375,10 +374,11 @@ const fi = {
     joinsLoadIn: 'Roudaus ja soundcheck',
     actualCents: 'Toteuma',
   },
-  ...tasksFi,
   year: yearFi,
-  budget: budgetFI,
-  ...people,
+  ...peopleFi,
+  ...tasksFi,
+  ...hoursFi,
+  budget: budgetFi,
 };
 
 export default fi;

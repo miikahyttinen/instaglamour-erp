@@ -3,7 +3,7 @@ import { http, HttpResponse } from 'msw';
 import { describe, expect, it } from 'vitest';
 import type { UpdateMeRequest } from '../api/types';
 import { db } from '../mocks/data';
-import { errorResponse } from '../mocks/handlers';
+import { errorResponse } from '../mocks/util';
 import { server } from '../mocks/server';
 import { renderApp, signInMock } from '../test/renderApp';
 
