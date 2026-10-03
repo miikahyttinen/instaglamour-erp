@@ -3,11 +3,12 @@ import type { FieldCode } from '../api/enums';
 import { LANGUAGES } from '../api/enums';
 import type { DevLoginRequest, ReferenceData, UpdateMeRequest } from '../api/types';
 import { db, setMockSession } from './data';
-import { attachmentHandlers, costLineHandlers, gigHandlers, peopleHandlers } from './gigHandlers';
+import { attachmentHandlers, costLineHandlers, gigHandlers } from './gigHandlers';
+import { peopleHandlers } from './peopleHandlers';
 import { currentPartner, errorResponse, unauthenticated } from './util';
 
 // Mock handlers per contract section. Each section has a handler array included in
-// `handlers`. Gigs, cost lines, attachments and people live in gigHandlers.ts.
+// `handlers`. Gigs, cost lines and attachments live in gigHandlers.ts, people in peopleHandlers.ts.
 
 export { currentPartner, errorResponse };
 
