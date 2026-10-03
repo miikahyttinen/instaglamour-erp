@@ -8,10 +8,15 @@ import type { Db } from './db.js';
 import { registerErrorHandling, unauthenticated } from './http/errors.js';
 import { attachmentRoutes } from './routes/attachments.js';
 import { authRoutes } from './routes/auth.js';
+import { budgetRoutes } from './routes/budget.js';
 import { costLineRoutes } from './routes/costLines.js';
 import { gigRoutes } from './routes/gigs.js';
+import { hourRoutes } from './routes/hours.js';
 import { meRoutes } from './routes/me.js';
+import { peopleRoutes } from './routes/people.js';
 import { referenceRoutes } from './routes/reference.js';
+import { taskRoutes } from './routes/tasks.js';
+import { yearRoutes } from './routes/years.js';
 
 export interface AppDeps {
   db: Db;
@@ -74,6 +79,11 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
   gigRoutes(app, deps);
   costLineRoutes(app, deps);
   attachmentRoutes(app, deps);
+  yearRoutes(app, deps);
+  peopleRoutes(app, deps);
+  taskRoutes(app, deps);
+  hourRoutes(app, deps);
+  budgetRoutes(app, deps);
 
   return app;
 }

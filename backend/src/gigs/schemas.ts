@@ -39,5 +39,11 @@ export const technicalSetup = z
 export const oneOf = <const T extends readonly [string, ...string[]]>(values: T) =>
   z.enum(values, { error: (issue) => (issue.input === undefined || issue.input === null ? 'REQUIRED' : 'INVALID_VALUE') });
 
+/** A year in a query or path (`2026`): missing → REQUIRED, anything but four digits → INVALID_VALUE. */
+export const yearString = z
+  .string()
+  .regex(/^\d{4}$/, { message: 'INVALID_VALUE' })
+  .transform(Number);
+
 /** A reason for cancel / uncancel / delete (BR-011, BR-018). */
 export const reasonBody = z.object({ reason: requiredText(LONG_TEXT_MAX) });

@@ -75,7 +75,7 @@ export function gigBody(world: World, overrides: Record<string, unknown> = {}) {
   };
 }
 
-type Method = 'GET' | 'POST' | 'PATCH' | 'DELETE';
+type Method = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
 /** A request as the signed-in partner. */
 export function call(s: Session, method: Method, url: string, payload?: unknown) {
@@ -103,3 +103,10 @@ export async function history(s: Session, gigId: string) {
 }
 
 export const UNKNOWN_ID = '00000000-0000-4000-8000-000000000000';
+
+/** A budget category (seed-only in the app). */
+export function createBudgetCategory(code: string, options: { budgeted?: boolean; active?: boolean; sortOrder?: number } = {}) {
+  return testDb().budgetCategory.create({
+    data: { code, nameFi: `Kategoria ${code}`, nameEn: `Category ${code}`, ...options },
+  });
+}
