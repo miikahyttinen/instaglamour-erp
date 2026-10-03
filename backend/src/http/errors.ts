@@ -98,7 +98,8 @@ export function zodErrorToFields(error: z.ZodError): Record<string, FieldCode> {
 
 /** Parse request input with a zod schema; throws a contract-shaped 400 on failure. */
 export function parseInput<S extends z.ZodType>(schema: S, input: unknown): z.output<S> {
-  const result = schema.safeParse(input ?? {});
+  // reportInput: issues carry the input, so a missing value (REQUIRED) differs from a wrong one (INVALID_VALUE).
+  const result = schema.safeParse(input ?? {}, { reportInput: true });
   if (!result.success) throw validationError(zodErrorToFields(result.error));
   return result.data;
 }

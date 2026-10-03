@@ -285,6 +285,8 @@ model GigEvent {
   at        DateTime     @default(now())
   reason    String?
   details   Json         @default("{}")
+  /// Insertion order; breaks ties between events with the same `at` (history is newest first).
+  seq       BigInt       @default(autoincrement())
   createdAt DateTime     @default(now()) @map("created_at")
   updatedAt DateTime     @updatedAt @map("updated_at")
 
