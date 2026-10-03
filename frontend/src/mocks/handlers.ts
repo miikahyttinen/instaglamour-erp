@@ -4,6 +4,7 @@ import { LANGUAGES } from '../api/enums';
 import type { DevLoginRequest, ReferenceData, UpdateMeRequest } from '../api/types';
 import { db, setMockSession } from './data';
 import { attachmentHandlers, costLineHandlers, gigHandlers, peopleHandlers } from './gigHandlers';
+import { tasksHandlers } from './tasksHandlers';
 import { currentPartner, errorResponse, unauthenticated } from './util';
 
 // Mock handlers per contract section. Each section has a handler array included in
@@ -67,4 +68,5 @@ export const handlers = [
   ...costLineHandlers,
   ...attachmentHandlers,
   ...peopleHandlers,
+  ...tasksHandlers,
 ];
