@@ -8,9 +8,9 @@ import { HoursRoutes } from './features/hours/HoursRoutes';
 import { YearPage } from './features/year/YearPage';
 import { GigsRoutes } from './gigs/GigsRoutes';
 import { BudgetPage } from './features/budget/BudgetPage';
+import { PeopleRoutes } from './features/people/PeopleRoutes';
 import { AppShell } from './layout/AppShell';
 import { NotFoundPage } from './pages/NotFoundPage';
-import { PlaceholderPage } from './pages/PlaceholderPage';
 
 export function AppRoutes() {
   return (
@@ -25,10 +25,10 @@ export function AppRoutes() {
       >
         <Route index element={<YearPage />} />
         <Route path="gigs/*" element={<GigsRoutes />} />
-        <Route path="people/*" element={<PlaceholderPage page="people" />} />
         <Route path="tasks/*" element={<TasksPage />} />
         <Route path="hours/*" element={<HoursRoutes />} />
         <Route path="budget/*" element={<BudgetPage />} />
+        <Route path="people/*" element={<PeopleRoutes />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>

@@ -1,0 +1,130 @@
+/* People register (UC-014). Mobile first: rows and cost lines are cards; table from 700 px. */
+
+.people-add {
+  margin-bottom: 0.5rem;
+}
+.people-name-form .field label {
+  margin-top: 0;
+}
+
+.people-notice {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.people-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--border);
+}
+.people-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.people-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.people-name a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap);
+}
+.people-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+/* Cost lines: cards on phones. */
+.person-lines {
+  width: 100%;
+  border-collapse: collapse;
+}
+.person-lines thead {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+.person-lines tr {
+  display: block;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.person-lines td,
+.person-lines tfoot th {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.15rem 0;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+.person-lines td::before {
+  content: attr(data-label);
+  color: var(--muted);
+  text-align: left;
+  font-weight: 400;
+}
+.person-lines tfoot {
+  font-weight: 700;
+}
+.person-lines tfoot th {
+  text-align: left;
+}
+.person-lines .person-lines-empty-cell {
+  display: none;
+}
+
+@media (min-width: 700px) {
+  .person-lines thead {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip: auto;
+    display: table-header-group;
+  }
+  .person-lines tr {
+    display: table-row;
+    padding: 0;
+  }
+  .person-lines th,
+  .person-lines td,
+  .person-lines tfoot th {
+    display: table-cell;
+    padding: 0.5rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  .person-lines td.num,
+  .person-lines th.num {
+    text-align: right;
+  }
+  .person-lines td::before {
+    content: none;
+  }
+  .person-lines thead th {
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+  .person-lines .person-lines-empty-cell {
+    display: table-cell;
+  }
+}

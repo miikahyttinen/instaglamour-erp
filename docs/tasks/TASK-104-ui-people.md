@@ -1,7 +1,7 @@
 # TASK-104: UI people
 
 - **owner:** ui
-- **status:** todo
+- **status:** done
 - **spec:** UC-014
 - **depends on:** TASK-101 (merged)
 

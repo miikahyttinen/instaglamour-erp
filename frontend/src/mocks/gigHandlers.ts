@@ -1,5 +1,5 @@
-// Mock handlers for docs/api-contract.md: Gigs, Cost lines, Attachments, and the People
-// list/create used by the person picker. Business logic lives in gigStore.ts.
+// Mock handlers for docs/api-contract.md: Gigs, Cost lines, Attachments (People: peopleHandlers.ts).
+// Business logic lives in gigStore.ts.
 import { http, HttpResponse } from 'msw';
 import type { CostType, FieldCode, TechnicalSetup } from '../api/enums';
 import { COST_TYPES, isMusicianRole, TECHNICAL_SETUPS } from '../api/enums';
@@ -13,9 +13,6 @@ import type {
   GigUpdate,
   GigUpdateResponse,
   GigWithWarnings,
-  Person,
-  PersonCreate,
-  PersonWithWarnings,
   ReasonRequest,
   Warning,
 } from '../api/types';
@@ -30,7 +27,6 @@ import {
   GIG_PATCH_FIELDS,
   linesOf,
   logEvent,
-  mockId,
   nowTs,
   payCostLine,
   publicAttachment,
@@ -571,35 +567,5 @@ export const attachmentHandlers = [
       filename: attachment.filename,
     });
     return new HttpResponse(null, { status: 204 });
-  }),
-];
-
-// ---------- People (list + create, for the person picker) ----------
-
-export const peopleHandlers = [
-  http.get('/api/people', ({ request }) => {
-    if (!currentPartner()) return unauthenticated();
-    const active = new URL(request.url).searchParams.get('active') ?? 'true';
-    const people: Person[] = db.gigs.people
-      .filter((p) => active === 'all' || p.active === (active === 'true'))
-      .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
-    return HttpResponse.json(people);
-  }),
-
-  http.post('/api/people', async ({ request }) => {
-    if (!currentPartner()) return unauthenticated();
-    const body = await readJson<PersonCreate>(request);
-    const fields: Fields = {};
-    checkString(fields, 'name', body.name, true);
-    if (Object.keys(fields).length > 0) return validationError(fields);
-    const name = body.name!.trim();
-    const duplicate = db.gigs.people.some((p) => p.name.toLowerCase() === name.toLowerCase());
-    const person: Person = { id: mockId(), name, active: true };
-    db.gigs.people.push(person);
-    const response: PersonWithWarnings = {
-      person,
-      warnings: duplicate ? [{ code: 'DUPLICATE_NAME' }] : [],
-    };
-    return HttpResponse.json(response, { status: 201 });
   }),
 ];

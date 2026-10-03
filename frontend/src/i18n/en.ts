@@ -4,6 +4,7 @@ import { en as yearEn } from '../features/year/i18n';
 import { en as budgetEN } from '../features/budget/i18n';
 import type { Resources } from './fi';
 import { en as tasksEn } from '../features/tasks/i18n';
+import { en as people } from '../features/people/i18n';
 
 const en: Resources = {
   ...hoursEn,
@@ -376,6 +377,7 @@ const en: Resources = {
   ...tasksEn,
   year: yearEn,
   budget: budgetEN,
+  ...people,
 };
 
 export default en;
