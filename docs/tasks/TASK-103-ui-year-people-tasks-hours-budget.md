@@ -1,7 +1,7 @@
 # TASK-103: UI year page, people, tasks, hours, budget
 
 - **owner:** ui
-- **status:** todo
+- **status:** superseded by TASK-103-ui-year-page, TASK-104…TASK-107 (split for parallel work)
 - **spec:** UC-014, UC-017, UC-018, UC-019, UC-020, UC-022
 - **depends on:** TASK-102
 
