@@ -1,7 +1,7 @@
 # TASK-105: UI tasks
 
 - **owner:** ui
-- **status:** todo
+- **status:** done
 - **spec:** UC-017
 - **depends on:** TASK-101 (merged)
 

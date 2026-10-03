@@ -278,7 +278,7 @@ Duplicate = case-insensitive exact name match with another person.
 | Method & path | Request | Response |
 |---|---|---|
 | `GET /api/tasks` | `?status=OPEN` (default) \| `DONE` \| `ALL`, `ownerId` | 200 `[Task]`: overdue first, then by `dueDate` (nulls last), then `createdAt` |
-| `POST /api/tasks` | `{ "title", "ownerId"? (default me), "dueDate"?, "description"? }` | 201 `Task` |
+| `POST /api/tasks` | `{ "title", "ownerId"? (a Partner id; default me), "dueDate"?, "description"? }` | 201 `Task` |
 | `PATCH /api/tasks/{id}` | any of `title`, `ownerId`, `dueDate`, `description`, `status` | 200 `Task`. `DONE` sets `completedAt`; `OPEN` clears it |
 | `DELETE /api/tasks/{id}` | — | 204 |
 
