@@ -98,6 +98,18 @@ describe('gig mocks', () => {
     let result = await costLinesApi.pay(line(gig, 'OFFICE').id);
     expect(line(result.gig, 'OFFICE')).toMatchObject({ actualCents: 1000, paidBy: partnerA().id });
     expect(result.gig.actualCostsCents).toBe(1000);
+    const firstPaid = line(result.gig, 'OFFICE');
+    signInMock('partner.b@example.com');
+    result = await costLinesApi.pay(firstPaid.id, { actualCents: 10000 });
+    expect(line(result.gig, 'OFFICE')).toMatchObject({
+      actualCents: 10000,
+      paidAt: firstPaid.paidAt,
+      paidBy: partnerA().id,
+    });
+    await costLinesApi.pay(firstPaid.id, { actualCents: 10000 }); // no change, no event
+    const paidEvents = (await gigsApi.history(gig.id)).filter((e) => e.type === 'COST_PAID');
+    expect(paidEvents).toHaveLength(2);
+    signInMock();
     result = await costLinesApi.unpay(line(gig, 'OFFICE').id);
     expect(line(result.gig, 'OFFICE')).toMatchObject({ actualCents: null, paidAt: null });
 
@@ -207,6 +219,23 @@ describe('gig mocks', () => {
     expect((await gigsApi.get(gig.id)).attachments).toEqual([]);
     const types = (await gigsApi.history(gig.id)).map((e) => e.type);
     expect(types).toEqual(['ATTACHMENT_REMOVED', 'ATTACHMENT_ADDED', 'CREATED']);
+  });
+
+  it('no-op requests write no history; type is not editable; upload needs a file', async () => {
+    const gig = await gigsApi.create(gigInput());
+    await gigsApi.update(gig.id, { venue: 'Venue X' });
+    await costLinesApi.update(line(gig, 'VOC').id, { joinsLoadIn: true });
+    await costLinesApi.unpay(line(gig, 'VOC').id);
+    expect((await gigsApi.history(gig.id)).map((e) => e.type)).toEqual(['CREATED']);
+
+    const typeError = await expectError(
+      costLinesApi.update(line(gig, 'VOC').id, { type: 'BASS' } as never),
+    );
+    expect(typeError.fields).toEqual({ type: 'NOT_EDITABLE' });
+
+    const res = await fetch(`/api/gigs/${gig.id}/attachments`, { method: 'POST', body: new FormData() });
+    expect(res.status).toBe(400);
+    expect(await res.json()).toMatchObject({ error: { fields: { file: 'REQUIRED' } } });
   });
 
   it('lists active people and creates people with a duplicate warning', async () => {

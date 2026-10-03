@@ -374,10 +374,17 @@ export function updateCostLine(
   return changes;
 }
 
+/**
+ * Marks a line paid. An already-paid line only gets its amount updated (original paid time and
+ * partner kept); paying again with the same amount changes nothing and logs nothing.
+ */
 export function payCostLine(state: GigState, line: CostLine, actualCents: number, actorId: Id): void {
+  if (line.paidAt !== null && line.actualCents === actualCents) return;
   line.actualCents = actualCents;
-  line.paidAt = nowTs();
-  line.paidBy = actorId;
+  if (line.paidAt === null) {
+    line.paidAt = nowTs();
+    line.paidBy = actorId;
+  }
   logEvent(state, line.gigId, 'COST_PAID', actorId, {
     costLineId: line.id,
     type: line.type,
