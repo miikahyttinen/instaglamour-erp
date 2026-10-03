@@ -1,0 +1,8 @@
+# Generated Prisma client (run `npm install` / `npx prisma generate`)
+src/generated/
+
+# Local business data and secrets — never commit (BR-090). Root .gitignore covers these too.
+.env
+seed/seed.local.json
+seed/seed.local.*
+uploads/

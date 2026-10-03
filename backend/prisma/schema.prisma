@@ -1,0 +1,373 @@
+// Instaglamour ERP — database schema (see docs/domain-model.md).
+// Money is stored as integer cents (EUR, excl. VAT). All tables have created_at / updated_at.
+
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  moduleFormat        = "esm"
+  runtime             = "nodejs"
+  importFileExtension = "js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Enums (keep in sync with src/domain/enums.ts)
+// ---------------------------------------------------------------------------
+
+enum Language {
+  fi
+  en
+}
+
+enum GigStatus {
+  SOLD
+  CANCELLED
+}
+
+enum TaskStatus {
+  OPEN
+  DONE
+}
+
+/// Roles (musician + internal) and expense categories in one list.
+enum CostType {
+  // Musician roles
+  VOC
+  BACKING_VOC
+  BASS
+  GUITAR
+  DRUMS
+  KEYS
+  PIANO
+  MIX
+  HORN_1
+  HORN_2
+  SAX
+  TRUMPET
+  TROMBONE
+  VIOLIN
+  DJ
+  TECHNICIAN
+  OTHER_ROLE
+  // Internal roles
+  OFFICE
+  SALES
+  PRODUCTION
+  // Expense categories
+  FUEL
+  VEHICLE
+  TRAVEL
+  PARKING
+  ACCOMMODATION
+  FOOD
+  EQUIPMENT_RENTAL
+  ARRANGEMENT
+  LEAD_FEE
+  OTHER
+}
+
+enum TechnicalSetup {
+  HOUSE_TECH
+  HOUSE_TECHNICIAN
+  SET_A
+  SET_B
+  SET_C
+  OWN_PA
+  VAN
+}
+
+enum GigEventType {
+  CREATED
+  UPDATED
+  MOVED
+  CANCELLED
+  UNCANCELLED
+  DELETED
+  RESTORED
+  COST_ADDED
+  COST_UPDATED
+  COST_REMOVED
+  COST_PAID
+  COST_UNPAID
+  ATTACHMENT_ADDED
+  ATTACHMENT_REMOVED
+}
+
+// ---------------------------------------------------------------------------
+// People and partners
+// ---------------------------------------------------------------------------
+
+model Person {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  partner   Partner?
+  costLines CostLine[]
+
+  @@map("person")
+}
+
+model Partner {
+  id           String   @id @default(uuid()) @db.Uuid
+  personId     String   @unique @map("person_id") @db.Uuid
+  email        String   @unique
+  language     Language @default(fi)
+  /// Selected year (BR-081). null = current year.
+  selectedYear Int?     @map("selected_year")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  person             Person       @relation(fields: [personId], references: [id])
+  soldGigs           Gig[]        @relation("GigSeller")
+  producedGigs       Gig[]        @relation("GigProducer")
+  deletedGigs        Gig[]        @relation("GigDeletedBy")
+  paidCostLines      CostLine[]   @relation("CostLinePaidBy")
+  uploadedAttachments Attachment[]
+  gigEvents          GigEvent[]
+  tasks              Task[]
+  hourEntries        HourEntry[]
+  sessions           Session[]
+
+  @@map("partner")
+}
+
+/// Server-side login session (UC-001). The cookie holds a random token; only its hash is stored.
+model Session {
+  id         String   @id @default(uuid()) @db.Uuid
+  tokenHash  String   @unique @map("token_hash")
+  partnerId  String   @map("partner_id") @db.Uuid
+  expiresAt  DateTime @map("expires_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  partner Partner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  @@index([partnerId])
+  @@map("session")
+}
+
+// ---------------------------------------------------------------------------
+// Seeded reference data
+// ---------------------------------------------------------------------------
+
+model LineupTemplate {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @unique
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  roles TemplateRole[]
+  gigs  Gig[]
+
+  @@map("lineup_template")
+}
+
+model TemplateRole {
+  id               String   @id @default(uuid()) @db.Uuid
+  templateId       String   @map("template_id") @db.Uuid
+  position         Int
+  role             CostType
+  defaultFeeCents  Int      @map("default_fee_cents")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  template LineupTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@unique([templateId, position])
+  @@map("template_role")
+}
+
+/// Seeded key/value settings. All current settings are money amounts in cents.
+model Setting {
+  id         String   @id @default(uuid()) @db.Uuid
+  key        String   @unique
+  valueCents Int      @map("value_cents")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@map("setting")
+}
+
+// ---------------------------------------------------------------------------
+// Gigs
+// ---------------------------------------------------------------------------
+
+model Gig {
+  id                         String           @id @default(uuid()) @db.Uuid
+  startDate                  DateTime         @map("start_date") @db.Date
+  endDate                    DateTime?        @map("end_date") @db.Date
+  status                     GigStatus        @default(SOLD)
+  lineupTemplateId           String?          @map("lineup_template_id") @db.Uuid
+  lineupName                 String           @map("lineup_name")
+  venue                      String
+  technicalSetup             TechnicalSetup[] @default([]) @map("technical_setup")
+  sellerId                   String           @map("seller_id") @db.Uuid
+  producerId                 String           @map("producer_id") @db.Uuid
+  priceCents                 Int              @map("price_cents")
+  additionalSalesCents       Int              @default(0) @map("additional_sales_cents")
+  additionalSalesDescription String?          @map("additional_sales_description")
+  notes                      String?
+  deletedAt                  DateTime?        @map("deleted_at")
+  deletedById                String?          @map("deleted_by") @db.Uuid
+  createdAt                  DateTime         @default(now()) @map("created_at")
+  updatedAt                  DateTime         @updatedAt @map("updated_at")
+
+  lineupTemplate LineupTemplate? @relation(fields: [lineupTemplateId], references: [id])
+  seller         Partner         @relation("GigSeller", fields: [sellerId], references: [id])
+  producer       Partner         @relation("GigProducer", fields: [producerId], references: [id])
+  deletedBy      Partner?        @relation("GigDeletedBy", fields: [deletedById], references: [id])
+  costLines      CostLine[]
+  attachments    Attachment[]
+  events         GigEvent[]
+
+  @@index([startDate])
+  @@map("gig")
+}
+
+model CostLine {
+  id                          String    @id @default(uuid()) @db.Uuid
+  gigId                       String    @map("gig_id") @db.Uuid
+  type                        CostType
+  personId                    String?   @map("person_id") @db.Uuid
+  description                 String?
+  budgetedCents               Int       @map("budgeted_cents")
+  /// Musician roles only (BR-026); null for internal roles and expenses.
+  joinsLoadIn                 Boolean?  @map("joins_load_in")
+  loadInDeductionAppliedCents Int?      @map("load_in_deduction_applied_cents")
+  actualCents                 Int?      @map("actual_cents")
+  paidAt                      DateTime? @map("paid_at")
+  paidById                    String?   @map("paid_by") @db.Uuid
+  createdAt                   DateTime  @default(now()) @map("created_at")
+  updatedAt                   DateTime  @updatedAt @map("updated_at")
+
+  gig    Gig      @relation(fields: [gigId], references: [id], onDelete: Cascade)
+  person Person?  @relation(fields: [personId], references: [id])
+  paidBy Partner? @relation("CostLinePaidBy", fields: [paidById], references: [id])
+
+  @@index([gigId])
+  @@index([personId])
+  @@map("cost_line")
+}
+
+model Attachment {
+  id           String    @id @default(uuid()) @db.Uuid
+  gigId        String    @map("gig_id") @db.Uuid
+  filename     String
+  contentType  String    @map("content_type")
+  sizeBytes    Int       @map("size_bytes")
+  /// File name inside UPLOAD_DIR.
+  storageKey   String    @unique @map("storage_key")
+  uploadedById String    @map("uploaded_by") @db.Uuid
+  uploadedAt   DateTime  @default(now()) @map("uploaded_at")
+  deletedAt    DateTime? @map("deleted_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  gig        Gig     @relation(fields: [gigId], references: [id], onDelete: Cascade)
+  uploadedBy Partner @relation(fields: [uploadedById], references: [id])
+
+  @@index([gigId])
+  @@map("attachment")
+}
+
+/// Full, append-only gig history (BR-015).
+model GigEvent {
+  id        String       @id @default(uuid()) @db.Uuid
+  gigId     String       @map("gig_id") @db.Uuid
+  type      GigEventType
+  partnerId String       @map("partner_id") @db.Uuid
+  at        DateTime     @default(now())
+  reason    String?
+  details   Json         @default("{}")
+  createdAt DateTime     @default(now()) @map("created_at")
+  updatedAt DateTime     @updatedAt @map("updated_at")
+
+  gig     Gig     @relation(fields: [gigId], references: [id], onDelete: Cascade)
+  partner Partner @relation(fields: [partnerId], references: [id])
+
+  @@index([gigId, at])
+  @@map("gig_event")
+}
+
+// ---------------------------------------------------------------------------
+// Tasks and hours
+// ---------------------------------------------------------------------------
+
+model Task {
+  id          String     @id @default(uuid()) @db.Uuid
+  title       String
+  description String?
+  dueDate     DateTime?  @map("due_date") @db.Date
+  ownerId     String     @map("owner_id") @db.Uuid
+  status      TaskStatus @default(OPEN)
+  completedAt DateTime?  @map("completed_at")
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+
+  owner Partner @relation(fields: [ownerId], references: [id])
+
+  @@index([ownerId])
+  @@map("task")
+}
+
+model HourEntry {
+  id        String   @id @default(uuid()) @db.Uuid
+  partnerId String   @map("partner_id") @db.Uuid
+  date      DateTime @db.Date
+  comment   String
+  /// 0.25…24 in 0.25 steps (BR-050).
+  hours     Decimal  @db.Decimal(4, 2)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  partner Partner @relation(fields: [partnerId], references: [id])
+
+  @@index([partnerId, date])
+  @@map("hour_entry")
+}
+
+// ---------------------------------------------------------------------------
+// Yearly budget
+// ---------------------------------------------------------------------------
+
+model BudgetCategory {
+  id        String   @id @default(uuid()) @db.Uuid
+  code      String   @unique
+  nameFi    String   @map("name_fi")
+  nameEn    String   @map("name_en")
+  /// false = actuals only (e.g. FUEL).
+  budgeted  Boolean  @default(true)
+  /// Inactive categories are hidden from the budget page but keep their history.
+  active    Boolean  @default(true)
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  years BudgetYear[]
+
+  @@map("budget_category")
+}
+
+model BudgetYear {
+  id                 String   @id @default(uuid()) @db.Uuid
+  categoryId         String   @map("category_id") @db.Uuid
+  year               Int
+  budgetExpenseCents Int      @default(0) @map("budget_expense_cents")
+  budgetIncomeCents  Int      @default(0) @map("budget_income_cents")
+  actualExpenseCents Int      @default(0) @map("actual_expense_cents")
+  actualIncomeCents  Int      @default(0) @map("actual_income_cents")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  category BudgetCategory @relation(fields: [categoryId], references: [id])
+
+  @@unique([categoryId, year])
+  @@index([year])
+  @@map("budget_year")
+}

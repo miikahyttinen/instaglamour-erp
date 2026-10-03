@@ -1,0 +1,42 @@
+# Local development databases for the Instaglamour ERP backend.
+# Start: docker compose up -d   (from the repo root)
+# Credentials below are local-only placeholders, not secrets.
+name: instaglamour-erp
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: instaglamour
+      POSTGRES_PASSWORD: instaglamour
+      POSTGRES_DB: instaglamour
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U instaglamour -d instaglamour"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Separate database server for automated tests; data is thrown away freely.
+  db-test:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: instaglamour
+      POSTGRES_PASSWORD: instaglamour
+      POSTGRES_DB: instaglamour_test
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - db-test-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U instaglamour -d instaglamour_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  db-data:
+  db-test-data:
