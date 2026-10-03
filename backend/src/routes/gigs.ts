@@ -300,7 +300,7 @@ export function gigRoutes(app: FastifyInstance, deps: AppDeps): void {
       gigId: gig.id,
       startDate,
       endDate,
-      personIds: [...gig.costLines].sort(compareCostLines).map((l) => l.personId),
+      lines: [...gig.costLines].sort(compareCostLines),
     });
     return { gig: await detail(gig.id), warnings };
   });

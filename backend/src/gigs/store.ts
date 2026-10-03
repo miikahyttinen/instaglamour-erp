@@ -1,6 +1,7 @@
 /** Gig data access shared by the gig, cost line and attachment routes (and the year page). */
 import type { Db } from '../db.js';
 import { dateFromIso, isoFromDate } from '../domain/dates.js';
+import { isMusicianRole, MUSICIAN_ROLES } from '../domain/enums.js';
 import { yearGigSummary, type YearGigSummary } from '../domain/gigEconomics.js';
 import type { GigEventType, Prisma } from '../generated/prisma/client.js';
 import { AppError, notFound } from '../http/errors.js';
@@ -70,20 +71,32 @@ export interface Warning {
 }
 
 /**
- * BR-022: for each person, other non-cancelled, non-deleted gigs whose date range overlaps
- * `[startDate, endDate ?? startDate]` and where that person has a cost line.
+ * BR-022: double booking applies to performers only. For each person on one of the given
+ * musician-role lines, other non-cancelled, non-deleted gigs whose date range overlaps
+ * `[startDate, endDate ?? startDate]` and where that person has a musician-role line.
+ * Internal roles and expenses never trigger or count.
  */
 export async function doubleBookingWarnings(
   db: Tx,
-  input: { gigId: string; startDate: Date; endDate: Date | null; personIds: readonly (string | null)[] },
+  input: {
+    gigId: string;
+    startDate: Date;
+    endDate: Date | null;
+    lines: readonly { type: string; personId: string | null }[];
+  },
 ): Promise<Warning[]> {
-  const personIds = [...new Set(input.personIds.filter((p): p is string => p !== null))];
+  const personIds = [
+    ...new Set(
+      input.lines.filter((l) => isMusicianRole(l.type)).map((l) => l.personId).filter((p): p is string => p !== null),
+    ),
+  ];
   if (personIds.length === 0) return [];
   const start = input.startDate;
   const end = input.endDate ?? input.startDate;
   const lines = await db.costLine.findMany({
     where: {
       personId: { in: personIds },
+      type: { in: [...MUSICIAN_ROLES] },
       gigId: { not: input.gigId },
       gig: {
         status: 'SOLD',

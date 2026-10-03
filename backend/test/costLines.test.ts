@@ -157,10 +157,50 @@ describe('double booking (BR-022)', () => {
     await addLine(gig.id, { type: 'VOC', personId: p1.id, budgetedCents: 10000 });
     await addLine(gig.id, { type: 'BASS', personId: p2.id, budgetedCents: 10000 });
     const res = (await call(s, 'POST', `/api/gigs/${gig.id}/move`, { startDate: '2026-06-01' })).json();
-    // Sellers/producers (Partner A/B) are also on both gigs via Sales/Production lines.
-    expect(res.warnings.map((w: { personId: string }) => w.personId).sort()).toEqual(
-      [s.world.a.personId, s.world.b.personId, p1.id, p2.id].sort(),
-    );
+    // Sellers/producers (Partner A/B) are also on both gigs via Sales/Production lines, but
+    // internal lines never count: only the performers are warned about.
+    expect(res.warnings.map((w: { personId: string }) => w.personId).sort()).toEqual([p1.id, p2.id].sort());
+  });
+
+  it('internal roles and expenses never trigger a warning (add and assign)', async () => {
+    const { p1 } = s.world;
+    const other = await createGig(s, { startDate: '2026-08-01' });
+    await addLine(other.id, { type: 'VOC', personId: p1.id, budgetedCents: 10000 });
+    const gig = await createGig(s, { startDate: '2026-08-01' });
+    for (const type of ['OFFICE', 'SALES', 'PRODUCTION', 'FUEL', 'ACCOMMODATION']) {
+      const add = await addLine(gig.id, { type, personId: p1.id, budgetedCents: 10000 });
+      expect(add.warnings, type).toEqual([]);
+    }
+    // Assigning the person on an existing internal line (default SALES line) also stays silent.
+    const sales = lineOf(gig, 'SALES');
+    expect((await call(s, 'PATCH', `/api/cost-lines/${sales.id}`, { personId: p1.id })).json().warnings).toEqual([]);
+  });
+
+  it('SALES on one gig and VOC on another the same day is fine; VOC on both warns', async () => {
+    const { p1 } = s.world;
+    const salesGig = await createGig(s, { startDate: '2026-09-01', lineupTemplateId: null, lineupName: 'Lineup Sales' });
+    await addLine(salesGig.id, { type: 'SALES', personId: p1.id, budgetedCents: 10000 });
+    const gig = await createGig(s, { startDate: '2026-09-01' });
+    expect((await addLine(gig.id, { type: 'VOC', personId: p1.id, budgetedCents: 10000 })).warnings).toEqual([]);
+
+    const vocGig = await createGig(s, { startDate: '2026-09-01', lineupTemplateId: null, lineupName: 'Lineup Voc' });
+    await addLine(vocGig.id, { type: 'VOC', personId: p1.id, budgetedCents: 10000 });
+    const add = await addLine(gig.id, { type: 'BACKING_VOC', personId: p1.id, budgetedCents: 10000 });
+    expect(add.warnings).toEqual([
+      { code: 'PERSON_DOUBLE_BOOKED', personId: p1.id, otherGigId: vocGig.id, otherGigStartDate: '2026-09-01', otherGigLineupName: 'Lineup Voc' },
+    ]);
+  });
+
+  it('move warns only for musician-role people on the moved gig', async () => {
+    const { p1, p2 } = s.world;
+    const other = await createGig(s, { startDate: '2026-10-01' });
+    await addLine(other.id, { type: 'VOC', personId: p1.id, budgetedCents: 10000 });
+    await addLine(other.id, { type: 'MIX', personId: p2.id, budgetedCents: 10000 });
+    const gig = await createGig(s, { startDate: '2026-11-01' });
+    await addLine(gig.id, { type: 'PRODUCTION', personId: p1.id, budgetedCents: 10000 }); // internal: ignored
+    await addLine(gig.id, { type: 'DJ', personId: p2.id, budgetedCents: 10000 });
+    const res = (await call(s, 'POST', `/api/gigs/${gig.id}/move`, { startDate: '2026-10-01' })).json();
+    expect(res.warnings.map((w: { personId: string }) => w.personId)).toEqual([p2.id]);
   });
 });
 
