@@ -17,6 +17,8 @@
 | Concurrency | Last save wins. |
 | Deleted gigs | Excluded from every list, sum and overlap check unless stated. |
 | Today | "Today" (played, overdue, upcoming, default year) is the date in Europe/Helsinki. |
+| No-op requests | A request that changes nothing returns 200 and writes no history event. |
+| Check order | Validation (400) → existence (404) → state (409). |
 
 ### Error format
 ```json
@@ -210,7 +212,7 @@ Session lifetime: 30 days sliding.
 
 **`GET /api/gigs` query:** `year` (required), `status` (`SOLD` default \| `CANCELLED` \| `ALL`),
 `when` (`all` default \| `upcoming` \| `past`), `sellerId`, `producerId`, `notFullyStaffed=true`,
-`q` (case-insensitive substring of venue, lineupName, notes), `deleted=true` (only deleted gigs).
+`q` (case-insensitive substring of venue, lineupName, notes), `deleted=true` (only deleted gigs; the status filter still applies, so the deleted view sends `status=ALL`).
 Sorted by `startDate` ascending.
 `yearSummary` = the `gigs` object of `GET /api/years/{year}` — it ignores all filters except `year`.
 
@@ -232,7 +234,7 @@ Sorted by `startDate` ascending.
 **GigUpdate** (all optional): `lineupName`, `venue`, `technicalSetup`, `sellerId`, `producerId`,
 `priceCents`, `additionalSalesCents`, `additionalSalesDescription`, `notes`.
 `startDate` / `endDate` → 400 `NOT_EDITABLE` (use move). Allowed on CANCELLED gigs.
-Seller/producer change applies BR-027; moved line ids are returned and logged. Logs one `UPDATED` with all changed fields.
+Seller/producer change applies BR-027; moved line ids are returned and logged in `UPDATED.details.movedCostLineIds` (no separate cost events). Logs one `UPDATED` with all changed fields.
 
 ## Cost lines (UC-005)
 
@@ -241,9 +243,9 @@ All mutations return 200 `{ "gig": GigDetail, "warnings": [Warning] }` (204 neve
 | Method & path | Request | Notes |
 |---|---|---|
 | `POST /api/gigs/{id}/cost-lines` | `{ "type", "personId"?, "description"?, "budgetedCents" }` | Musician roles get `joinsLoadIn: true`. `OTHER`/`OTHER_ROLE` need `description`. Warns on double booking. `COST_ADDED` |
-| `PATCH /api/cost-lines/{id}` | `{ "personId"?: id\|null, "description"?, "budgetedCents"?, "joinsLoadIn"? }` | `type` not editable. If both `budgetedCents` and `joinsLoadIn` are sent, budget is applied first, then the switch (BR-026). `joinsLoadIn` on non-musician lines → 400 `INVALID_VALUE`. Warns on double booking when `personId` changes. `COST_UPDATED` |
+| `PATCH /api/cost-lines/{id}` | `{ "personId"?: id\|null, "description"?, "budgetedCents"?, "joinsLoadIn"? }` | `type` not editable (400 `type: NOT_EDITABLE`). If both `budgetedCents` and `joinsLoadIn` are sent, budget is applied first, then the switch (BR-026). `joinsLoadIn` on non-musician lines → 400 `INVALID_VALUE`. Warns on double booking when `personId` changes. `COST_UPDATED` |
 | `DELETE /api/cost-lines/{id}` | — | Returns 200 with the updated gig. `COST_REMOVED` |
-| `POST /api/cost-lines/{id}/pay` | `{ "actualCents"? }` | Default = `budgetedCents`. Sets `paidAt` = now, `paidBy` = me. Already paid → updates amount. FUEL → 409. `COST_PAID` |
+| `POST /api/cost-lines/{id}/pay` | `{ "actualCents"? }` | Default = `budgetedCents`. Sets `paidAt` = now, `paidBy` = me. Already paid → updates the amount only (original `paidAt`/`paidBy` kept; a new `COST_PAID` event records who changed it). FUEL → 409. `COST_PAID` |
 | `POST /api/cost-lines/{id}/unpay` | — | Clears actual/paidAt/paidBy. `COST_UNPAID` |
 
 **Load-in switch (BR-026):** `joinsLoadIn: false` → `budgetedCents = max(budgetedCents − settings.loadInDeductionCents, 0)`,
@@ -253,7 +255,7 @@ All mutations return 200 `{ "gig": GigDetail, "warnings": [Warning] }` (204 neve
 
 | Method & path | Request | Response |
 |---|---|---|
-| `POST /api/gigs/{id}/attachments` | multipart, field `file` | 201 `Attachment`; 413 / 415. `ATTACHMENT_ADDED` |
+| `POST /api/gigs/{id}/attachments` | multipart, field `file` | 201 `Attachment`; 413 / 415; missing file → 400 `file: REQUIRED`. Type is detected from file content. `ATTACHMENT_ADDED` |
 | `GET /api/attachments/{id}/download` | — | 200 file with `Content-Type` and `Content-Disposition` (inline for PDF/images, attachment for DOCX) |
 | `DELETE /api/attachments/{id}` | — | 204 soft delete. `ATTACHMENT_REMOVED` |
 
@@ -301,4 +303,5 @@ Duplicate = case-insensitive exact name match with another person.
 
 ## Change log
 - 2026-10-03 – First version (PM)
+- 2026-10-03 – Clarifications after TASK-002: no-op requests, check order, deleted view, re-pay, NOT_EDITABLE type, upload codes (PM)
 - 2026-10-03 – Clarifications after wave 1, no behaviour changes: Helsinki "today", FRONTEND_URL redirects, dev-login and selectedYear validation, nullable lineupTemplateId, template roles, active budget categories, cost line order (PM)

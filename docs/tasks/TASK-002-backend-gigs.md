@@ -1,7 +1,7 @@
 # TASK-002: Backend gigs — gigs, cost lines, history, attachments
 
 - **owner:** backend
-- **status:** todo
+- **status:** done
 - **spec:** UC-002, UC-003, UC-004, UC-005, UC-007, UC-008, UC-009, UC-010, UC-012, UC-013, UC-025; business-rules.md
 - **depends on:** TASK-001
 
