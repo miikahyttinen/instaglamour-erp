@@ -21,6 +21,11 @@
   list-style: none;
   padding: 0;
 }
+/* The shared .stats grid goes to 6 columns on wide screens (full-width gig list); here the
+   tiles sit in a half-width column, so fit as many as the column allows (2 on a phone). */
+.stats.year-tiles {
+  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+}
 .year-tile-wide {
   grid-column: 1 / -1;
 }
