@@ -148,9 +148,10 @@ function CostLineItem({ line, people, readOnly, onResult }: LineProps) {
               role="switch"
               checked={line.joinsLoadIn === true}
               disabled={readOnly || mutation.isPending}
-              onChange={(e) =>
-                run(() => costLinesApi.update(line.id, { joinsLoadIn: e.target.checked }))
-              }
+              onChange={(e) => {
+                const joinsLoadIn = e.target.checked;
+                run(() => costLinesApi.update(line.id, { joinsLoadIn }));
+              }}
             />
             <span>{t('costs.loadIn')}</span>
           </label>
