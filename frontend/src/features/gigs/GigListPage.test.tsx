@@ -1,9 +1,11 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { formatMoney } from '../../lib/format';
+import { DESKTOP_QUERY } from '../../lib/useMediaQuery';
 import { db } from '../../mocks/data';
 import { logEvent } from '../../mocks/gigStore';
 import { addMockGig, partnerA, partnerB, staffMockGig, TEST_YEAR } from '../../test/gigFixtures';
+import { installMatchMedia } from '../../test/matchMedia';
 import { renderApp, signInMock } from '../../test/renderApp';
 
 const fi = (cents: number) => formatMoney(cents, 'fi').replace(/\s/g, ' ');
@@ -135,6 +137,30 @@ describe('gig list (UC-003)', () => {
     renderApp('/gigs');
     expect(await screen.findByRole('heading', { name: `Gigs ${TEST_YEAR}` })).toBeInTheDocument();
     expect(await screen.findByText('Sold gigs sum')).toBeInTheDocument();
-    expect(screen.getByText('Not fully staffed', { selector: '.badge' })).toBeInTheDocument();
+    expect(screen.getByText('Not fully staffed', { selector: '.tag' })).toBeInTheDocument();
+  });
+
+  it('shows a table with economics columns on desktop', async () => {
+    installMatchMedia({ [DESKTOP_QUERY]: true });
+    const gig = addMockGig({ venue: 'Venue X' });
+    gig.status = 'CANCELLED';
+    renderApp('/gigs?cancelled=1');
+    const table = await screen.findByRole('table', { name: 'Keikkalista' });
+    const headers = within(table).getAllByRole('columnheader').map((th) => th.textContent);
+    expect(headers).toEqual([
+      'Päivä', 'Keikka', 'Myyjä / tuottaja', 'Kokonaishinta', 'Kulut, budjetti', 'Kulut, toteuma', 'Kate-%',
+    ]);
+    const [row] = await waitFor(() => {
+      const bodyRows = within(table).getAllByRole('row').slice(1);
+      expect(bodyRows).toHaveLength(1);
+      return bodyRows;
+    });
+    expect(row).toHaveTextContent('Template A · Venue X');
+    expect(within(row!).getByText('Peruttu')).toHaveClass('tag-danger');
+    expect(within(row!).getByRole('link', { name: 'Template A · Venue X' })).toHaveAttribute(
+      'href',
+      `/gigs/${gig.id}`,
+    );
+    expect(screen.queryByRole('button', { name: 'Näytä talous' })).not.toBeInTheDocument();
   });
 });
