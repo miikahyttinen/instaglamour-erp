@@ -1,7 +1,7 @@
 # TASK-114: Restyle people
 
 - **owner:** ui
-- **status:** todo
+- **status:** done
 - **spec:** docs/design.md, NFR-7
 - **depends on:** TASK-110
 
