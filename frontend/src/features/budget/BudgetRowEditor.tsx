@@ -1,12 +1,15 @@
 import { useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { BudgetRow } from '../../api/types';
+import { Button } from '../../components/Button';
 import { MoneyInput } from '../../components/fields';
+import { StatusTag } from '../../components/StatusTag';
 import { apiErrorMessage, apiFieldErrors } from '../../i18n/labels';
 import { useLang } from '../../i18n/useLang';
 import { centsToInput, formatMoney } from '../../lib/format';
 import { parseMoneyField } from '../../lib/moneyField';
 import { AMOUNT_FIELDS, BUDGET_FIELDS, FIELD_LABEL_KEYS, useSaveBudgetRow, type AmountField } from './queries';
+import { varianceClass } from './variance';
 
 type Draft = Record<AmountField, string>;
 
@@ -91,7 +94,7 @@ export function BudgetRowEditor({ row, categoryName, budgeted, onSaved }: Props)
     const errorId = `${id}-error`;
     const fieldLabel = t(FIELD_LABEL_KEYS[f]);
     return (
-      <td key={f} data-label={fieldLabel}>
+      <td key={f} className="num budget-input" data-label={fieldLabel}>
         <label htmlFor={id} className="visually-hidden">
           {t('budget.inputLabel', { field: fieldLabel, category: categoryName })}
         </label>
@@ -116,35 +119,36 @@ export function BudgetRowEditor({ row, categoryName, budgeted, onSaved }: Props)
     <tr className={`budget-row${dirty ? ' budget-row-dirty' : ''}`}>
       <th scope="row" className="budget-category">
         <span>{categoryName}</span>
-        {!budgeted && <span className="badge">{t('budget.actualsOnly')}</span>}
+        {!budgeted && <StatusTag tone="muted">{t('budget.actualsOnly')}</StatusTag>}
       </th>
       {AMOUNT_FIELDS.map(moneyCell)}
-      <td className="num budget-variance" data-label={t('budget.varianceExpense')}>
+      <td
+        className={`num budget-variance ${varianceClass('expense', varianceExpense)}`}
+        data-label={t('budget.varianceExpense')}
+      >
         {formatMoney(varianceExpense, lang)}
       </td>
-      <td className="num budget-variance" data-label={t('budget.varianceIncome')}>
+      <td
+        className={`num budget-variance ${varianceClass('income', varianceIncome)}`}
+        data-label={t('budget.varianceIncome')}
+      >
         {formatMoney(varianceIncome, lang)}
       </td>
       <td className="budget-actions">
         <div className="budget-actions-inner">
-          <button
-            type="button"
-            className="btn btn-primary btn-small"
+          <Button
+            variant={dirty ? 'primary' : 'ghost'}
+            size="sm"
             onClick={submit}
             disabled={!dirty || save.isPending}
             aria-label={t('budget.saveRow', { category: categoryName })}
           >
             {save.isPending ? t('budget.saving') : t('budget.save')}
-          </button>
+          </Button>
           {dirty && !save.isPending && (
-            <button
-              type="button"
-              className="btn btn-small"
-              onClick={cancel}
-              aria-label={t('budget.cancelRow', { category: categoryName })}
-            >
+            <Button size="sm" onClick={cancel} aria-label={t('budget.cancelRow', { category: categoryName })}>
               {t('budget.cancel')}
-            </button>
+            </Button>
           )}
         </div>
         {rowError && (

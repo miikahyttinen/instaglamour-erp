@@ -255,6 +255,29 @@ describe('budget page', () => {
     ]);
   });
 
+  it('shows the totals as stat tiles and colours variances by status', async () => {
+    seedYear();
+    open();
+    await screen.findByRole('rowheader', { name: /^Kategoria A/ });
+
+    const expenses = screen.getByRole('region', { name: 'Kulut' });
+    expect(expenses.textContent).toContain(fi(20000)); // actual
+    expect(expenses.textContent).toContain(fi(100000)); // budget
+    expect(screen.getByRole('region', { name: 'Tulot' }).textContent).toContain(fi(100000));
+    const varianceExpense = screen.getByRole('region', { name: 'Poikkeama, kulut' });
+    expect(varianceExpense.textContent).toContain(fi(80000));
+    expect(varianceExpense.querySelector('.budget-variance-ok')).not.toBeNull();
+    // Income below budget is worse than budget.
+    expect(screen.getByRole('region', { name: 'Poikkeama, tulot' }).querySelector('.budget-variance-danger')).not.toBeNull();
+
+    const [aExpense] = rowOf('Kategoria A').querySelectorAll('.budget-variance');
+    expect(aExpense).toHaveClass('budget-variance-ok');
+    const [cExpense, cIncome] = rowOf('Kategoria C').querySelectorAll('.budget-variance');
+    expect(cExpense).toHaveClass('budget-variance-danger'); // over budget
+    expect(cIncome).not.toHaveClass('budget-variance-ok', 'budget-variance-danger'); // zero
+    expect(within(rowOf('Kategoria C')).getByText('Vain toteuma')).toHaveClass('tag', 'tag-muted');
+  });
+
   it('shows a load error with retry', async () => {
     server.use(http.get('/api/budget', () => errorResponse(500, 'VALIDATION_ERROR', 'x')));
     open();

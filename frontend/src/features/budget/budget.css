@@ -1,161 +1,163 @@
-/* Budget page (UC-020). Phone: every category is a card with labelled lines.
-   Desktop (≥ 900 px): a normal table. */
+/* Budget page (UC-020). Built on the shared `.table-wrap > table.data-table` look.
+   Below 900 px every category is a card of label/value lines (the grid has eight columns with
+   inputs, too wide for a tablet table); from 900 px a normal table. Tokens only. */
 
-.budget-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 0.75rem;
+.budget-page .budget-hint {
+  margin: 0 0 var(--space-4);
+}
+.budget-page .budget-stats {
+  margin-bottom: var(--space-5);
 }
 
-/* ---------- Phone: rows become cards ---------- */
+/* Variance colour: ok = on/better than budget, danger = worse (see variance.ts). */
+.budget-variance-ok {
+  color: var(--ok-fg);
+}
+.budget-variance-danger {
+  color: var(--danger-fg);
+}
 
-.budget-table thead {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
+.budget-page .budget-category {
+  font-weight: var(--fw-bold);
 }
-.budget-table tbody,
-.budget-table tfoot,
-.budget-table tr,
-.budget-table th,
-.budget-table td {
-  display: block;
-}
-.budget-row {
-  margin: 0 0 0.75rem;
-  padding: 0.75rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--surface);
-}
-.budget-row-dirty {
-  border-color: var(--primary);
-}
-.budget-totals {
-  background: var(--bg);
-  font-weight: 700;
-}
-.budget-category {
-  display: flex !important;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem;
-  margin: 0 0 0.25rem;
-  font-size: 1.05rem;
-  text-align: left;
-}
-.budget-category .badge {
-  font-size: 0.75rem;
-}
-.budget-table td[data-label] {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 11rem);
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.2rem 0;
+.budget-page .budget-table .field-error {
   text-align: right;
-}
-.budget-table td[data-label]::before {
-  content: attr(data-label);
-  color: var(--muted);
-  font-size: 0.9rem;
-  font-weight: 400;
-  text-align: left;
-}
-.budget-table td[data-label] .field-error {
-  grid-column: 1 / -1;
-  margin: 0;
-}
-.budget-table .budget-na {
-  display: none;
-}
-.budget-variance {
-  font-variant-numeric: tabular-nums;
-}
-.budget-actions-inner {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
-}
-.budget-actions .field-error {
-  text-align: right;
+  white-space: normal;
 }
 
-/* ---------- Desktop: table ---------- */
+/* ---------- Phone + tablet (< 900 px): rows become cards ---------- */
 
-@media (min-width: 900px) {
-  .budget-table {
-    display: table;
-  }
-  .budget-table thead {
-    position: static;
-    width: auto;
-    height: auto;
-    overflow: visible;
-    clip: auto;
-    white-space: normal;
-    display: table-header-group;
-  }
-  .budget-table tbody {
-    display: table-row-group;
-  }
-  .budget-table tfoot {
-    display: table-footer-group;
-  }
-  .budget-table tr,
-  .budget-row {
-    display: table-row;
-    margin: 0;
-    padding: 0;
+@media (max-width: 899px) {
+  .budget-page .budget-table-wrap {
+    background: transparent;
     border: 0;
-    border-radius: 0;
+    overflow: visible;
   }
-  .budget-table th,
-  .budget-table td,
-  .budget-table td[data-label],
-  .budget-table .budget-na {
-    display: table-cell;
-    padding: 0.4rem 0.35rem;
-    border-bottom: 1px solid var(--border);
-    vertical-align: top;
-  }
-  .budget-table thead th {
-    font-size: 0.85rem;
-    color: var(--muted);
-    vertical-align: bottom;
-  }
-  .budget-table td[data-label]::before {
-    content: none;
-  }
-  .budget-category {
-    display: table-cell !important;
-    font-size: 1rem;
-    min-width: 9rem;
-  }
-  .budget-category .badge {
-    margin-left: 0.4rem;
-  }
-  .budget-table .money-input input {
-    min-width: 7rem;
-  }
-  .budget-table td.num {
-    vertical-align: middle;
+  .budget-page .budget-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
     white-space: nowrap;
   }
-  .budget-row-dirty > * {
-    background: var(--info-bg);
+  .budget-page .budget-table,
+  .budget-page .budget-table tbody,
+  .budget-page .budget-table tfoot,
+  .budget-page .budget-table tr,
+  .budget-page .budget-table th,
+  .budget-page .budget-table td {
+    display: block;
   }
-  .budget-totals > * {
-    border-top: 2px solid var(--text);
+  .budget-page .budget-table .budget-row {
+    margin: 0 0 var(--space-2);
+    padding: var(--space-2) var(--space-4) var(--space-3);
+    background: var(--surface);
+    border: var(--hairline) solid var(--border);
+    border-radius: var(--radius);
   }
-  .budget-actions-inner {
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    margin-top: 0;
+  .budget-page .budget-table .budget-row-dirty {
+    border-color: var(--accent);
+  }
+  .budget-page .budget-table .budget-totals {
+    border-color: var(--border-strong);
+  }
+  .budget-page .budget-table tbody tr:hover td {
+    background: transparent;
+  }
+  .budget-page .budget-table th,
+  .budget-page .budget-table td,
+  .budget-page .budget-table tfoot th,
+  .budget-page .budget-table tfoot td {
+    height: auto;
+    padding: 0;
+    border: 0;
+  }
+  .budget-page .budget-table .budget-category {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) 0;
+    font-size: var(--fs-lg);
+    text-align: left;
+  }
+  .budget-page .budget-table td[data-label] {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 11rem);
+    align-items: center;
+    gap: var(--space-1) var(--space-3);
+    padding: var(--space-1) 0;
+    text-align: right;
+    white-space: normal;
+  }
+  .budget-page .budget-table td[data-label]::before {
+    content: attr(data-label);
+    text-align: left;
+    font-family: var(--font-mono);
+    font-size: var(--fs-meta);
+    font-weight: var(--fw-regular);
+    letter-spacing: var(--ls-label);
+    text-transform: uppercase;
+    color: var(--label);
+  }
+  .budget-page .budget-table td[data-label] .field-error {
+    grid-column: 1 / -1;
+    margin: 0;
+  }
+  .budget-page .budget-table .budget-na {
+    display: none;
+  }
+  .budget-page .budget-actions-inner {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: var(--space-2);
+    margin-top: var(--space-3);
+  }
+}
+
+/* ---------- Desktop (≥ 900 px): table ---------- */
+
+@media (min-width: 900px) {
+  .budget-page .budget-table th,
+  .budget-page .budget-table td {
+    padding: var(--space-2) var(--space-3);
+  }
+  .budget-page .budget-table thead th {
+    padding-top: var(--space-3);
+    padding-bottom: var(--space-3);
+    white-space: normal;
+    vertical-align: bottom;
+  }
+  .budget-page .budget-table .budget-category {
+    min-width: 9rem;
+  }
+  /* Name on one line, the actuals-only tag below it. */
+  .budget-page .budget-category > span:first-child {
+    display: block;
+  }
+  .budget-page .budget-category .tag {
+    margin-top: var(--space-1);
+  }
+  .budget-page .budget-table tbody tr:last-child th {
+    border-bottom: 0;
+  }
+  .budget-page .budget-table .money-input {
+    gap: var(--space-1);
+  }
+  .budget-page .budget-table .money-input input {
+    min-width: 6.5rem;
+  }
+  .budget-page .budget-row-dirty > * {
+    background: var(--surface-2);
+  }
+  /* Accent bar marks a row with unsaved edits. */
+  .budget-page .budget-row-dirty > .budget-category {
+    box-shadow: inset 2px 0 0 var(--accent);
+  }
+  .budget-page .budget-actions-inner {
+    display: flex;
+    gap: var(--space-2);
   }
 }
