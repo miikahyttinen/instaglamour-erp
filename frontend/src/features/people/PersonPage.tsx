@@ -10,9 +10,10 @@ import { PageHead } from '../../components/PageHead';
 import { SectionLabel } from '../../components/SectionLabel';
 import { StatGrid, StatTile } from '../../components/StatTile';
 import { StatusTag } from '../../components/StatusTag';
-import { costTypeLabel, gigStatusLabel } from '../../i18n/labels';
+import { costTypeLabel } from '../../i18n/labels';
 import { useLang } from '../../i18n/useLang';
 import { formatDate, formatMoney } from '../../lib/format';
+import { GigStatusTag } from '../gigs/GigStatusTag';
 import { NoticeBox, type Notice } from './Notices';
 import { PersonControls } from './PersonControls';
 import { usePeopleList, usePersonCostLines } from './queries';
@@ -127,7 +128,7 @@ function CostLines({ personId }: { personId: Id }) {
           {line.gigStatus === 'CANCELLED' && (
             <>
               {' '}
-              <StatusTag tone="danger">{gigStatusLabel(t, 'CANCELLED')}</StatusTag>
+              <GigStatusTag status="CANCELLED" />
             </>
           )}
         </span>

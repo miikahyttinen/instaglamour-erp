@@ -139,10 +139,6 @@ production builds) and its texts are English on purpose.
 | Spacing | `--space-1` … `--space-7` = 4/8/12/16/24/32/48 px, `--page-pad` 16→48, `--content-max` |
 | Shape / size | `--radius` (2 px, the max), `--hairline` (1 px), `--tap` 44, `--control-h` 44→36, `--icon` 16, `--icon-stroke`, `--header-h`, `--bottom-nav-h` |
 
-Deprecated aliases (only for not-yet-restyled feature CSS; replace when you touch it):
-`--muted` → `--text-muted`, `--primary` → `--accent`, `--primary-text` → `--accent-contrast`,
-`--danger` → `--danger-fg`, `--header-bg` → `--bg`, `--header-text` → `--text`.
-`--info-bg` and `--danger-bg` keep their names but are now the new status tints.
 
 ### Components (`src/components/`)
 
@@ -157,7 +153,7 @@ Deprecated aliases (only for not-yet-restyled feature CSS; replace when you touc
 | `StatTile` | `label`, `value`, `caption?`, `secondaryValue?`, `secondaryCaption?`, `bars?: MiniBar[]`, `barsLabel?`, `barsCaption?` | A `region` named by `label`. Wrap tiles in `StatGrid`. |
 | `StatGrid` | `children`, `className?` | 1 col → 2 cols (600) → auto-fill 220 px (900). |
 | `MiniBars` | `bars: { label, value, current?, valueText? }[]`, `label` (accessible name), `showLabels?` (true), `height?` (48) | Bar labels must be unique. Screen readers get a "label: valueText" list. |
-| `StatusTag` | `tone?: 'info' \| 'ok' \| 'warn' \| 'danger' \| 'muted'` (muted), `children`, `title?` | Replaces `.badge`. |
+| `StatusTag` | `tone?: 'info' \| 'ok' \| 'warn' \| 'danger' \| 'muted'` (muted), `children`, `title?` | Gig statuses: use `GigStatusTag` (gigs feature). |
 | `Notice` | `tone?: 'info' \| 'ok' \| 'warn' \| 'danger'` (info), `role?: 'alert' \| 'status' \| 'note'`, `children` | Same as `.notice` / `.notice-*`. |
 | `DataTable<T>` | `columns`, `rows`, `rowKey`, `caption` (required, visually hidden unless `showCaption`), `empty?`, `cardsOnPhone?` (true), `rowClassName?`, `footer?` (`<tr>`s), `className?` | Column: `key`, `label`, `cell(row)`, `header?`, `numeric?`, `primary?` (card title on phones), `hideOnPhone?`, `sort?: 'asc' \| 'desc'`, `onSort?` (makes the header a sort button; caller owns the sort state), `className?`. |
 | `Dialog` | `title`, `onClose`, `children` | Bottom sheet on phones, centred from 600 px. Put buttons in `<div className="form-actions">`. |
@@ -174,14 +170,14 @@ Header controls: `ThemeToggle` / `ThemeButtons`, `LanguageToggle` / `LanguageBut
 |---|---|
 | `.label` / `.meta` / `.mono` | Mono uppercase label (11 px) / mono caption (10 px) / mono text |
 | `.muted`, `.small`, `.num`, `.visually-hidden` | Secondary text, 13 px text, right-aligned tabular number, screen-reader only |
-| `.btn` + `.btn-ghost/-primary/-danger`, `.btn-sm`, `.btn-block`, `.icon-btn` | What `Button`/`IconButton` render. Old `.btn-small`, `.btn-danger-solid` still work (prefer `variant="danger"`). |
+| `.btn` + `.btn-ghost/-primary/-danger`, `.btn-sm`, `.btn-block`, `.icon-btn` | What `Button`/`IconButton` render. |
 | `.segmented` | Toggle group of `<button aria-pressed>` |
-| `.tag .tag-<tone>` | What `StatusTag` renders. Old `.badge`, `.badge-sold/-played/-cancelled/-warn` map to the tones. |
+| `.tag .tag-<tone>` | What `StatusTag` renders. For gig statuses use `GigStatusTag` / `GigDeletedTag` (`src/features/gigs/GigStatusTag.tsx`; tones in `gigStatusTone.ts`). |
 | `.notice .notice-<ok\|warn\|error\|danger>` | Message box |
 | `.card`, `.stat-grid`, `.stat-tile`, `.section-label`, `.page-head`, `.divider` | As the components |
 | `.table-wrap > table.data-table[.data-table-cards]` | Table look; for card mode give each `td` a `data-label`, `.cell-primary` for the card title, `.hide-phone` |
 | `.form-row`, `.form-actions`, `.check-grid`, `label.check`, `.field-error`, `.field-hint` | Forms |
-| `.stats > .stat > dt + dd` | Legacy stat list, styled like small stat tiles |
+| `.back-link`, `.empty`, `.filters` | Mono back link above a title, empty-state line, filter bar (segmented + controls). Used by People / Tasks; new screens should prefer their own scoped class. |
 
 ### Theme
 

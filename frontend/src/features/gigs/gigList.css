@@ -145,6 +145,9 @@
   border-radius: var(--radius);
   background: var(--surface);
 }
+.gig-list-page .gig-card.status-cancelled {
+  opacity: 0.75;
+}
 .gig-list-page .gig-card .gig-link {
   font-size: var(--fs-lg);
 }

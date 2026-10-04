@@ -14,29 +14,18 @@ import { Notice } from '../../components/Notice';
 import { PageHead } from '../../components/PageHead';
 import { SectionLabel } from '../../components/SectionLabel';
 import { StatGrid, StatTile } from '../../components/StatTile';
-import { StatusTag, type StatusTone } from '../../components/StatusTag';
-import { apiErrorMessage, gigDisplayStatus, gigStatusLabel } from '../../i18n/labels';
+import { StatusTag } from '../../components/StatusTag';
+import { apiErrorMessage, gigDisplayStatus } from '../../i18n/labels';
 import { useLang } from '../../i18n/useLang';
 import { formatDate, formatDateRange, formatMoney, formatPercent, todayIso } from '../../lib/format';
 import { DESKTOP_QUERY, useMediaQuery } from '../../lib/useMediaQuery';
 import { useReference } from '../../reference/useReference';
+import { GigStatusTag } from './GigStatusTag';
 import { useApplyGig, useGigList } from './queries';
 import './gigList.css';
 
 type When = NonNullable<GigListQuery['when']>;
 const WHENS: When[] = ['all', 'upcoming', 'past'];
-
-/** Status tag tones (docs/design.md): Sold/Played = info, Cancelled = danger. */
-const STATUS_TONE: Record<GigDisplayStatus, StatusTone> = {
-  SOLD: 'info',
-  PLAYED: 'info',
-  CANCELLED: 'danger',
-};
-
-function GigStatusTag({ status }: { status: GigDisplayStatus }) {
-  const { t } = useTranslation();
-  return <StatusTag tone={STATUS_TONE[status]}>{gigStatusLabel(t, status)}</StatusTag>;
-}
 
 function partnerName(partners: Partner[] | undefined, id: string): string {
   return partners?.find((p) => p.id === id)?.name ?? '–';
