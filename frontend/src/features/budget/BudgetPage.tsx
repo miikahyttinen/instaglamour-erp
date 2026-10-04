@@ -1,13 +1,20 @@
+import { Copy, RotateCw } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { BudgetCategory } from '../../api/types';
 import { useSelectedYear } from '../../auth/SignedInContext';
+import { Button } from '../../components/Button';
+import { Notice } from '../../components/Notice';
+import { PageHead } from '../../components/PageHead';
+import { SectionLabel } from '../../components/SectionLabel';
+import { StatGrid, StatTile } from '../../components/StatTile';
 import { apiErrorMessage, budgetCategoryName } from '../../i18n/labels';
 import { useLang } from '../../i18n/useLang';
 import { formatMoney } from '../../lib/format';
 import { useReference } from '../../reference/useReference';
 import { BudgetRowEditor } from './BudgetRowEditor';
 import { AMOUNT_FIELDS, FIELD_LABEL_KEYS, useBudget, useCopyBudget } from './queries';
+import { varianceClass } from './variance';
 import './budget.css';
 
 type Notice = { kind: 'success' | 'error'; text: string } | null;
@@ -34,38 +41,41 @@ export function BudgetPage() {
   };
 
   const head = (
-    <div className="page-head">
-      <h1>{t('pages.budget', { year })}</h1>
-      <button type="button" className="btn" onClick={onCopy} disabled={copy.isPending || !budget.data}>
-        {copy.isPending ? t('budget.copying') : t('budget.copy')}
-      </button>
-    </div>
+    <PageHead
+      title={t('pages.budget', { year })}
+      subtitle={t('budget.intro')}
+      actions={
+        <Button icon={Copy} onClick={onCopy} disabled={copy.isPending || !budget.data}>
+          {copy.isPending ? t('budget.copying') : t('budget.copy')}
+        </Button>
+      }
+    />
   );
 
   if (budget.isError || reference.isError) {
     return (
-      <section className="page">
+      <section className="page budget-page">
         {head}
-        <div className="notice notice-error" role="alert">
+        <Notice tone="danger" role="alert">
           <p>{t('app.loadFailed')}</p>
-          <button
-            type="button"
-            className="btn btn-small"
+          <Button
+            size="sm"
+            icon={RotateCw}
             onClick={() => {
               if (budget.isError) void budget.refetch();
               if (reference.isError) void reference.refetch();
             }}
           >
             {t('app.retry')}
-          </button>
-        </div>
+          </Button>
+        </Notice>
       </section>
     );
   }
 
   if (!budget.data || !reference.data) {
     return (
-      <section className="page">
+      <section className="page budget-page">
         {head}
         <p className="muted">{t('app.loading')}</p>
       </section>
@@ -79,79 +89,124 @@ export function BudgetPage() {
     (a, b) => (order.get(a.categoryId) ?? Infinity) - (order.get(b.categoryId) ?? Infinity),
   );
   const totals = budget.data.totals;
+  const money = (cents: number) => formatMoney(cents, lang);
 
   return (
     <section className="page budget-page">
       {head}
-      <p className="muted small">{t('budget.intro')}</p>
-      <p className="muted small">{t('budget.copyHint', { year: year - 1 })}</p>
+      <p className="meta budget-hint">{t('budget.copyHint', { year: year - 1 })}</p>
       {currentNotice && (
-        <div
-          className={`notice${currentNotice.kind === 'error' ? ' notice-error' : ''}`}
+        <Notice
+          tone={currentNotice.kind === 'error' ? 'danger' : 'ok'}
           role={currentNotice.kind === 'error' ? 'alert' : 'status'}
         >
           {currentNotice.text}
-        </div>
+        </Notice>
       )}
 
       {rows.length === 0 ? (
-        <p className="empty muted">{t('budget.empty')}</p>
+        <p className="table-empty">{t('budget.empty')}</p>
       ) : (
-        <table className="budget-table">
-          <thead>
-            <tr>
-              <th scope="col">{t('budget.category')}</th>
-              {AMOUNT_FIELDS.map((f) => (
-                <th key={f} scope="col" className="num">
-                  {t(FIELD_LABEL_KEYS[f])}
-                </th>
-              ))}
-              <th scope="col" className="num">
-                {t('budget.varianceExpense')}
-              </th>
-              <th scope="col" className="num">
-                {t('budget.varianceIncome')}
-              </th>
-              <th scope="col">
-                <span className="visually-hidden">{t('budget.actions')}</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => {
-              const category = byId.get(row.categoryId);
-              return (
-                <BudgetRowEditor
-                  // Year or language change discards unsaved edits (typed text is language-specific).
-                  key={`${year}:${row.categoryId}:${lang}`}
-                  row={row}
-                  categoryName={category ? budgetCategoryName(category, lang) : '–'}
-                  budgeted={category?.budgeted ?? true}
-                  onSaved={(name) => show({ kind: 'success', text: t('budget.saved', { category: name }) })}
-                />
-              );
-            })}
-          </tbody>
-          <tfoot>
-            <tr className="budget-row budget-totals">
-              <th scope="row" className="budget-category">
-                {t('budget.totals')}
-              </th>
-              {AMOUNT_FIELDS.map((f) => (
-                <td key={f} className="num" data-label={t(FIELD_LABEL_KEYS[f])}>
-                  {formatMoney(totals[f], lang)}
-                </td>
-              ))}
-              <td className="num" data-label={t('budget.varianceExpense')}>
-                {formatMoney(totals.varianceExpenseCents, lang)}
-              </td>
-              <td className="num" data-label={t('budget.varianceIncome')}>
-                {formatMoney(totals.varianceIncomeCents, lang)}
-              </td>
-              <td className="budget-na" />
-            </tr>
-          </tfoot>
-        </table>
+        <>
+          <StatGrid className="budget-stats">
+            <StatTile
+              label={t('budget.expenses')}
+              value={money(totals.actualExpenseCents)}
+              caption={t('budget.actual')}
+              secondaryValue={money(totals.budgetExpenseCents)}
+              secondaryCaption={t('budget.budgeted')}
+            />
+            <StatTile
+              label={t('budget.income')}
+              value={money(totals.actualIncomeCents)}
+              caption={t('budget.actual')}
+              secondaryValue={money(totals.budgetIncomeCents)}
+              secondaryCaption={t('budget.budgeted')}
+            />
+            <StatTile
+              label={t('budget.varianceExpense')}
+              value={
+                <span className={varianceClass('expense', totals.varianceExpenseCents)}>
+                  {money(totals.varianceExpenseCents)}
+                </span>
+              }
+            />
+            <StatTile
+              label={t('budget.varianceIncome')}
+              value={
+                <span className={varianceClass('income', totals.varianceIncomeCents)}>
+                  {money(totals.varianceIncomeCents)}
+                </span>
+              }
+            />
+          </StatGrid>
+
+          <SectionLabel>{t('budget.categories')}</SectionLabel>
+          <div className="table-wrap budget-table-wrap">
+            <table className="data-table budget-table">
+              <caption className="visually-hidden">{t('pages.budget', { year })}</caption>
+              <thead>
+                <tr>
+                  <th scope="col">{t('budget.category')}</th>
+                  {AMOUNT_FIELDS.map((f) => (
+                    <th key={f} scope="col" className="num">
+                      {t(FIELD_LABEL_KEYS[f])}
+                    </th>
+                  ))}
+                  <th scope="col" className="num">
+                    {t('budget.varianceExpense')}
+                  </th>
+                  <th scope="col" className="num">
+                    {t('budget.varianceIncome')}
+                  </th>
+                  <th scope="col">
+                    <span className="visually-hidden">{t('budget.actions')}</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row) => {
+                  const category = byId.get(row.categoryId);
+                  return (
+                    <BudgetRowEditor
+                      // Year or language change discards unsaved edits (typed text is language-specific).
+                      key={`${year}:${row.categoryId}:${lang}`}
+                      row={row}
+                      categoryName={category ? budgetCategoryName(category, lang) : '–'}
+                      budgeted={category?.budgeted ?? true}
+                      onSaved={(name) => show({ kind: 'success', text: t('budget.saved', { category: name }) })}
+                    />
+                  );
+                })}
+              </tbody>
+              <tfoot>
+                <tr className="budget-row budget-totals">
+                  <th scope="row" className="budget-category">
+                    {t('budget.totals')}
+                  </th>
+                  {AMOUNT_FIELDS.map((f) => (
+                    <td key={f} className="num" data-label={t(FIELD_LABEL_KEYS[f])}>
+                      {money(totals[f])}
+                    </td>
+                  ))}
+                  <td
+                    className={`num ${varianceClass('expense', totals.varianceExpenseCents)}`}
+                    data-label={t('budget.varianceExpense')}
+                  >
+                    {money(totals.varianceExpenseCents)}
+                  </td>
+                  <td
+                    className={`num ${varianceClass('income', totals.varianceIncomeCents)}`}
+                    data-label={t('budget.varianceIncome')}
+                  >
+                    {money(totals.varianceIncomeCents)}
+                  </td>
+                  <td className="budget-na" />
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </>
       )}
     </section>
   );

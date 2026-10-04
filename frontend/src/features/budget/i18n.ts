@@ -25,6 +25,11 @@ export const fi = {
   copyHint: 'Kopioi vuoden {{year}} budjettiluvut. Toteumat eivät muutu.',
   copied: 'Budjetti kopioitu vuodesta {{year}}.',
   empty: 'Budjettikategorioita ei ole.',
+  categories: 'Kategoriat',
+  expenses: 'Kulut',
+  income: 'Tulot',
+  actual: 'Toteuma',
+  budgeted: 'Budjetti',
 };
 
 export const en: typeof fi = {
@@ -51,4 +56,9 @@ export const en: typeof fi = {
   copyHint: 'Copies the budget numbers of {{year}}. Actuals are not changed.',
   copied: 'Budget copied from {{year}}.',
   empty: 'No budget categories.',
+  categories: 'Categories',
+  expenses: 'Expenses',
+  income: 'Income',
+  actual: 'Actual',
+  budgeted: 'Budget',
 };
