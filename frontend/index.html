@@ -3,8 +3,32 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#1f1b2e" />
+    <meta name="theme-color" content="#0a0a0a" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <title>Instaglamour ERP</title>
+    <script>
+      // Theme before first paint (no flash). Same rules as src/theme/theme.ts:
+      // stored choice ('ig-theme') wins, else the OS preference, else dark.
+      (function () {
+        var theme = null;
+        try {
+          theme = window.localStorage.getItem('ig-theme');
+        } catch (e) {
+          theme = null;
+        }
+        if (theme !== 'dark' && theme !== 'light') {
+          theme =
+            window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches
+              ? 'light'
+              : 'dark';
+        }
+        document.documentElement.setAttribute('data-theme', theme);
+        if (theme === 'light') {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#fafafa');
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

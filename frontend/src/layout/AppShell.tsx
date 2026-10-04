@@ -1,23 +1,33 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { LogOut } from 'lucide-react';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { authApi } from '../api/endpoints';
+import { IconButton } from '../components/Button';
+import { Logo } from '../components/Logo';
 import { useSignedInPartner } from '../auth/SignedInContext';
 import { meKey, useUpdateMe } from '../auth/useMe';
 import { apiErrorMessage } from '../i18n/labels';
+import { DESKTOP_QUERY, useMediaQuery } from '../lib/useMediaQuery';
 import { useReference } from '../reference/useReference';
+import { LanguageToggle } from './LanguageToggle';
 import { NAV_ITEMS } from './navItems';
+import { ThemeToggle } from './ThemeToggle';
 import { UserMenu } from './UserMenu';
 import { YearSelector } from './YearSelector';
 
-/** Header (brand, nav on desktop, selected year, menu) + page + bottom nav on phones. */
+/**
+ * Header: logo, nav (desktop), selected year, then language / theme / sign-out icon buttons on
+ * desktop or a menu on phones. Page in <main>. Bottom nav on phones.
+ */
 export function AppShell() {
   const { t } = useTranslation();
   const me = useSignedInPartner();
   const updateMe = useUpdateMe();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const isDesktop = useMediaQuery(DESKTOP_QUERY);
 
   // Load reference data once per session so every page has it cached.
   useReference();
@@ -43,7 +53,7 @@ export function AppShell() {
       <header className="header">
         <div className="header-inner">
           <NavLink to="/" className="brand">
-            {t('app.name')}
+            <Logo />
           </NavLink>
           <nav className="nav-desktop" aria-label={t('nav.label')}>
             {NAV_ITEMS.map((item) => (
@@ -57,12 +67,29 @@ export function AppShell() {
               year={me.selectedYear}
               onChange={(selectedYear) => updateMe.mutate({ selectedYear })}
             />
-            <UserMenu
-              me={me}
-              onLanguageChange={(language) => updateMe.mutate({ language })}
-              onSignOut={() => signOut.mutate()}
-              signingOut={signOut.isPending}
-            />
+            {isDesktop ? (
+              <div className="header-icons">
+                <LanguageToggle
+                  value={me.language}
+                  onChange={(language) => updateMe.mutate({ language })}
+                />
+                <ThemeToggle />
+                <IconButton
+                  icon={LogOut}
+                  label={t('header.signOut')}
+                  title={`${t('header.signOut')} · ${t('header.signedInAs', { name: me.name })}`}
+                  onClick={() => signOut.mutate()}
+                  disabled={signOut.isPending}
+                />
+              </div>
+            ) : (
+              <UserMenu
+                me={me}
+                onLanguageChange={(language) => updateMe.mutate({ language })}
+                onSignOut={() => signOut.mutate()}
+                signingOut={signOut.isPending}
+              />
+            )}
           </div>
         </div>
         {updateMe.isError && (
@@ -79,9 +106,7 @@ export function AppShell() {
       <nav className="nav-bottom" aria-label={t('nav.label')}>
         {NAV_ITEMS.map((item) => (
           <NavLink key={item.to} to={item.to} end={item.end} className="nav-bottom-link">
-            <span className="nav-icon" aria-hidden="true">
-              {item.icon}
-            </span>
+            <item.icon className="nav-icon" size={20} />
             <span>{t(item.labelKey)}</span>
           </NavLink>
         ))}

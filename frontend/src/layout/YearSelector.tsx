@@ -1,3 +1,4 @@
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { yearOptions } from '../lib/years';
 
@@ -17,9 +18,10 @@ export function YearSelector({ year, onChange, disabled }: Props) {
         className="icon-btn"
         aria-label={t('header.previousYear')}
         onClick={() => onChange(year - 1)}
+        title={t('header.previousYear')}
         disabled={disabled}
       >
-        ‹
+        <ChevronLeft />
       </button>
       <select
         className="year-select"
@@ -39,9 +41,10 @@ export function YearSelector({ year, onChange, disabled }: Props) {
         className="icon-btn"
         aria-label={t('header.nextYear')}
         onClick={() => onChange(year + 1)}
+        title={t('header.nextYear')}
         disabled={disabled}
       >
-        ›
+        <ChevronRight />
       </button>
     </div>
   );

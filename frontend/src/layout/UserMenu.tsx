@@ -1,8 +1,11 @@
+import { LogOut, Menu } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Language } from '../api/enums';
 import type { Partner } from '../api/types';
+import { Button } from '../components/Button';
 import { LanguageButtons } from './LanguageButtons';
+import { ThemeButtons } from './ThemeToggle';
 
 interface Props {
   me: Partner;
@@ -11,7 +14,7 @@ interface Props {
   signingOut: boolean;
 }
 
-/** Menu with the signed-in partner, language switch and sign-out (UC-001 A1, A2). */
+/** Phone header menu: signed-in partner, language, theme and sign-out (UC-001 A1, A2). */
 export function UserMenu({ me, onLanguageChange, onSignOut, signingOut }: Props) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
@@ -44,21 +47,18 @@ export function UserMenu({ me, onLanguageChange, onSignOut, signingOut }: Props)
         aria-controls={panelId}
         onClick={() => setOpen((v) => !v)}
       >
-        <span aria-hidden="true">☰</span>
+        <Menu />
       </button>
       {open && (
         <div className="menu-panel" id={panelId}>
-          <p className="muted small">{t('header.signedInAs', { name: me.name })}</p>
-          <p className="menu-label">{t('header.language')}</p>
+          <p className="meta">{t('header.signedInAs', { name: me.name })}</p>
+          <p className="label">{t('header.language')}</p>
           <LanguageButtons value={me.language} onChange={onLanguageChange} />
-          <button
-            type="button"
-            className="btn btn-block"
-            onClick={onSignOut}
-            disabled={signingOut}
-          >
+          <p className="label">{t('header.theme')}</p>
+          <ThemeButtons />
+          <Button block icon={LogOut} onClick={onSignOut} disabled={signingOut}>
             {t('header.signOut')}
-          </button>
+          </Button>
         </div>
       )}
     </div>

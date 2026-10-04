@@ -1,0 +1,127 @@
+import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
+import type { ReactNode } from 'react';
+
+export type SortDirection = 'asc' | 'desc';
+
+export interface DataTableColumn<T> {
+  /** Stable column id (React key). */
+  key: string;
+  /** Header text; also the label in the phone card layout. */
+  label: string;
+  /** Custom header content instead of `label` (the card label still uses `label`). */
+  header?: ReactNode;
+  /** Cell content for one row. */
+  cell: (row: T) => ReactNode;
+  /** Right-aligned, tabular figures (money, hours, counts). */
+  numeric?: boolean;
+  /** Phone cards: shown as the card title (bold, no label). Use on one column, e.g. the name. */
+  primary?: boolean;
+  /** Not shown in the phone card layout. */
+  hideOnPhone?: boolean;
+  /** Sortable column: current direction (undefined = sortable but not sorted). Needs `onSort`. */
+  sort?: SortDirection;
+  /** Makes the header a sort button. Called on click; the caller owns the sort state. */
+  onSort?: () => void;
+  /** Optional header/cell class (e.g. a width). */
+  className?: string;
+}
+
+export interface DataTableProps<T> {
+  columns: readonly DataTableColumn<T>[];
+  rows: readonly T[];
+  rowKey: (row: T) => string | number;
+  /** Table caption (accessible name). Visually hidden unless `showCaption`. */
+  caption: string;
+  showCaption?: boolean;
+  /** Shown instead of the table when there are no rows. */
+  empty?: ReactNode;
+  /** Phones (< 600 px): each row becomes a card of label/value pairs (default true). */
+  cardsOnPhone?: boolean;
+  rowClassName?: (row: T) => string | undefined;
+  /** Optional <tr> elements for a totals footer. Give each <td> a `data-label` for phones. */
+  footer?: ReactNode;
+  className?: string;
+}
+
+const ARIA_SORT = { asc: 'ascending', desc: 'descending' } as const;
+
+/**
+ * Hairline table on --surface: mono uppercase header on --surface-2 with sort icons, numbers
+ * right-aligned. The same look is available as plain CSS (`.table-wrap > table.data-table`) for
+ * hand-written tables.
+ */
+export function DataTable<T>({
+  columns,
+  rows,
+  rowKey,
+  caption,
+  showCaption,
+  empty,
+  cardsOnPhone = true,
+  rowClassName,
+  footer,
+  className,
+}: DataTableProps<T>) {
+  if (rows.length === 0 && empty !== undefined) return <div className="table-empty">{empty}</div>;
+
+  const cellClass = (col: DataTableColumn<T>) =>
+    [
+      col.numeric && 'num',
+      col.primary && 'cell-primary',
+      col.hideOnPhone && 'hide-phone',
+      col.className,
+    ]
+      .filter(Boolean)
+      .join(' ') || undefined;
+
+  return (
+    <div className="table-wrap">
+      <table
+        className={['data-table', cardsOnPhone && 'data-table-cards', className]
+          .filter(Boolean)
+          .join(' ')}
+      >
+        <caption className={showCaption ? 'table-caption' : 'visually-hidden'}>{caption}</caption>
+        <thead>
+          <tr>
+            {columns.map((col) => (
+              <th
+                key={col.key}
+                scope="col"
+                className={cellClass(col)}
+                aria-sort={col.onSort ? (col.sort ? ARIA_SORT[col.sort] : 'none') : undefined}
+              >
+                {col.onSort ? (
+                  <button type="button" className="th-sort" onClick={col.onSort}>
+                    {col.header ?? col.label}
+                    <SortIcon sort={col.sort} />
+                  </button>
+                ) : (
+                  (col.header ?? col.label)
+                )}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={rowKey(row)} className={rowClassName?.(row)}>
+              {columns.map((col) => (
+                <td key={col.key} className={cellClass(col)} data-label={col.label}>
+                  {col.cell(row)}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+        {footer && <tfoot>{footer}</tfoot>}
+      </table>
+    </div>
+  );
+}
+
+function SortIcon({ sort }: { sort?: SortDirection }) {
+  if (sort === 'asc') return <ArrowUp className="th-sort-icon is-active" />;
+  if (sort === 'desc') return <ArrowDown className="th-sort-icon is-active" />;
+  return <ArrowUpDown className="th-sort-icon" />;
+}

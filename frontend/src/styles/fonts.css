@@ -1,0 +1,6 @@
+/* Self-hosted fonts (bundled from npm, no font CDN at runtime). Only the weights we use. */
+@import '@fontsource/afacad/400.css';
+@import '@fontsource/afacad/500.css';
+@import '@fontsource/afacad/700.css';
+@import '@fontsource/jetbrains-mono/400.css';
+@import '@fontsource/jetbrains-mono/500.css';

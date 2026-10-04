@@ -9,7 +9,12 @@ import type { Partner } from '../api/types';
 import { devLoginEnabled } from '../config';
 import { setLanguage } from '../i18n';
 import { apiErrorMessage, signInErrorLabel } from '../i18n/labels';
+import { Button } from '../components/Button';
+import { buttonClass } from '../components/buttonClass';
+import { Field } from '../components/fields';
+import { Logo } from '../components/Logo';
 import { LanguageButtons } from '../layout/LanguageButtons';
+import { ThemeToggle } from '../layout/ThemeToggle';
 import { useAuthContext } from './AuthContext';
 import { meKey, useMe } from './useMe';
 
@@ -57,15 +62,15 @@ export function SignInPage() {
 
   return (
     <main className="signin">
+      <div className="signin-top">
+        <LanguageButtons value={i18n.language === 'en' ? 'en' : 'fi'} onChange={setLanguage} />
+        <ThemeToggle />
+      </div>
       <div className="signin-card">
-        <div className="signin-lang">
-          <LanguageButtons
-            value={i18n.language === 'en' ? 'en' : 'fi'}
-            onChange={setLanguage}
-          />
-        </div>
-        <h1 className="signin-brand">{t('app.name')}</h1>
-        <h2>{t('signIn.title')}</h2>
+        <h1 className="signin-brand">
+          <Logo size="large" />
+        </h1>
+        <h2 className="signin-title">{t('signIn.title')}</h2>
         <p className="muted">{t('signIn.intro')}</p>
 
         {sessionEnded && !callbackError && (
@@ -79,31 +84,34 @@ export function SignInPage() {
           </p>
         )}
 
-        <a className="btn btn-primary btn-block" href={GOOGLE_SIGN_IN_URL}>
+        <a className={buttonClass({ variant: 'primary', block: true })} href={GOOGLE_SIGN_IN_URL}>
           {t('signIn.google')}
         </a>
 
         {devLoginEnabled() && (
           <form className="dev-login" onSubmit={onSubmit} noValidate>
-            <h3>{t('signIn.devTitle')}</h3>
+            <h3 className="section-label">{t('signIn.devTitle')}</h3>
             <p className="muted small">{t('signIn.devHint')}</p>
-            <label htmlFor="dev-email">{t('signIn.email')}</label>
-            <input
-              id="dev-email"
-              type="email"
-              autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
+            <Field label={t('signIn.email')}>
+              {(field) => (
+                <input
+                  {...field}
+                  type="email"
+                  autoComplete="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+              )}
+            </Field>
             {devError && (
               <p className="field-error" role="alert">
                 {devError}
               </p>
             )}
-            <button type="submit" className="btn btn-block" disabled={devLogin.isPending}>
+            <Button type="submit" block disabled={devLogin.isPending}>
               {t('signIn.devSubmit')}
-            </button>
+            </Button>
           </form>
         )}
       </div>

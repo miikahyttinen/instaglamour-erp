@@ -31,6 +31,12 @@ const en: Resources = {
     signOut: 'Sign out',
     signedInAs: 'Signed in as {{name}}',
     saveFailed: 'Saving failed. Please try again.',
+    theme: 'Theme',
+    themeDark: 'Dark',
+    themeLight: 'Light',
+    switchToLight: 'Switch to light theme',
+    switchToDark: 'Switch to dark theme',
+    switchLanguage: 'Change language to {{language}}',
   },
   language: {
     fi: 'Suomi',
