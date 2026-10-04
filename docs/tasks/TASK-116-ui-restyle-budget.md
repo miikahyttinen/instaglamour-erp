@@ -1,7 +1,7 @@
 # TASK-116: Restyle budget
 
 - **owner:** ui
-- **status:** todo
+- **status:** done
 - **spec:** docs/design.md, NFR-7
 - **depends on:** TASK-110
 
@@ -9,7 +9,7 @@
 Restyle the budget page (`src/features/budget`) to the design system.
 
 ## Acceptance criteria
-- [ ] PageHead with copy action; totals and year result as StatTiles; grid as DataTable with numeric right-aligned inputs; variance coloured (ok/danger); actuals-only as muted tag; phone cards.
+- [ ] PageHead with copy action; totals as StatTiles (year result is shown on the year page only — budget data has no year result; criterion corrected by PM); grid as DataTable with numeric right-aligned inputs; variance coloured (ok/danger); actuals-only as muted tag; phone cards.
 - [ ] Tests, lint, build pass.
 
 ## Rules (six restyle tasks run in parallel)
