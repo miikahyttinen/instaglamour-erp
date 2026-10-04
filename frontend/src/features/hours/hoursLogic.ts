@@ -72,3 +72,13 @@ export function groupByMonth(entries: HourEntry[]): MonthGroup[] {
 export function sumHours(entries: HourEntry[]): number {
   return entries.reduce((sum, e) => sum + e.hours, 0);
 }
+
+/** Hours per month (index 0 = January) of the given entries, for the month bar chart. */
+export function monthTotals(entries: HourEntry[]): number[] {
+  const totals = Array.from({ length: 12 }, () => 0);
+  for (const entry of entries) {
+    const month = Number(entry.date.slice(5, 7));
+    if (month >= 1 && month <= 12) totals[month - 1] = (totals[month - 1] ?? 0) + entry.hours;
+  }
+  return totals;
+}

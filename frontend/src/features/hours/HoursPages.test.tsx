@@ -47,7 +47,12 @@ describe('my hours (UC-018)', () => {
     expect(text(within(march).getByLabelText('Kuukausi yhteensä Maaliskuu'))).toBe('0,75 h');
     expect(text(screen.getByTestId('hours-year-total'))).toBe('4,25 h');
     // Newest month first; other year and other partner not shown.
-    const regions = screen.getAllByRole('region').map((r) => r.getAttribute('aria-label'));
+    // Month groups only (the year total StatTile is a region too).
+    const regions = screen
+      .getAllByRole('region')
+      .filter((r) => r.classList.contains('hours-month'))
+      .map((r) => r.getAttribute('aria-label'));
+    expect(screen.getByRole('region', { name: `Tuntisumma ${YEAR}` })).toBeInTheDocument();
     expect(regions).toEqual(['Maaliskuu', 'Tammikuu']);
     expect(screen.queryByText('Old year')).not.toBeInTheDocument();
     expect(screen.queryByText('Sound check')).not.toBeInTheDocument();

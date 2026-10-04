@@ -1,12 +1,18 @@
+import { Plus } from 'lucide-react';
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { useSelectedYear, useSignedInPartner } from '../../auth/SignedInContext';
+import { Button } from '../../components/Button';
+import { SectionLabel } from '../../components/SectionLabel';
+import { StatGrid, StatTile } from '../../components/StatTile';
 import { apiErrorMessage } from '../../i18n/labels';
 import { useLang } from '../../i18n/useLang';
-import { formatHours } from '../../lib/format';
+import { formatHours, todayIso } from '../../lib/format';
 import { HourEntryForm } from './HourEntryForm';
 import { HourEntryList } from './HourEntryList';
-import { groupByMonth, sumHours } from './hoursLogic';
+import { groupByMonth, monthTotals, sumHours } from './hoursLogic';
+import { useHoursOutlet } from './hoursOutlet';
 import { useHourEntries } from './queries';
 
 /** Own hour entries of the selected year by month, with month and year totals (UC-018). */
@@ -18,27 +24,48 @@ export function MyHoursPage() {
   const entries = useHourEntries(year, me.id);
   const [adding, setAdding] = useState(false);
   const [savedOtherYear, setSavedOtherYear] = useState<number | null>(null);
+  const { actionsSlot } = useHoursOutlet();
+
+  const today = todayIso();
+  const currentMonth = Number(today.slice(0, 4)) === year ? Number(today.slice(5, 7)) : null;
+  const bars = entries.data
+    ? monthTotals(entries.data).map((hours, i) => ({
+        label: t(`hours.monthsShort.m${i + 1}`),
+        value: hours,
+        valueText: formatHours(hours, lang),
+        current: currentMonth === i + 1,
+      }))
+    : undefined;
 
   return (
-    <div>
-      <div className="hours-summary">
-        <dl className="stat">
-          <dt>{t('hours.yearTotal', { year })}</dt>
-          <dd data-testid="hours-year-total">
-            {entries.data ? formatHours(sumHours(entries.data), lang) : '–'}
-          </dd>
-        </dl>
-        <button
-          type="button"
-          className="btn btn-primary"
-          onClick={() => {
-            setSavedOtherYear(null);
-            setAdding(true);
-          }}
-        >
-          {t('hours.add')}
-        </button>
-      </div>
+    <>
+      {actionsSlot &&
+        createPortal(
+          <Button
+            icon={Plus}
+            onClick={() => {
+              setSavedOtherYear(null);
+              setAdding(true);
+            }}
+          >
+            {t('hours.add')}
+          </Button>,
+          actionsSlot,
+        )}
+
+      <StatGrid className="hours-stats">
+        <StatTile
+          label={t('hours.yearTotal', { year })}
+          value={
+            <span data-testid="hours-year-total">
+              {entries.data ? formatHours(sumHours(entries.data), lang) : '–'}
+            </span>
+          }
+          caption={entries.data ? t('hours.entryCount', { count: entries.data.length }) : undefined}
+          bars={bars}
+          barsLabel={t('hours.perMonth')}
+        />
+      </StatGrid>
 
       {savedOtherYear !== null && (
         <p className="notice" role="status">
@@ -50,9 +77,9 @@ export function MyHoursPage() {
       {entries.isError && (
         <div className="notice notice-error" role="alert">
           <p>{apiErrorMessage(t, entries.error)}</p>
-          <button type="button" className="btn btn-small" onClick={() => void entries.refetch()}>
+          <Button size="sm" onClick={() => void entries.refetch()}>
             {t('app.retry')}
-          </button>
+          </Button>
         </div>
       )}
       {entries.data && entries.data.length === 0 && (
@@ -64,8 +91,8 @@ export function MyHoursPage() {
           return (
             <section key={group.month} className="hours-month" aria-label={monthName}>
               <div className="hours-month-head">
-                <h2>{monthName}</h2>
-                <span className="num" aria-label={`${t('hours.monthTotal')} ${monthName}`}>
+                <SectionLabel>{monthName}</SectionLabel>
+                <span className="hours-month-total" aria-label={`${t('hours.monthTotal')} ${monthName}`}>
                   {formatHours(group.total, lang)}
                 </span>
               </div>
@@ -84,6 +111,6 @@ export function MyHoursPage() {
           }}
         />
       )}
-    </div>
+    </>
   );
 }

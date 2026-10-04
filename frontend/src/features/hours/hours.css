@@ -1,153 +1,255 @@
-/* Hours feature (TASK-106). Mobile-first; desktop tweaks at ≥ 900 px. */
+/* Hours feature (UC-018, UC-019). Mobile-first; tablet ≥ 600 px, desktop ≥ 900 px. Tokens only. */
 
-.hours-tabs {
+/* ---------- Tabs (My hours / Totals) under the page head ---------- */
+.hours-page .hours-tabs {
   display: flex;
-  gap: 0.25rem;
-  margin: 0 0 1rem;
-  border-bottom: 1px solid var(--border);
+  gap: var(--space-5);
+  margin: calc(var(--space-5) * -1) 0 var(--space-5);
+  border-bottom: var(--hairline) solid var(--border);
 }
-.hours-tabs a {
+.hours-page .hours-tabs a {
   display: inline-flex;
   align-items: center;
   min-height: var(--tap);
-  padding: 0 0.85rem;
-  color: var(--muted);
+  color: var(--text-muted);
   text-decoration: none;
-  border-bottom: 3px solid transparent;
-  margin-bottom: -1px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  border-bottom: var(--hairline) solid transparent;
+  margin-bottom: calc(var(--hairline) * -1);
 }
-.hours-tabs a.active {
-  color: var(--primary);
-  border-bottom-color: var(--primary);
-  font-weight: 700;
+.hours-page .hours-tabs a:hover {
+  color: var(--text);
 }
-
-.hours-summary {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  margin-bottom: 1rem;
-}
-.hours-page .stat {
-  margin: 0;
-}
-.hours-grand {
-  margin-bottom: 1rem !important;
+.hours-page .hours-tabs a.active {
+  color: var(--text);
+  border-bottom-color: var(--accent);
 }
 
-.hours-month,
-.hours-partner {
-  margin: 0 0 1.25rem;
+/* ---------- Year / grand total tile ---------- */
+/* One tile, so let it span the row instead of a 220 px auto-fill column. */
+.hours-page .hours-stats {
+  grid-template-columns: minmax(0, 1fr);
 }
-.hours-month-head {
+
+/* ---------- Month groups (My hours) ---------- */
+.hours-page .hours-month {
+  margin: 0 0 var(--space-5);
+}
+.hours-page .hours-month-head {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 0.5rem;
-  padding: 0.4rem 0;
-  border-bottom: 1px solid var(--border);
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
 }
-.hours-month-head h2 {
+.hours-page .hours-month-head .section-label {
   margin: 0;
 }
-.hours-month-head .num {
-  font-weight: 700;
+.hours-page .hours-month-total {
+  font-weight: var(--fw-bold);
+  font-variant-numeric: tabular-nums;
 }
 
-.hour-entries {
+/* ---------- Entry rows (a surface with hairline rows) ---------- */
+.hours-page .hour-entries {
   list-style: none;
   margin: 0;
   padding: 0;
+  background: var(--surface);
+  border: var(--hairline) solid var(--border);
+  border-radius: var(--radius);
 }
-.hour-entry {
+.hours-page .hour-entry {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   grid-template-areas:
     'date amount'
-    'comment comment'
-    'actions actions';
-  gap: 0.15rem 0.75rem;
-  padding: 0.6rem 0;
-  border-bottom: 1px solid var(--border);
+    'comment comment';
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-top: var(--hairline) solid var(--border);
 }
-.hour-date {
+.hours-page .hour-entry:first-child {
+  border-top: 0;
+}
+/* Own entries: edit / delete icon buttons on the right of the comment line. */
+.hours-page .hour-entries-editable .hour-entry {
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    'date amount'
+    'comment actions';
+  padding-right: var(--space-2);
+}
+.hours-page .hour-date {
   grid-area: date;
-  color: var(--muted);
-  font-size: 0.9rem;
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  color: var(--label);
+  font-variant-numeric: tabular-nums;
 }
-.hour-comment {
+.hours-page .hour-comment {
   grid-area: comment;
   overflow-wrap: anywhere;
 }
-.hour-amount {
+.hours-page .hour-amount {
   grid-area: amount;
-  font-weight: 600;
+  text-align: right;
+  font-weight: var(--fw-bold);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
-.hour-actions {
+.hours-page .hour-entries-editable .hour-amount {
+  padding-right: var(--space-2);
+}
+.hours-page .hour-actions {
   grid-area: actions;
   display: flex;
-  gap: 0.5rem;
-  margin-top: 0.25rem;
+  justify-content: flex-end;
+}
+.hours-page .hour-actions .hour-delete:hover:not(:disabled) {
+  color: var(--danger-fg);
 }
 
-.hours-month-grid {
+/* ---------- Totals: partner cards with month bars + month buttons ---------- */
+.hours-page .hours-partners {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+}
+.hours-page .hours-partner-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+.hours-page .hours-partner-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.hours-page .hours-partner-total {
+  font-size: var(--fs-figure);
+  font-weight: var(--fw-bold);
+  line-height: var(--lh-tight);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.hours-page .hours-month-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.35rem;
-  margin-top: 0.5rem;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
 }
-.hours-month-cell {
+.hours-page .hours-month-cell {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 0;
   min-height: var(--tap);
   min-width: 0;
-  padding: 0.3rem 0.2rem;
-  border: 1px solid var(--border);
+  padding: var(--space-1);
+  border: var(--hairline) solid var(--border);
   border-radius: var(--radius);
-  background: var(--surface);
+  background: transparent;
   color: var(--text);
   font: inherit;
   cursor: pointer;
 }
-.hours-month-cell .num {
-  text-align: center;
-  font-size: 0.9rem;
+.hours-page .hours-month-cell:hover:not([aria-pressed='true']) {
+  background: var(--surface-2);
+  border-color: var(--border-strong);
 }
-.hours-month-cell[aria-pressed='true'] {
-  border-color: var(--primary);
-  background: var(--info-bg);
+.hours-page .hours-month-cell-label {
+  font-family: var(--font-mono);
+  font-size: var(--fs-meta);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--label);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.hours-month-detail {
-  margin-top: 0.75rem;
-  padding: 0.75rem;
-  border-radius: var(--radius);
-  background: var(--bg);
+.hours-page .hours-month-cell-value {
+  font-size: var(--fs-small);
+  font-weight: var(--fw-medium);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.hours-page .hours-month-cell[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+.hours-page .hours-month-cell[aria-pressed='true'] .hours-month-cell-label {
+  color: var(--accent-contrast);
 }
 
-.hours-input {
+/* Month entries opened inside a partner card. */
+.hours-page .hours-month-detail {
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: var(--hairline) solid var(--border);
+}
+.hours-page .hours-month-detail .section-label {
+  margin: 0 0 var(--space-3);
+}
+.hours-page .hours-month-detail .hour-entries {
+  background: transparent;
+}
+.hours-page .hours-read-only {
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  color: var(--label);
+}
+
+.hours-page .hours-delete-summary {
+  overflow-wrap: anywhere;
+}
+
+.hours-page .hours-input {
   max-width: 10rem;
 }
 
+/* Phones: 12 month labels don't fit under the tile bars (they truncate to "TA…"). The bars stay;
+   the screen-reader list inside MiniBars still names every month. */
+@media (max-width: 599.98px) {
+  .hours-page .stat-tile .mini-bars-labels {
+    display: none;
+  }
+}
+
 @media (min-width: 600px) {
-  .hours-month-grid {
+  .hours-page .hours-month-grid {
     grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 }
 
 @media (min-width: 900px) {
-  .hours-month-grid {
+  /* 12 columns with the same gap as the mini bars, so each button sits under its bar. */
+  .hours-page .hours-month-grid {
     grid-template-columns: repeat(12, minmax(0, 1fr));
   }
-  .hour-entry {
-    grid-template-columns: 9rem minmax(0, 1fr) 5rem auto;
-    grid-template-areas: 'date comment amount actions';
-    align-items: center;
+  .hours-page .hour-entry,
+  .hours-page .hour-entries-editable .hour-entry {
+    grid-template-columns: 9rem minmax(0, 1fr) 6rem;
+    grid-template-areas: 'date comment amount';
   }
-  .hour-actions {
-    margin-top: 0;
+  .hours-page .hour-entries-editable .hour-entry {
+    grid-template-columns: 9rem minmax(0, 1fr) 6rem auto;
+    grid-template-areas: 'date comment amount actions';
+    padding-top: var(--space-1);
+    padding-bottom: var(--space-1);
+  }
+  .hours-page .hour-entries-editable .hour-amount {
+    padding-right: 0;
   }
 }
