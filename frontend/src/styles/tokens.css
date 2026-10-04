@@ -115,15 +115,3 @@
   --danger-border: #f0b4b4;
   --backdrop: rgb(10 10 10 / 40%);
 }
-
-/* ---------- Legacy aliases (DEPRECATED) ----------
-   Old names still used by feature CSS until TASK-111…116 migrate it. Do not use in new code. */
-:root,
-[data-theme] {
-  --muted: var(--text-muted);
-  --primary: var(--accent);
-  --primary-text: var(--accent-contrast);
-  --danger: var(--danger-fg);
-  --header-bg: var(--bg);
-  --header-text: var(--text);
-}

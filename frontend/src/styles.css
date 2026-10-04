@@ -189,14 +189,7 @@ svg.lucide {
   border-color: var(--danger-fg);
   background: var(--danger-bg);
 }
-/* Legacy: confirm button in delete dialogs. Prefer <Button variant="danger">. */
-.btn-danger-solid {
-  color: var(--danger-fg);
-  border-color: var(--danger-fg);
-  background: var(--danger-bg);
-}
-.btn-sm,
-.btn-small {
+.btn-sm {
   padding: 0 var(--space-3);
 }
 .btn-block {
@@ -450,8 +443,7 @@ label.switch input {
    Status: tags + notices
    ========================================================================================= */
 
-.tag,
-.badge {
+.tag {
   display: inline-flex;
   align-items: center;
   padding: 2px var(--space-2);
@@ -468,9 +460,7 @@ label.switch input {
   white-space: nowrap;
   vertical-align: middle;
 }
-.tag-info,
-.badge-sold,
-.badge-played {
+.tag-info {
   color: var(--info-fg);
   background: var(--info-bg);
   border-color: var(--info-border);
@@ -480,20 +470,15 @@ label.switch input {
   background: var(--ok-bg);
   border-color: var(--ok-border);
 }
-.tag-warn,
-.badge-warn {
+.tag-warn {
   color: var(--warn-fg);
   background: var(--warn-bg);
   border-color: var(--warn-border);
 }
-.tag-danger,
-.badge-cancelled {
+.tag-danger {
   color: var(--danger-fg);
   background: var(--danger-bg);
   border-color: var(--danger-border);
-}
-p.badge {
-  margin: 0 0 var(--space-2);
 }
 
 .notice {
@@ -876,33 +861,6 @@ p.badge {
   color: var(--text);
 }
 
-/* Legacy stat list (<dl class="stats"><div class="stat"><dt/><dd/>) — same look as StatTile. */
-.stats {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-2);
-  margin: 0 0 var(--space-3);
-}
-.stat {
-  padding: var(--space-3);
-  border: var(--hairline) solid var(--border);
-  border-radius: var(--radius);
-  background: var(--surface);
-}
-.stat dt {
-  font-family: var(--font-mono);
-  font-size: var(--fs-meta);
-  letter-spacing: var(--ls-label);
-  text-transform: uppercase;
-  color: var(--label);
-}
-.stat dd {
-  margin: var(--space-1) 0 0;
-  font-size: var(--fs-lg);
-  font-weight: var(--fw-bold);
-  font-variant-numeric: tabular-nums;
-}
-
 /* =========================================================================================
    Data table (components/DataTable.tsx, or by hand: .table-wrap > table.data-table)
    ========================================================================================= */
@@ -1185,12 +1143,10 @@ p.badge {
 }
 
 /* =========================================================================================
-   Gig list + gig page (feature styles kept here until TASK-11x moves them)
+   Small shared leftovers (still used by screens without their own rule)
    ========================================================================================= */
 
-.total-line {
-  margin: var(--space-3) 0 0;
-}
+/* Back link above a page title (people/PersonPage). */
 .back-link {
   margin: 0 0 var(--space-2);
   font-family: var(--font-mono);
@@ -1198,9 +1154,7 @@ p.badge {
   letter-spacing: var(--ls-label);
   text-transform: uppercase;
 }
-.view-switch {
-  margin: var(--space-2) 0;
-}
+/* Filter bar: segmented toggle + controls (people/PeoplePage). */
 .filters {
   display: flex;
   flex-direction: column;
@@ -1210,303 +1164,10 @@ p.badge {
 .filters .segmented {
   align-self: flex-start;
 }
-.filter-row {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-2);
-}
-.filter-row label,
-.filter-search label {
-  margin-top: 0;
-}
-.filter-checks {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0 var(--space-4);
-}
+/* Empty-state line (tasks/TasksPage). */
 .empty {
   padding: var(--space-4) 0;
   color: var(--text-muted);
-}
-
-.gig-rows {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-.gig-row-head {
-  display: none;
-}
-.gig-card {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: var(--space-1) var(--space-2);
-  padding: var(--space-3);
-  border: var(--hairline) solid var(--border);
-  border-radius: var(--radius);
-  background: var(--surface);
-}
-.gig-card.status-cancelled {
-  opacity: 0.75;
-}
-.gig-date {
-  grid-column: 1 / -1;
-  font-family: var(--font-mono);
-  font-size: var(--fs-label);
-  letter-spacing: 0.06em;
-  color: var(--text-muted);
-  font-variant-numeric: tabular-nums;
-}
-.gig-main {
-  grid-column: 1 / -1;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-1) var(--space-2);
-}
-.gig-link {
-  font-weight: var(--fw-bold);
-  text-decoration: none;
-}
-.gig-link:hover {
-  text-decoration: underline;
-}
-.gig-flags {
-  display: inline-flex;
-  flex-wrap: wrap;
-  max-width: 100%;
-  gap: var(--space-1);
-}
-.gig-people {
-  grid-column: 1 / -1;
-}
-.gig-total {
-  text-align: left;
-  align-self: center;
-}
-.econ-toggle {
-  justify-self: end;
-}
-.gig-econ {
-  display: none;
-  grid-column: 1 / -1;
-  margin: var(--space-1) 0 0;
-}
-.gig-econ.open {
-  display: grid;
-  gap: 2px;
-}
-.gig-econ > div {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--space-2);
-}
-.gig-econ dd {
-  margin: 0;
-}
-.deleted-row {
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-}
-.deleted-row .gig-main {
-  grid-column: 1;
-  flex-direction: column;
-  align-items: flex-start;
-}
-
-.gig-header h1 {
-  margin: 2px 0 var(--space-2);
-}
-.gig-header-date {
-  margin: 0;
-  font-family: var(--font-mono);
-  font-size: var(--fs-small);
-  color: var(--text-muted);
-}
-.gig-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  margin: var(--space-3) 0;
-}
-.gig-section {
-  border-top: var(--hairline) solid var(--border);
-  padding: var(--space-1) 0;
-}
-.gig-section summary {
-  display: flex;
-  align-items: center;
-  min-height: var(--tap);
-  cursor: pointer;
-  list-style: none;
-}
-.gig-section summary::-webkit-details-marker {
-  display: none;
-}
-.gig-section summary::before {
-  content: '▸';
-  margin-right: var(--space-2);
-  color: var(--label);
-}
-.gig-section[open] summary::before {
-  content: '▾';
-}
-.gig-section summary h2 {
-  margin: 0;
-}
-.gig-section-body {
-  padding: 0 0 var(--space-3);
-}
-.info-list {
-  margin: 0 0 var(--space-3);
-  display: grid;
-  gap: var(--space-2);
-}
-.info-list dt,
-.cell-label {
-  font-family: var(--font-mono);
-  font-size: var(--fs-meta);
-  letter-spacing: var(--ls-label);
-  text-transform: uppercase;
-  color: var(--label);
-}
-.info-list dd {
-  margin: 0;
-}
-.econ-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-variant-numeric: tabular-nums;
-}
-.econ-table th,
-.econ-table td {
-  padding: var(--space-2) var(--space-1);
-  border-bottom: var(--hairline) solid var(--border);
-}
-.econ-table thead th {
-  font-family: var(--font-mono);
-  font-size: var(--fs-meta);
-  font-weight: var(--fw-regular);
-  letter-spacing: var(--ls-label);
-  text-transform: uppercase;
-  color: var(--label);
-}
-.econ-table th[scope='row'] {
-  text-align: left;
-  font-weight: var(--fw-medium);
-}
-.econ-table td,
-.econ-table thead th {
-  text-align: right;
-}
-
-.cost-lines {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-.cost-line {
-  padding: var(--space-3);
-  border: var(--hairline) solid var(--border);
-  border-radius: var(--radius);
-  background: var(--surface);
-}
-.cost-line.is-paid {
-  border-left: 2px solid var(--ok-fg);
-}
-.cost-head {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--space-2);
-}
-.cost-body {
-  display: grid;
-  gap: var(--space-1);
-  margin-top: var(--space-2);
-}
-.paid-info {
-  color: var(--ok-fg);
-  font-size: var(--fs-small);
-}
-.person-create {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-.cost-totals {
-  display: grid;
-  gap: var(--space-1);
-  margin: var(--space-3) 0;
-}
-.cost-totals > div {
-  display: flex;
-  justify-content: space-between;
-}
-.cost-totals dt {
-  font-weight: var(--fw-medium);
-}
-.cost-totals dd {
-  margin: 0;
-  font-variant-numeric: tabular-nums;
-}
-
-.attachment-list {
-  list-style: none;
-  margin: 0 0 var(--space-3);
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-.attachment {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 0 var(--space-2);
-  align-items: center;
-}
-.attachment-name {
-  overflow-wrap: anywhere;
-  font-weight: var(--fw-medium);
-}
-.attachment .muted {
-  grid-column: 1;
-}
-.attachment .btn {
-  grid-column: 2;
-  grid-row: 1 / span 2;
-}
-
-.history-filter {
-  max-width: 320px;
-  margin-bottom: var(--space-2);
-}
-.history-filter label {
-  margin-top: 0;
-}
-.history-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-.history-item {
-  padding: var(--space-2) 0;
-  border-bottom: var(--hairline) solid var(--border);
-}
-.history-title {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 0 var(--space-2);
-}
-.history-line {
-  margin: 2px 0 0;
-  overflow-wrap: anywhere;
 }
 
 /* =========================================================================================
@@ -1518,9 +1179,6 @@ p.badge {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .check-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-  .stats {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
   .stat-grid {
@@ -1540,13 +1198,6 @@ p.badge {
     flex-direction: row;
     flex-wrap: wrap;
     align-items: flex-end;
-  }
-  .filter-search {
-    flex: 1 1 240px;
-  }
-  .cost-body {
-    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1.4fr);
-    align-items: center;
   }
 }
 
@@ -1603,65 +1254,10 @@ p.badge {
   .main {
     padding-top: var(--space-6);
   }
-  .stats {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-  }
   .stat-grid {
     grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   }
   .signin-brand .logo {
     height: 80px;
-  }
-  .gig-row-head,
-  .gig-rows:not(.deleted-rows) .gig-card {
-    display: grid;
-    grid-template-columns: 10rem minmax(0, 2fr) minmax(0, 1.4fr) 8rem 8rem 8rem 7rem;
-    gap: 0 var(--space-3);
-    align-items: center;
-  }
-  .gig-row-head {
-    padding: var(--space-3);
-    background: var(--surface-2);
-    border: var(--hairline) solid var(--border);
-    border-bottom: 0;
-    font-family: var(--font-mono);
-    font-size: var(--fs-meta);
-    letter-spacing: var(--ls-label);
-    text-transform: uppercase;
-    color: var(--label);
-  }
-  .gig-rows:not(.deleted-rows) {
-    gap: 0;
-    border: var(--hairline) solid var(--border);
-    border-top: 0;
-  }
-  .gig-rows:not(.deleted-rows) .gig-card {
-    border-radius: 0;
-    border-width: 0 0 1px;
-    padding: var(--space-3);
-    min-height: 56px;
-  }
-  .gig-rows:not(.deleted-rows) .gig-date,
-  .gig-rows:not(.deleted-rows) .gig-main,
-  .gig-rows:not(.deleted-rows) .gig-people {
-    grid-column: auto;
-  }
-  .gig-total {
-    text-align: right;
-  }
-  .gig-card .cell-label,
-  .econ-toggle {
-    display: none;
-  }
-  .gig-econ,
-  .gig-econ.open {
-    display: contents;
-  }
-  .gig-econ > div {
-    display: block;
-    text-align: right;
-  }
-  .info-list {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
