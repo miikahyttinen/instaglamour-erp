@@ -1,9 +1,12 @@
 import { useMutation } from '@tanstack/react-query';
+import { Camera, FileText, Trash2, Upload } from 'lucide-react';
 import { useRef, useState, type ChangeEvent, type MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { attachmentsApi } from '../../api/endpoints';
 import type { Attachment, GigDetail } from '../../api/types';
+import { Button, IconButton } from '../../components/Button';
 import { Dialog } from '../../components/Dialog';
+import { Notice } from '../../components/Notice';
 import { mocksEnabled } from '../../config';
 import { apiErrorMessage } from '../../i18n/labels';
 import { useLang } from '../../i18n/useLang';
@@ -112,34 +115,29 @@ export function Attachments({ gig, readOnly }: Props) {
             aria-label={t('attachments.takePhoto')}
             tabIndex={-1}
           />
-          <div className="inline-actions">
-            <button
-              type="button"
-              className="btn"
-              disabled={upload.isPending}
-              onClick={() => fileRef.current?.click()}
-            >
+          <div className="attachment-upload-actions">
+            <Button icon={Upload} disabled={upload.isPending} onClick={() => fileRef.current?.click()}>
               {upload.isPending ? t('attachments.uploading') : t('attachments.upload')}
-            </button>
-            <button
-              type="button"
-              className="btn camera-btn"
+            </Button>
+            <Button
+              icon={Camera}
+              className="camera-btn"
               disabled={upload.isPending}
               onClick={() => cameraRef.current?.click()}
             >
               {t('attachments.takePhoto')}
-            </button>
+            </Button>
           </div>
-          <p className="muted small">{t('attachments.allowed')}</p>
+          <p className="meta attachment-allowed">{t('attachments.allowed')}</p>
           {(problem || upload.isError) && (
-            <p className="notice notice-error" role="alert">
-              {problem ?? apiErrorMessage(t, upload.error)}
-            </p>
+            <Notice tone="danger" role="alert">
+              <p>{problem ?? apiErrorMessage(t, upload.error)}</p>
+            </Notice>
           )}
           {upload.isSuccess && (
-            <p className="notice" role="status">
-              {t('attachments.uploaded', { filename: upload.data.filename })}
-            </p>
+            <Notice tone="ok" role="status">
+              <p>{t('attachments.uploaded', { filename: upload.data.filename })}</p>
+            </Notice>
           )}
         </div>
       )}
@@ -148,22 +146,20 @@ export function Attachments({ gig, readOnly }: Props) {
         <Dialog title={t('attachments.removeTitle')} onClose={() => setRemoving(null)}>
           <p>{t('attachments.removeConfirm', { filename: removing.filename })}</p>
           {remove.isError && (
-            <p className="notice notice-error" role="alert">
-              {apiErrorMessage(t, remove.error)}
-            </p>
+            <Notice tone="danger" role="alert">
+              <p>{apiErrorMessage(t, remove.error)}</p>
+            </Notice>
           )}
           <div className="form-actions">
-            <button
-              type="button"
-              className="btn btn-danger-solid"
+            <Button
+              variant="danger"
+              icon={Trash2}
               disabled={remove.isPending}
               onClick={() => remove.mutate(removing.id)}
             >
               {t('common.remove')}
-            </button>
-            <button type="button" className="btn" onClick={() => setRemoving(null)}>
-              {t('common.cancel')}
-            </button>
+            </Button>
+            <Button onClick={() => setRemoving(null)}>{t('common.cancel')}</Button>
           </div>
         </Dialog>
       )}
@@ -191,25 +187,27 @@ function AttachmentRow({
   };
   return (
     <li className="attachment">
-      <a href={url} target="_blank" rel="noopener noreferrer" onClick={onOpen} className="attachment-name">
-        {attachment.filename}
-      </a>
-      <span className="muted small">
-        {formatSize(attachment.sizeBytes, lang)} ·{' '}
-        {t('attachments.uploadedBy', {
-          name: uploader?.name ?? '–',
-          date: formatDateTime(attachment.uploadedAt, lang),
-        })}
-      </span>
+      <FileText className="attachment-icon" />
+      <div className="attachment-text">
+        <a href={url} target="_blank" rel="noopener noreferrer" onClick={onOpen} className="attachment-name">
+          {attachment.filename}
+        </a>
+        <span className="meta attachment-meta">
+          {formatSize(attachment.sizeBytes, lang)} ·{' '}
+          {t('attachments.uploadedBy', {
+            name: uploader?.name ?? '–',
+            date: formatDateTime(attachment.uploadedAt, lang),
+          })}
+        </span>
+      </div>
       {!readOnly && (
-        <button
-          type="button"
-          className="btn btn-small btn-danger"
+        <IconButton
+          variant="ghost"
+          icon={Trash2}
+          className="attachment-remove"
           onClick={onRemove}
-          aria-label={`${t('common.remove')}: ${attachment.filename}`}
-        >
-          {t('common.remove')}
-        </button>
+          label={`${t('common.remove')}: ${attachment.filename}`}
+        />
       )}
     </li>
   );

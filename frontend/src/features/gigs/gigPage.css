@@ -1,0 +1,565 @@
+/* Gig page (UC-004 … UC-013): header, sections, economics, cost table, attachments, history.
+   Tokens only (docs/design.md). Scoped under .gig-page so the old global rules in styles.css
+   (kept until the PM removes them) never win. Phone first; ≥ 600 px table; ≥ 900 px 2 columns. */
+
+/* ---------- Header ---------- */
+
+.gig-page .gig-back {
+  margin: 0 0 var(--space-2);
+}
+.gig-page .gig-back a {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: var(--control-h);
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  color: var(--label);
+  text-decoration: none;
+}
+.gig-page .gig-back a:hover {
+  color: var(--text);
+}
+.gig-page .page-title {
+  overflow-wrap: anywhere;
+}
+.gig-page .page-subtitle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+.gig-page .gig-header-date {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--fs-small);
+  color: var(--text-muted);
+}
+.gig-page .gig-header-tags {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.gig-page .gig-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+}
+.gig-page .gig-actions .notice {
+  flex: 1 1 100%;
+  margin: 0;
+}
+
+/* ---------- Notices (saved / moved / warnings) ---------- */
+
+.gig-page .gig-notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+}
+.gig-page .gig-notice-text {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+.gig-page .gig-notice-text > :last-child {
+  margin-bottom: 0;
+}
+.gig-page .gig-notice-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* ---------- Collapsible sections ---------- */
+
+.gig-page .gig-sections {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0 var(--space-6);
+  margin-top: calc(-1 * var(--space-3));
+}
+.gig-page .gig-section {
+  min-width: 0;
+  padding: 0;
+  border-top: var(--hairline) solid var(--border);
+}
+/* The page head already draws the divider above the first section(s). */
+.gig-page .gig-section:first-child {
+  border-top: 0;
+}
+.gig-page .gig-section summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: calc(var(--tap) + var(--space-2));
+  color: var(--label);
+  cursor: pointer;
+  list-style: none;
+}
+.gig-page .gig-section summary::-webkit-details-marker {
+  display: none;
+}
+.gig-page .gig-section summary::before,
+.gig-page .gig-section[open] summary::before {
+  content: none;
+}
+.gig-page .gig-section summary:hover {
+  color: var(--text);
+}
+.gig-page .gig-section summary:focus-visible {
+  outline: var(--hairline) solid var(--accent);
+  outline-offset: 2px;
+}
+.gig-page .gig-section summary h2 {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  font-weight: var(--fw-regular);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  line-height: 1.4;
+  color: inherit;
+}
+.gig-page .gig-section-chevron {
+  transform: rotate(-90deg);
+  transition: transform 0.15s ease;
+}
+.gig-page .gig-section[open] .gig-section-chevron {
+  transform: none;
+}
+.gig-page .gig-section-body {
+  padding: var(--space-1) 0 var(--space-6);
+}
+
+/* ---------- Basic info / price (label + value grid on a surface) ---------- */
+
+.gig-page .gig-info {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin: 0;
+  padding: var(--space-4);
+  background: var(--surface);
+  border: var(--hairline) solid var(--border);
+  border-radius: var(--radius);
+}
+.gig-page .gig-info > div {
+  min-width: 0;
+}
+.gig-page .gig-info dt {
+  font-family: var(--font-mono);
+  font-size: var(--fs-meta);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  line-height: 1.5;
+  color: var(--label);
+}
+.gig-page .gig-info dd {
+  margin: var(--space-1) 0 0;
+  overflow-wrap: anywhere;
+}
+.gig-page .gig-info-wide {
+  grid-column: 1 / -1;
+}
+.gig-page .gig-info-figure {
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-bold);
+  font-variant-numeric: tabular-nums;
+}
+.gig-page .gig-info-actions {
+  margin-top: var(--space-3);
+}
+
+/* Edit forms (basic / price) */
+.gig-page .gig-edit-form {
+  padding: var(--space-4);
+  background: var(--surface);
+  border: var(--hairline) solid var(--border);
+  border-radius: var(--radius);
+}
+.gig-page .gig-edit-form > .field:first-child label,
+.gig-page .gig-edit-form > .form-row:first-child .field label {
+  margin-top: 0;
+}
+.gig-page .gig-edit-total {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin: var(--space-3) 0 0;
+}
+.gig-page .gig-edit-total-label {
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  color: var(--label);
+}
+.gig-page .gig-edit-total-value {
+  font-size: var(--fs-lg);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Action dialogs */
+.gig-page .gig-dialog-intro {
+  color: var(--text-muted);
+}
+
+/* ---------- Economics (StatTiles) ---------- */
+
+.gig-page .gig-econ-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-bottom: 0;
+}
+.gig-page .gig-econ-grid .stat-tile-secondary {
+  flex-wrap: wrap;
+}
+
+/* ---------- Cost table ---------- */
+
+.gig-page .cost-staffing {
+  margin: 0 0 var(--space-3);
+}
+.gig-page .cost-table .cost-type-name {
+  font-weight: var(--fw-bold);
+}
+.gig-page .cost-table .cost-type-description {
+  font-weight: var(--fw-regular);
+  color: var(--text-muted);
+}
+.gig-page .cost-table td.cost-person select {
+  min-width: 10rem;
+}
+.gig-page .cost-table td.cost-person .person-create {
+  min-width: 12rem;
+}
+.gig-page .cost-table td.cost-person .inline-actions {
+  margin-top: 0;
+}
+.gig-page .cost-table .paid-info {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: var(--space-1);
+  font-size: var(--fs-small);
+  color: var(--ok-fg);
+  text-align: left;
+}
+.gig-page .cost-table .paid-icon {
+  margin-top: 2px;
+}
+.gig-page .cost-hint {
+  font-size: var(--fs-small);
+  color: var(--text-muted);
+}
+.gig-page .cost-actions-inner {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+.gig-page .cost-remove:hover:not(:disabled) {
+  color: var(--danger-fg);
+  border-color: var(--danger-border);
+}
+.gig-page .cost-table tr.cost-extra-row td,
+.gig-page .cost-table tbody tr.cost-extra-row:hover td {
+  height: auto;
+  background: var(--surface-2);
+}
+
+/* Load-in switch: square toggle (2 px radius), accent when on. */
+.gig-page .cost-switch {
+  min-height: var(--control-h);
+}
+.gig-page .cost-switch input[type='checkbox'] {
+  appearance: none;
+  -webkit-appearance: none;
+  flex: 0 0 auto;
+  width: 36px;
+  height: 20px;
+  margin: 0;
+  border: var(--hairline) solid var(--border-strong);
+  border-radius: var(--radius);
+  background-color: var(--bg);
+  background-image: linear-gradient(var(--label), var(--label));
+  background-repeat: no-repeat;
+  background-size: 14px 14px;
+  background-position: 2px center;
+  cursor: pointer;
+  transition:
+    background-position 0.15s ease,
+    background-color 0.15s ease;
+}
+.gig-page .cost-switch input[type='checkbox']:checked {
+  border-color: var(--accent);
+  background-color: var(--accent);
+  background-image: linear-gradient(var(--accent-contrast), var(--accent-contrast));
+  background-position: calc(100% - 2px) center;
+}
+.gig-page .cost-switch input[type='checkbox']:focus-visible {
+  outline: var(--hairline) solid var(--accent);
+  outline-offset: 2px;
+}
+.gig-page .cost-switch input[type='checkbox']:disabled {
+  cursor: not-allowed;
+}
+
+/* Pay / edit forms in the row under a line */
+.gig-page .cost-inline-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-2) var(--space-4);
+}
+.gig-page .cost-inline-form .field {
+  flex: 0 1 14rem;
+  min-width: 0;
+}
+.gig-page .cost-inline-form .form-row {
+  flex: 1 1 24rem;
+}
+.gig-page .cost-inline-form label {
+  margin-top: 0;
+}
+.gig-page .cost-inline-form .inline-actions {
+  margin-top: 0;
+}
+
+.gig-page .cost-totals {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-3) var(--space-6);
+  margin: var(--space-4) 0;
+}
+.gig-page .cost-totals > div {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-1);
+}
+.gig-page .cost-totals dt {
+  font-family: var(--font-mono);
+  font-size: var(--fs-meta);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  color: var(--label);
+}
+.gig-page .cost-totals dd {
+  margin: 0;
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-bold);
+  font-variant-numeric: tabular-nums;
+}
+.gig-page .cost-add-form {
+  margin-top: var(--space-3);
+}
+.gig-page .cost-add-title {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  font-weight: var(--fw-regular);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  color: var(--label);
+}
+
+/* Phone: each line is a card (shared .data-table-cards); load-in and actions get full rows. */
+@media (max-width: 599px) {
+  .gig-page .cost-table td.cost-loadin.is-empty {
+    display: none;
+  }
+  .gig-page .cost-table td.cost-person {
+    align-items: center;
+  }
+  .gig-page .cost-table td.cost-person > select,
+  .gig-page .cost-table td.cost-person > .person-create {
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: 70%;
+  }
+  .gig-page .cost-table td.cost-paid {
+    align-items: center;
+  }
+  .gig-page .cost-table td.cost-loadin,
+  .gig-page .cost-table td.cost-actions {
+    display: block;
+    text-align: left;
+  }
+  .gig-page .cost-actions-inner {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    padding: var(--space-2) 0 var(--space-1);
+    border-top: var(--hairline) solid var(--border);
+  }
+  .gig-page .cost-table td.cost-actions:empty {
+    display: none;
+  }
+  .gig-page .cost-table tbody tr:has(+ .cost-extra-row) {
+    margin-bottom: 0;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+  .gig-page .cost-table tr.cost-extra-row {
+    border-top: 0;
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+    background: var(--surface-2);
+  }
+  .gig-page .cost-table tr.cost-extra-row td {
+    display: block;
+    text-align: left;
+  }
+  .gig-page .cost-inline-form .field,
+  .gig-page .cost-inline-form .form-row {
+    flex: 1 1 100%;
+  }
+  .gig-page .cost-totals {
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+  .gig-page .cost-totals > div {
+    flex-direction: row;
+    align-items: baseline;
+    justify-content: space-between;
+  }
+}
+
+/* ≥ 600 px: real table; the switch's text label is the column header (kept for screen readers). */
+@media (min-width: 600px) {
+  /* One <tbody> per line: keep the hairline between lines. */
+  .gig-page .cost-table tbody:not(:last-of-type) tr:last-child td {
+    border-bottom: var(--hairline) solid var(--border);
+  }
+  .gig-page .cost-table thead th.cost-col-loadin {
+    white-space: normal;
+    width: 7rem;
+  }
+  .gig-page .cost-table td.cost-actions {
+    width: 1%;
+    white-space: nowrap;
+  }
+  .gig-page .cost-table .cost-switch-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+  .gig-page .cost-switch {
+    min-height: 0;
+  }
+}
+
+/* ---------- Attachments ---------- */
+
+.gig-page .attachment-list {
+  display: block;
+  list-style: none;
+  margin: 0 0 var(--space-4);
+  padding: 0;
+  background: var(--surface);
+  border: var(--hairline) solid var(--border);
+  border-radius: var(--radius);
+}
+.gig-page .attachment {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0 var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  min-height: 56px;
+  border-bottom: var(--hairline) solid var(--border);
+}
+.gig-page .attachment:last-child {
+  border-bottom: 0;
+}
+.gig-page .attachment-icon {
+  color: var(--label);
+}
+.gig-page .attachment-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.gig-page .attachment-name {
+  font-weight: var(--fw-medium);
+  overflow-wrap: anywhere;
+  text-decoration-color: transparent;
+}
+.gig-page .attachment-name:hover {
+  text-decoration-color: var(--accent);
+}
+.gig-page .attachment-remove:hover:not(:disabled) {
+  color: var(--danger-fg);
+  border-color: var(--danger-border);
+}
+.gig-page .attachment-upload-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.gig-page .attachment-allowed {
+  margin-top: var(--space-2);
+}
+
+/* ---------- History ---------- */
+
+.gig-page .history-filter {
+  max-width: 320px;
+  margin-bottom: var(--space-3);
+}
+.gig-page .history-filter label {
+  margin-top: 0;
+}
+.gig-page .history-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: var(--hairline) solid var(--border);
+}
+.gig-page .history-item {
+  padding: var(--space-3) 0;
+  border-bottom: var(--hairline) solid var(--border);
+}
+.gig-page .history-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-3);
+}
+.gig-page .history-event {
+  font-weight: var(--fw-bold);
+}
+.gig-page .history-line {
+  margin: var(--space-1) 0 0;
+  font-size: var(--fs-small);
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
+/* ---------- Desktop: two-column sections ---------- */
+
+@media (min-width: 900px) {
+  .gig-page .gig-sections {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+  .gig-page .gig-section-wide {
+    grid-column: 1 / -1;
+  }
+  .gig-page .gig-section:nth-child(2) {
+    border-top: 0;
+  }
+  .gig-page .gig-econ-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}

@@ -25,12 +25,13 @@ describe('gig page (UC-004, UC-007)', () => {
     }
     expect(within(section('Perustiedot')).getByText('Oma PA')).toBeInTheDocument();
     expect(within(section('Perustiedot')).getByText('Stage left')).toBeInTheDocument();
-    const econ = within(section('Talous')).getByRole('table');
+    const tile = (name: string) => within(section('Talous')).getByRole('region', { name });
     // Total 1 100 €, budgeted costs 4 × 100 € + 3 × 10 € = 430 €, margin 670 € (BR-001…006).
-    expect(within(econ).getByRole('row', { name: /Kokonaishinta/ })).toHaveTextContent(/1\s100,00\s€/);
-    expect(within(econ).getByRole('row', { name: /^Kulut/ })).toHaveTextContent(/430,00\s€\s*0,00\s€/);
-    expect(within(econ).getByRole('row', { name: /^Kate\s/ })).toHaveTextContent(/670,00\s€\s*1\s100,00\s€/);
-    expect(within(econ).getByRole('row', { name: /Kate-%/ })).toHaveTextContent(/60,9\s%\s*100,0\s%/);
+    // Each tile: budget figure, then the actual figure.
+    expect(tile('Kokonaishinta')).toHaveTextContent(/1\s100,00\s€/);
+    expect(tile('Kulut')).toHaveTextContent(/430,00\s€\s*Budjetti\s*0,00\s€\s*Toteuma/);
+    expect(tile('Kate')).toHaveTextContent(/670,00\s€\s*Budjetti\s*1\s100,00\s€\s*Toteuma/);
+    expect(tile('Kate-%')).toHaveTextContent(/60,9\s%\s*Budjetti\s*100,0\s%\s*Toteuma/);
 
     await user.click(within(section('Talous')).getByText('Talous', { selector: 'h2' }));
     expect(section('Talous')).not.toHaveAttribute('open');
@@ -99,7 +100,7 @@ describe('gig page (UC-004, UC-007)', () => {
     await user.click(confirm);
 
     expect(await screen.findByText(/Muuta hinta ja lisämyynti vastaamaan/)).toBeInTheDocument();
-    expect(screen.getByText('Peruttu', { selector: '.badge' })).toBeInTheDocument();
+    expect(screen.getByText('Peruttu', { selector: '.tag' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Siirrä' })).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Muokkaa hintaa' }));
     expect(within(section('Hinta ja lisämyynti')).getByRole('textbox', { name: 'Hinta (alv 0 %)' })).toBeInTheDocument();

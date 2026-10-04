@@ -8,7 +8,7 @@ import { partnerA, partnerB, TEST_YEAR } from '../../test/gigFixtures';
 import { renderApp, signInMock } from '../../test/renderApp';
 
 const gigCount = () => db.gigs.gigs.length;
-const lines = () => within(screen.getByRole('list', { name: 'Kulut ja miehitys' })).getAllByRole('listitem');
+const lines = () => within(screen.getByRole('table', { name: 'Kulut ja miehitys' })).getAllByRole('rowgroup').filter((g) => g.hasAttribute('aria-label'));
 
 describe('new gig (UC-002)', () => {
   beforeEach(() => {

@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { peopleApi } from '../../api/endpoints';
+import { Button } from '../../components/Button';
 import type { Id, Person } from '../../api/types';
 import { apiErrorMessage, apiFieldErrors } from '../../i18n/labels';
 import { peopleKeys } from '../people/queries';
@@ -61,17 +62,17 @@ export function PersonSelect({ id, label, value, people, onChange, disabled }: P
           }}
         />
         <div className="inline-actions">
-          <button
-            type="button"
-            className="btn btn-small btn-primary"
+          <Button
+            size="sm"
+            variant="primary"
             disabled={!name.trim() || create.isPending}
             onClick={() => create.mutate()}
           >
             {t('costs.createPerson')}
-          </button>
-          <button type="button" className="btn btn-small" onClick={() => setCreating(false)}>
+          </Button>
+          <Button size="sm" onClick={() => setCreating(false)}>
             {t('common.cancel')}
-          </button>
+          </Button>
         </div>
         {create.isError && (
           <p className="field-error" role="alert">

@@ -1,10 +1,13 @@
 import { useMutation } from '@tanstack/react-query';
+import { Ban, CalendarClock, RotateCcw, Trash2, Undo2 } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { gigsApi } from '../../api/endpoints';
 import type { GigDetail, GigWithWarnings, Warning } from '../../api/types';
+import { Button } from '../../components/Button';
 import { Dialog } from '../../components/Dialog';
+import { Notice } from '../../components/Notice';
 import { Field } from '../../components/fields';
 import { apiErrorMessage, apiFieldErrors } from '../../i18n/labels';
 import { useApplyGig } from './queries';
@@ -38,18 +41,18 @@ export function GigActions({ gig, onCancelled, onUncancelled, onMoved, onRestore
   if (gig.deletedAt) {
     return (
       <div className="gig-actions">
-        <button
-          type="button"
-          className="btn btn-primary"
+        <Button
+          variant="primary"
+          icon={RotateCcw}
           disabled={restore.isPending}
           onClick={() => restore.mutate()}
         >
           {t('gig.restore')}
-        </button>
+        </Button>
         {restore.isError && (
-          <p className="notice notice-error" role="alert">
-            {apiErrorMessage(t, restore.error)}
-          </p>
+          <Notice tone="danger" role="alert">
+            <p>{apiErrorMessage(t, restore.error)}</p>
+          </Notice>
         )}
       </div>
     );
@@ -59,21 +62,21 @@ export function GigActions({ gig, onCancelled, onUncancelled, onMoved, onRestore
     <div className="gig-actions" role="group" aria-label={t('gig.actions.label')}>
       {gig.status === 'SOLD' ? (
         <>
-          <button type="button" className="btn" onClick={() => setDialog('move')}>
+          <Button icon={CalendarClock} onClick={() => setDialog('move')}>
             {t('gig.actions.move')}
-          </button>
-          <button type="button" className="btn" onClick={() => setDialog('cancel')}>
+          </Button>
+          <Button icon={Ban} onClick={() => setDialog('cancel')}>
             {t('gig.actions.cancel')}
-          </button>
+          </Button>
         </>
       ) : (
-        <button type="button" className="btn" onClick={() => setDialog('uncancel')}>
+        <Button icon={Undo2} onClick={() => setDialog('uncancel')}>
           {t('gig.actions.uncancel')}
-        </button>
+        </Button>
       )}
-      <button type="button" className="btn btn-danger" onClick={() => setDialog('delete')}>
+      <Button variant="danger" icon={Trash2} onClick={() => setDialog('delete')}>
         {t('gig.actions.delete')}
-      </button>
+      </Button>
 
       {dialog === 'move' && (
         <MoveDialog
@@ -163,28 +166,26 @@ function ReasonDialog<T>({
   return (
     <Dialog title={title} onClose={onClose}>
       <form onSubmit={submit} noValidate>
-        <p>{intro}</p>
+        <p className="gig-dialog-intro">{intro}</p>
         <Field label={t('gig.reason')} error={fieldErrors.reason}>
           {(p) => (
             <textarea {...p} rows={3} required value={reason} onChange={(e) => setReason(e.target.value)} />
           )}
         </Field>
         {mutation.isError && !fieldErrors.reason && (
-          <p className="notice notice-error" role="alert">
-            {apiErrorMessage(t, mutation.error)}
-          </p>
+          <Notice tone="danger" role="alert">
+            <p>{apiErrorMessage(t, mutation.error)}</p>
+          </Notice>
         )}
         <div className="form-actions">
-          <button
+          <Button
             type="submit"
-            className={`btn ${danger ? 'btn-danger-solid' : 'btn-primary'}`}
+            variant={danger ? 'danger' : 'primary'}
             disabled={!reason.trim() || mutation.isPending}
           >
             {confirmLabel}
-          </button>
-          <button type="button" className="btn" onClick={onClose}>
-            {t('common.cancel')}
-          </button>
+          </Button>
+          <Button onClick={onClose}>{t('common.cancel')}</Button>
         </div>
       </form>
     </Dialog>
@@ -250,17 +251,15 @@ function MoveDialog({
           {(p) => <textarea {...p} rows={2} value={reason} onChange={(e) => setReason(e.target.value)} />}
         </Field>
         {move.isError && Object.keys(apiFieldErrors(t, move.error)).length === 0 && (
-          <p className="notice notice-error" role="alert">
-            {apiErrorMessage(t, move.error)}
-          </p>
+          <Notice tone="danger" role="alert">
+            <p>{apiErrorMessage(t, move.error)}</p>
+          </Notice>
         )}
         <div className="form-actions">
-          <button type="submit" className="btn btn-primary" disabled={move.isPending}>
+          <Button type="submit" variant="primary" disabled={move.isPending}>
             {t('gig.confirmMove')}
-          </button>
-          <button type="button" className="btn" onClick={onClose}>
-            {t('common.cancel')}
-          </button>
+          </Button>
+          <Button onClick={onClose}>{t('common.cancel')}</Button>
         </div>
       </form>
     </Dialog>
