@@ -1,7 +1,7 @@
 # TASK-007: Update e2e suite after the design restyle
 
 - **owner:** backend (integration; edits `e2e/` only)
-- **status:** todo
+- **status:** done
 - **spec:** all approved UCs; docs/design.md
 - **depends on:** TASK-110…TASK-116 (merged)
 
