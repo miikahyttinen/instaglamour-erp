@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { HourEntry } from '../../api/types';
+import { Button } from '../../components/Button';
 import { Dialog } from '../../components/Dialog';
 import { Field } from '../../components/fields';
 import { apiErrorMessage, apiFieldErrors } from '../../i18n/labels';
@@ -106,12 +107,10 @@ export function HourEntryForm({ entry, onClose, onSaved }: Props) {
           </p>
         )}
         <div className="form-actions">
-          <button type="submit" className="btn btn-primary" disabled={mutation.isPending}>
+          <Button type="submit" variant="primary" disabled={mutation.isPending}>
             {mutation.isPending ? t('common.saving') : t('common.save')}
-          </button>
-          <button type="button" className="btn" onClick={onClose}>
-            {t('common.cancel')}
-          </button>
+          </Button>
+          <Button onClick={onClose}>{t('common.cancel')}</Button>
         </div>
       </form>
     </Dialog>

@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import type { HourEntry } from '../../api/types';
-import { groupByMonth, isValidHours, parseHours, sumHours, validateHourForm } from './hoursLogic';
+import {
+  groupByMonth,
+  isValidHours,
+  monthTotals,
+  parseHours,
+  sumHours,
+  validateHourForm,
+} from './hoursLogic';
 
 const entry = (id: string, date: string, hours: number): HourEntry => ({
   id,
@@ -53,5 +60,19 @@ describe('grouping', () => {
       [1, 2.75, 2],
     ]);
     expect(sumHours(groups.flatMap((g) => g.entries))).toBe(3.75);
+  });
+});
+
+describe('month totals', () => {
+  it('sums hours per month into 12 slots, January first', () => {
+    const totals = monthTotals([
+      entry('a', '2030-01-08', 2),
+      entry('b', '2030-01-20', 1.5),
+      entry('c', '2030-12-31', 0.25),
+    ]);
+    expect(totals).toHaveLength(12);
+    expect(totals[0]).toBe(3.5);
+    expect(totals[11]).toBe(0.25);
+    expect(totals.slice(1, 11).every((h) => h === 0)).toBe(true);
   });
 });

@@ -1,23 +1,35 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NavLink, Outlet, Route, Routes } from 'react-router-dom';
 import { useSelectedYear } from '../../auth/SignedInContext';
+import { PageHead } from '../../components/PageHead';
+import type { HoursOutletContext } from './hoursOutlet';
 import { HoursTotalsPage } from './HoursTotalsPage';
 import { MyHoursPage } from './MyHoursPage';
 import './hours.css';
 
+/**
+ * Page head + tabs stay mounted while switching tabs (keeps focus on the tab link). A page puts
+ * its action button into the head through a portal (`actionsSlot` in the outlet context).
+ */
 function HoursLayout() {
   const { t } = useTranslation();
   const year = useSelectedYear();
+  const [actionsSlot, setActionsSlot] = useState<HTMLElement | null>(null);
+  const context: HoursOutletContext = { actionsSlot };
   return (
     <section className="page hours-page">
-      <h1>{t('pages.hours', { year })}</h1>
+      <PageHead
+        title={t('pages.hours', { year })}
+        actions={<div ref={setActionsSlot} className="hours-head-actions" />}
+      />
       <nav className="hours-tabs" aria-label={t('hours.tabs.label')}>
         <NavLink to="/hours" end>
           {t('hours.tabs.mine')}
         </NavLink>
         <NavLink to="/hours/totals">{t('hours.tabs.totals')}</NavLink>
       </nav>
-      <Outlet />
+      <Outlet context={context} />
     </section>
   );
 }

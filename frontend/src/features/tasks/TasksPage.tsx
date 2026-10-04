@@ -1,8 +1,12 @@
+import { Check, Pencil, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Task, TaskListQuery } from '../../api/types';
 import { useSignedInPartner } from '../../auth/SignedInContext';
+import { Button, IconButton } from '../../components/Button';
 import { Dialog } from '../../components/Dialog';
+import { PageHead } from '../../components/PageHead';
+import { StatusTag } from '../../components/StatusTag';
 import { apiErrorMessage } from '../../i18n/labels';
 import { useLang } from '../../i18n/useLang';
 import { formatDate } from '../../lib/format';
@@ -29,15 +33,27 @@ export function TasksPage() {
   const toggle = useUpdateTask();
 
   const ownerName = (id: string) => partners.find((p) => p.id === id)?.name ?? '–';
+  const overdueCount = tasks.data?.filter((task) => task.overdue).length ?? 0;
+  const subtitle = tasks.data
+    ? [
+        t('tasks.shown', { filter: t(`tasks.filter.${status}`), count: tasks.data.length }),
+        overdueCount > 0 && t('tasks.overdueCount', { count: overdueCount }),
+      ]
+        .filter(Boolean)
+        .join(' · ')
+    : undefined;
 
   return (
     <section className="page tasks-page">
-      <div className="tasks-head">
-        <h1>{t('pages.tasks')}</h1>
-        <button type="button" className="btn btn-primary" onClick={() => setEditing('new')}>
-          {t('tasks.add')}
-        </button>
-      </div>
+      <PageHead
+        title={t('pages.tasks')}
+        subtitle={subtitle}
+        actions={
+          <Button icon={Plus} onClick={() => setEditing('new')}>
+            {t('tasks.add')}
+          </Button>
+        }
+      />
 
       <div className="tasks-filters">
         <div className="segmented" role="group" aria-label={t('tasks.filterLabel')}>
@@ -63,12 +79,12 @@ export function TasksPage() {
       {tasks.isError && (
         <div className="notice notice-error" role="alert">
           <p>{apiErrorMessage(t, tasks.error)}</p>
-          <button type="button" className="btn" onClick={() => void tasks.refetch()}>
+          <Button size="sm" onClick={() => void tasks.refetch()}>
             {t('app.retry')}
-          </button>
+          </Button>
         </div>
       )}
-      {tasks.data && tasks.data.length === 0 && <p className="muted">{t('tasks.empty')}</p>}
+      {tasks.data && tasks.data.length === 0 && <p className="empty">{t('tasks.empty')}</p>}
       {tasks.data && tasks.data.length > 0 && (
         <ul className="tasks-list">
           {tasks.data.map((task) => {
@@ -89,32 +105,34 @@ export function TasksPage() {
                     toggle.mutate({ id: task.id, body: { status: done ? 'OPEN' : 'DONE' } })
                   }
                 >
-                  <span aria-hidden="true">{done ? '✓' : ''}</span>
+                  <span className="task-check-box" aria-hidden="true">
+                    {done && <Check />}
+                  </span>
                 </button>
                 <div className="task-body">
                   <p className="task-title">{task.title}</p>
-                  <p className="task-meta small">
-                    <span>{ownerName(task.ownerId)}</span>
-                    <span>
+                  {task.description && <p className="task-desc small muted">{task.description}</p>}
+                  <p className="task-meta">
+                    <span className="task-owner">{ownerName(task.ownerId)}</span>
+                    <span className="task-due">
                       {task.dueDate
                         ? t('tasks.due', { date: formatDate(task.dueDate, lang) })
                         : t('tasks.noDueDate')}
                     </span>
-                    {task.overdue && <span className="badge badge-cancelled">{t('tasks.overdue')}</span>}
+                    {task.overdue && <StatusTag tone="warn">{t('tasks.overdue')}</StatusTag>}
                     {done && task.completedAt && (
-                      <span>{t('tasks.completed', { date: formatDate(task.completedAt, lang) })}</span>
+                      <StatusTag tone="ok">
+                        {t('tasks.completed', { date: formatDate(task.completedAt, lang) })}
+                      </StatusTag>
                     )}
                   </p>
-                  {task.description && <p className="task-desc small muted">{task.description}</p>}
                 </div>
-                <button
-                  type="button"
-                  className="btn task-edit"
-                  aria-label={t('tasks.editAria', { title: task.title })}
+                <IconButton
+                  icon={Pencil}
+                  className="task-edit"
+                  label={t('tasks.editAria', { title: task.title })}
                   onClick={() => setEditing(task)}
-                >
-                  {t('common.edit')}
-                </button>
+                />
               </li>
             );
           })}

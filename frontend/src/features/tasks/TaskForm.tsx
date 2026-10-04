@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Trash2 } from 'lucide-react';
 import type { Id, Partner, Task } from '../../api/types';
+import { Button } from '../../components/Button';
 import { Field } from '../../components/fields';
 import { apiErrorMessage, apiFieldErrors } from '../../i18n/labels';
 import { useCreateTask, useDeleteTask, useUpdateTask } from './hooks';
@@ -98,36 +100,33 @@ export function TaskForm({ task, partners, meId, onDone }: Props) {
         <div className="notice notice-error" role="alertdialog" aria-label={t('common.remove')}>
           <p>{t('tasks.confirmDelete', { title: task.title })}</p>
           <div className="inline-actions">
-            <button
-              type="button"
-              className="btn btn-danger-solid"
+            <Button
+              variant="danger"
+              icon={Trash2}
               disabled={busy}
               onClick={() => remove.mutate(task.id, { onSuccess: onDone })}
             >
               {t('tasks.confirmDeleteYes')}
-            </button>
-            <button type="button" className="btn" onClick={() => setConfirmingDelete(false)}>
-              {t('common.cancel')}
-            </button>
+            </Button>
+            <Button onClick={() => setConfirmingDelete(false)}>{t('common.cancel')}</Button>
           </div>
         </div>
       ) : (
         <div className="form-actions">
-          <button type="submit" className="btn btn-primary" disabled={busy}>
+          <Button type="submit" variant="primary" disabled={busy}>
             {save.isPending ? t('common.saving') : t('common.save')}
-          </button>
-          <button type="button" className="btn" onClick={onDone}>
-            {t('common.cancel')}
-          </button>
+          </Button>
+          <Button onClick={onDone}>{t('common.cancel')}</Button>
           {task && (
-            <button
-              type="button"
-              className="btn tasks-delete"
+            <Button
+              variant="danger"
+              icon={Trash2}
+              className="tasks-delete"
               disabled={busy}
               onClick={() => setConfirmingDelete(true)}
             >
               {t('common.remove')}
-            </button>
+            </Button>
           )}
         </div>
       )}
