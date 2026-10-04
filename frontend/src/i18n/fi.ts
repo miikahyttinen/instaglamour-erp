@@ -33,6 +33,12 @@ const fi = {
     signOut: 'Kirjaudu ulos',
     signedInAs: 'Kirjautuneena: {{name}}',
     saveFailed: 'Tallennus epäonnistui. Yritä uudelleen.',
+    theme: 'Teema',
+    themeDark: 'Tumma',
+    themeLight: 'Vaalea',
+    switchToLight: 'Vaihda vaaleaan teemaan',
+    switchToDark: 'Vaihda tummaan teemaan',
+    switchLanguage: 'Vaihda kieleksi {{language}}',
   },
   language: {
     fi: 'Suomi',

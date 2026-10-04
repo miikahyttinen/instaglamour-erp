@@ -5,7 +5,10 @@ import type { UpdateMeRequest } from '../api/types';
 import { db } from '../mocks/data';
 import { errorResponse } from '../mocks/util';
 import { server } from '../mocks/server';
+import { DESKTOP_QUERY } from '../lib/useMediaQuery';
+import { installMatchMedia } from '../test/matchMedia';
 import { renderApp, signInMock } from '../test/renderApp';
+import { THEME_STORAGE_KEY } from '../theme/theme';
 
 const yearSelect = () => screen.getByRole('combobox', { name: 'Valittu vuosi' });
 
@@ -150,5 +153,58 @@ describe('app shell', () => {
     signInMock();
     renderApp('/nope');
     expect(await screen.findByRole('heading', { name: 'Sivua ei löytynyt.' })).toBeInTheDocument();
+  });
+
+  it('shows the logo as the home link', async () => {
+    signInMock();
+    renderApp('/gigs');
+    await screen.findByRole('heading', { name: /^Keikat/ });
+    const home = screen.getByRole('link', { name: 'Instaglamour ERP' });
+    expect(home).toHaveAttribute('href', '/');
+    expect(within(home).getByRole('img')).toBeInTheDocument();
+  });
+
+  it('phone menu switches the theme and remembers it', async () => {
+    signInMock();
+    document.documentElement.setAttribute('data-theme', 'dark');
+    const { user } = renderApp('/');
+    await screen.findByRole('heading', { name: /^Vuosi/ });
+    await user.click(screen.getByRole('button', { name: 'Valikko' }));
+    const group = screen.getByRole('group', { name: 'Teema' });
+    expect(within(group).getByRole('button', { name: 'Tumma' })).toHaveAttribute('aria-pressed', 'true');
+    await user.click(within(group).getByRole('button', { name: 'Vaalea' }));
+    expect(document.documentElement).toHaveAttribute('data-theme', 'light');
+    expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe('light');
+    expect(within(group).getByRole('button', { name: 'Vaalea' })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  describe('desktop header', () => {
+    it('has language, theme and sign-out icon buttons instead of the menu', async () => {
+      installMatchMedia({ [DESKTOP_QUERY]: true });
+      signInMock();
+      document.documentElement.setAttribute('data-theme', 'dark');
+      const { user } = renderApp('/');
+      await screen.findByRole('heading', { name: /^Vuosi/ });
+      expect(screen.queryByRole('button', { name: 'Valikko' })).not.toBeInTheDocument();
+
+      // Theme: sun in dark (→ light), moon in light (→ dark); FI/EN labels.
+      await user.click(screen.getByRole('button', { name: 'Vaihda vaaleaan teemaan' }));
+      expect(document.documentElement).toHaveAttribute('data-theme', 'light');
+      expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe('light');
+      expect(screen.getByRole('button', { name: 'Vaihda tummaan teemaan' })).toBeInTheDocument();
+
+      // Language: shows the current code, switches FI ⇄ EN and saves it.
+      const lang = screen.getByRole('button', { name: 'Vaihda kieleksi English' });
+      expect(lang).toHaveTextContent('FI');
+      await user.click(lang);
+      expect(await screen.findByRole('heading', { name: /^Year \d{4}$/ })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Switch to dark theme' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Change language to Suomi' })).toHaveTextContent('EN');
+      await waitFor(() => expect(db.partners[0]!.language).toBe('en'));
+
+      await user.click(screen.getByRole('button', { name: 'Sign out' }));
+      expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeInTheDocument();
+      expect(db.sessionPartnerId).toBeNull();
+    });
   });
 });
