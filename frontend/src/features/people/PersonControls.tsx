@@ -1,6 +1,8 @@
+import { Pencil, UserCheck, UserX } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Person, PersonWithWarnings } from '../../api/types';
+import { Button } from '../../components/Button';
 import { Dialog } from '../../components/Dialog';
 import { apiErrorMessage, warningMessage } from '../../i18n/labels';
 import { useLang } from '../../i18n/useLang';
@@ -52,23 +54,23 @@ export function PersonControls({ person, onNotice }: Props) {
 
   return (
     <div className="people-controls">
-      <button
-        type="button"
-        className="btn btn-small"
+      <Button
+        size="sm"
+        icon={Pencil}
         aria-label={`${t('people.rename')}: ${person.name}`}
         onClick={() => setRenaming(true)}
       >
         {t('people.rename')}
-      </button>
-      <button
-        type="button"
-        className="btn btn-small"
+      </Button>
+      <Button
+        size="sm"
+        icon={person.active ? UserX : UserCheck}
         aria-label={`${t(person.active ? 'people.deactivate' : 'people.activate')}: ${person.name}`}
         disabled={toggle.isPending}
         onClick={setActive}
       >
         {t(person.active ? 'people.deactivate' : 'people.activate')}
-      </button>
+      </Button>
       {renaming && (
         <Dialog title={t('people.renameTitle', { name: person.name })} onClose={closeRename}>
           <NameForm

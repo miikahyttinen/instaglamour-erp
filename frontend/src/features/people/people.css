@@ -1,130 +1,159 @@
-/* People register (UC-014). Mobile first: rows and cost lines are cards; table from 700 px. */
+/* People register (UC-014). Design tokens only; tables become cards below 600 px (DataTable). */
 
-.people-add {
-  margin-bottom: 0.5rem;
+/* Add form: stacked on phones; field + button on one row from 600 px. */
+.people-page .people-add {
+  margin-bottom: var(--space-5);
 }
-.people-name-form .field label {
+.people-page .people-name-form .field label {
   margin-top: 0;
 }
+.people-page .people-name-actions {
+  margin-top: var(--space-2);
+}
 
-.people-notice {
+@media (min-width: 600px) {
+  .people-page .people-name-form-inline {
+    display: grid;
+    grid-template-columns: minmax(0, 360px) auto;
+    column-gap: var(--space-2);
+    justify-content: start;
+  }
+  /* Let the label, input and error take grid cells so the button lines up with the input. */
+  .people-page .people-name-form-inline .field {
+    display: contents;
+  }
+  .people-page .people-name-form-inline .field > *,
+  .people-page .people-name-form-inline .people-form-error {
+    grid-column: 1;
+  }
+  .people-page .people-name-form-inline .field > label {
+    grid-row: 1;
+  }
+  .people-page .people-name-form-inline .field > input {
+    grid-row: 2;
+  }
+  .people-page .people-name-form-inline .people-name-actions {
+    grid-column: 2;
+    grid-row: 2;
+    margin-top: 0;
+  }
+}
+
+/* Save result. */
+.people-page .people-notice {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
-
-.people-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  border-top: 1px solid var(--border);
+.people-page .people-notice p:last-child {
+  margin-bottom: 0;
 }
-.people-row {
+.people-page .people-load-error {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 0.5rem;
-  padding: 0.6rem 0;
-  border-bottom: 1px solid var(--border);
+  gap: var(--space-2);
 }
-.people-name {
-  display: flex;
+.people-page .people-load-error p {
+  margin: 0;
+}
+
+/* Filter + hint. */
+.people-page .people-filters {
+  align-items: flex-start;
+}
+.people-page .people-hint {
+  margin: 0;
+  max-width: 60ch;
+}
+
+/* People table. */
+.people-page .people-name {
+  display: inline-flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--space-2);
   min-width: 0;
-  font-weight: 600;
   overflow-wrap: anywhere;
 }
-.people-name a {
+.people-page .people-name a {
   display: inline-flex;
   align-items: center;
   min-height: var(--tap);
+  color: var(--text);
+  text-decoration: none;
 }
-.people-controls {
+.people-page .people-name a:hover {
+  text-decoration: underline;
+}
+.people-page .people-table tr.is-inactive .people-name a {
+  color: var(--text-muted);
+}
+.people-page .people-table .people-actions-cell {
+  text-align: right;
+}
+.people-page .people-controls {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: var(--space-2);
+}
+.people-page .people-table .people-controls {
+  justify-content: flex-end;
 }
 
-/* Cost lines: cards on phones. */
-.person-lines {
-  width: 100%;
-  border-collapse: collapse;
+/* Person page. */
+.people-page .person-lines-label {
+  margin-top: var(--space-5);
 }
-.person-lines thead {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
+.people-page .stat-grid.person-totals {
+  margin-bottom: var(--space-4);
 }
-.person-lines tr {
-  display: block;
-  padding: 0.5rem 0;
-  border-bottom: 1px solid var(--border);
+.people-page .person-lines .person-lines-date,
+.people-page .person-lines .person-lines-paid {
+  white-space: nowrap;
 }
-.person-lines td,
-.person-lines tfoot th {
-  display: flex;
-  justify-content: space-between;
-  gap: 0.75rem;
-  padding: 0.15rem 0;
-  text-align: right;
-  overflow-wrap: anywhere;
+.people-page .person-lines-lineup {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
 }
-.person-lines td::before {
-  content: attr(data-label);
-  color: var(--muted);
+.people-page .person-lines-total th {
   text-align: left;
-  font-weight: 400;
-}
-.person-lines tfoot {
-  font-weight: 700;
-}
-.person-lines tfoot th {
-  text-align: left;
-}
-.person-lines .person-lines-empty-cell {
-  display: none;
 }
 
-@media (min-width: 700px) {
-  .person-lines thead {
-    position: static;
-    width: auto;
-    height: auto;
-    overflow: visible;
-    clip: auto;
-    display: table-header-group;
+@media (min-width: 600px) {
+  .people-page .person-lines-lineup {
+    justify-content: flex-start;
   }
-  .person-lines tr {
-    display: table-row;
-    padding: 0;
-  }
-  .person-lines th,
-  .person-lines td,
-  .person-lines tfoot th {
-    display: table-cell;
-    padding: 0.5rem;
+}
+
+@media (max-width: 599px) {
+  /* Cards: the controls line up on the left, without the "Actions" label. */
+  .people-page .people-table td.people-actions-cell {
+    display: block;
+    padding-top: var(--space-2);
     text-align: left;
-    border-bottom: 1px solid var(--border);
-    vertical-align: top;
   }
-  .person-lines td.num,
-  .person-lines th.num {
-    text-align: right;
-  }
-  .person-lines td::before {
+  .people-page .people-table td.people-actions-cell::before {
     content: none;
   }
-  .person-lines thead th {
-    font-size: 0.85rem;
-    color: var(--muted);
+  .people-page .people-table .people-controls {
+    justify-content: flex-start;
   }
-  .person-lines .person-lines-empty-cell {
-    display: table-cell;
+  /* Both buttons fit on one row of a 375 px card without their icons. */
+  .people-page .people-table .people-controls .btn-icon {
+    display: none;
+  }
+  .people-page .person-lines.data-table tfoot th {
+    padding: var(--space-2) 0 var(--space-1);
+    border: 0;
+  }
+  /* Two totals side by side keep the table in view. */
+  .people-page .stat-grid.person-totals {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

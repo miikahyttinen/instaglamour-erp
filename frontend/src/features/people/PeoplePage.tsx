@@ -1,7 +1,13 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useSearchParams } from 'react-router-dom';
-import type { PeopleActiveFilter } from '../../api/types';
+import type { PeopleActiveFilter, Person } from '../../api/types';
+import { Button } from '../../components/Button';
+import { DataTable, type DataTableColumn } from '../../components/DataTable';
+import { Notice as NoticeMessage } from '../../components/Notice';
+import { PageHead } from '../../components/PageHead';
+import { SectionLabel } from '../../components/SectionLabel';
+import { StatusTag } from '../../components/StatusTag';
 import { warningMessage } from '../../i18n/labels';
 import { useLang } from '../../i18n/useLang';
 import { NameForm } from './NameForm';
@@ -42,14 +48,33 @@ export function PeoplePage() {
     });
   };
 
+  const columns: DataTableColumn<Person>[] = [
+    {
+      key: 'name',
+      label: t('people.name'),
+      primary: true,
+      cell: (person) => (
+        <span className="people-name">
+          <Link to={person.id}>{person.name}</Link>
+          {!person.active && <StatusTag tone="muted">{t('people.inactiveBadge')}</StatusTag>}
+        </span>
+      ),
+    },
+    {
+      key: 'actions',
+      label: t('people.actions'),
+      header: <span className="visually-hidden">{t('people.actions')}</span>,
+      className: 'people-actions-cell',
+      cell: (person) => <PersonControls person={person} onNotice={setNotice} />,
+    },
+  ];
+
   return (
     <section className="page people-page">
-      <div className="page-head">
-        <h1>{t('pages.people')}</h1>
-      </div>
+      <PageHead title={t('pages.people')} />
 
-      <div className="people-add">
-        <h2>{t('people.addTitle')}</h2>
+      <section className="people-add" aria-labelledby="people-add-title">
+        <SectionLabel id="people-add-title">{t('people.addTitle')}</SectionLabel>
         <NameForm
           label={t('people.name')}
           submitLabel={t('people.add')}
@@ -57,12 +82,13 @@ export function PeoplePage() {
           error={create.error}
           onSubmit={add}
           clearOnSuccess
+          inline
         />
-      </div>
+      </section>
 
       <NoticeBox notice={notice} onDismiss={() => setNotice(null)} />
 
-      <div className="filters">
+      <div className="filters people-filters">
         <div className="segmented" role="group" aria-label={t('people.filterLabel')}>
           {FILTERS.map((f) => (
             <button
@@ -75,33 +101,28 @@ export function PeoplePage() {
             </button>
           ))}
         </div>
-        <p className="muted small">{t('people.inactiveHint')}</p>
+        <p className="muted small people-hint">{t('people.inactiveHint')}</p>
       </div>
 
       {list.isPending && <p className="muted">{t('app.loading')}</p>}
       {list.isError && (
-        <div className="notice notice-error" role="alert">
+        <NoticeMessage tone="danger" role="alert" className="people-load-error">
           <p>{t('app.loadFailed')}</p>
-          <button type="button" className="btn btn-small" onClick={() => void list.refetch()}>
+          <Button size="sm" onClick={() => void list.refetch()}>
             {t('app.retry')}
-          </button>
-        </div>
+          </Button>
+        </NoticeMessage>
       )}
-      {list.data && list.data.length === 0 && <p className="muted empty">{t('people.empty')}</p>}
-      {list.data && list.data.length > 0 && (
-        <ul className="people-list" aria-label={t('pages.people')}>
-          {list.data.map((person) => (
-            <li key={person.id} className="people-row">
-              <div className="people-name">
-                <Link to={person.id}>{person.name}</Link>
-                {!person.active && (
-                  <span className="badge badge-cancelled">{t('people.inactiveBadge')}</span>
-                )}
-              </div>
-              <PersonControls person={person} onNotice={setNotice} />
-            </li>
-          ))}
-        </ul>
+      {list.data && (
+        <DataTable
+          className="people-table"
+          caption={t('pages.people')}
+          columns={columns}
+          rows={list.data}
+          rowKey={(person) => person.id}
+          rowClassName={(person) => (person.active ? undefined : 'is-inactive')}
+          empty={<p className="empty">{t('people.empty')}</p>}
+        />
       )}
     </section>
   );
