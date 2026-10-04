@@ -1,8 +1,17 @@
+import { ChevronRight } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import type { Partner, YearPage as YearPageData } from '../../api/types';
+import type { Language } from '../../api/enums';
+import type { GigSummary, Partner, YearPage as YearPageData } from '../../api/types';
 import { useSelectedYear } from '../../auth/SignedInContext';
+import { Button } from '../../components/Button';
+import { DataTable, type DataTableColumn } from '../../components/DataTable';
+import { MiniBars } from '../../components/MiniBars';
+import { Notice } from '../../components/Notice';
+import { PageHead } from '../../components/PageHead';
+import { SectionLabel } from '../../components/SectionLabel';
+import { StatusTag } from '../../components/StatusTag';
 import { apiErrorMessage } from '../../i18n/labels';
 import { useLang } from '../../i18n/useLang';
 import { formatDateRange, formatHours, formatMoney } from '../../lib/format';
@@ -13,78 +22,149 @@ import './YearPage.css';
 /** Year page (UC-022): the selected year at a glance. Home route `/`. */
 export function YearPage() {
   const { t } = useTranslation();
+  const lang = useLang();
   const year = useSelectedYear();
   const query = useYearPage(year);
+  const data = query.data;
 
   return (
     <section className="page year-page">
-      <h1>{t('pages.year', { year })}</h1>
+      <PageHead
+        title={t('pages.year', { year })}
+        subtitle={
+          data &&
+          t('year.summary', { gigs: data.gigs.gigCount, hours: formatHours(data.hours.grandTotal, lang) })
+        }
+        actions={
+          data && (
+            <LinkTile
+              to="/budget"
+              label={t('year.budget.yearResult')}
+              value={formatMoney(data.yearResultCents, lang)}
+              className="year-result"
+            />
+          )
+        }
+      />
       {query.isPending && (
         <p className="muted" role="status">
           {t('app.loading')}
         </p>
       )}
       {query.isError && (
-        <div className="notice notice-error" role="alert">
+        <Notice tone="danger" role="alert">
           <p>{apiErrorMessage(t, query.error)}</p>
-          <button type="button" className="btn" onClick={() => void query.refetch()}>
+          <Button size="sm" onClick={() => void query.refetch()}>
             {t('app.retry')}
-          </button>
-        </div>
+          </Button>
+        </Notice>
       )}
-      {query.data && <YearContent data={query.data} />}
+      {data && <YearContent data={data} />}
     </section>
   );
 }
 
 function YearContent({ data }: { data: YearPageData }) {
   return (
-    <div className="year-grid">
+    <div className="year-layout">
       <GigsSection data={data} />
-      <UpcomingSection data={data} />
       <HoursSection data={data} />
       <BudgetSection data={data} />
+      <UpcomingSection data={data} />
     </div>
   );
 }
 
-function Tile({ to, label, value, wide }: { to: string; label: string; value: ReactNode; wide?: boolean }) {
+/**
+ * Stat tile that is a link (the shared StatTile is a region, not a link). Same classes as
+ * StatTile; `year-fig*` classes mark each label/value pair (also used by the tests).
+ */
+function LinkTile({
+  to,
+  label,
+  value,
+  className,
+  children,
+}: {
+  to: string;
+  label: string;
+  value: ReactNode;
+  className?: string;
+  children?: ReactNode;
+}) {
   return (
-    <li className={wide ? 'year-tile-wide' : undefined}>
-      <Link to={to} className="stat year-tile">
-        <span className="year-tile-label">{label}</span>
-        <span className="year-tile-value">{value}</span>
-      </Link>
-    </li>
+    <Link to={to} className={['stat-tile year-tile year-fig', className].filter(Boolean).join(' ')}>
+      <span className="label year-fig-label">{label}</span>
+      <span className="stat-tile-value year-fig-value">{value}</span>
+      {children}
+    </Link>
+  );
+}
+
+/** Smaller second figure inside a tile: value + mono caption. */
+function Secondary({ label, value }: { label: string; value: ReactNode }) {
+  return (
+    <span className="stat-tile-secondary year-fig">
+      <span className="stat-tile-secondary-value year-fig-value">{value}</span>
+      <span className="meta year-fig-label">{label}</span>
+    </span>
   );
 }
 
 function SectionHead({ id, title, to }: { id: string; title: string; to: string }) {
   return (
-    <h2 id={id} className="year-section-head">
+    <SectionLabel id={id} className="year-section-head">
       <Link to={to}>
-        {title} <span aria-hidden="true">›</span>
+        {title}
+        <ChevronRight className="year-section-chevron" />
       </Link>
-    </h2>
+    </SectionLabel>
   );
+}
+
+/** Budget vs actual as two mini bars (actual highlighted). */
+function budgetBars(budgetLabel: string, actualLabel: string, budget: number, actual: number, lang: Language) {
+  return [
+    { label: budgetLabel, value: budget, valueText: formatMoney(budget, lang) },
+    { label: actualLabel, value: actual, valueText: formatMoney(actual, lang), current: true },
+  ];
 }
 
 function GigsSection({ data }: { data: YearPageData }) {
   const { t } = useTranslation();
   const lang = useLang();
   const g = data.gigs;
+  const budget = t('year.budget.budget');
+  const actual = t('year.budget.actual');
   return (
-    <section className="year-section" aria-labelledby="year-gigs">
+    <section className="year-section year-gigs" aria-labelledby="year-gigs">
       <SectionHead id="year-gigs" title={t('year.gigs.title')} to="/gigs" />
-      <ul className="stats year-tiles">
-        <Tile to="/gigs" label={t('year.gigs.gigCount')} value={g.gigCount} />
-        <Tile to="/gigs" label={t('year.gigs.cancelledCount')} value={g.cancelledCount} />
-        <Tile to="/gigs" label={t('year.gigs.soldGigsSum')} value={formatMoney(g.soldGigsSumCents, lang)} wide />
-        <Tile to="/gigs" label={t('year.gigs.budgetedCosts')} value={formatMoney(g.budgetedCostsCents, lang)} />
-        <Tile to="/gigs" label={t('year.gigs.actualCosts')} value={formatMoney(g.actualCostsCents, lang)} />
-        <Tile to="/gigs" label={t('year.gigs.marginBudget')} value={formatMoney(g.marginBudgetCents, lang)} />
-        <Tile to="/gigs" label={t('year.gigs.marginActual')} value={formatMoney(g.marginActualCents, lang)} />
-      </ul>
+      <div className="stat-grid year-tiles">
+        <LinkTile to="/gigs" label={t('year.gigs.gigCount')} value={g.gigCount}>
+          <Secondary label={t('year.gigs.cancelledCount')} value={g.cancelledCount} />
+        </LinkTile>
+        <LinkTile to="/gigs" label={t('year.gigs.soldGigsSum')} value={formatMoney(g.soldGigsSumCents, lang)} />
+        <LinkTile to="/gigs" label={t('year.gigs.budgetedCosts')} value={formatMoney(g.budgetedCostsCents, lang)}>
+          <Secondary label={t('year.gigs.actualCosts')} value={formatMoney(g.actualCostsCents, lang)} />
+          <div className="stat-tile-bars">
+            <MiniBars
+              label={t('year.gigs.costsChart')}
+              bars={budgetBars(budget, actual, g.budgetedCostsCents, g.actualCostsCents, lang)}
+              height={32}
+            />
+          </div>
+        </LinkTile>
+        <LinkTile to="/gigs" label={t('year.gigs.marginBudget')} value={formatMoney(g.marginBudgetCents, lang)}>
+          <Secondary label={t('year.gigs.marginActual')} value={formatMoney(g.marginActualCents, lang)} />
+          <div className="stat-tile-bars">
+            <MiniBars
+              label={t('year.gigs.marginChart')}
+              bars={budgetBars(budget, actual, g.marginBudgetCents, g.marginActualCents, lang)}
+              height={32}
+            />
+          </div>
+        </LinkTile>
+      </div>
     </section>
   );
 }
@@ -104,15 +184,26 @@ function HoursSection({ data }: { data: YearPageData }) {
   const lang = useLang();
   const { data: reference } = useReference();
   const rows = hourRows(data, reference?.partners, t('year.hours.unknownPartner'));
+  const max = Math.max(0, ...rows.map((r) => r.total));
   return (
-    <section className="year-section" aria-labelledby="year-hours">
+    <section className="year-section year-hours" aria-labelledby="year-hours">
       <SectionHead id="year-hours" title={t('year.hours.title')} to="/hours" />
-      <ul className="stats year-tiles">
-        {rows.map((r) => (
-          <Tile key={r.id} to="/hours" label={r.name} value={formatHours(r.total, lang)} />
-        ))}
-        <Tile to="/hours" label={t('year.hours.total')} value={formatHours(data.hours.grandTotal, lang)} wide />
-      </ul>
+      <LinkTile to="/hours" label={t('year.hours.total')} value={formatHours(data.hours.grandTotal, lang)}>
+        <span className="year-partners">
+          {rows.map((r) => (
+            <span key={r.id} className="year-partner year-fig">
+              <span className="year-partner-name year-fig-label">{r.name}</span>
+              <span className="year-partner-hours year-fig-value">{formatHours(r.total, lang)}</span>
+              <span className="year-partner-track" aria-hidden="true">
+                <span
+                  className="year-partner-bar"
+                  style={{ width: `${max > 0 ? (Math.max(0, r.total) / max) * 100 : 0}%` }}
+                />
+              </span>
+            </span>
+          ))}
+        </span>
+      </LinkTile>
     </section>
   );
 }
@@ -126,35 +217,39 @@ function BudgetSection({ data }: { data: YearPageData }) {
     [t('year.budget.income'), b.budgetIncomeCents, b.actualIncomeCents],
   ] as const;
   return (
-    <section className="year-section" aria-labelledby="year-budget">
+    <section className="year-section year-budget" aria-labelledby="year-budget">
       <SectionHead id="year-budget" title={t('year.budget.title')} to="/budget" />
-      <table className="econ-table year-budget-table">
-        <thead>
-          <tr>
-            <th scope="col">
-              <span className="visually-hidden">{t('year.budget.category')}</span>
-            </th>
-            <th scope="col">{t('year.budget.budget')}</th>
-            <th scope="col">{t('year.budget.actual')}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map(([label, budget, actual]) => (
-            <tr key={label}>
-              <th scope="row">{label}</th>
-              <td>
-                <Link to="/budget">{formatMoney(budget, lang)}</Link>
-              </td>
-              <td>
-                <Link to="/budget">{formatMoney(actual, lang)}</Link>
-              </td>
+      <div className="table-wrap">
+        <table className="data-table year-budget-table">
+          <caption className="visually-hidden">{t('year.budget.title')}</caption>
+          <thead>
+            <tr>
+              <th scope="col">
+                <span className="visually-hidden">{t('year.budget.category')}</span>
+              </th>
+              <th scope="col" className="num">
+                {t('year.budget.budget')}
+              </th>
+              <th scope="col" className="num">
+                {t('year.budget.actual')}
+              </th>
             </tr>
-          ))}
-        </tbody>
-      </table>
-      <ul className="stats year-tiles year-result">
-        <Tile to="/budget" label={t('year.budget.yearResult')} value={formatMoney(data.yearResultCents, lang)} wide />
-      </ul>
+          </thead>
+          <tbody>
+            {rows.map(([label, budget, actual]) => (
+              <tr key={label}>
+                <th scope="row">{label}</th>
+                <td className="num">
+                  <Link to="/budget">{formatMoney(budget, lang)}</Link>
+                </td>
+                <td className="num">
+                  <Link to="/budget">{formatMoney(actual, lang)}</Link>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </section>
   );
 }
@@ -162,28 +257,41 @@ function BudgetSection({ data }: { data: YearPageData }) {
 function UpcomingSection({ data }: { data: YearPageData }) {
   const { t } = useTranslation();
   const lang = useLang();
+  const columns: DataTableColumn<GigSummary>[] = [
+    {
+      key: 'date',
+      label: t('year.upcoming.date'),
+      className: 'year-upcoming-date',
+      cell: (gig) => formatDateRange(gig.startDate, gig.endDate, lang),
+    },
+    {
+      key: 'gig',
+      label: t('year.upcoming.gig'),
+      primary: true,
+      cell: (gig) => (
+        <Link to={`/gigs/${gig.id}`} className="year-upcoming-link">
+          {gig.lineupName} · {gig.venue}
+        </Link>
+      ),
+    },
+    {
+      key: 'staffing',
+      label: t('year.upcoming.staffing'),
+      className: 'year-upcoming-staffing',
+      cell: (gig) => gig.notFullyStaffed && <StatusTag tone="warn">{t('year.upcoming.notFullyStaffed')}</StatusTag>,
+    },
+  ];
   return (
-    <section className="year-section" aria-labelledby="year-upcoming">
+    <section className="year-section year-upcoming" aria-labelledby="year-upcoming">
       <SectionHead id="year-upcoming" title={t('year.upcoming.title')} to="/gigs" />
-      {data.upcomingGigs.length === 0 ? (
-        <p className="muted">{t('year.upcoming.none')}</p>
-      ) : (
-        <ul className="year-upcoming" aria-labelledby="year-upcoming">
-          {data.upcomingGigs.map((gig) => (
-            <li key={gig.id}>
-              <Link to={`/gigs/${gig.id}`} className="year-upcoming-link">
-                <span className="year-upcoming-date">{formatDateRange(gig.startDate, gig.endDate, lang)}</span>
-                <span className="year-upcoming-name">
-                  {gig.lineupName} · {gig.venue}
-                </span>
-                {gig.notFullyStaffed && (
-                  <span className="badge badge-warn">{t('year.upcoming.notFullyStaffed')}</span>
-                )}
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
+      <DataTable
+        columns={columns}
+        rows={data.upcomingGigs}
+        rowKey={(gig) => gig.id}
+        caption={t('year.upcoming.title')}
+        empty={t('year.upcoming.none')}
+        className="year-upcoming-table"
+      />
     </section>
   );
 }

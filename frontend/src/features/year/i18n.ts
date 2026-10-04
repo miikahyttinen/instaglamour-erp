@@ -2,6 +2,7 @@
 // Terms follow docs/glossary.md.
 
 export const fi = {
+  summary: 'Keikkoja {{gigs}} · Tunteja {{hours}}',
   gigs: {
     title: 'Keikat',
     gigCount: 'Keikkoja',
@@ -11,6 +12,8 @@ export const fi = {
     actualCosts: 'Kulut, toteuma',
     marginBudget: 'Kate, budjetti',
     marginActual: 'Kate, toteuma',
+    costsChart: 'Kulut, budjetti ja toteuma',
+    marginChart: 'Kate, budjetti ja toteuma',
   },
   hours: {
     title: 'Tunnit',
@@ -31,10 +34,14 @@ export const fi = {
     none: 'Ei tulevia keikkoja.',
     notFullyStaffed: 'Miehitys kesken',
     showAll: 'Kaikki keikat',
+    date: 'Päivä',
+    gig: 'Keikka',
+    staffing: 'Miehitys',
   },
 };
 
 export const en: typeof fi = {
+  summary: 'Gigs {{gigs}} · Hours {{hours}}',
   gigs: {
     title: 'Gigs',
     gigCount: 'Gigs',
@@ -44,6 +51,8 @@ export const en: typeof fi = {
     actualCosts: 'Costs, actual',
     marginBudget: 'Margin, budget',
     marginActual: 'Margin, actual',
+    costsChart: 'Costs, budget and actual',
+    marginChart: 'Margin, budget and actual',
   },
   hours: {
     title: 'Hours',
@@ -64,5 +73,8 @@ export const en: typeof fi = {
     none: 'No upcoming gigs.',
     notFullyStaffed: 'Not fully staffed',
     showAll: 'All gigs',
+    date: 'Date',
+    gig: 'Gig',
+    staffing: 'Staffing',
   },
 };

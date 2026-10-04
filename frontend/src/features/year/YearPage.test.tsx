@@ -14,19 +14,27 @@ import { PARTNER_A_EMAIL, renderApp, signInMock } from '../../test/renderApp';
 
 const fiMoney = (cents: number) => formatMoney(cents, 'fi');
 
-/** The link tile whose label is `label`. */
+/** The label/value pair (`.year-fig`) whose label is `label`. */
+function figure(label: string): HTMLElement {
+  const el = screen.getByText(label, { selector: '.year-fig-label' }).closest<HTMLElement>('.year-fig');
+  if (!el) throw new Error(`No figure ${label}`);
+  return el;
+}
+
+/** The link (tile) that holds the figure `label`. */
 function tile(label: string): HTMLAnchorElement {
-  const el = screen.getByText(label, { selector: '.year-tile-label' }).closest('a');
+  const el = figure(label).closest('a');
   if (!el) throw new Error(`No tile ${label}`);
   return el;
 }
 
-/** Exact displayed value of the tile `label` (keeps the non-breaking spaces of Intl). */
+/** Exact displayed value of the figure `label` (keeps the non-breaking spaces of Intl). */
 function tileValue(label: string): string | null {
-  return tile(label).querySelector('.year-tile-value')?.textContent ?? null;
+  return figure(label).querySelector(':scope > .year-fig-value')?.textContent ?? null;
 }
 
-const rowText = (name: RegExp) => within(screen.getByRole('table')).getByRole('row', { name }).textContent ?? '';
+const budgetTable = () => screen.getByRole('table', { name: 'Budjetti' });
+const rowText = (name: RegExp) => within(budgetTable()).getByRole('row', { name }).textContent ?? '';
 
 function daysFromToday(days: number): string {
   const now = new Date();
@@ -158,7 +166,7 @@ describe('year page', () => {
     }
     for (const label of ['Partner A', 'Yhteensä']) expect(tile(label)).toHaveAttribute('href', '/hours');
     expect(tile('Vuoden tulos')).toHaveAttribute('href', '/budget');
-    for (const link of within(screen.getByRole('table')).getAllByRole('link')) {
+    for (const link of within(budgetTable()).getAllByRole('link')) {
       expect(link).toHaveAttribute('href', '/budget');
     }
     expect(within(screen.getByRole('heading', { level: 2, name: /^Keikat/ })).getByRole('link')).toHaveAttribute('href', '/gigs');
@@ -178,13 +186,14 @@ describe('year page', () => {
     for (const n of [2, 3, 4, 5, 6]) addMockGig({ startDate: daysFromToday(n * 10), venue: `Venue ${n}` });
 
     const { user } = renderApp('/');
-    const list = await screen.findByRole('list', { name: 'Tulevat keikat' });
-    const items = within(list).getAllByRole('link');
+    const table = await screen.findByRole('table', { name: 'Tulevat keikat' });
+    const rows = within(table).getAllByRole('row').slice(1);
+    const items = rows.map((row) => within(row).getByRole('link'));
     expect(items.map((a) => a.textContent)).toEqual(
       ['Venue 1', 'Venue 2', 'Venue 3', 'Venue 4', 'Venue 5'].map((v) => expect.stringContaining(v)),
     );
     // Template A gigs have unstaffed musician lines (BR-023).
-    expect(within(items[0]!).getByText('Miehitys kesken')).toBeInTheDocument();
+    expect(within(rows[0]!).getByText('Miehitys kesken')).toBeInTheDocument();
     expect(items[0]).toHaveAttribute('href', `/gigs/${first.id}`);
 
     await user.click(items[0]!);
