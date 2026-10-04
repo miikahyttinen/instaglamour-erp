@@ -1,3 +1,4 @@
+import { X } from 'lucide-react';
 import { useEffect, useId, useRef, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -7,7 +8,11 @@ interface Props {
   children: ReactNode;
 }
 
-/** Modal dialog: full-width sheet on phones, centred card on desktop. Escape closes it. */
+/**
+ * Modal dialog: bottom sheet on phones, centred panel from 600 px. Uppercase title, X close
+ * button, Escape closes it and focus returns to the opener. Put the actions in a
+ * `<div className="form-actions">` at the end of `children`.
+ */
 export function Dialog({ title, onClose, children }: Props) {
   const { t } = useTranslation();
   const titleId = useId();
@@ -42,9 +47,10 @@ export function Dialog({ title, onClose, children }: Props) {
             type="button"
             className="icon-btn dialog-close"
             aria-label={t('common.close')}
+            title={t('common.close')}
             onClick={onClose}
           >
-            ×
+            <X />
           </button>
         </div>
         {children}
