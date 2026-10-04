@@ -1,0 +1,129 @@
+/* Design tokens (docs/design.md). The ONLY place in the app where colour values are written.
+   Theme selectors also work on any element, so `<div data-theme="light">` re-themes a subtree
+   (used by /styleguide to show both themes side by side). */
+
+/* ---------- Theme-independent tokens ---------- */
+:root {
+  /* Typography */
+  --font-sans: 'Afacad', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --fs-meta: 0.625rem; /* 10 px — mono captions under figures */
+  --fs-label: 0.6875rem; /* 11 px — mono labels, table headers, buttons, tags */
+  --fs-small: 0.8125rem; /* 13 px — secondary body text */
+  --fs-body: 0.9375rem; /* 15 px — body, table cells, inputs */
+  --fs-lg: 1.125rem; /* 18 px — card / dialog titles */
+  --fs-figure: 1.5rem; /* 24 px phone → 28 px desktop — stat tile numbers */
+  --fs-title: 1.5rem; /* 24 px phone → 32 px desktop — page title */
+  --lh-tight: 1.1;
+  --lh-body: 1.45;
+  --ls-label: 0.14em; /* mono uppercase letter spacing (0.12–0.16em) */
+  --ls-title: -0.01em;
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-bold: 700;
+
+  /* Spacing scale 4/8/12/16/24/32/48 */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --page-pad: var(--space-4); /* 16 px phone → 48 px desktop */
+  --content-max: 1400px;
+
+  /* Shape */
+  --radius: 2px; /* maximum radius anywhere */
+  --hairline: 1px;
+
+  /* Sizes */
+  --tap: 44px; /* minimum touch target on phones */
+  --control-h: 44px; /* buttons / inputs: 44 px phone → 36 px desktop */
+  --icon: 16px;
+  --icon-stroke: 1.5;
+  --header-h: 56px;
+  --bottom-nav-h: 60px;
+}
+
+@media (min-width: 900px) {
+  :root {
+    --fs-figure: 1.75rem;
+    --fs-title: 2rem;
+    --page-pad: var(--space-7);
+    --control-h: 36px;
+  }
+}
+
+/* ---------- Dark (default) ---------- */
+:root,
+:root[data-theme='dark'],
+[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #0a0a0a;
+  --surface: #141414;
+  --surface-2: #1c1c1c;
+  --border: #2e2e2e;
+  --border-strong: #4a4a4a;
+  --text: #f2f2f2;
+  --text-muted: #9a9a9a;
+  /* design.md says #7a7a7a; raised to #858585 so 11 px labels meet WCAG AA (4.5:1) on
+     --surface and --surface-2 as well as on --bg. */
+  --label: #858585;
+  --accent: #ffffff;
+  --accent-contrast: #0a0a0a;
+  --info-fg: #6ea8ff;
+  --info-bg: #121c2e;
+  --info-border: #1e3b6a;
+  --ok-fg: #34d399;
+  --ok-bg: #0b251c;
+  --ok-border: #0c533b;
+  --warn-fg: #fbbf24;
+  --warn-bg: #2a2210;
+  --warn-border: #5c4a14;
+  --danger-fg: #f87171;
+  --danger-bg: #2a1212;
+  --danger-border: #5c1f1f;
+  --backdrop: rgb(0 0 0 / 70%);
+}
+
+/* ---------- Light ---------- */
+:root[data-theme='light'],
+[data-theme='light'] {
+  color-scheme: light;
+  --bg: #fafafa;
+  --surface: #ffffff;
+  --surface-2: #f2f2f2;
+  --border: #e0e0e0;
+  --border-strong: #bdbdbd;
+  --text: #0a0a0a;
+  --text-muted: #5c5c5c;
+  --label: #6b6b6b;
+  --accent: #0a0a0a;
+  --accent-contrast: #ffffff;
+  --info-fg: #1d4ed8;
+  --info-bg: #eaf1ff;
+  --info-border: #bcd0f5;
+  --ok-fg: #047857;
+  --ok-bg: #e7f6ef;
+  --ok-border: #a7dcc4;
+  --warn-fg: #a16207;
+  --warn-bg: #fdf6e3;
+  --warn-border: #ecd9a3;
+  --danger-fg: #b91c1c;
+  --danger-bg: #fdecec;
+  --danger-border: #f0b4b4;
+  --backdrop: rgb(10 10 10 / 40%);
+}
+
+/* ---------- Legacy aliases (DEPRECATED) ----------
+   Old names still used by feature CSS until TASK-111…116 migrate it. Do not use in new code. */
+:root,
+[data-theme] {
+  --muted: var(--text-muted);
+  --primary: var(--accent);
+  --primary-text: var(--accent-contrast);
+  --danger: var(--danger-fg);
+  --header-bg: var(--bg);
+  --header-text: var(--text);
+}

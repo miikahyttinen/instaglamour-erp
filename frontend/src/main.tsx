@@ -5,13 +5,18 @@ import { App } from './App';
 import { mocksEnabled } from './config';
 import './i18n';
 import { createQueryClient } from './queryClient';
+import './styles/fonts.css';
+import './styles/tokens.css';
 import './styles.css';
+import { initTheme } from './theme/theme';
 
 async function enableMocks(): Promise<void> {
   if (!mocksEnabled()) return;
   const { worker } = await import('./mocks/browser');
   await worker.start({ onUnhandledRequest: 'bypass' });
 }
+
+initTheme();
 
 const queryClient = createQueryClient();
 

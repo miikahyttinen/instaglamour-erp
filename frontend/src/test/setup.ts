@@ -6,6 +6,7 @@ import { afterAll, afterEach, beforeAll, beforeEach } from 'vitest';
 import { setLanguage } from '../i18n';
 import { resetMockDb } from '../mocks/data';
 import { server } from '../mocks/server';
+import { removeMatchMedia } from './matchMedia';
 
 // Uploads: Vitest's jsdom FormData → Node fetch bridge drops file names and bytes, and Node's
 // multipart parser (used by the mock handler) needs Node's File. Tests therefore use Node's
@@ -18,11 +19,15 @@ beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
 beforeEach(() => {
   resetMockDb();
   setLanguage('fi');
+  // Theme: no stored choice, nothing applied, no matchMedia (= phone, dark).
+  window.localStorage.clear();
+  document.documentElement.removeAttribute('data-theme');
 });
 
 afterEach(() => {
   cleanup();
   server.resetHandlers();
+  removeMatchMedia();
 });
 
 afterAll(() => server.close());
