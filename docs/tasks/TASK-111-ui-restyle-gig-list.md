@@ -1,7 +1,7 @@
 # TASK-111: Restyle gig list and new gig form
 
 - **owner:** ui
-- **status:** todo
+- **status:** done
 - **spec:** docs/design.md, NFR-7
 - **depends on:** TASK-110
 
