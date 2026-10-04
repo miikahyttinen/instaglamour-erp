@@ -1,10 +1,5 @@
-import type { Page } from '@playwright/test';
-import { api, expect, expectNoHorizontalScroll, fiDate, fiInput, fiMoney, signIn, tagOf, test } from './helpers';
-import { createGigViaApi, suffix } from './gigs';
-
-function priceValue(page: Page, label: string) {
-  return page.locator('.info-list > div', { has: page.getByText(label, { exact: true }) }).locator('dd');
-}
+import { api, expect, expectNoHorizontalScroll, fiDate, fiInput, fiMoney, pageHead, signIn, tagOf, test } from './helpers';
+import { createGigViaApi, gigListRows, infoValue as priceValue, suffix, totalPriceLine } from './gigs';
 
 // Flow 3: edit price and additional sales; move; cancel (adjust price); uncancel; delete and
 // restore; history shows the events (UC-007, UC-009, UC-010, UC-012, UC-013, UC-025).
@@ -25,7 +20,7 @@ test('edit price, move, cancel, uncancel, delete, restore — all in history', a
   await page.getByLabel('Hinta (alv 0 %)').fill(fiInput(200000));
   await page.getByLabel('Lisämyynti', { exact: true }).fill(fiInput(10000));
   await page.getByLabel('Lisämyynnin kuvaus').fill('Extra set');
-  await expect(page.locator('.total-line')).toContainText(fiMoney(210000));
+  await expect(totalPriceLine(page)).toContainText(fiMoney(210000));
   await page.getByRole('button', { name: 'Tallenna' }).click();
   await expect(page.getByRole('status').filter({ hasText: 'Muutokset tallennettu.' })).toBeVisible();
   await expect(priceValue(page, 'Hinta (alv 0 %)')).toHaveText(fiMoney(200000));
@@ -49,7 +44,7 @@ test('edit price, move, cancel, uncancel, delete, restore — all in history', a
   await cancelDialog.getByLabel('Syy').fill('Synthetic reason');
   await cancelDialog.getByRole('button', { name: 'Peru keikka' }).click();
   await expect(cancelDialog).toBeHidden();
-  await expect(page.locator('.gig-header')).toContainText('Peruttu');
+  await expect(pageHead(page)).toContainText('Peruttu');
   await page.getByRole('button', { name: 'Muokkaa hintaa', exact: true }).click();
   await page.getByLabel('Hinta (alv 0 %)').fill(fiInput(10000));
   await page.getByLabel('Lisämyynti', { exact: true }).fill(fiInput(0));
@@ -64,7 +59,8 @@ test('edit price, move, cancel, uncancel, delete, restore — all in history', a
   await uncancelDialog.getByRole('button', { name: 'Palauta myydyksi' }).click();
   await expect(uncancelDialog).toBeHidden();
   await expect(page.getByRole('status').filter({ hasText: 'Keikka palautettu myydyksi.' })).toBeVisible();
-  await expect(page.locator('.gig-header')).toContainText('Myyty');
+  await expect(pageHead(page)).toContainText('Myyty');
+  await expect(pageHead(page)).not.toContainText('Peruttu');
 
   // Delete (UC-025) → lands on the gig list with a notice; the gig is in the deleted view.
   await page.getByRole('group', { name: 'Toiminnot' }).getByRole('button', { name: 'Poista keikka' }).click();
@@ -73,6 +69,7 @@ test('edit price, move, cancel, uncancel, delete, restore — all in history', a
   await deleteDialog.getByRole('button', { name: 'Poista keikka' }).click();
   await expect(page).toHaveURL(/\/gigs$/);
   await expect(page.getByRole('status').filter({ hasText: 'Keikka poistettu.' })).toBeVisible();
+  await expect(gigListRows(page).first()).toBeVisible(); // the list has loaded (table or cards)
   await expect(page.getByRole('link', { name: title })).toHaveCount(0);
 
   await page.getByRole('button', { name: 'Poistetut' }).click();

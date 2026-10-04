@@ -1,4 +1,4 @@
-import { api, expect, expectNoHorizontalScroll, fiInput, fiMoney, goNav, signIn, tagOf, test } from './helpers';
+import { api, expect, expectNoHorizontalScroll, fiInput, fiMoney, goNav, pageHead, signIn, tagOf, test } from './helpers';
 
 // Flow 8: budget — edit a row; year page budget / year result updated; copy to next year (UC-020, UC-022).
 // Each viewport uses its own empty years so the copy target is always empty (409 otherwise).
@@ -32,7 +32,10 @@ test('edit a budget row, see it on the year page, copy it to the next year', asy
   const expenseRow = budget.getByRole('row', { name: /^Kulut/ });
   await expect(expenseRow.getByRole('cell').nth(0)).toHaveText(fiMoney(before.budget.budgetExpenseCents + rentExpense));
   await expect(expenseRow.getByRole('cell').nth(1)).toHaveText(fiMoney(before.budget.actualExpenseCents + rentActual));
-  await expect(budget.getByRole('link', { name: `Vuoden tulos ${fiMoney(before.yearResultCents - rentActual)}` })).toBeVisible();
+  // The year result is emphasised in the page head (TASK-113) and links to the budget.
+  await expect(
+    pageHead(page).getByRole('link', { name: `Vuoden tulos ${fiMoney(before.yearResultCents - rentActual)}` }),
+  ).toBeVisible();
 
   // Next year, copy from the previous one: budget fields copied, actuals untouched.
   await page.getByRole('button', { name: 'Seuraava vuosi' }).click();

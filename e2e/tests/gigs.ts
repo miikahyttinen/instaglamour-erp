@@ -1,5 +1,5 @@
-import type { Page } from '@playwright/test';
-import { api, SEED } from './helpers';
+import type { Locator, Page } from '@playwright/test';
+import { api, isWide, SEED } from './helpers';
 
 export interface Reference {
   partners: { id: string; name: string; email: string }[];
@@ -45,4 +45,55 @@ export async function createGigViaApi(
 /** Random suffix so repeated runs on the same database don't collide. */
 export function suffix(): string {
   return Math.random().toString(36).slice(2, 7);
+}
+
+// ---- Gig page and gig list locators (markup after the design restyle, TASK-110…116) ----
+
+/** One cost line on the gig page: each line is its own `<tbody aria-label="<type>">`. */
+export function costLine(page: Page, label: string): Locator {
+  return page.getByRole('table', { name: 'Kulut ja miehitys' }).getByRole('rowgroup', { name: label, exact: true });
+}
+
+/** All cost lines on the gig page (the header rowgroup has column headers, no cells). */
+export function costLines(page: Page): Locator {
+  return page
+    .getByRole('table', { name: 'Kulut ja miehitys' })
+    .getByRole('rowgroup')
+    .filter({ has: page.getByRole('cell') });
+}
+
+/**
+ * Economics stat tile on the gig page (`Kulut`, `Kate`, `Kate-%`): the big figure is the budget,
+ * the secondary figure (caption "Toteuma") is the actual.
+ */
+export function econTile(page: Page, label: string): { budget: Locator; actual: Locator } {
+  const tile = page.getByRole('region', { name: label, exact: true });
+  return {
+    budget: tile.locator('.stat-tile-value'),
+    actual: tile
+      .locator('.stat-tile-secondary')
+      .filter({ hasText: 'Toteuma' })
+      .locator('.stat-tile-secondary-value'),
+  };
+}
+
+/** Value of a label/value pair in the gig page's info lists (`<dt>` / `<dd>`). */
+export function infoValue(page: Page, label: string): Locator {
+  return page
+    .getByRole('main')
+    .locator('dl > div')
+    .filter({ has: page.getByRole('term').getByText(label, { exact: true }) })
+    .getByRole('definition');
+}
+
+/** The live "Kokonaishinta: …" line under the price inputs (new gig form and price edit form). */
+export function totalPriceLine(page: Page): Locator {
+  return page.getByRole('main').locator('p', { hasText: /^Kokonaishinta:/ });
+}
+
+/** Rows of the gig list: a table from 900 px, cards (list items) below that. */
+export function gigListRows(page: Page): Locator {
+  return isWide(page)
+    ? page.getByRole('table', { name: 'Keikkalista' }).getByRole('row').filter({ has: page.getByRole('cell') })
+    : page.getByRole('list', { name: 'Keikkalista' }).getByRole('listitem');
 }
