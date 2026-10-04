@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Button } from '../../components/Button';
 import { Field } from '../../components/fields';
 import { apiErrorMessage, apiFieldErrors } from '../../i18n/labels';
 
@@ -14,6 +15,8 @@ interface Props {
   onSubmit: (name: string) => Promise<unknown>;
   clearOnSuccess?: boolean;
   onCancel?: () => void;
+  /** Field and button on one row from 600 px (the add form on the list page). */
+  inline?: boolean;
 }
 
 /** Name input for adding or renaming a person. Empty name → REQUIRED (UC-014 E1). */
@@ -26,6 +29,7 @@ export function NameForm({
   onSubmit,
   clearOnSuccess = false,
   onCancel,
+  inline = false,
 }: Props) {
   const { t } = useTranslation();
   const [name, setName] = useState(initialName);
@@ -51,7 +55,11 @@ export function NameForm({
   };
 
   return (
-    <form className="inline-form people-name-form" onSubmit={submit} noValidate>
+    <form
+      className={inline ? 'people-name-form people-name-form-inline' : 'people-name-form'}
+      onSubmit={submit}
+      noValidate
+    >
       <Field label={label} error={fieldError}>
         {(props) => (
           <input
@@ -68,19 +76,15 @@ export function NameForm({
         )}
       </Field>
       {formError && (
-        <p className="field-error" role="alert">
+        <p className="field-error people-form-error" role="alert">
           {formError}
         </p>
       )}
-      <div className="inline-actions">
-        <button type="submit" className="btn btn-primary" disabled={pending}>
+      <div className={inline ? 'people-name-actions' : 'form-actions'}>
+        <Button type="submit" variant="primary" disabled={pending}>
           {pending ? t('common.saving') : submitLabel}
-        </button>
-        {onCancel && (
-          <button type="button" className="btn" onClick={onCancel}>
-            {t('common.cancel')}
-          </button>
-        )}
+        </Button>
+        {onCancel && <Button onClick={onCancel}>{t('common.cancel')}</Button>}
       </div>
     </form>
   );

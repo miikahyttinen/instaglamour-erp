@@ -98,11 +98,12 @@ describe('person page (UC-014 A2)', () => {
     const { user } = renderApp(`/people/${person('Person 9').id}`);
     const heading = await screen.findByRole('heading', { level: 1 });
     expect(heading).toHaveTextContent('Person 9');
-    expect(heading).toHaveTextContent('Ei käytössä');
+    const head = () => screen.getByRole('heading', { level: 1 }).closest('header')!;
+    expect(head()).toHaveTextContent('Ei käytössä');
 
     await user.click(screen.getByRole('button', { name: 'Ota käyttöön: Person 9' }));
     expect(await screen.findByText('Person 9 otettu käyttöön.')).toBeInTheDocument();
-    await waitFor(() => expect(screen.getByRole('heading', { level: 1 })).not.toHaveTextContent('Ei käytössä'));
+    await waitFor(() => expect(head()).not.toHaveTextContent('Ei käytössä'));
 
     await user.click(screen.getByRole('button', { name: 'Muuta nimeä: Person 9' }));
     const dialog = await screen.findByRole('dialog');

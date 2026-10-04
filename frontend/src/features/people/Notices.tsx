@@ -1,4 +1,6 @@
 import { useTranslation } from 'react-i18next';
+import { Button } from '../../components/Button';
+import { Notice as NoticeMessage } from '../../components/Notice';
 
 export interface Notice {
   text: string;
@@ -11,18 +13,18 @@ export interface Notice {
 export function NoticeBox({ notice, onDismiss }: { notice: Notice | null; onDismiss: () => void }) {
   const { t } = useTranslation();
   if (!notice) return <div role="status" />;
-  const kind = notice.error ? 'notice-error' : notice.warnings.length > 0 ? 'notice-warn' : '';
+  const tone = notice.error ? 'danger' : notice.warnings.length > 0 ? 'warn' : 'ok';
   return (
-    <div role="status" className={`notice ${kind} people-notice`}>
+    <NoticeMessage tone={tone} role="status" className="people-notice">
       <div>
         <p>{notice.text}</p>
         {notice.warnings.map((w) => (
           <p key={w}>{w}</p>
         ))}
       </div>
-      <button type="button" className="btn btn-small" onClick={onDismiss}>
+      <Button size="sm" onClick={onDismiss}>
         {t('common.dismiss')}
-      </button>
-    </div>
+      </Button>
+    </NoticeMessage>
   );
 }

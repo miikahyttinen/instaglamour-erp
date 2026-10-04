@@ -6,20 +6,20 @@ import { db } from '../../mocks/data';
 import { server } from '../../mocks/server';
 import { renderApp, signInMock } from '../../test/renderApp';
 
-const list = () => screen.getByRole('list', { name: 'Henkilöt' });
-const names = () =>
+const list = () => screen.getByRole('table', { name: 'Henkilöt' });
+/** Body rows of the people table (one per person). */
+const rows = () =>
   within(list())
-    .getAllByRole('listitem')
-    .map((li) => within(li).getByRole('link').textContent);
+    .queryAllByRole('row')
+    .filter((r) => r.closest('tbody'));
+const names = () => rows().map((tr) => within(tr).getByRole('link').textContent);
 const row = (name: string) =>
-  within(list())
-    .getAllByRole('listitem')
-    .find((li) => within(li).getByRole('link').textContent === name)!;
+  rows().find((tr) => within(tr).getByRole('link').textContent === name)!;
 
 async function openPeople(path = '/people') {
   const app = renderApp(path);
   await screen.findByRole('heading', { name: 'Henkilöt', level: 1 });
-  await screen.findByRole('list', { name: 'Henkilöt' });
+  await screen.findByRole('table', { name: 'Henkilöt' });
   return app;
 }
 
@@ -156,7 +156,7 @@ describe('people register (UC-014)', () => {
     db.partners[0]!.language = 'en';
     setLanguage('en');
     const { user } = renderApp('/people');
-    await screen.findByRole('list', { name: 'People' });
+    await screen.findByRole('table', { name: 'People' });
     expect(screen.getByRole('button', { name: 'Active' })).toHaveAttribute('aria-pressed', 'true');
     await user.type(screen.getByLabelText('Name'), 'Person 1');
     await user.click(screen.getByRole('button', { name: 'Add' }));
