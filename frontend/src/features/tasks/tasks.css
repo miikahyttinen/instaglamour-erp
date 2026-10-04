@@ -1,55 +1,45 @@
-/* Tasks page (UC-017). Mobile-first; scoped with task-/tasks- prefixes. */
+/* Tasks page (UC-017). Mobile-first; scoped with task-/tasks- prefixes. Tokens only. */
 
-.tasks-head {
+.tasks-page .tasks-filters {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  margin-bottom: 0.75rem;
-}
-.tasks-head h1 {
-  margin: 0;
+  gap: var(--space-2) var(--space-5);
+  margin-bottom: var(--space-4);
 }
 
-.tasks-filters {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.25rem 1rem;
-  margin-bottom: 0.75rem;
-}
-
-.tasks-list {
+/* The list is one surface with hairline rows (like a table body). */
+.tasks-page .tasks-list {
   list-style: none;
   margin: 0;
   padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+  background: var(--surface);
+  border: var(--hairline) solid var(--border);
+  border-radius: var(--radius);
 }
 
-.task-item {
+.tasks-page .task-item {
   display: flex;
   align-items: flex-start;
-  gap: 0.75rem;
-  padding: 0.5rem 0.5rem 0.5rem 0.25rem;
-  border: 1px solid var(--border);
-  border-left: 4px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--surface);
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-2) var(--space-3) var(--space-1);
+  border-top: var(--hairline) solid var(--border);
+  border-left: calc(var(--hairline) * 2) solid transparent;
 }
-.task-overdue {
-  border-left-color: var(--danger);
-  background: var(--danger-bg);
+.tasks-page .task-item:first-child {
+  border-top: 0;
 }
-.task-done .task-title {
+/* Overdue = warn status: a thin warn rule on the left, plus the warn tag. */
+.tasks-page .task-overdue {
+  border-left-color: var(--warn-fg);
+}
+.tasks-page .task-done .task-title {
   text-decoration: line-through;
-  color: var(--muted);
+  color: var(--text-muted);
 }
 
-/* Large tap target for one-tap done / reopen. */
-.task-check {
+/* Large tap target for one-tap done / reopen; the visible box is a small square. */
+.tasks-page .task-check {
   flex: 0 0 auto;
   width: var(--tap);
   height: var(--tap);
@@ -58,53 +48,91 @@
   justify-content: center;
   border: 0;
   background: transparent;
+  color: var(--text);
   cursor: pointer;
   border-radius: var(--radius);
   padding: 0;
 }
-.task-check span {
-  width: 1.6rem;
-  height: 1.6rem;
+.tasks-page .task-check-box {
+  width: calc(var(--icon) + var(--space-1));
+  height: calc(var(--icon) + var(--space-1));
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 2px solid var(--primary);
-  border-radius: 50%;
-  color: var(--primary-text);
-  font-weight: 700;
+  border: var(--hairline) solid var(--border-strong);
+  border-radius: var(--radius);
+  background: transparent;
 }
-.task-check[aria-pressed='true'] span {
-  background: var(--primary);
+.tasks-page .task-check:hover:not(:disabled) .task-check-box {
+  border-color: var(--accent);
+}
+.tasks-page .task-check[aria-pressed='true'] .task-check-box {
+  background: var(--ok-bg);
+  border-color: var(--ok-border);
+  color: var(--ok-fg);
+}
+.tasks-page .task-check:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+.tasks-page .task-check:focus-visible {
+  outline: var(--hairline) solid var(--accent);
+  outline-offset: calc(var(--space-1) * -1);
 }
 
-.task-body {
+.tasks-page .task-body {
   flex: 1 1 auto;
   min-width: 0;
-  padding-top: 0.55rem;
+  /* Align the first text line with the centre of the 44 px check button. */
+  padding-top: calc((var(--tap) - var(--fs-body) * var(--lh-body)) / 2);
 }
-.task-title {
+.tasks-page .task-title {
   margin: 0;
-  font-weight: 600;
+  font-size: var(--fs-body);
+  font-weight: var(--fw-medium);
+  line-height: var(--lh-body);
   overflow-wrap: anywhere;
 }
-.task-meta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.25rem 0.75rem;
-  margin: 0.15rem 0 0;
-  color: var(--muted);
-}
-.task-desc {
-  margin: 0.25rem 0 0;
+.tasks-page .task-desc {
+  margin: var(--space-1) 0 0;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
-.task-edit {
-  flex: 0 0 auto;
-  padding: 0 0.75rem;
+.tasks-page .task-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  margin: var(--space-2) 0 0;
+  font-family: var(--font-mono);
+  font-size: var(--fs-meta);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  line-height: 1.6;
+  color: var(--label);
+  font-variant-numeric: tabular-nums;
 }
-.tasks-delete {
+.tasks-page .task-owner {
+  color: var(--text-muted);
+}
+.tasks-page .task-overdue .task-due {
+  color: var(--warn-fg);
+}
+.tasks-page .task-edit {
+  flex: 0 0 auto;
+}
+
+/* Delete sits on the far side of the form actions. */
+.tasks-page .tasks-delete {
   margin-left: auto;
-  color: var(--danger);
+}
+
+@media (min-width: 900px) {
+  .tasks-page .task-item {
+    align-items: center;
+    padding: var(--space-3) var(--space-4) var(--space-3) var(--space-2);
+  }
+  .tasks-page .task-body {
+    padding-top: 0;
+  }
 }
