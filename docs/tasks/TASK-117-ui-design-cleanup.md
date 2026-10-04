@@ -1,7 +1,7 @@
 # TASK-117: Design cleanup — dead global styles and leftovers
 
 - **owner:** ui
-- **status:** todo
+- **status:** done
 - **spec:** docs/design.md
 - **depends on:** TASK-110…TASK-116 (merged)
 
