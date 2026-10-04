@@ -1,14 +1,6 @@
-import type { Locator, Page } from '@playwright/test';
 import { api, expect, expectNoHorizontalScroll, fiInput, fiMoney, goNav, SEED, signIn, tagOf, test } from './helpers';
-import { createGigViaApi, suffix } from './gigs';
-
-function costLine(page: Page, label: string): Locator {
-  return page.getByRole('list', { name: 'Kulut ja miehitys' }).getByRole('listitem', { name: label, exact: true });
-}
-
-function econRow(page: Page, header: string): Locator {
-  return page.locator('table.econ-table tr', { has: page.getByRole('rowheader', { name: header, exact: true }) });
-}
+import { costLine, costLines, createGigViaApi, econTile, suffix, totalPriceLine } from './gigs';
+import { yearFigure } from './year';
 
 // Flow 2: create gig from a template → cost lines → assign a person → load-in switch → mark paid →
 // economics update (UC-002, UC-005).
@@ -32,18 +24,18 @@ test('create a gig from a template, staff it, switch load-in, mark paid', async 
   await page.getByLabel('Kokoonpano', { exact: true }).selectOption({ label: SEED.templateB.name });
   await page.getByLabel('Paikka').fill(venue);
   await page.getByLabel('Hinta (alv 0 %)').fill(fiInput(priceCents));
-  await expect(page.locator('.total-line')).toContainText(fiMoney(priceCents));
+  await expect(totalPriceLine(page)).toContainText(fiMoney(priceCents));
   await page.getByRole('button', { name: 'Luo keikka' }).click();
 
   // Gig page with the template's cost lines (BR-020) plus office/sales/production (BR-021).
   await expect(page.getByRole('heading', { level: 1, name: `${SEED.templateB.name} · ${venue}` })).toBeVisible();
-  const lines = page.getByRole('list', { name: 'Kulut ja miehitys' }).getByRole('listitem');
+  const lines = costLines(page);
   await expect(lines).toHaveCount(6);
   for (const label of ['Laulu', 'Kitara', 'DJ', 'Toimisto', 'Myynti', 'Tuotanto']) {
     await expect(costLine(page, label)).toBeVisible();
   }
-  await expect(econRow(page, 'Kulut').locator('td').nth(0)).toHaveText(fiMoney(budgeted));
-  await expect(econRow(page, 'Kulut').locator('td').nth(1)).toHaveText(fiMoney(0));
+  await expect(econTile(page, 'Kulut').budget).toHaveText(fiMoney(budgeted));
+  await expect(econTile(page, 'Kulut').actual).toHaveText(fiMoney(0));
   await expect(page.getByRole('note').filter({ hasText: 'Miehitys kesken' })).toBeVisible();
   await expectNoHorizontalScroll(page, 'gig page');
 
@@ -60,10 +52,8 @@ test('create a gig from a template, staff it, switch load-in, mark paid', async 
   await loadIn.click();
   await expect(loadIn).not.toBeChecked();
   const vocBudget = fee - SEED.loadInDeductionCents;
-  await expect(voc.locator('.cost-budget strong')).toHaveText(fiMoney(vocBudget));
-  await expect(econRow(page, 'Kulut').locator('td').nth(0)).toHaveText(
-    fiMoney(budgeted - SEED.loadInDeductionCents),
-  );
+  await expect(voc.locator('td.cost-budget')).toHaveText(fiMoney(vocBudget));
+  await expect(econTile(page, 'Kulut').budget).toHaveText(fiMoney(budgeted - SEED.loadInDeductionCents));
 
   // Mark paid with the default amount (= budgeted).
   await voc.getByRole('button', { name: 'Merkitse maksetuksi' }).click();
@@ -73,11 +63,9 @@ test('create a gig from a template, staff it, switch load-in, mark paid', async 
   await expect(voc.locator('.paid-info')).toContainText('Partner A');
 
   // Economics update: actual costs and actual margin.
-  await expect(econRow(page, 'Kulut').locator('td').nth(1)).toHaveText(fiMoney(vocBudget));
-  await expect(econRow(page, 'Kate').locator('td').nth(0)).toHaveText(
-    fiMoney(priceCents - (budgeted - SEED.loadInDeductionCents)),
-  );
-  await expect(econRow(page, 'Kate').locator('td').nth(1)).toHaveText(fiMoney(priceCents - vocBudget));
+  await expect(econTile(page, 'Kulut').actual).toHaveText(fiMoney(vocBudget));
+  await expect(econTile(page, 'Kate').budget).toHaveText(fiMoney(priceCents - (budgeted - SEED.loadInDeductionCents)));
+  await expect(econTile(page, 'Kate').actual).toHaveText(fiMoney(priceCents - vocBudget));
 
   // The backend agrees with what the page shows.
   const id = page.url().split('/').pop() ?? '';
@@ -100,7 +88,7 @@ test('create a gig from a template, staff it, switch load-in, mark paid', async 
   // show the new figures.
   const year = await api(page).get('/years/2026');
   expect(year.gigs.soldGigsSumCents).toBeGreaterThanOrEqual(priceCents);
-  await page.getByRole('link', { name: '‹ Keikat' }).click();
+  await page.getByRole('main').getByRole('link', { name: 'Keikat', exact: true }).click(); // back link
   const summary = page.getByRole('region', { name: 'Vuosi yhteensä' });
   await expect(summary).toContainText(`Myytyjen keikkojen summa${fiMoney(year.gigs.soldGigsSumCents)}`);
   await expect(summary).toContainText(`Kulut, toteuma${fiMoney(year.gigs.actualCostsCents)}`);
@@ -111,9 +99,10 @@ test('create a gig from a template, staff it, switch load-in, mark paid', async 
   await expect(
     gigsRegion.getByRole('link', { name: `Myytyjen keikkojen summa ${fiMoney(year.gigs.soldGigsSumCents)}` }),
   ).toBeVisible();
+  // Actual costs are the secondary figure inside the budgeted-costs tile (a link to the list).
   await expect(
-    gigsRegion.getByRole('link', { name: `Kulut, toteuma ${fiMoney(year.gigs.actualCostsCents)}` }),
-  ).toBeVisible();
+    yearFigure(gigsRegion.getByRole('link', { name: /^Kulut, budjetti / }), 'Kulut, toteuma'),
+  ).toHaveText(fiMoney(year.gigs.actualCostsCents));
 });
 
 // Double booking (BR-022): assigning someone who already plays a seed gig that day warns but saves.

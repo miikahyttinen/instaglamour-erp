@@ -1,4 +1,15 @@
-import { api, CURRENT_YEAR, enMoney, expect, expectNoHorizontalScroll, goNav, PARTNER_C, signIn, test } from './helpers';
+import {
+  api,
+  CURRENT_YEAR,
+  enMoney,
+  expect,
+  expectNoHorizontalScroll,
+  goNav,
+  isWide,
+  PARTNER_C,
+  signIn,
+  test,
+} from './helpers';
 
 // Flow 9: language switch to EN; year switch (UC-001 A1, BR-081). Uses Partner C so other flows
 // keep their Finnish UI; preferences are saved on the server and survive a reload.
@@ -8,16 +19,30 @@ test('switch language to English and change the year', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 1, name: `Vuosi ${CURRENT_YEAR}` })).toBeVisible();
 
-  await page.getByRole('button', { name: 'Valikko' }).click();
-  await expect(page.getByText('Kirjautuneena: Partner C')).toBeVisible();
-  await page.getByRole('group', { name: 'Kieli' }).getByRole('button', { name: 'English' }).click();
+  // Phones: language in the header menu. Desktop (900 px+): a language icon button in the header,
+  // with the signed-in partner in the sign-out button's description.
+  const wide = isWide(page);
+  if (wide) {
+    await expect(page.getByRole('button', { name: 'Kirjaudu ulos', exact: true })).toHaveAccessibleDescription(
+      /Kirjautuneena: Partner C/,
+    );
+    await page.getByRole('button', { name: 'Vaihda kieleksi English' }).click();
+  } else {
+    await page.getByRole('button', { name: 'Valikko' }).click();
+    await expect(page.getByText('Kirjautuneena: Partner C')).toBeVisible();
+    await page.getByRole('group', { name: 'Kieli' }).getByRole('button', { name: 'English' }).click();
+  }
 
   await expect(page.getByRole('heading', { level: 1, name: `Year ${CURRENT_YEAR}` })).toBeVisible();
-  await expect(page.getByRole('group', { name: 'Language' }).getByRole('button', { name: 'English' })).toHaveAttribute(
-    'aria-pressed',
-    'true',
-  );
-  await page.keyboard.press('Escape');
+  if (wide) {
+    // The toggle now offers the other language.
+    await expect(page.getByRole('button', { name: 'Change language to Suomi' })).toBeVisible();
+  } else {
+    await expect(
+      page.getByRole('group', { name: 'Language' }).getByRole('button', { name: 'English' }),
+    ).toHaveAttribute('aria-pressed', 'true');
+    await page.keyboard.press('Escape');
+  }
   const year = await api(page).get(`/years/${CURRENT_YEAR}`);
   await expect(
     page.getByRole('region', { name: 'Gigs' }).getByRole('link', { name: `Sold gigs sum ${enMoney(year.gigs.soldGigsSumCents)}` }),
@@ -44,7 +69,11 @@ test('switch language to English and change the year', async ({ page }) => {
   await expectNoHorizontalScroll(page, 'gig list (EN)');
 
   // Back to Finnish.
-  await page.getByRole('button', { name: 'Menu' }).click();
-  await page.getByRole('group', { name: 'Language' }).getByRole('button', { name: 'Suomi' }).click();
+  if (wide) {
+    await page.getByRole('button', { name: 'Change language to Suomi' }).click();
+  } else {
+    await page.getByRole('button', { name: 'Menu' }).click();
+    await page.getByRole('group', { name: 'Language' }).getByRole('button', { name: 'Suomi' }).click();
+  }
   await expect(page.getByRole('heading', { level: 1, name: `Keikat ${CURRENT_YEAR - 1}` })).toBeVisible();
 });

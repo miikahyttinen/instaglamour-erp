@@ -1,4 +1,4 @@
-import { api, expect, expectNoHorizontalScroll, fiMoney, goNav, SEED, signIn, tagOf, test } from './helpers';
+import { api, expect, expectNoHorizontalScroll, fiMoney, goNav, pageHead, SEED, signIn, tagOf, test } from './helpers';
 import { createGigViaApi, suffix } from './gigs';
 
 // Flow 5: people — add, rename, deactivate; the person page shows their lines (UC-014).
@@ -18,7 +18,7 @@ test('add, rename and deactivate a person; person page lists their lines', async
   await page.getByLabel('Nimi', { exact: true }).fill(name);
   await page.getByRole('button', { name: 'Lisää', exact: true }).click();
   await expect(page.getByRole('status').filter({ hasText: `Henkilö lisätty: ${name}.` })).toBeVisible();
-  const list = page.getByRole('list', { name: 'Henkilöt' });
+  const list = page.getByRole('table', { name: 'Henkilöt' });
   await expect(list.getByRole('link', { name, exact: true })).toBeVisible();
 
   // Rename.
@@ -50,7 +50,9 @@ test('add, rename and deactivate a person; person page lists their lines', async
   // Deactivate on the person page; the person leaves the active list but stays under "inactive".
   await page.getByRole('button', { name: `Poista käytöstä: ${renamed}` }).click();
   await expect(page.getByRole('status').filter({ hasText: `${renamed} poistettu käytöstä.` })).toBeVisible();
-  await expect(page.getByRole('heading', { level: 1, name: renamed })).toContainText('Ei käytössä');
+  // The "inactive" tag sits in the page head next to the name.
+  await expect(page.getByRole('heading', { level: 1, name: renamed })).toBeVisible();
+  await expect(pageHead(page).locator('.page-subtitle .tag')).toHaveText('Ei käytössä');
   // The line on the gig is kept.
   await expect(lines.getByRole('row', { name: new RegExp(venue) })).toBeVisible();
 

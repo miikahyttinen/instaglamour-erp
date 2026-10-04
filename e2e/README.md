@@ -71,5 +71,9 @@ Every test also fails on uncaught page errors or `console.error` output in the b
 
 - **Synthetic data only (BR-090):** "Partner A", "Person 1", "Venue X", `@example.com`. Money
   values typed by the tests are 1000 cents or multiples of 10000 cents.
+- Prefer accessible roles and names; shared locators for the restyled markup live in
+  `tests/gigs.ts` (gig page, gig list), `tests/year.ts` (year page figures) and `tests/helpers.ts`
+  (`pageHead`, `signOutFromHeader`). The app switches layout at **900 px** (`isWide()`): header
+  icon buttons instead of the menu, and the gig list as a table instead of cards.
 - The tests never change `frontend/` or `backend/`. A failure caused by the app is recorded in
   `FINDINGS.md` and the test is marked `test.fixme('…', 'F-00x …')`.

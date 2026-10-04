@@ -1,5 +1,5 @@
 import { api, CURRENT_YEAR, enMoney, expect, fiHours, PARTNER_B, signIn, tagOf, test } from './helpers';
-import { createGigViaApi, reference, suffix } from './gigs';
+import { costLine, createGigViaApi, gigListRows, reference, suffix } from './gigs';
 
 // Extra integration checks beyond the nine smoke flows: places where the UI depends on
 // cross-endpoint behaviour of the backend.
@@ -20,7 +20,7 @@ test('changing the seller moves the unpaid Sales line and the UI names it (BR-02
   const notice = page.getByRole('status').filter({ hasText: 'Muutokset tallennettu.' });
   await expect(notice).toContainText('Rivit siirtyivät uudelle henkilölle:');
   await expect(notice).toContainText('Myynti: Partner A → Partner B');
-  const sales = page.getByRole('list', { name: 'Kulut ja miehitys' }).getByRole('listitem', { name: 'Myynti', exact: true });
+  const sales = costLine(page, 'Myynti');
   await expect(sales.getByLabel('Henkilö: Myynti').locator('option:checked')).toHaveText('Partner B');
 
   const after = await api(page).get(`/gigs/${gig.id}`);
@@ -75,7 +75,7 @@ test('hours saved for another year show a notice and are not added to this year'
 test('gig list search and the cancelled filter use the backend query', async ({ page }) => {
   await signIn(page);
   await page.goto('/gigs');
-  const rows = page.getByRole('list', { name: 'Keikkalista' }).getByRole('listitem');
+  const rows = gigListRows(page); // table from 900 px, cards below
   await page.getByLabel('Haku').fill('venue z');
   // Venue Z (seed) is cancelled: hidden until "show cancelled" is on.
   await expect(page.getByText('Ei hakuehtoja vastaavia keikkoja.')).toBeVisible();

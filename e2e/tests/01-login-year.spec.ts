@@ -1,4 +1,16 @@
-import { api, CURRENT_YEAR, expect, expectNoHorizontalScroll, fiMoney, PARTNER_A, signIn, test } from './helpers';
+import {
+  api,
+  CURRENT_YEAR,
+  expect,
+  expectNoHorizontalScroll,
+  fiMoney,
+  pageHead,
+  PARTNER_A,
+  signIn,
+  signOutFromHeader,
+  test,
+} from './helpers';
+import { yearFigure } from './year';
 
 // Flow 1: dev login → year page shows figures (UC-001, UC-022).
 test('dev login shows the year page with figures from the backend', async ({ page, context }) => {
@@ -19,20 +31,24 @@ test('dev login shows the year page with figures from the backend', async ({ pag
   const year = await api(page).get(`/years/${CURRENT_YEAR}`);
   const gigs = page.getByRole('region', { name: 'Keikat' });
   await expect(gigs.getByRole('link', { name: `Keikkoja ${year.gigs.gigCount}` })).toBeVisible();
-  await expect(gigs.getByRole('link', { name: `Peruttuja ${year.gigs.cancelledCount}` })).toBeVisible();
+  // The cancelled count is the secondary figure inside the gig-count tile (a link to the list).
+  await expect(yearFigure(gigs.getByRole('link', { name: /^Keikkoja / }), 'Peruttuja')).toHaveText(
+    String(year.gigs.cancelledCount),
+  );
   await expect(gigs.getByRole('link', { name: `Myytyjen keikkojen summa ${fiMoney(year.gigs.soldGigsSumCents)}` })).toBeVisible();
   await expect(gigs.getByRole('link', { name: `Kulut, budjetti ${fiMoney(year.gigs.budgetedCostsCents)}` })).toBeVisible();
   // The seed has sold gigs in the current year, so the figures are not all zero.
   expect(year.gigs.gigCount).toBeGreaterThan(0);
 
-  const budget = page.getByRole('region', { name: 'Budjetti' });
-  await expect(budget.getByRole('link', { name: `Vuoden tulos ${fiMoney(year.yearResultCents)}` })).toBeVisible();
+  // The year result is emphasised in the page head and opens the budget (UC-022 step 2).
+  const yearResult = pageHead(page).getByRole('link', { name: `Vuoden tulos ${fiMoney(year.yearResultCents)}` });
+  await expect(yearResult).toBeVisible();
+  await expect(yearResult).toHaveAttribute('href', '/budget');
 
   await expectNoHorizontalScroll(page, 'year page');
 
   // Sign out (UC-001 A2): back to the sign-in page, and the API refuses without a session.
-  await page.getByRole('button', { name: 'Valikko' }).click();
-  await page.getByRole('button', { name: 'Kirjaudu ulos' }).click();
+  await signOutFromHeader(page);
   await expect(page).toHaveURL(/\/login/);
   expect((await page.request.get('/api/me')).status()).toBe(401);
 });

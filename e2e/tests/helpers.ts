@@ -1,4 +1,4 @@
-import { expect, test as base, type APIRequestContext, type Page, type TestInfo } from '@playwright/test';
+import { expect, test as base, type APIRequestContext, type Locator, type Page, type TestInfo } from '@playwright/test';
 
 // Synthetic data only (BR-090): partners/people/venues from seed.example.json, @example.com.
 export const PARTNER_A = 'partner.a@example.com';
@@ -72,6 +72,27 @@ export async function signIn(
   });
   expect(patch.status(), 'PATCH /api/me').toBe(200);
   return (await patch.json()) as { id: string; personId: string; name: string };
+}
+
+/**
+ * The app switches layout at 900 px (frontend `DESKTOP_QUERY`): from there the header shows
+ * language / theme / sign-out as icon buttons (no menu) and the gig list is a table, not cards.
+ */
+export const DESKTOP_MIN_WIDTH = 900;
+
+export function isWide(page: Page): boolean {
+  return (page.viewportSize()?.width ?? 0) >= DESKTOP_MIN_WIDTH;
+}
+
+/** The page head (title, subtitle with status tags, actions) — one per page. */
+export function pageHead(page: Page): Locator {
+  return page.getByRole('main').locator('header.page-head');
+}
+
+/** Signs out from the header: the menu on phones, the sign-out icon button on desktop. */
+export async function signOutFromHeader(page: Page): Promise<void> {
+  if (!isWide(page)) await page.getByRole('button', { name: 'Valikko' }).click();
+  await page.getByRole('button', { name: 'Kirjaudu ulos', exact: true }).click();
 }
 
 /** Clicks a main-navigation link (bottom bar on phones, header on desktop). */
