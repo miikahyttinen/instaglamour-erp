@@ -2,18 +2,16 @@ import { ChevronDown, ChevronLeft, Pencil } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
-import type { GigDisplayStatus } from '../../api/enums';
 import type { GigDetail, GigUpdateResponse, Person, Warning } from '../../api/types';
 import { Button } from '../../components/Button';
 import { Notice as NoticeBox } from '../../components/Notice';
 import { PageHead } from '../../components/PageHead';
 import { StatGrid, StatTile } from '../../components/StatTile';
-import { StatusTag, type StatusTone } from '../../components/StatusTag';
+import { StatusTag } from '../../components/StatusTag';
 import {
   apiErrorMessage,
   costTypeLabel,
   gigDisplayStatus,
-  gigStatusLabel,
   technicalSetupLabel,
 } from '../../i18n/labels';
 import { useLang } from '../../i18n/useLang';
@@ -23,6 +21,7 @@ import { Attachments } from './Attachments';
 import { CostList } from './CostList';
 import { GigActions } from './GigActions';
 import { GigEditForm, type EditSection } from './GigEditForm';
+import { GigDeletedTag, GigStatusTag } from './GigStatusTag';
 import { History } from './History';
 import { personName, useGig, usePeople } from './queries';
 import './gigPage.css';
@@ -31,12 +30,6 @@ type Notice =
   | { kind: 'saved'; movedLines: string[] }
   | { kind: 'moved' | 'uncancelled' | 'restored' }
   | { kind: 'cancelled' };
-
-const STATUS_TONE: Record<GigDisplayStatus, StatusTone> = {
-  SOLD: 'info',
-  PLAYED: 'info',
-  CANCELLED: 'danger',
-};
 
 function Section({ title, wide, children }: { title: string; wide?: boolean; children: ReactNode }) {
   return (
@@ -232,8 +225,8 @@ function GigHeader({ gig, actions }: { gig: GigDetail; actions: ReactNode }) {
         <>
           <span className="gig-header-date">{formatDateRange(gig.startDate, gig.endDate, lang)}</span>
           <span className="gig-header-tags">
-            <StatusTag tone={STATUS_TONE[status]}>{gigStatusLabel(t, status)}</StatusTag>
-            {gig.deletedAt !== null && <StatusTag tone="danger">{t('gigs.views.deleted')}</StatusTag>}
+            <GigStatusTag status={status} />
+            {gig.deletedAt !== null && <GigDeletedTag />}
             {gig.notFullyStaffed && gig.deletedAt === null && (
               <StatusTag tone="warn">{t('gigs.notFullyStaffed')}</StatusTag>
             )}
