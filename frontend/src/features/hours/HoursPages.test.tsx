@@ -227,4 +227,16 @@ describe('hours totals (UC-019)', () => {
     await user.click(within(tabs).getByRole('link', { name: 'Omat tunnit' }));
     expect(await screen.findByTestId('hours-year-total')).toBeInTheDocument();
   });
+
+  it('has the add action in the page head only on my hours (no empty actions box on totals)', async () => {
+    signInForYear();
+    const { user } = renderApp('/hours/totals');
+    await screen.findByTestId('hours-grand-total');
+    const head = screen.getByRole('heading', { name: `Tunnit ${YEAR}` }).closest('.page-head') as HTMLElement;
+    expect(head.querySelector('.page-actions')).toBeNull();
+
+    const tabs = screen.getByRole('navigation', { name: 'Tuntinäkymä' });
+    await user.click(within(tabs).getByRole('link', { name: 'Omat tunnit' }));
+    expect(await within(head).findByRole('button', { name: 'Lisää tunnit' })).toBeInTheDocument();
+  });
 });
