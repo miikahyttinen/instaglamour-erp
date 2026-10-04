@@ -1,12 +1,18 @@
 import { useMutation } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ArrowLeft } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import type { FieldCode, TechnicalSetup } from '../../api/enums';
 import { gigsApi } from '../../api/endpoints';
 import type { GigCreate } from '../../api/types';
 import { useSignedInPartner } from '../../auth/SignedInContext';
+import { Button } from '../../components/Button';
+import { buttonClass } from '../../components/buttonClass';
 import { Field, MoneyInput } from '../../components/fields';
+import { Notice } from '../../components/Notice';
+import { PageHead } from '../../components/PageHead';
+import { SectionLabel } from '../../components/SectionLabel';
 import { apiErrorMessage, apiFieldErrors, costTypeLabel } from '../../i18n/labels';
 import { useLang } from '../../i18n/useLang';
 import { formatMoney } from '../../lib/format';
@@ -14,6 +20,7 @@ import { parseMoneyField } from '../../lib/moneyField';
 import { useReference } from '../../reference/useReference';
 import { PartnerOptions, TechnicalSetupPicker } from './formParts';
 import { useApplyGig } from './queries';
+import './newGig.css';
 
 const CUSTOM = 'custom';
 
@@ -134,143 +141,153 @@ export function NewGigPage() {
   };
 
   return (
-    <section className="page">
-      <p className="back-link">
-        <Link to="/gigs">‹ {t('gig.back')}</Link>
-      </p>
-      <h1>{t('gigForm.title')}</h1>
-      <form className="form" onSubmit={onSubmit} noValidate>
-        <div className="form-row">
-          <Field label={t('gigForm.startDate')} error={errors.startDate}>
-            {(p) => (
-              <input
-                {...p}
-                type="date"
-                value={form.startDate}
-                onChange={(e) => set('startDate', e.target.value)}
-              />
-            )}
-          </Field>
-          <Field label={t('gigForm.endDate')} error={errors.endDate} hint={t('gigForm.endDateHint')}>
-            {(p) => (
-              <input
-                {...p}
-                type="date"
-                value={form.endDate}
-                min={form.startDate || undefined}
-                onChange={(e) => set('endDate', e.target.value)}
-              />
-            )}
-          </Field>
-        </div>
+    <section className="page new-gig-page">
+      <PageHead title={t('gigForm.title')}>
+        <p className="new-gig-back">
+          <Link to="/gigs">
+            <ArrowLeft />
+            {t('gig.back')}
+          </Link>
+        </p>
+      </PageHead>
+      <form className="form new-gig-form" onSubmit={onSubmit} noValidate>
+        <section className="new-gig-section" aria-labelledby="new-gig-basic">
+          <SectionLabel id="new-gig-basic">{t('gig.sections.basic')}</SectionLabel>
+          <div className="form-row">
+            <Field label={t('gigForm.startDate')} error={errors.startDate}>
+              {(p) => (
+                <input
+                  {...p}
+                  type="date"
+                  value={form.startDate}
+                  onChange={(e) => set('startDate', e.target.value)}
+                />
+              )}
+            </Field>
+            <Field label={t('gigForm.endDate')} error={errors.endDate} hint={t('gigForm.endDateHint')}>
+              {(p) => (
+                <input
+                  {...p}
+                  type="date"
+                  value={form.endDate}
+                  min={form.startDate || undefined}
+                  onChange={(e) => set('endDate', e.target.value)}
+                />
+              )}
+            </Field>
+          </div>
 
-        <Field
-          label={t('gigForm.lineup')}
-          error={errors.lineup}
-          hint={
-            template
-              ? t('gigForm.templateRoles', {
-                  roles: template.roles.map((r) => costTypeLabel(t, r.role)).join(', '),
-                })
-              : undefined
-          }
-        >
-          {(p) => (
-            <select {...p} value={form.lineup} onChange={(e) => set('lineup', e.target.value)}>
-              <option value="">{t('gigForm.chooseLineup')}</option>
-              {reference?.lineupTemplates.map((tpl) => (
-                <option key={tpl.id} value={tpl.id}>
-                  {tpl.name}
-                </option>
-              ))}
-              <option value={CUSTOM}>{t('gigForm.customLineup')}</option>
-            </select>
+          <Field
+            label={t('gigForm.lineup')}
+            error={errors.lineup}
+            hint={
+              template
+                ? t('gigForm.templateRoles', {
+                    roles: template.roles.map((r) => costTypeLabel(t, r.role)).join(', '),
+                  })
+                : undefined
+            }
+          >
+            {(p) => (
+              <select {...p} value={form.lineup} onChange={(e) => set('lineup', e.target.value)}>
+                <option value="">{t('gigForm.chooseLineup')}</option>
+                {reference?.lineupTemplates.map((tpl) => (
+                  <option key={tpl.id} value={tpl.id}>
+                    {tpl.name}
+                  </option>
+                ))}
+                <option value={CUSTOM}>{t('gigForm.customLineup')}</option>
+              </select>
+            )}
+          </Field>
+          {form.lineup === CUSTOM && (
+            <Field label={t('gigForm.lineupName')} error={errors.lineupName}>
+              {(p) => (
+                <input
+                  {...p}
+                  type="text"
+                  value={form.lineupName}
+                  onChange={(e) => set('lineupName', e.target.value)}
+                />
+              )}
+            </Field>
           )}
-        </Field>
-        {form.lineup === CUSTOM && (
-          <Field label={t('gigForm.lineupName')} error={errors.lineupName}>
+
+          <Field label={t('gigForm.venue')} error={errors.venue}>
+            {(p) => (
+              <input {...p} type="text" value={form.venue} onChange={(e) => set('venue', e.target.value)} />
+            )}
+          </Field>
+
+          <TechnicalSetupPicker
+            legend={t('gigForm.technicalSetup')}
+            options={reference?.technicalSetups}
+            value={form.technicalSetup}
+            onChange={(value) => set('technicalSetup', value)}
+            error={errors.technicalSetup}
+          />
+
+          <div className="form-row">
+            <Field label={t('gigForm.seller')} error={errors.sellerId}>
+              {(p) => (
+                <select {...p} value={form.sellerId} onChange={(e) => set('sellerId', e.target.value)}>
+                  <PartnerOptions partners={reference?.partners} />
+                </select>
+              )}
+            </Field>
+            <Field label={t('gigForm.producer')} error={errors.producerId}>
+              {(p) => (
+                <select {...p} value={form.producerId} onChange={(e) => set('producerId', e.target.value)}>
+                  <PartnerOptions partners={reference?.partners} />
+                </select>
+              )}
+            </Field>
+          </div>
+
+          <Field label={t('gigForm.notes')} error={errors.notes} hint={t('gigForm.noCustomerData')}>
+            {(p) => (
+              <textarea {...p} rows={4} value={form.notes} onChange={(e) => set('notes', e.target.value)} />
+            )}
+          </Field>
+        </section>
+
+        <section className="new-gig-section" aria-labelledby="new-gig-price">
+          <SectionLabel id="new-gig-price">{t('gig.sections.price')}</SectionLabel>
+          <div className="form-row">
+            <Field label={t('gigForm.price')} error={errors.price}>
+              {(p) => <MoneyInput {...p} value={form.price} onChange={(v) => set('price', v)} />}
+            </Field>
+            <Field label={t('gigForm.additionalSales')} error={errors.additionalSales}>
+              {(p) => (
+                <MoneyInput {...p} value={form.additionalSales} onChange={(v) => set('additionalSales', v)} />
+              )}
+            </Field>
+          </div>
+          <Field label={t('gigForm.additionalSalesDescription')} error={errors.additionalSalesDescription}>
             {(p) => (
               <input
                 {...p}
                 type="text"
-                value={form.lineupName}
-                onChange={(e) => set('lineupName', e.target.value)}
+                value={form.additionalSalesDescription}
+                onChange={(e) => set('additionalSalesDescription', e.target.value)}
               />
             )}
           </Field>
-        )}
-
-        <Field label={t('gigForm.venue')} error={errors.venue}>
-          {(p) => (
-            <input {...p} type="text" value={form.venue} onChange={(e) => set('venue', e.target.value)} />
-          )}
-        </Field>
-
-        <TechnicalSetupPicker
-          legend={t('gigForm.technicalSetup')}
-          options={reference?.technicalSetups}
-          value={form.technicalSetup}
-          onChange={(value) => set('technicalSetup', value)}
-          error={errors.technicalSetup}
-        />
-
-        <div className="form-row">
-          <Field label={t('gigForm.seller')} error={errors.sellerId}>
-            {(p) => (
-              <select {...p} value={form.sellerId} onChange={(e) => set('sellerId', e.target.value)}>
-                <PartnerOptions partners={reference?.partners} />
-              </select>
-            )}
-          </Field>
-          <Field label={t('gigForm.producer')} error={errors.producerId}>
-            {(p) => (
-              <select {...p} value={form.producerId} onChange={(e) => set('producerId', e.target.value)}>
-                <PartnerOptions partners={reference?.partners} />
-              </select>
-            )}
-          </Field>
-        </div>
-
-        <div className="form-row">
-          <Field label={t('gigForm.price')} error={errors.price}>
-            {(p) => <MoneyInput {...p} value={form.price} onChange={(v) => set('price', v)} />}
-          </Field>
-          <Field label={t('gigForm.additionalSales')} error={errors.additionalSales}>
-            {(p) => (
-              <MoneyInput {...p} value={form.additionalSales} onChange={(v) => set('additionalSales', v)} />
-            )}
-          </Field>
-        </div>
-        <Field label={t('gigForm.additionalSalesDescription')} error={errors.additionalSalesDescription}>
-          {(p) => (
-            <input
-              {...p}
-              type="text"
-              value={form.additionalSalesDescription}
-              onChange={(e) => set('additionalSalesDescription', e.target.value)}
-            />
-          )}
-        </Field>
-        <p className="total-line">
-          {t('gigForm.totalPrice')}: <strong>{formatMoney(total, lang)}</strong>
-        </p>
-
-        <Field label={t('gigForm.notes')} error={errors.notes} hint={t('gigForm.noCustomerData')}>
-          {(p) => (
-            <textarea {...p} rows={4} value={form.notes} onChange={(e) => set('notes', e.target.value)} />
-          )}
-        </Field>
+          <p className="new-gig-total">
+            {t('gigForm.totalPrice')}: <strong>{formatMoney(total, lang)}</strong>
+          </p>
+        </section>
 
         {create.isError && (
-          <p className="notice notice-error" role="alert">
+          <Notice tone="danger" role="alert" className="new-gig-error">
             {apiErrorMessage(t, create.error)}
-          </p>
+          </Notice>
         )}
-        <div className="form-actions">
-          <button type="submit" className="btn btn-primary" disabled={create.isPending}>
+        <div className="form-actions new-gig-actions">
+          <Button type="submit" variant="primary" disabled={create.isPending}>
             {create.isPending ? t('gigForm.creating') : t('gigForm.create')}
-          </button>
-          <Link to="/gigs" className="btn">
+          </Button>
+          <Link to="/gigs" className={buttonClass()}>
             {t('common.cancel')}
           </Link>
         </div>

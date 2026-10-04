@@ -1,0 +1,69 @@
+/* New gig form (NewGigPage). Tokens only; scoped under .new-gig-page. */
+
+.new-gig-page .new-gig-back {
+  margin: 0 0 var(--space-3);
+}
+.new-gig-page .new-gig-back a {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--tap);
+  color: var(--label);
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  text-decoration: none;
+}
+.new-gig-page .new-gig-back a:hover {
+  color: var(--text);
+}
+
+.new-gig-page .new-gig-form {
+  max-width: 760px;
+}
+.new-gig-page .new-gig-section {
+  padding: 0 0 var(--space-5);
+}
+.new-gig-page .new-gig-section + .new-gig-section {
+  padding-top: var(--space-5);
+  border-top: var(--hairline) solid var(--border);
+}
+.new-gig-page .new-gig-section .section-label {
+  margin: 0 0 var(--space-2);
+  color: var(--text-muted);
+}
+
+.new-gig-page .new-gig-total {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin: var(--space-4) 0 0;
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface);
+  border: var(--hairline) solid var(--border);
+  border-radius: var(--radius);
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  color: var(--label);
+}
+.new-gig-page .new-gig-total strong {
+  font-family: var(--font-sans);
+  font-size: var(--fs-figure);
+  font-weight: var(--fw-bold);
+  letter-spacing: normal;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.new-gig-page .new-gig-error {
+  margin: 0 0 var(--space-4);
+}
+.new-gig-page .new-gig-actions {
+  padding-top: var(--space-4);
+  border-top: var(--hairline) solid var(--border);
+}
