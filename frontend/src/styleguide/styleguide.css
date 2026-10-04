@@ -1,0 +1,103 @@
+/* Layout helpers for the dev-only /styleguide page. Not for app screens. */
+
+.sg-top {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--page-pad);
+  background: var(--bg);
+  border-bottom: var(--hairline) solid var(--border);
+}
+.sg-top-title {
+  margin: 0;
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-bold);
+  text-transform: uppercase;
+}
+.sg-top-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.sg-panel {
+  padding: var(--space-5) var(--page-pad) var(--space-7);
+  border-bottom: var(--hairline) solid var(--border-strong);
+}
+.sg-panel-name {
+  margin-bottom: var(--space-4);
+}
+.sg-showcase {
+  max-width: var(--content-max);
+  margin: 0 auto;
+}
+.sg-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+.sg-narrow {
+  max-width: 320px;
+}
+.sg-swatches {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: var(--space-3);
+}
+.sg-swatch {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.sg-chip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 48px;
+  border: var(--hairline) solid var(--border-strong);
+  border-radius: var(--radius);
+  font-weight: var(--fw-bold);
+}
+.sg-type-title {
+  font-size: var(--fs-title);
+  font-weight: var(--fw-bold);
+  text-transform: uppercase;
+  letter-spacing: var(--ls-title);
+  line-height: var(--lh-tight);
+}
+.sg-spacing {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.sg-space {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.sg-space-bar {
+  display: block;
+  height: 12px;
+  background: var(--accent);
+}
+.sg-tag-demo,
+.sg-icon {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+}
+.sg-icon {
+  align-items: center;
+  min-width: 64px;
+}
+.sg-note {
+  margin-top: var(--space-4);
+}
