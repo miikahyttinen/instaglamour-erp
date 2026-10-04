@@ -4,7 +4,9 @@ import { useTranslation } from 'react-i18next';
 import type { TechnicalSetup } from '../../api/enums';
 import { gigsApi } from '../../api/endpoints';
 import type { GigDetail, GigUpdate, GigUpdateResponse } from '../../api/types';
+import { Button } from '../../components/Button';
 import { Field, MoneyInput } from '../../components/fields';
+import { Notice } from '../../components/Notice';
 import { apiErrorMessage, apiFieldErrors } from '../../i18n/labels';
 import { useLang } from '../../i18n/useLang';
 import { centsToInput, formatMoney } from '../../lib/format';
@@ -88,7 +90,7 @@ export function GigEditForm({ gig, section, onSaved, onCancel }: Props) {
   );
 
   return (
-    <form className="form edit-form" onSubmit={submit} noValidate>
+    <form className="form gig-edit-form" onSubmit={submit} noValidate>
       {section === 'basic' ? (
         <>
           <Field label={t('gigForm.lineupName')} error={errors.lineupName}>
@@ -147,9 +149,9 @@ export function GigEditForm({ gig, section, onSaved, onCancel }: Props) {
               />
             )}
           </Field>
-          <p className="total-line">
-            {t('gigForm.totalPrice')}:{' '}
-            <strong>
+          <p className="gig-edit-total">
+            <span className="gig-edit-total-label">{t('gigForm.totalPrice')}:</span>{' '}
+            <strong className="gig-edit-total-value">
               {formatMoney(
                 priceParsed.cents !== null && salesParsed.cents !== null
                   ? priceParsed.cents + salesParsed.cents
@@ -162,17 +164,15 @@ export function GigEditForm({ gig, section, onSaved, onCancel }: Props) {
         </>
       )}
       {save.isError && !hasFieldErrors && (
-        <p className="notice notice-error" role="alert">
-          {apiErrorMessage(t, save.error)}
-        </p>
+        <Notice tone="danger" role="alert">
+          <p>{apiErrorMessage(t, save.error)}</p>
+        </Notice>
       )}
       <div className="form-actions">
-        <button type="submit" className="btn btn-primary" disabled={save.isPending}>
+        <Button type="submit" variant="primary" disabled={save.isPending}>
           {save.isPending ? t('common.saving') : t('common.save')}
-        </button>
-        <button type="button" className="btn" onClick={onCancel}>
-          {t('common.cancel')}
-        </button>
+        </Button>
+        <Button onClick={onCancel}>{t('common.cancel')}</Button>
       </div>
     </form>
   );

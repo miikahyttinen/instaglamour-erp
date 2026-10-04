@@ -5,15 +5,17 @@ import { addCostLine } from '../../mocks/gigStore';
 import { addMockGig, mockLine, partnerA, staffMockGig, TEST_YEAR } from '../../test/gigFixtures';
 import { renderApp, signInMock } from '../../test/renderApp';
 
-const costs = () => screen.getByRole('list', { name: 'Kulut ja miehitys' });
-const line = (name: string) => within(costs()).getByRole('listitem', { name });
-const econRow = (name: RegExp) => within(screen.getByRole('table')).getByRole('row', { name });
+// The cost table has one named row group (<tbody>) per cost line.
+const costs = () => screen.getByRole('table', { name: 'Kulut ja miehitys' });
+const line = (name: string) => within(costs()).getByRole('rowgroup', { name });
+const budgetCell = (name: string) => line(name).querySelector('td[data-label="Budjetti"]');
+const econTile = (name: string) => screen.getByRole('region', { name });
 const historyItems = () =>
   within(screen.getByRole('list', { name: 'Muutoshistoria' })).getAllByRole('listitem');
 
 async function openGig(gigId: string) {
   const app = renderApp(`/gigs/${gigId}`);
-  await screen.findByRole('list', { name: 'Kulut ja miehitys' });
+  await screen.findByRole('table', { name: 'Kulut ja miehitys' });
   await within(line('Laulu')).findByRole('option', { name: 'Person 1' });
   return app;
 }
@@ -53,10 +55,10 @@ describe('cost list (UC-005)', () => {
     const toggle = within(line('Kitara')).getByRole('switch', { name: 'Roudaus ja soundcheck' });
     expect(toggle).toBeChecked();
     await user.click(toggle);
-    await waitFor(() => expect(line('Kitara')).toHaveTextContent(/Budjetti\s90,00\s€/));
-    expect(econRow(/^Kulut/)).toHaveTextContent(/420,00\s€/);
+    await waitFor(() => expect(budgetCell('Kitara')).toHaveTextContent(/^90,00\s€$/));
+    expect(econTile('Kulut')).toHaveTextContent(/420,00\s€/);
     await user.click(within(line('Kitara')).getByRole('switch'));
-    await waitFor(() => expect(line('Kitara')).toHaveTextContent(/Budjetti\s100,00\s€/));
+    await waitFor(() => expect(budgetCell('Kitara')).toHaveTextContent(/^100,00\s€$/));
     expect(within(line('Toimisto')).queryByRole('switch')).not.toBeInTheDocument();
     await waitFor(() => expect(historyItems()[0]).toHaveTextContent('Roudaus ja soundcheck: ei → kyllä'));
   });
@@ -73,7 +75,7 @@ describe('cost list (UC-005)', () => {
 
     await waitFor(() => expect(line('Basso')).toHaveTextContent(/Maksettu 90,00\s€ · .* · Partner A/));
     expect(mockLine(gig, 'BASS')).toMatchObject({ actualCents: 10000 - 1000, paidBy: partnerA().id });
-    expect(econRow(/^Kulut/)).toHaveTextContent(/90,00\s€$/);
+    expect(econTile('Kulut')).toHaveTextContent(/90,00\s€\s*Toteuma$/);
     await waitFor(() => expect(historyItems()[0]).toHaveTextContent(/Merkitty maksetuksi.*Basso: 90,00\s€/));
 
     await user.click(within(line('Basso')).getByRole('button', { name: 'Poista maksumerkintä' }));
@@ -100,7 +102,7 @@ describe('cost list (UC-005)', () => {
     expect(within(form).getByText('Kuvaus on pakollinen.')).toBeInTheDocument();
     await user.type(within(form).getByRole('textbox', { name: 'Kuvaus' }), 'Stage rental');
     await user.click(within(form).getByRole('button', { name: 'Lisää rivi' }));
-    const added = await screen.findByRole('listitem', { name: 'Muu kulu (Stage rental)' });
+    const added = await screen.findByRole('rowgroup', { name: 'Muu kulu (Stage rental)' });
     expect(added).toHaveTextContent(/100,00\s€/);
 
     // Office default fee is suggested from settings.
@@ -115,14 +117,14 @@ describe('cost list (UC-005)', () => {
     await user.clear(budget);
     await user.type(budget, '200');
     await user.click(within(added).getByRole('button', { name: 'Tallenna' }));
-    await waitFor(() => expect(screen.getByRole('listitem', { name: 'Muu kulu (Stage rental)' })).toHaveTextContent(/200,00\s€/));
+    await waitFor(() => expect(screen.getByRole('rowgroup', { name: 'Muu kulu (Stage rental)' })).toHaveTextContent(/200,00\s€/));
 
-    await user.click(within(screen.getByRole('listitem', { name: 'Muu kulu (Stage rental)' })).getByRole('button', { name: 'Poista' }));
+    await user.click(within(screen.getByRole('rowgroup', { name: 'Muu kulu (Stage rental)' })).getByRole('button', { name: 'Poista' }));
     const dialog = screen.getByRole('dialog', { name: 'Poista kulurivi' });
     expect(dialog).toHaveTextContent('Poistetaanko rivi Muu kulu (Stage rental)?');
     await user.click(within(dialog).getByRole('button', { name: 'Poista' }));
     await waitFor(() =>
-      expect(screen.queryByRole('listitem', { name: 'Muu kulu (Stage rental)' })).not.toBeInTheDocument(),
+      expect(screen.queryByRole('rowgroup', { name: 'Muu kulu (Stage rental)' })).not.toBeInTheDocument(),
     );
     await waitFor(() => expect(historyItems()[0]).toHaveTextContent(/Kulurivi poistettu.*Muu kulu · – · 200,00\s€/));
   });

@@ -1,12 +1,16 @@
 import { useMutation } from '@tanstack/react-query';
+import { CircleCheck, Pencil, Trash2 } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { CostType } from '../../api/enums';
 import { isMusicianRole } from '../../api/enums';
 import { costLinesApi } from '../../api/endpoints';
 import type { CostLine, GigDetail, GigWithWarnings, Person, Warning } from '../../api/types';
+import { Button, IconButton } from '../../components/Button';
 import { Dialog } from '../../components/Dialog';
 import { Field, MoneyInput } from '../../components/fields';
+import { Notice } from '../../components/Notice';
+import { StatusTag } from '../../components/StatusTag';
 import { apiErrorMessage, apiFieldErrors, costTypeLabel } from '../../i18n/labels';
 import { useLang } from '../../i18n/useLang';
 import { centsToInput, formatDateTime, formatMoney } from '../../lib/format';
@@ -34,28 +38,53 @@ export function CostList({ gig, people, readOnly, onWarnings }: Props) {
     applyGig(result.gig, gig.id);
     onWarnings(result.warnings);
   };
+  const columnCount = readOnly ? 5 : 6;
 
   return (
     <div className="cost-list">
       {gig.notFullyStaffed && (
-        <p className="badge badge-warn" role="note">
-          {t('gigs.notFullyStaffed')}
+        <p className="cost-staffing" role="note">
+          <StatusTag tone="warn">{t('gigs.notFullyStaffed')}</StatusTag>
         </p>
       )}
       {gig.costLines.length === 0 ? (
-        <p className="muted">{t('costs.empty')}</p>
+        <p className="table-empty">{t('costs.empty')}</p>
       ) : (
-        <ul className="cost-lines" aria-label={t('gig.sections.costs')}>
-          {gig.costLines.map((line) => (
-            <CostLineItem
-              key={line.id}
-              line={line}
-              people={people}
-              readOnly={readOnly}
-              onResult={onResult}
-            />
-          ))}
-        </ul>
+        // Hand-written .data-table (not <DataTable>): each line is its own named <tbody>, so the
+        // inline pay / edit forms can open in a full-width row right under their line.
+        <div className="table-wrap">
+          <table className="data-table data-table-cards cost-table">
+            <caption className="visually-hidden">{t('gig.sections.costs')}</caption>
+            <thead>
+              <tr>
+                <th scope="col">{t('costs.type')}</th>
+                <th scope="col">{t('costs.person')}</th>
+                <th scope="col" className="cost-col-loadin">
+                  {t('costs.loadIn')}
+                </th>
+                <th scope="col" className="num">
+                  {t('costs.budgeted')}
+                </th>
+                <th scope="col">{t('gig.actual')}</th>
+                {!readOnly && (
+                  <th scope="col">
+                    <span className="visually-hidden">{t('gig.actions.label')}</span>
+                  </th>
+                )}
+              </tr>
+            </thead>
+            {gig.costLines.map((line) => (
+              <CostLineItem
+                key={line.id}
+                line={line}
+                people={people}
+                readOnly={readOnly}
+                columnCount={columnCount}
+                onResult={onResult}
+              />
+            ))}
+          </table>
+        </div>
       )}
       <dl className="cost-totals">
         <div>
@@ -79,9 +108,7 @@ export function CostList({ gig, people, readOnly, onWarnings }: Props) {
             onCancel={() => setAdding(false)}
           />
         ) : (
-          <button type="button" className="btn" onClick={() => setAdding(true)}>
-            + {t('costs.add')}
-          </button>
+          <Button onClick={() => setAdding(true)}>+ {t('costs.add')}</Button>
         ))}
     </div>
   );
@@ -91,10 +118,11 @@ interface LineProps {
   line: CostLine;
   people: Person[] | undefined;
   readOnly: boolean;
+  columnCount: number;
   onResult: (result: GigWithWarnings) => void;
 }
 
-function CostLineItem({ line, people, readOnly, onResult }: LineProps) {
+function CostLineItem({ line, people, readOnly, columnCount, onResult }: LineProps) {
   const { t } = useTranslation();
   const lang = useLang();
   const paidBy = usePartner(line.paidBy);
@@ -112,22 +140,17 @@ function CostLineItem({ line, people, readOnly, onResult }: LineProps) {
     },
   });
   const run = (action: () => Promise<GigWithWarnings>) => mutation.mutate(action);
+  const hasExtraRow = mutation.isError || mode === 'pay' || mode === 'edit';
 
   return (
-    <li className={`cost-line${paid ? ' is-paid' : ''}`} aria-label={label}>
-      <div className="cost-head">
-        <span className="cost-type">
-          <strong>{typeLabel}</strong>
-          {line.description && <span className="muted"> · {line.description}</span>}
-        </span>
-        <span className="cost-budget">
-          <span className="cell-label">{t('costs.budgeted')} </span>
-          <strong>{formatMoney(line.budgetedCents, lang)}</strong>
-        </span>
-      </div>
+    <tbody className={paid ? 'cost-group is-paid' : 'cost-group'} aria-label={label}>
+      <tr>
+        <td className="cell-primary cost-type">
+          <span className="cost-type-name">{typeLabel}</span>
+          {line.description && <span className="cost-type-description"> · {line.description}</span>}
+        </td>
 
-      <div className="cost-body">
-        <div className="cost-person">
+        <td className="cost-person" data-label={t('costs.person')}>
           {readOnly ? (
             <span>{personName(people, line.personId) ?? t('costs.noPersonShort')}</span>
           ) : (
@@ -139,119 +162,141 @@ function CostLineItem({ line, people, readOnly, onResult }: LineProps) {
               onChange={(personId) => run(() => costLinesApi.update(line.id, { personId }))}
             />
           )}
-        </div>
+        </td>
 
-        {musician && (
-          <label className="switch">
-            <input
-              type="checkbox"
-              role="switch"
-              checked={line.joinsLoadIn === true}
-              disabled={readOnly || mutation.isPending}
-              onChange={(e) => {
-                const joinsLoadIn = e.target.checked;
-                run(() => costLinesApi.update(line.id, { joinsLoadIn }));
-              }}
-            />
-            <span>{t('costs.loadIn')}</span>
-          </label>
-        )}
+        <td className={musician ? 'cost-loadin' : 'cost-loadin is-empty'}>
+          {musician && (
+            <label className="switch cost-switch">
+              <input
+                type="checkbox"
+                role="switch"
+                checked={line.joinsLoadIn === true}
+                disabled={readOnly || mutation.isPending}
+                onChange={(e) => {
+                  const joinsLoadIn = e.target.checked;
+                  run(() => costLinesApi.update(line.id, { joinsLoadIn }));
+                }}
+              />
+              <span className="cost-switch-text">{t('costs.loadIn')}</span>
+            </label>
+          )}
+        </td>
 
-        <div className="cost-paid">
+        <td className="num cost-budget" data-label={t('costs.budgeted')}>
+          {formatMoney(line.budgetedCents, lang)}
+        </td>
+
+        <td className="cost-paid" data-label={t('gig.actual')}>
           {paid ? (
             <span className="paid-info">
-              {t('costs.paidInfo', {
-                amount: formatMoney(line.actualCents, lang),
-                time: formatDateTime(line.paidAt, lang),
-                partner: paidBy?.name ?? '–',
-              })}
+              <CircleCheck className="paid-icon" />
+              <span>
+                {t('costs.paidInfo', {
+                  amount: formatMoney(line.actualCents, lang),
+                  time: formatDateTime(line.paidAt, lang),
+                  partner: paidBy?.name ?? '–',
+                })}
+              </span>
             </span>
           ) : line.type === 'FUEL' ? (
-            <span className="muted small">{t('costs.fuelHint')}</span>
+            <span className="cost-hint">{t('costs.fuelHint')}</span>
           ) : (
-            <span className="muted small">{t('costs.unpaid')}</span>
+            <StatusTag>{t('costs.unpaid')}</StatusTag>
           )}
-        </div>
-      </div>
+        </td>
 
-      {mutation.isError && (
-        <p className="field-error" role="alert">
-          {Object.values(apiFieldErrors(t, mutation.error))[0] ?? apiErrorMessage(t, mutation.error)}
-        </p>
-      )}
+        {!readOnly && (
+          <td className="cost-actions">
+            {mode === 'view' && (
+              <div className="cost-actions-inner">
+                {paid ? (
+                  <Button
+                    size="sm"
+                    disabled={mutation.isPending}
+                    onClick={() => run(() => costLinesApi.unpay(line.id))}
+                  >
+                    {t('costs.unmarkPaid')}
+                  </Button>
+                ) : (
+                  line.type !== 'FUEL' && (
+                    <Button size="sm" onClick={() => setMode('pay')}>
+                      {t('costs.markPaid')}
+                    </Button>
+                  )
+                )}
+                <IconButton
+                  variant="ghost"
+                  icon={Pencil}
+                  label={t('common.edit')}
+                  onClick={() => setMode('edit')}
+                />
+                <IconButton
+                  variant="ghost"
+                  icon={Trash2}
+                  label={t('common.remove')}
+                  className="cost-remove"
+                  onClick={() => setMode('remove')}
+                />
+              </div>
+            )}
+            {mode === 'remove' && (
+              <Dialog title={t('costs.removeTitle')} onClose={() => setMode('view')}>
+                <p>{t('costs.removeConfirm', { line: label })}</p>
+                {paid && (
+                  <Notice tone="danger">
+                    <p>{t('costs.removePaidWarning', { amount: formatMoney(line.actualCents, lang) })}</p>
+                  </Notice>
+                )}
+                {mutation.isError && (
+                  <Notice tone="danger" role="alert">
+                    <p>{apiErrorMessage(t, mutation.error)}</p>
+                  </Notice>
+                )}
+                <div className="form-actions">
+                  <Button
+                    variant="danger"
+                    icon={Trash2}
+                    disabled={mutation.isPending}
+                    onClick={() => run(() => costLinesApi.remove(line.id))}
+                  >
+                    {t('common.remove')}
+                  </Button>
+                  <Button onClick={() => setMode('view')}>{t('common.cancel')}</Button>
+                </div>
+              </Dialog>
+            )}
+          </td>
+        )}
+      </tr>
 
-      {!readOnly && mode === 'view' && (
-        <div className="inline-actions">
-          {paid ? (
-            <button
-              type="button"
-              className="btn btn-small"
-              disabled={mutation.isPending}
-              onClick={() => run(() => costLinesApi.unpay(line.id))}
-            >
-              {t('costs.unmarkPaid')}
-            </button>
-          ) : (
-            line.type !== 'FUEL' && (
-              <button type="button" className="btn btn-small" onClick={() => setMode('pay')}>
-                {t('costs.markPaid')}
-              </button>
-            )
-          )}
-          <button type="button" className="btn btn-small" onClick={() => setMode('edit')}>
-            {t('common.edit')}
-          </button>
-          <button type="button" className="btn btn-small btn-danger" onClick={() => setMode('remove')}>
-            {t('common.remove')}
-          </button>
-        </div>
+      {hasExtraRow && (
+        <tr className="cost-extra-row">
+          <td colSpan={columnCount}>
+            {mutation.isError && (
+              <p className="field-error" role="alert">
+                {Object.values(apiFieldErrors(t, mutation.error))[0] ?? apiErrorMessage(t, mutation.error)}
+              </p>
+            )}
+            {mode === 'pay' && (
+              <PayForm
+                line={line}
+                pending={mutation.isPending}
+                onSubmit={(actualCents) => run(() => costLinesApi.pay(line.id, { actualCents }))}
+                onCancel={() => setMode('view')}
+              />
+            )}
+            {mode === 'edit' && (
+              <EditLineForm
+                line={line}
+                pending={mutation.isPending}
+                onSubmit={(body) => run(() => costLinesApi.update(line.id, body))}
+                onCancel={() => setMode('view')}
+              />
+            )}
+          </td>
+        </tr>
       )}
-
-      {mode === 'pay' && (
-        <PayForm
-          line={line}
-          pending={mutation.isPending}
-          onSubmit={(actualCents) => run(() => costLinesApi.pay(line.id, { actualCents }))}
-          onCancel={() => setMode('view')}
-        />
-      )}
-      {mode === 'edit' && (
-        <EditLineForm
-          line={line}
-          pending={mutation.isPending}
-          onSubmit={(body) => run(() => costLinesApi.update(line.id, body))}
-          onCancel={() => setMode('view')}
-        />
-      )}
-      {mode === 'remove' && (
-        <Dialog title={t('costs.removeTitle')} onClose={() => setMode('view')}>
-          <p>{t('costs.removeConfirm', { line: label })}</p>
-          {paid && (
-            <p className="notice notice-error">
-              {t('costs.removePaidWarning', { amount: formatMoney(line.actualCents, lang) })}
-            </p>
-          )}
-          {mutation.isError && (
-            <p className="notice notice-error" role="alert">
-              {apiErrorMessage(t, mutation.error)}
-            </p>
-          )}
-          <div className="form-actions">
-            <button
-              type="button"
-              className="btn btn-danger-solid"
-              disabled={mutation.isPending}
-              onClick={() => run(() => costLinesApi.remove(line.id))}
-            >
-              {t('common.remove')}
-            </button>
-            <button type="button" className="btn" onClick={() => setMode('view')}>
-              {t('common.cancel')}
-            </button>
-          </div>
-        </Dialog>
-      )}
-    </li>
+    </tbody>
   );
 }
 
@@ -277,17 +322,17 @@ function PayForm({
     onSubmit(parsed.cents ?? 0);
   };
   return (
-    <form className="inline-form" onSubmit={submit} noValidate>
+    <form className="cost-inline-form cost-pay-form" onSubmit={submit} noValidate>
       <Field label={t('costs.paidAmount')} error={error}>
         {(p) => <MoneyInput {...p} value={amount} onChange={setAmount} />}
       </Field>
       <div className="inline-actions">
-        <button type="submit" className="btn btn-small btn-primary" disabled={pending}>
+        <Button type="submit" size="sm" variant="primary" disabled={pending}>
           {t('costs.confirmPaid')}
-        </button>
-        <button type="button" className="btn btn-small" onClick={onCancel}>
+        </Button>
+        <Button size="sm" onClick={onCancel}>
           {t('common.cancel')}
-        </button>
+        </Button>
       </div>
     </form>
   );
@@ -323,7 +368,7 @@ function EditLineForm({
     }
   };
   return (
-    <form className="inline-form" onSubmit={submit} noValidate>
+    <form className="cost-inline-form" onSubmit={submit} noValidate>
       <div className="form-row">
         <Field label={t('costs.budgeted')} error={errors.budget}>
           {(p) => <MoneyInput {...p} value={budget} onChange={setBudget} />}
@@ -335,12 +380,12 @@ function EditLineForm({
         </Field>
       </div>
       <div className="inline-actions">
-        <button type="submit" className="btn btn-small btn-primary" disabled={pending}>
+        <Button type="submit" size="sm" variant="primary" disabled={pending}>
           {t('common.save')}
-        </button>
-        <button type="button" className="btn btn-small" onClick={onCancel}>
+        </Button>
+        <Button size="sm" onClick={onCancel}>
           {t('common.cancel')}
-        </button>
+        </Button>
       </div>
     </form>
   );
@@ -412,8 +457,8 @@ function AddCostLineForm({
   ];
 
   return (
-    <form className="inline-form add-line" onSubmit={submit} noValidate aria-label={t('costs.addTitle')}>
-      <h3>{t('costs.addTitle')}</h3>
+    <form className="inline-form cost-add-form" onSubmit={submit} noValidate aria-label={t('costs.addTitle')}>
+      <h3 className="cost-add-title">{t('costs.addTitle')}</h3>
       <div className="form-row">
         <Field label={t('costs.type')} error={errors.type}>
           {(p) => (
@@ -448,17 +493,15 @@ function AddCostLineForm({
         </Field>
       </div>
       {add.isError && Object.keys(apiFieldErrors(t, add.error)).length === 0 && (
-        <p className="notice notice-error" role="alert">
-          {apiErrorMessage(t, add.error)}
-        </p>
+        <Notice tone="danger" role="alert">
+          <p>{apiErrorMessage(t, add.error)}</p>
+        </Notice>
       )}
-      <div className="inline-actions">
-        <button type="submit" className="btn btn-primary" disabled={add.isPending}>
+      <div className="form-actions">
+        <Button type="submit" variant="primary" disabled={add.isPending}>
           {t('costs.add')}
-        </button>
-        <button type="button" className="btn" onClick={onCancel}>
-          {t('common.cancel')}
-        </button>
+        </Button>
+        <Button onClick={onCancel}>{t('common.cancel')}</Button>
       </div>
     </form>
   );

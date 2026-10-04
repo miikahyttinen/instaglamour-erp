@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Id, Person } from '../../api/types';
+import { Notice } from '../../components/Notice';
 import { apiErrorMessage } from '../../i18n/labels';
 import { useLang } from '../../i18n/useLang';
 import { formatDateTime } from '../../lib/format';
@@ -19,9 +20,9 @@ export function History({ gigId, people }: { gigId: Id; people: Person[] | undef
   if (history.isPending) return <p role="status">{t('app.loading')}</p>;
   if (history.isError) {
     return (
-      <p className="notice notice-error" role="alert">
-        {apiErrorMessage(t, history.error)}
-      </p>
+      <Notice tone="danger" role="alert">
+        <p>{apiErrorMessage(t, history.error)}</p>
+      </Notice>
     );
   }
   const events = history.data.filter((e) => matchesFilter(e, filter));
@@ -53,8 +54,8 @@ export function History({ gigId, people }: { gigId: Id; people: Person[] | undef
             return (
               <li key={event.id} className="history-item">
                 <div className="history-title">
-                  <strong>{title}</strong>
-                  <span className="muted small">
+                  <strong className="history-event">{title}</strong>
+                  <span className="meta history-meta">
                     {formatDateTime(event.at, lang)} · {partner}
                   </span>
                 </div>

@@ -1,8 +1,21 @@
+import { ChevronDown, ChevronLeft, Pencil } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
+import type { GigDisplayStatus } from '../../api/enums';
 import type { GigDetail, GigUpdateResponse, Person, Warning } from '../../api/types';
-import { apiErrorMessage, costTypeLabel, gigDisplayStatus, technicalSetupLabel } from '../../i18n/labels';
+import { Button } from '../../components/Button';
+import { Notice as NoticeBox } from '../../components/Notice';
+import { PageHead } from '../../components/PageHead';
+import { StatGrid, StatTile } from '../../components/StatTile';
+import { StatusTag, type StatusTone } from '../../components/StatusTag';
+import {
+  apiErrorMessage,
+  costTypeLabel,
+  gigDisplayStatus,
+  gigStatusLabel,
+  technicalSetupLabel,
+} from '../../i18n/labels';
 import { useLang } from '../../i18n/useLang';
 import { formatDate, formatDateRange, formatMoney, formatPercent } from '../../lib/format';
 import { useReference } from '../../reference/useReference';
@@ -12,17 +25,24 @@ import { GigActions } from './GigActions';
 import { GigEditForm, type EditSection } from './GigEditForm';
 import { History } from './History';
 import { personName, useGig, usePeople } from './queries';
-import { StatusBadge } from './StatusBadge';
+import './gigPage.css';
 
 type Notice =
   | { kind: 'saved'; movedLines: string[] }
   | { kind: 'moved' | 'uncancelled' | 'restored' }
   | { kind: 'cancelled' };
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
+const STATUS_TONE: Record<GigDisplayStatus, StatusTone> = {
+  SOLD: 'info',
+  PLAYED: 'info',
+  CANCELLED: 'danger',
+};
+
+function Section({ title, wide, children }: { title: string; wide?: boolean; children: ReactNode }) {
   return (
-    <details className="gig-section" open>
+    <details className={`gig-section${wide ? ' gig-section-wide' : ''}`} open>
       <summary>
+        <ChevronDown className="gig-section-chevron" />
         <h2>{title}</h2>
       </summary>
       <div className="gig-section-body">{children}</div>
@@ -67,13 +87,11 @@ export function GigPage() {
   }
   if (gigQuery.isError) {
     return (
-      <section className="page">
-        <p className="back-link">
-          <Link to="/gigs">‹ {t('gig.back')}</Link>
-        </p>
-        <p className="notice notice-error" role="alert">
-          {apiErrorMessage(t, gigQuery.error)}
-        </p>
+      <section className="page gig-page">
+        <BackLink />
+        <NoticeBox tone="danger" role="alert">
+          <p>{apiErrorMessage(t, gigQuery.error)}</p>
+        </NoticeBox>
       </section>
     );
   }
@@ -87,65 +105,69 @@ export function GigPage() {
 
   return (
     <section className="page gig-page">
-      <p className="back-link">
-        <Link to="/gigs">‹ {t('gig.back')}</Link>
-      </p>
-      <GigHeader gig={gig} />
-
-      {readOnly && (
-        <p className="notice notice-error" role="note">
-          {t('gig.deletedBanner')}
-        </p>
-      )}
-
-      <GigActions
+      <GigHeader
         gig={gig}
-        onMoved={(w) => {
-          setWarnings(w);
-          setNotice({ kind: 'moved' });
-        }}
-        onCancelled={() => setNotice({ kind: 'cancelled' })}
-        onUncancelled={() => setNotice({ kind: 'uncancelled' })}
-        onRestored={() => setNotice({ kind: 'restored' })}
+        actions={
+          <GigActions
+            gig={gig}
+            onMoved={(w) => {
+              setWarnings(w);
+              setNotice({ kind: 'moved' });
+            }}
+            onCancelled={() => setNotice({ kind: 'cancelled' })}
+            onUncancelled={() => setNotice({ kind: 'uncancelled' })}
+            onRestored={() => setNotice({ kind: 'restored' })}
+          />
+        }
       />
 
+      {readOnly && (
+        <NoticeBox tone="danger" role="note">
+          <p>{t('gig.deletedBanner')}</p>
+        </NoticeBox>
+      )}
+
       {notice && (
-        <div className="notice" role="status">
-          {notice.kind === 'cancelled' ? (
-            <>
+        <NoticeBox tone={notice.kind === 'cancelled' ? 'warn' : 'ok'} role="status" className="gig-notice">
+          <div className="gig-notice-text">
+            {notice.kind === 'cancelled' ? (
               <p>{t('gig.cancelledReminder')}</p>
-              <button
-                type="button"
-                className="btn btn-small"
+            ) : notice.kind === 'saved' ? (
+              <>
+                <p>{t('gig.saved')}</p>
+                {notice.movedLines.length > 0 && (
+                  <>
+                    <p>{t('gig.movedLines')}</p>
+                    <ul>
+                      {notice.movedLines.map((text) => (
+                        <li key={text}>{text}</li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+              </>
+            ) : (
+              <p>{t(`gig.notice.${notice.kind}`)}</p>
+            )}
+          </div>
+          <div className="gig-notice-actions">
+            {notice.kind === 'cancelled' && (
+              <Button
+                size="sm"
+                icon={Pencil}
                 onClick={() => {
                   setEditing('price');
                   setNotice(null);
                 }}
               >
                 {t('gig.editPriceNow')}
-              </button>
-            </>
-          ) : notice.kind === 'saved' ? (
-            <>
-              <p>{t('gig.saved')}</p>
-              {notice.movedLines.length > 0 && (
-                <>
-                  <p>{t('gig.movedLines')}</p>
-                  <ul>
-                    {notice.movedLines.map((text) => (
-                      <li key={text}>{text}</li>
-                    ))}
-                  </ul>
-                </>
-              )}
-            </>
-          ) : (
-            <p>{t(`gig.notice.${notice.kind}`)}</p>
-          )}
-          <button type="button" className="btn btn-small" onClick={() => setNotice(null)}>
-            {t('common.dismiss')}
-          </button>
-        </div>
+              </Button>
+            )}
+            <Button size="sm" onClick={() => setNotice(null)}>
+              {t('common.dismiss')}
+            </Button>
+          </div>
+        </NoticeBox>
       )}
 
       <WarningList warnings={warnings} people={people} onDismiss={() => setWarnings([])} />
@@ -167,11 +189,11 @@ export function GigPage() {
           )}
         </Section>
 
-        <Section title={t('gig.sections.economics')}>
+        <Section title={t('gig.sections.economics')} wide>
           <Economics gig={gig} />
         </Section>
 
-        <Section title={t('gig.sections.costs')}>
+        <Section title={t('gig.sections.costs')} wide>
           <CostList gig={gig} people={people} readOnly={readOnly} onWarnings={setWarnings} />
         </Section>
 
@@ -187,16 +209,41 @@ export function GigPage() {
   );
 }
 
-function GigHeader({ gig }: { gig: GigDetail }) {
-  const lang = useLang();
+function BackLink() {
+  const { t } = useTranslation();
   return (
-    <header className="gig-header">
-      <p className="gig-header-date">{formatDateRange(gig.startDate, gig.endDate, lang)}</p>
-      <h1>
-        {gig.lineupName} · {gig.venue}
-      </h1>
-      <StatusBadge status={gigDisplayStatus(gig)} />
-    </header>
+    <p className="gig-back">
+      <Link to="/gigs">
+        <ChevronLeft />
+        {t('gig.back')}
+      </Link>
+    </p>
+  );
+}
+
+function GigHeader({ gig, actions }: { gig: GigDetail; actions: ReactNode }) {
+  const { t } = useTranslation();
+  const lang = useLang();
+  const status = gigDisplayStatus(gig);
+  return (
+    <PageHead
+      title={`${gig.lineupName} · ${gig.venue}`}
+      subtitle={
+        <>
+          <span className="gig-header-date">{formatDateRange(gig.startDate, gig.endDate, lang)}</span>
+          <span className="gig-header-tags">
+            <StatusTag tone={STATUS_TONE[status]}>{gigStatusLabel(t, status)}</StatusTag>
+            {gig.deletedAt !== null && <StatusTag tone="danger">{t('gigs.views.deleted')}</StatusTag>}
+            {gig.notFullyStaffed && gig.deletedAt === null && (
+              <StatusTag tone="warn">{t('gigs.notFullyStaffed')}</StatusTag>
+            )}
+          </span>
+        </>
+      }
+      actions={actions}
+    >
+      <BackLink />
+    </PageHead>
   );
 }
 
@@ -213,7 +260,8 @@ function WarningList({
   const lang = useLang();
   if (warnings.length === 0) return null;
   return (
-    <div className="notice notice-warn" role="alert">
+    <NoticeBox tone="warn" role="alert" className="gig-notice">
+      <div className="gig-notice-text">
       <p>
         <strong>{t('gig.warningsTitle')}</strong>
       </p>
@@ -232,18 +280,21 @@ function WarningList({
           ),
         )}
       </ul>
-      <button type="button" className="btn btn-small" onClick={onDismiss}>
-        {t('common.dismiss')}
-      </button>
-    </div>
+      </div>
+      <div className="gig-notice-actions">
+        <Button size="sm" onClick={onDismiss}>
+          {t('common.dismiss')}
+        </Button>
+      </div>
+    </NoticeBox>
   );
 }
 
-function InfoList({ items }: { items: [string, ReactNode][] }) {
+function InfoList({ items, wideFrom }: { items: [string, ReactNode][]; wideFrom?: number }) {
   return (
-    <dl className="info-list">
-      {items.map(([label, value]) => (
-        <div key={label}>
+    <dl className="gig-info">
+      {items.map(([label, value], i) => (
+        <div key={label} className={wideFrom !== undefined && i >= wideFrom ? 'gig-info-wide' : undefined}>
           <dt>{label}</dt>
           <dd>{value}</dd>
         </div>
@@ -272,11 +323,14 @@ function BasicInfo({ gig, onEdit }: { gig: GigDetail; onEdit?: () => void }) {
           [t('gigForm.producer'), partner(gig.producerId)],
           [t('gigForm.notes'), <span className="pre-wrap">{gig.notes ?? '–'}</span>],
         ]}
+        wideFrom={5}
       />
       {onEdit && (
-        <button type="button" className="btn" onClick={onEdit} aria-label={t('gig.editBasic')}>
-          {t('common.edit')}
-        </button>
+        <div className="gig-info-actions">
+          <Button size="sm" icon={Pencil} onClick={onEdit} aria-label={t('gig.editBasic')}>
+            {t('common.edit')}
+          </Button>
+        </div>
       )}
     </>
   );
@@ -292,13 +346,15 @@ function PriceInfo({ gig, onEdit }: { gig: GigDetail; onEdit?: () => void }) {
           [t('gigForm.price'), formatMoney(gig.priceCents, lang)],
           [t('gigForm.additionalSales'), formatMoney(gig.additionalSalesCents, lang)],
           [t('gigForm.additionalSalesDescription'), gig.additionalSalesDescription ?? '–'],
-          [t('gigForm.totalPrice'), <strong>{formatMoney(gig.totalPriceCents, lang)}</strong>],
+          [t('gigForm.totalPrice'), <strong className="gig-info-figure">{formatMoney(gig.totalPriceCents, lang)}</strong>],
         ]}
       />
       {onEdit && (
-        <button type="button" className="btn" onClick={onEdit} aria-label={t('gig.editPrice')}>
-          {t('common.edit')}
-        </button>
+        <div className="gig-info-actions">
+          <Button size="sm" icon={Pencil} onClick={onEdit} aria-label={t('gig.editPrice')}>
+            {t('common.edit')}
+          </Button>
+        </div>
       )}
     </>
   );
@@ -307,39 +363,25 @@ function PriceInfo({ gig, onEdit }: { gig: GigDetail; onEdit?: () => void }) {
 function Economics({ gig }: { gig: GigDetail }) {
   const { t } = useTranslation();
   const lang = useLang();
+  const pair = (label: string, budget: string, actual: string) => (
+    <StatTile
+      label={label}
+      value={budget}
+      caption={t('gig.budget')}
+      secondaryValue={actual}
+      secondaryCaption={t('gig.actual')}
+    />
+  );
   return (
-    <table className="econ-table">
-      <thead>
-        <tr>
-          <th scope="col">
-            <span className="visually-hidden">{t('gig.sections.economics')}</span>
-          </th>
-          <th scope="col">{t('gig.budget')}</th>
-          <th scope="col">{t('gig.actual')}</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <th scope="row">{t('gigs.totalPrice')}</th>
-          <td>{formatMoney(gig.totalPriceCents, lang)}</td>
-          <td>{formatMoney(gig.totalPriceCents, lang)}</td>
-        </tr>
-        <tr>
-          <th scope="row">{t('gig.costs')}</th>
-          <td>{formatMoney(gig.budgetedCostsCents, lang)}</td>
-          <td>{formatMoney(gig.actualCostsCents, lang)}</td>
-        </tr>
-        <tr>
-          <th scope="row">{t('gig.margin')}</th>
-          <td>{formatMoney(gig.marginBudgetCents, lang)}</td>
-          <td>{formatMoney(gig.marginActualCents, lang)}</td>
-        </tr>
-        <tr>
-          <th scope="row">{t('gigs.marginPct')}</th>
-          <td>{formatPercent(gig.marginBudgetPct, lang)}</td>
-          <td>{formatPercent(gig.marginActualPct, lang)}</td>
-        </tr>
-      </tbody>
-    </table>
+    <StatGrid className="gig-econ-grid">
+      <StatTile label={t('gigs.totalPrice')} value={formatMoney(gig.totalPriceCents, lang)} />
+      {pair(t('gig.costs'), formatMoney(gig.budgetedCostsCents, lang), formatMoney(gig.actualCostsCents, lang))}
+      {pair(t('gig.margin'), formatMoney(gig.marginBudgetCents, lang), formatMoney(gig.marginActualCents, lang))}
+      {pair(
+        t('gigs.marginPct'),
+        formatPercent(gig.marginBudgetPct, lang),
+        formatPercent(gig.marginActualPct, lang),
+      )}
+    </StatGrid>
   );
 }
