@@ -39,3 +39,4 @@ UC-016 and UC-026 (seed only), UC-021 (→ UC-020), UC-023 (→ UC-022).
 - **NFR-4** Failed saves never lose the user's input.
 - **NFR-5** The selected year is in the header on every screen (BR-081).
 - **NFR-6** No real names, business numbers, customer data or secrets in the repository (BR-090).
+- **NFR-7** Visual design per `docs/design.md`: dark and light theme (toggle in header, default follows OS), Afacad font, Instaglamour logo.

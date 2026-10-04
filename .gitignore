@@ -25,3 +25,7 @@ coverage/
 e2e/test-results/
 e2e/playwright-report/
 e2e/blob-report/
+
+# Design reference screenshot (contains real names) and original brand source files — local only
+design_help.png
+frontend/assets/
