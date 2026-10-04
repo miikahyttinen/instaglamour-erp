@@ -1,7 +1,7 @@
 # TASK-110: Design foundation — tokens, themes, fonts, logo, header, shared components
 
 - **owner:** ui
-- **status:** todo
+- **status:** done
 - **spec:** docs/design.md, NFR-7
 - **depends on:** none (blocks TASK-111…116)
 

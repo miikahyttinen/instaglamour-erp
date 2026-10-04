@@ -27,7 +27,7 @@ spacing; numbers large and bold. Colour is used only for status.
 | `--border-strong` (inputs, buttons) | `#4a4a4a` | `#bdbdbd` |
 | `--text` | `#f2f2f2` | `#0a0a0a` |
 | `--text-muted` | `#9a9a9a` | `#5c5c5c` |
-| `--label` (mono labels) | `#7a7a7a` | `#6b6b6b` |
+| `--label` (mono labels) | `#858585` | `#6b6b6b` |
 | `--accent` (primary emphasis, active bar) | `#ffffff` | `#0a0a0a` |
 | `--accent-contrast` | `#0a0a0a` | `#ffffff` |
 | `--info-fg` / `--info-bg` / `--info-border` | `#6ea8ff` / `#121c2e` / `#1e3b6a` | `#1d4ed8` / `#eaf1ff` / `#bcd0f5` |
@@ -35,7 +35,7 @@ spacing; numbers large and bold. Colour is used only for status.
 | `--warn-fg` / `--warn-bg` / `--warn-border` | `#fbbf24` / `#2a2210` / `#5c4a14` | `#a16207` / `#fdf6e3` / `#ecd9a3` |
 | `--danger-fg` / `--danger-bg` / `--danger-border` | `#f87171` / `#2a1212` / `#5c1f1f` | `#b91c1c` / `#fdecec` / `#f0b4b4` |
 
-Contrast must meet WCAG AA for text in both themes.
+Contrast must meet WCAG AA for text in both themes. (`--label` dark raised from #7a7a7a to #858585 for AA on surfaces.)
 
 ## Shape & spacing
 - Radius: **2 px** max (tags, inputs, buttons, cards). No shadows.
