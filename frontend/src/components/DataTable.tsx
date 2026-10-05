@@ -2,6 +2,7 @@ import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 export type SortDirection = 'asc' | 'desc';
+export type CardsBreakpoint = 'sm' | 'lg';
 
 export interface DataTableColumn<T> {
   /** Stable column id (React key). */
@@ -37,6 +38,11 @@ export interface DataTableProps<T> {
   empty?: ReactNode;
   /** Phones (< 600 px): each row becomes a card of label/value pairs (default true). */
   cardsOnPhone?: boolean;
+  /**
+   * Viewport breakpoint below which rows are cards (with `cardsOnPhone`): `'sm'` = < 600 px
+   * (default), `'lg'` = < 1200 px, for wide tables that don't fit next to the sidebar at 900–1199.
+   */
+  cardsBelow?: CardsBreakpoint;
   rowClassName?: (row: T) => string | undefined;
   /** Optional <tr> elements for a totals footer. Give each <td> a `data-label` for phones. */
   footer?: ReactNode;
@@ -58,6 +64,7 @@ export function DataTable<T>({
   showCaption,
   empty,
   cardsOnPhone = true,
+  cardsBelow = 'sm',
   rowClassName,
   footer,
   className,
@@ -77,7 +84,12 @@ export function DataTable<T>({
   return (
     <div className="table-wrap">
       <table
-        className={['data-table', cardsOnPhone && 'data-table-cards', className]
+        className={[
+          'data-table',
+          cardsOnPhone && 'data-table-cards',
+          cardsOnPhone && cardsBelow === 'lg' && 'data-table-cards-lg',
+          className,
+        ]
           .filter(Boolean)
           .join(' ')}
       >

@@ -1,7 +1,10 @@
 import { useCallback, useSyncExternalStore } from 'react';
 
-/** Same breakpoint as the CSS (`@media (min-width: 900px)`): header nav + icon buttons. */
+/** Same breakpoint as the CSS (`@media (min-width: 900px)`): sidebar instead of the ☰ drawer. */
 export const DESKTOP_QUERY = '(min-width: 900px)';
+
+/** Same breakpoint as the CSS (`@media (min-width: 1200px)`): `lg` StatGrid spans, wide tables. */
+export const WIDE_QUERY = '(min-width: 1200px)';
 
 function mediaQuery(query: string): MediaQueryList | null {
   return typeof window !== 'undefined' && typeof window.matchMedia === 'function'
