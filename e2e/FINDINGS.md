@@ -35,6 +35,13 @@ tests failed in their setup — a suite problem, not an app bug. After fixing th
 `tests/13-tech-logistics.spec.ts`: **106 passed, 0 failed, 30 skipped** (same 30 as above) at
 375 px and 1280 px from a fresh database. No new findings.
 
+Run of 2026-10-05 against `main` at `cc5a780` (partner-managed budget rows, TASK-012, TASK-134),
+see TASK-013: 4 tests failed (as reported in TASK-013) because the suite still expected the old seed categories ("Vuokra",
+"Insurance") and a button-free budget table — suite problems, not app bugs. After updating
+`08-budget` / `11-cross-checks` to the "Category A…I" seed and the new markup, and adding the
+add / rename / remove row flow to `08-budget`: **108 passed, 0 failed, 30 skipped** (same 30 as
+above) at 375 px and 1280 px from a fresh database. No new findings.
+
 | Id | Severity | Side to fix | Summary |
 |---|---|---|---|
 | F-001 | minor | frontend | `/api` proxy target and dev port are hard-coded in `vite.config.ts` |

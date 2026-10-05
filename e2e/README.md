@@ -62,7 +62,7 @@ database that `npm run e2e` creates.
 | `05-people` | Add, rename in place, deactivate with the switch; Esc / empty name; the person page shows their lines; reactivate from the list |
 | `06-tasks` | Add, mark done, reopen; edit title / description / owner / due date in place, Esc, empty title; delete |
 | `07-hours` | Add own entry; totals page and year page updated; edit hours / comment in place, Esc, invalid hours |
-| `08-budget` | Edit a row in place (PUT per cell save, Esc, invalid amount); year page budget and year result; copy to the next year (and the 409 on a second copy) |
+| `08-budget` | Seed rows "Category A…I", each with name field, four money cells and "Poista rivi <name>"; edit a row in place (PUT per cell save, Esc, invalid amount); year page budget and year result; copy to the next year (and the 409 on a second copy). Partner-managed rows (UC-020 A2–A4): add ("Rivin nimi" + "Lisää rivi") → zeros in this and the next year; empty → REQUIRED and duplicate (case-insensitive, trimmed) → "Nimi on jo käytössä.", nothing sent / created; rename in place (blur, Enter, Esc, empty, duplicate) persists after reload and the money cell labels follow; remove: Cancel keeps it, "Poistetaanko rivi?" → Poista hides it from every year, the totals and the year page; API: removed row's PUT / PATCH → 404 |
 | `09-language-year` | Switch to English with the one language toggle; change year (buttons and picker); both survive a reload; signed-in partner shown |
 | `10-no-horizontal-scroll` | No horizontal scroll on every main page (and with expanded content) |
 | `11-cross-checks` | Seller change moves Sales lines; EN amount input; upcoming gigs in an empty year; hours saved for another year; gig search + cancelled filter |
