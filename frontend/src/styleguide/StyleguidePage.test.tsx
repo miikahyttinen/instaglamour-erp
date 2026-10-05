@@ -12,6 +12,11 @@ describe('/styleguide (dev only)', () => {
     for (const panel of panels) {
       const p = within(panel);
       for (const section of [
+        'App shell: sidebar, top bar, drawer',
+        'Type scale (Layout v2)',
+        'Layout spacing',
+        'StatGrid: 12 columns, spans',
+        'FieldList: one label column per section',
         'Logo',
         'Colour tokens',
         'Typography',
@@ -39,6 +44,9 @@ describe('/styleguide (dev only)', () => {
       expect(p.getByRole('switch', { name: 'InlineSwitch · joins load-in' })).toBeInTheDocument();
       expect(p.getByRole('group', { name: 'InlineCheckboxGroup · setup' })).toBeInTheDocument();
       expect(p.getByRole('table', { name: 'Inline demo rows' })).toBeInTheDocument();
+      // Sidebar demos: expanded + collapsed + interactive rail.
+      expect(p.getAllByRole('navigation', { name: 'Päävalikko' })).toHaveLength(3);
+      expect(panel.querySelectorAll('.sg-shell.is-collapsed')).toHaveLength(1);
     }
 
     // Only one theme.
@@ -56,6 +64,21 @@ describe('/styleguide (dev only)', () => {
     );
     await user.click(screen.getByRole('button', { name: 'Open dialog' }));
     expect(screen.getByRole('dialog', { name: 'Delete gig' })).toBeInTheDocument();
+  });
+
+  it('interactive rail collapses, and the drawer demo opens and closes', async () => {
+    const { user, container } = renderApp('/styleguide');
+    await user.click(await screen.findByRole('button', { name: 'light' }));
+    const single = container.querySelector<HTMLElement>('.sg-shell-single')!;
+    await user.click(within(single).getByRole('button', { name: 'Pienennä valikko' }));
+    expect(single).toHaveClass('is-collapsed');
+    expect(within(single).getByRole('link', { name: 'Keikat' })).toHaveAttribute('data-tooltip', 'Keikat');
+
+    await user.click(screen.getByRole('button', { name: 'Open drawer (phone)' }));
+    const drawer = screen.getByRole('dialog', { name: 'Päävalikko' });
+    expect(within(drawer).getByRole('button', { name: 'Sulje valikko' })).toHaveFocus();
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
   it('inline demo saves on blur, and the fail toggle shows a translated field error', async () => {

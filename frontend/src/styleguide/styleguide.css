@@ -102,6 +102,64 @@
   margin-top: var(--space-4);
 }
 
+/* Layout v2: shell demos (static frames, not sticky / full height) */
+.sg-shell-row {
+  display: grid;
+  gap: var(--grid-gap);
+  margin-bottom: var(--space-4);
+}
+@media (min-width: 1100px) {
+  .sg-shell-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.sg-shell {
+  min-height: 0;
+  height: 600px;
+  overflow: hidden;
+  border: var(--hairline) solid var(--border);
+}
+.sg-shell-single {
+  overflow: visible; /* tooltips reach out of the rail */
+  margin-bottom: var(--space-4);
+}
+.sg-shell .sidebar {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+}
+.sg-shell .topbar {
+  position: static;
+}
+.sg-shell-page {
+  background: var(--surface-2);
+  flex: 1 1 auto;
+}
+.sg-card-gap {
+  margin-top: var(--grid-gap);
+}
+.sg-fs-title {
+  font-size: var(--fs-title);
+  font-weight: var(--fw-bold);
+  text-transform: uppercase;
+  letter-spacing: var(--ls-title);
+}
+.sg-fs-figure {
+  font-size: var(--fs-figure);
+  font-weight: var(--fw-bold);
+  font-variant-numeric: tabular-nums;
+}
+.sg-fs-lg {
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-bold);
+}
+.sg-fs-body {
+  font-size: var(--fs-body);
+}
+.sg-fs-small {
+  font-size: var(--fs-small);
+}
+
 /* Inline editing section */
 .sg-note-top {
   margin: 0 0 var(--space-2);
