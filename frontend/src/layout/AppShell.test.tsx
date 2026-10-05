@@ -1,6 +1,6 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { UpdateMeRequest } from '../api/types';
 import { db } from '../mocks/data';
 import { errorResponse } from '../mocks/util';
@@ -9,17 +9,22 @@ import { DESKTOP_QUERY } from '../lib/useMediaQuery';
 import { installMatchMedia } from '../test/matchMedia';
 import { renderApp, signInMock } from '../test/renderApp';
 import { THEME_STORAGE_KEY } from '../theme/theme';
+import { readSidebarMode, SIDEBAR_STORAGE_KEY } from './sidebarState';
 
 const yearSelect = () => screen.getByRole('combobox', { name: 'Valittu vuosi' });
+const desktop = () => installMatchMedia({ [DESKTOP_QUERY]: true });
+const mainNav = (name = 'Päävalikko') => screen.getByRole('navigation', { name });
+const menuButton = () => screen.getByRole('button', { name: 'Valikko' });
+const drawer = () => screen.getByRole('dialog', { name: 'Päävalikko' });
 
 describe('app shell', () => {
-  it('shows the selected year in the header on every page', async () => {
+  it('shows the selected year in the top bar on every page', async () => {
+    desktop();
     const partner = signInMock();
     partner.selectedYear = 2030;
     const { user } = renderApp('/');
     expect(await screen.findByRole('heading', { name: 'Vuosi 2030' })).toBeInTheDocument();
 
-    const nav = screen.getAllByRole('navigation', { name: 'Päävalikko' })[0]!;
     for (const [label, heading] of [
       ['Keikat', 'Keikat 2030'],
       ['Henkilöt', 'Henkilöt'],
@@ -28,7 +33,7 @@ describe('app shell', () => {
       ['Budjetti', 'Budjetti 2030'],
       ['Vuosi', 'Vuosi 2030'],
     ] as const) {
-      await user.click(within(nav).getByRole('link', { name: label }));
+      await user.click(within(mainNav()).getByRole('link', { name: label }));
       expect(await screen.findByRole('heading', { name: heading })).toBeInTheDocument();
       expect(yearSelect()).toHaveValue('2030');
     }
@@ -74,19 +79,23 @@ describe('app shell', () => {
     expect(yearSelect()).toHaveValue('2030');
   });
 
-  it('language switch changes all texts immediately and saves via PATCH /api/me', async () => {
+  it('language switch (drawer) changes all texts immediately and saves via PATCH /api/me', async () => {
     signInMock();
     const { user } = renderApp('/');
     await screen.findByRole('heading', { name: /^Vuosi/ });
     expect(document.documentElement.lang).toBe('fi');
 
-    await user.click(screen.getByRole('button', { name: 'Valikko' }));
-    await user.click(screen.getByRole('button', { name: 'English' }));
+    await user.click(menuButton());
+    const lang = within(drawer()).getByRole('button', { name: 'Vaihda kieleksi English' });
+    expect(lang).toHaveTextContent('English');
+    await user.click(lang);
 
     expect(screen.getByRole('heading', { name: /^Year \d{4}$/ })).toBeInTheDocument();
-    const nav = screen.getAllByRole('navigation', { name: 'Main menu' })[0]!;
-    expect(within(nav).getByRole('link', { name: 'Gigs' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
+    // The drawer stays open and is translated too.
+    const panel = screen.getByRole('dialog', { name: 'Main menu' });
+    expect(within(panel).getByRole('link', { name: 'Gigs' })).toBeInTheDocument();
+    expect(within(panel).getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
+    expect(within(panel).getByRole('button', { name: 'Change language to Suomi' })).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: 'Selected year' })).toBeInTheDocument();
     expect(document.documentElement.lang).toBe('en');
     await waitFor(() => expect(db.partners[0]!.language).toBe('en'));
@@ -98,12 +107,12 @@ describe('app shell', () => {
     expect(await screen.findByRole('heading', { name: /^Year \d{4}$/ })).toBeInTheDocument();
   });
 
-  it('sign out ends the session and shows sign-in', async () => {
+  it('sign out (drawer) ends the session and shows sign-in', async () => {
     signInMock();
     const { user } = renderApp('/');
     await screen.findByRole('heading', { name: /^Vuosi/ });
-    await user.click(screen.getByRole('button', { name: 'Valikko' }));
-    await user.click(screen.getByRole('button', { name: 'Kirjaudu ulos' }));
+    await user.click(menuButton());
+    await user.click(within(drawer()).getByRole('button', { name: 'Kirjaudu ulos' }));
     expect(await screen.findByRole('heading', { name: 'Kirjaudu sisään' })).toBeInTheDocument();
     expect(db.sessionPartnerId).toBeNull();
   });
@@ -129,6 +138,7 @@ describe('app shell', () => {
   });
 
   it('loads reference data once and caches it', async () => {
+    desktop();
     signInMock();
     let calls = 0;
     server.use(
@@ -143,9 +153,8 @@ describe('app shell', () => {
     const { user, queryClient } = renderApp('/');
     await screen.findByRole('heading', { name: /^Vuosi/ });
     await waitFor(() => expect(queryClient.getQueryData(['reference'])).toBeDefined());
-    const nav = screen.getAllByRole('navigation', { name: 'Päävalikko' })[0]!;
-    await user.click(within(nav).getByRole('link', { name: 'Keikat' }));
-    await user.click(within(nav).getByRole('link', { name: 'Tunnit' }));
+    await user.click(within(mainNav()).getByRole('link', { name: 'Keikat' }));
+    await user.click(within(mainNav()).getByRole('link', { name: 'Tunnit' }));
     expect(calls).toBe(1);
   });
 
@@ -155,45 +164,180 @@ describe('app shell', () => {
     expect(await screen.findByRole('heading', { name: 'Sivua ei löytynyt.' })).toBeInTheDocument();
   });
 
-  it('shows the logo as the home link', async () => {
+  it('renders every route inside the shared page container', async () => {
     signInMock();
-    renderApp('/gigs');
+    const { container } = renderApp('/gigs');
+    const heading = await screen.findByRole('heading', { name: /^Keikat/ });
+    expect(heading.closest('main > .page-container')).not.toBeNull();
+    expect(container.querySelectorAll('.page-container')).toHaveLength(1);
+  });
+
+  it('shows the logo as the home link (phone top bar and desktop sidebar)', async () => {
+    signInMock();
+    const { unmount } = renderApp('/gigs');
     await screen.findByRole('heading', { name: /^Keikat/ });
     const home = screen.getByRole('link', { name: 'Instaglamour ERP' });
     expect(home).toHaveAttribute('href', '/');
     expect(within(home).getByRole('img')).toBeInTheDocument();
+    unmount();
+
+    desktop();
+    renderApp('/gigs');
+    await screen.findByRole('heading', { name: /^Keikat/ });
+    expect(screen.getByRole('link', { name: 'Instaglamour ERP' })).toHaveAttribute('href', '/');
   });
 
-  it('phone menu switches the theme and remembers it', async () => {
+  it('drawer theme button switches the theme and remembers it', async () => {
     signInMock();
     document.documentElement.setAttribute('data-theme', 'dark');
     const { user } = renderApp('/');
     await screen.findByRole('heading', { name: /^Vuosi/ });
-    await user.click(screen.getByRole('button', { name: 'Valikko' }));
-    const group = screen.getByRole('group', { name: 'Teema' });
-    expect(within(group).getByRole('button', { name: 'Tumma' })).toHaveAttribute('aria-pressed', 'true');
-    await user.click(within(group).getByRole('button', { name: 'Vaalea' }));
+    await user.click(menuButton());
+    await user.click(within(drawer()).getByRole('button', { name: 'Vaihda vaaleaan teemaan' }));
     expect(document.documentElement).toHaveAttribute('data-theme', 'light');
     expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe('light');
-    expect(within(group).getByRole('button', { name: 'Vaalea' })).toHaveAttribute('aria-pressed', 'true');
+    expect(within(drawer()).getByRole('button', { name: 'Vaihda tummaan teemaan' })).toBeInTheDocument();
   });
 
-  describe('desktop header', () => {
-    it('has language, theme and sign-out icon buttons instead of the menu', async () => {
-      installMatchMedia({ [DESKTOP_QUERY]: true });
+  describe('phone: top bar + drawer', () => {
+    it('has ☰, logo and year in the top bar; no nav until the drawer opens; no bottom nav', async () => {
+      signInMock();
+      const { container } = renderApp('/');
+      await screen.findByRole('heading', { name: /^Vuosi/ });
+      const topbar = container.querySelector('header.topbar') as HTMLElement;
+      expect(within(topbar).getByRole('button', { name: 'Valikko' })).toHaveAttribute('aria-expanded', 'false');
+      expect(within(topbar).getByRole('link', { name: 'Instaglamour ERP' })).toBeInTheDocument();
+      expect(within(topbar).getByRole('combobox', { name: 'Valittu vuosi' })).toBeInTheDocument();
+      expect(screen.queryByRole('navigation')).not.toBeInTheDocument();
+      expect(container.querySelector('.nav-bottom')).toBeNull();
+    });
+
+    it('opens as a modal dialog, focuses the close button, and Esc closes it (focus back to ☰)', async () => {
+      signInMock();
+      const { user } = renderApp('/');
+      await screen.findByRole('heading', { name: /^Vuosi/ });
+      await user.click(menuButton());
+
+      const panel = drawer();
+      expect(panel).toHaveAttribute('aria-modal', 'true');
+      expect(menuButton()).toHaveAttribute('aria-expanded', 'true');
+      expect(menuButton()).toHaveAttribute('aria-controls', panel.id);
+      expect(within(panel).getByRole('button', { name: 'Sulje valikko' })).toHaveFocus();
+      expect(within(panel).getByRole('navigation', { name: 'Päävalikko' })).toBeInTheDocument();
+      expect(within(panel).getByText(`Kirjautuneena: ${db.partners[0]!.name}`)).toBeInTheDocument();
+      expect(document.body.style.overflow).toBe('hidden');
+
+      await user.keyboard('{Escape}');
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      expect(menuButton()).toHaveFocus();
+      expect(menuButton()).toHaveAttribute('aria-expanded', 'false');
+      expect(document.body.style.overflow).toBe('');
+    });
+
+    it('closes on backdrop click and on the close button', async () => {
+      signInMock();
+      const { user } = renderApp('/');
+      await screen.findByRole('heading', { name: /^Vuosi/ });
+
+      await user.click(menuButton());
+      await user.click(screen.getByTestId('drawer-backdrop'));
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+      await user.click(menuButton());
+      await user.click(within(drawer()).getByRole('button', { name: 'Sulje valikko' }));
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+
+    it('closes when a nav link is clicked and navigates there', async () => {
+      signInMock();
+      const { user } = renderApp('/');
+      await screen.findByRole('heading', { name: /^Vuosi/ });
+      await user.click(menuButton());
+      await user.click(within(drawer()).getByRole('link', { name: 'Tunnit' }));
+      expect(await screen.findByRole('heading', { name: /^Tunnit/ })).toBeInTheDocument();
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+      // The current page's link also closes it.
+      await user.click(menuButton());
+      const current = within(drawer()).getByRole('link', { name: 'Tunnit' });
+      expect(current).toHaveAttribute('aria-current', 'page');
+      await user.click(current);
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+
+    it('traps focus: Tab wraps from the last to the first item and Shift+Tab back', async () => {
+      signInMock();
+      const { user } = renderApp('/');
+      await screen.findByRole('heading', { name: /^Vuosi/ });
+      await user.click(menuButton());
+      const panel = drawer();
+      const first = within(panel).getByRole('link', { name: 'Instaglamour ERP' });
+      const last = within(panel).getByRole('button', { name: 'Kirjaudu ulos' });
+
+      last.focus();
+      await user.tab();
+      expect(first).toHaveFocus();
+      await user.tab({ shift: true });
+      expect(last).toHaveFocus();
+      // Every Tab stays inside the drawer.
+      for (let i = 0; i < 12; i += 1) {
+        await user.tab();
+        expect(panel.contains(document.activeElement)).toBe(true);
+      }
+    });
+
+    it('never shows on desktop, even if it was open when the window got wider', async () => {
+      const media = installMatchMedia({ [DESKTOP_QUERY]: false });
+      signInMock();
+      const { user } = renderApp('/');
+      await screen.findByRole('heading', { name: /^Vuosi/ });
+      await user.click(menuButton());
+      expect(drawer()).toBeInTheDocument();
+      media.set(DESKTOP_QUERY, true);
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+      expect(screen.queryByRole('button', { name: 'Valikko' })).not.toBeInTheDocument();
+      expect(mainNav()).toBeInTheDocument();
+    });
+  });
+
+  describe('desktop sidebar', () => {
+    it('has icon nav with the active item marked, the section in the top bar and no ☰', async () => {
+      desktop();
+      signInMock();
+      const { container } = renderApp('/gigs');
+      await screen.findByRole('heading', { name: /^Keikat/ });
+      expect(screen.queryByRole('button', { name: 'Valikko' })).not.toBeInTheDocument();
+
+      const links = within(mainNav()).getAllByRole('link');
+      expect(links.map((l) => l.textContent)).toEqual([
+        'Vuosi',
+        'Keikat',
+        'Henkilöt',
+        'Tehtävät',
+        'Tunnit',
+        'Budjetti',
+      ]);
+      for (const link of links) expect(link.querySelector('svg')).not.toBeNull();
+      expect(within(mainNav()).getByRole('link', { name: 'Keikat' })).toHaveAttribute('aria-current', 'page');
+      expect(within(mainNav()).getByRole('link', { name: 'Vuosi' })).not.toHaveAttribute('aria-current');
+      expect(container.querySelector('.topbar-context')).toHaveTextContent('Keikat');
+      expect(screen.getByText(`Kirjautuneena: ${db.partners[0]!.name}`)).toBeInTheDocument();
+    });
+
+    it('has language, theme and sign-out in the bottom area', async () => {
+      desktop();
       signInMock();
       document.documentElement.setAttribute('data-theme', 'dark');
       const { user } = renderApp('/');
       await screen.findByRole('heading', { name: /^Vuosi/ });
-      expect(screen.queryByRole('button', { name: 'Valikko' })).not.toBeInTheDocument();
 
-      // Theme: sun in dark (→ light), moon in light (→ dark); FI/EN labels.
+      // Theme: sun in dark (→ light), moon in light (→ dark).
       await user.click(screen.getByRole('button', { name: 'Vaihda vaaleaan teemaan' }));
       expect(document.documentElement).toHaveAttribute('data-theme', 'light');
       expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe('light');
       expect(screen.getByRole('button', { name: 'Vaihda tummaan teemaan' })).toBeInTheDocument();
 
-      // Language: shows the current code, switches FI ⇄ EN and saves it.
+      // Language: shows the current code and the other language; switches FI ⇄ EN and saves it.
       const lang = screen.getByRole('button', { name: 'Vaihda kieleksi English' });
       expect(lang).toHaveTextContent('FI');
       await user.click(lang);
@@ -206,5 +350,54 @@ describe('app shell', () => {
       expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeInTheDocument();
       expect(db.sessionPartnerId).toBeNull();
     });
+
+    it('collapses to icons (labels stay accessible, tooltips on) and remembers it', async () => {
+      desktop();
+      signInMock();
+      const { user, container, unmount } = renderApp('/');
+      await screen.findByRole('heading', { name: /^Vuosi/ });
+      expect(container.querySelector('.shell')).not.toHaveClass('is-collapsed');
+      expect(within(mainNav()).getByRole('link', { name: 'Keikat' })).not.toHaveAttribute('data-tooltip');
+
+      await user.click(screen.getByRole('button', { name: 'Pienennä valikko' }));
+      expect(container.querySelector('.shell')).toHaveClass('is-collapsed');
+      expect(window.localStorage.getItem(SIDEBAR_STORAGE_KEY)).toBe('collapsed');
+      const gigs = within(mainNav()).getByRole('link', { name: 'Keikat' });
+      expect(gigs).toHaveAttribute('data-tooltip', 'Keikat');
+      expect(screen.getByRole('button', { name: 'Kirjaudu ulos' })).toHaveAttribute(
+        'data-tooltip',
+        `Kirjaudu ulos · Kirjautuneena: ${db.partners[0]!.name}`,
+      );
+      expect(screen.queryByText(`Kirjautuneena: ${db.partners[0]!.name}`)).not.toBeInTheDocument();
+
+      // Still collapsed after a reload.
+      unmount();
+      const again = renderApp('/');
+      await screen.findByRole('heading', { name: /^Vuosi/ });
+      expect(again.container.querySelector('.shell')).toHaveClass('is-collapsed');
+      await again.user.click(screen.getByRole('button', { name: 'Laajenna valikko' }));
+      expect(again.container.querySelector('.shell')).not.toHaveClass('is-collapsed');
+      expect(window.localStorage.getItem(SIDEBAR_STORAGE_KEY)).toBe('expanded');
+    });
+
+    it('works when localStorage is blocked (expanded, toggle still works)', async () => {
+      desktop();
+      vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+        throw new Error('blocked');
+      });
+      vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+        throw new Error('blocked');
+      });
+      expect(readSidebarMode()).toBe('expanded');
+      signInMock();
+      const { container } = renderApp('/');
+      await screen.findByRole('heading', { name: /^Vuosi/ });
+      fireEvent.click(screen.getByRole('button', { name: 'Pienennä valikko' }));
+      expect(container.querySelector('.shell')).toHaveClass('is-collapsed');
+    });
   });
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
 });

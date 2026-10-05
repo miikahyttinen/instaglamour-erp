@@ -3,26 +3,27 @@
    (used by /styleguide to show both themes side by side). */
 
 /* ---------- Theme-independent tokens ---------- */
+/* Layout v2 (docs/design.md → "Layout v2"): smaller type, 8 px grid, more space. */
 :root {
   /* Typography */
   --font-sans: 'Afacad', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --fs-meta: 0.625rem; /* 10 px — mono captions under figures */
-  --fs-label: 0.6875rem; /* 11 px — mono labels, table headers, buttons, tags */
-  --fs-small: 0.8125rem; /* 13 px — secondary body text */
-  --fs-body: 0.9375rem; /* 15 px — body, table cells, inputs */
-  --fs-lg: 1.125rem; /* 18 px — card / dialog titles */
-  --fs-figure: 1.5rem; /* 24 px phone → 28 px desktop — stat tile numbers */
-  --fs-title: 1.5rem; /* 24 px phone → 32 px desktop — page title */
-  --lh-tight: 1.1;
-  --lh-body: 1.45;
-  --ls-label: 0.14em; /* mono uppercase letter spacing (0.12–0.16em) */
+  --fs-label: 0.625rem; /* 10 px — mono labels, table headers, buttons, tags */
+  --fs-small: 0.75rem; /* 12 px — secondary body text, subtitles */
+  --fs-body: 0.875rem; /* 14 px — body, table cells, inputs, nav */
+  --fs-lg: 1rem; /* 16 px — card / dialog titles, secondary figures */
+  --fs-figure: 1.25rem; /* 20 px — stat tile numbers */
+  --fs-title: 1.25rem; /* 20 px phone → 22 px desktop — page title */
+  --lh-tight: 1.15;
+  --lh-body: 1.5;
+  --ls-label: 0.14em; /* mono uppercase letter spacing */
   --ls-title: -0.01em;
   --fw-regular: 400;
   --fw-medium: 500;
   --fw-bold: 700;
 
-  /* Spacing scale 4/8/12/16/24/32/48 */
+  /* Spacing scale 4/8/12/16/24/32/48 (+ 20 / 40 for the layout tokens below) */
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -30,8 +31,14 @@
   --space-5: 24px;
   --space-6: 32px;
   --space-7: 48px;
-  --page-pad: var(--space-4); /* 16 px phone → 48 px desktop */
-  --content-max: 1400px;
+
+  /* Layout (use these, not raw --space-*, for page rhythm) */
+  --page-pad: 16px; /* side padding of the content container: 16 px phone → 40 px desktop */
+  --section-gap: 32px; /* between page sections: 32 px phone → 40 px desktop */
+  --card-pad: 16px; /* inside cards, tiles, table cells (x): 16 px phone → 20 px desktop */
+  --grid-gap: 16px; /* between tiles / cards (StatGrid, card grids) */
+  --content-max: 1200px; /* content width inside .page-container (padding not included) */
+  --label-w: 160px; /* label column of FieldList (≥ 600 px) */
 
   /* Shape */
   --radius: 2px; /* maximum radius anywhere */
@@ -39,20 +46,60 @@
 
   /* Sizes */
   --tap: 44px; /* minimum touch target on phones */
-  --control-h: 44px; /* buttons / inputs: 44 px phone → 36 px desktop */
+  --control-h: 44px; /* buttons / inputs / inline fields: 44 px phone → 36 px desktop */
+  --row-h: 48px; /* DataTable body row min height */
+  --cell-pad-y: var(--space-3); /* DataTable header + cell padding (identical) */
+  --cell-pad-x: var(--card-pad);
+  --inline-pad-x: var(--space-2); /* inner side padding of quiet inline inputs */
   --icon: 16px;
+  --icon-nav: 18px;
   --icon-stroke: 1.5;
-  --header-h: 56px;
-  --bottom-nav-h: 60px;
+
+  /* App shell */
+  --topbar-h: 56px;
+  --sidebar-w: 232px;
+  --sidebar-w-collapsed: 64px;
+  --drawer-w: min(280px, 85vw);
+  --nav-item-h: 44px; /* 44 px phone (drawer) → 40 px desktop */
+
+  /* Motion (always also handle prefers-reduced-motion) */
+  --dur: 200ms;
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+
+  /* Stacking */
+  --z-topbar: 20;
+  --z-sidebar: 30;
+  --z-drawer: 40;
+  --z-dialog: 50;
 }
 
 @media (min-width: 900px) {
   :root {
-    --fs-figure: 1.75rem;
-    --fs-title: 2rem;
-    --page-pad: var(--space-7);
+    --fs-title: 1.375rem;
+    --page-pad: 40px;
+    --section-gap: 40px;
+    --card-pad: 20px;
     --control-h: 36px;
+    --nav-item-h: 40px;
   }
+}
+
+/* StatGrid spans (components/grid.ts): not inherited, so nested grids start fresh. */
+@property --span {
+  syntax: '*';
+  inherits: false;
+}
+@property --span-sm {
+  syntax: '*';
+  inherits: false;
+}
+@property --span-md {
+  syntax: '*';
+  inherits: false;
+}
+@property --span-lg {
+  syntax: '*';
+  inherits: false;
 }
 
 /* ---------- Dark (default) ---------- */

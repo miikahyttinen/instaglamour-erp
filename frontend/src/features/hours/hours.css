@@ -30,8 +30,8 @@
 
 /* ---------- Year / grand total tile ---------- */
 /* One tile, so let it span the row instead of a 220 px auto-fill column. */
-.hours-page .hours-stats {
-  grid-template-columns: minmax(0, 1fr);
+.hours-page .hours-stats > * {
+  --span: 12;
 }
 
 /* ---------- Month groups (My hours) ---------- */

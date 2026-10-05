@@ -191,9 +191,13 @@
 
 /* ---------- Economics (StatTiles) ---------- */
 
+/* 12-column StatGrid: 2 tiles per row, 4 from 900 px. */
 .gig-page .gig-econ-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
   margin-bottom: 0;
+}
+.gig-page .gig-econ-grid > * {
+  --span: 6;
+  --span-md: 3;
 }
 .gig-page .gig-econ-grid .stat-tile-secondary {
   flex-wrap: wrap;
@@ -539,8 +543,5 @@
   }
   .gig-page .gig-section:nth-child(2) {
     border-top: 0;
-  }
-  .gig-page .gig-econ-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }

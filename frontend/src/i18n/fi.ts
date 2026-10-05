@@ -23,6 +23,9 @@ const fi = {
     tasks: 'Tehtävät',
     hours: 'Tunnit',
     budget: 'Budjetti',
+    collapse: 'Pienennä valikko',
+    expand: 'Laajenna valikko',
+    close: 'Sulje valikko',
   },
   header: {
     selectedYear: 'Valittu vuosi',
