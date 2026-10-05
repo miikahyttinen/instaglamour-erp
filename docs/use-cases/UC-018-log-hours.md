@@ -16,7 +16,7 @@ A partner has done work.
 - None.
 
 ## Main flow
-1. Partner opens **Hours**: own entries of the selected year by month, month totals, year total.
+1. Partner opens **Hours**: own entries of the selected year as a flat spreadsheet-style table (Date | Comment | Hours, oldest first, sortable) with a total row; year total shown above.
 2. Partner adds: date (default today), comment, hours.
 
 ## Alternative flows
@@ -37,3 +37,4 @@ A partner has done work.
 ## Change log
 - 2026-10-03 – First version and iterations (PM)
 - 2026-10-03 – Simplified MVP (PM)
+- 2026-10-05 – Flat table instead of month groups (owner request) (PM)

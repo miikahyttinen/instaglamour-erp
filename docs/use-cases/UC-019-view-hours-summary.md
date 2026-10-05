@@ -16,8 +16,9 @@ Year-end or meeting.
 - None.
 
 ## Main flow
-1. Partner opens **Hours → Totals**: a plain list of partners with their year hours (all partners, 0 h included, most hours first) and a total row. No charts.
-2. Partner taps a partner to see that partner's entries for the year, grouped by month with month totals.
+1. Partner opens **Hours → Totals**: one flat, spreadsheet-style table of **all entries of the selected year** — Date | Partner | Comment | Hours — oldest first, with a **total row**. No grouping, no collapsing, no charts.
+2. Partner filters by partner (All / one partner); the total row shows the filtered sum (= that partner's year hours).
+3. Partner sorts by clicking a column header.
 
 ## Alternative flows
 - **A1 – Change year**.
@@ -29,11 +30,13 @@ Year-end or meeting.
 - None.
 
 ## Acceptance criteria
-- [ ] AC-1: Partners' year hours add up to the total row; month totals in a partner's entries add up to that partner's year hours.
-- [ ] AC-3: No bar charts on the hours pages.
-- [ ] AC-2: Matches the hours on the year page.
+- [ ] AC-1: Every entry of the year appears once; the total row equals the sum of the shown rows and, unfiltered, the year page's hours total.
+- [ ] AC-2: Partner filter: total row = that partner's year hours; filter kept in the URL.
+- [ ] AC-3: Sorting by date, partner, comment, hours (asc/desc).
+- [ ] AC-4: Own rows editable inline (date, comment, hours), others read-only; no collapsing, no charts.
 
 ## Change log
 - 2026-10-03 – First version and iterations (PM)
 - 2026-10-03 – Simplified MVP (PM)
 - 2026-10-05 – Plain list of partners' hours with total; no charts (owner request) (PM)
+- 2026-10-05 – Spreadsheet-style flat table of all entries with partner filter and total row; no collapsing (owner choice) (PM)
