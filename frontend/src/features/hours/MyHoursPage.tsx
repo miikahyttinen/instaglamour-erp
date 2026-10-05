@@ -2,6 +2,7 @@ import { Plus } from 'lucide-react';
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
+import type { HourEntry } from '../../api/types';
 import { useSelectedYear, useSignedInPartner } from '../../auth/SignedInContext';
 import { Button } from '../../components/Button';
 import { SectionLabel } from '../../components/SectionLabel';
@@ -25,6 +26,11 @@ export function MyHoursPage() {
   const [adding, setAdding] = useState(false);
   const [savedOtherYear, setSavedOtherYear] = useState<number | null>(null);
   const { actionsSlot } = useHoursOutlet();
+  /** Added or inline-edited entry outside the selected year: it leaves the list, so say where. */
+  const noticeIfOtherYear = (entry: HourEntry) => {
+    const entryYear = Number(entry.date.slice(0, 4));
+    if (entryYear !== year) setSavedOtherYear(entryYear);
+  };
 
   const today = todayIso();
   const currentMonth = Number(today.slice(0, 4)) === year ? Number(today.slice(5, 7)) : null;
@@ -96,7 +102,7 @@ export function MyHoursPage() {
                   {formatHours(group.total, lang)}
                 </span>
               </div>
-              <HourEntryList entries={group.entries} editable />
+              <HourEntryList entries={group.entries} editable onSaved={noticeIfOtherYear} />
             </section>
           );
         })}
@@ -106,8 +112,7 @@ export function MyHoursPage() {
           onClose={() => setAdding(false)}
           onSaved={(entry) => {
             setAdding(false);
-            const entryYear = Number(entry.date.slice(0, 4));
-            if (entryYear !== year) setSavedOtherYear(entryYear);
+            noticeIfOtherYear(entry);
           }}
         />
       )}

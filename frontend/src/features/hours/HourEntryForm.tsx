@@ -5,29 +5,26 @@ import { Button } from '../../components/Button';
 import { Dialog } from '../../components/Dialog';
 import { Field } from '../../components/fields';
 import { apiErrorMessage, apiFieldErrors } from '../../i18n/labels';
-import { useLang } from '../../i18n/useLang';
 import { todayIso } from '../../lib/format';
-import { hoursToInput, validateHourForm, type HourFormValues } from './hoursLogic';
-import { useCreateHourEntry, useUpdateHourEntry } from './queries';
+import { validateHourForm, type HourFormValues } from './hoursLogic';
+import { useCreateHourEntry } from './queries';
 
 interface Props {
-  /** Entry to edit; omitted for a new entry. */
-  entry?: HourEntry;
   onClose: () => void;
   onSaved: (entry: HourEntry) => void;
 }
 
-/** Add / edit an own hour entry (UC-018). Date defaults to today. */
-export function HourEntryForm({ entry, onClose, onSaved }: Props) {
+/**
+ * Add an own hour entry (UC-018). Date defaults to today. Existing entries are edited inline in
+ * `HourEntryList` (NFR-8), not here.
+ */
+export function HourEntryForm({ onClose, onSaved }: Props) {
   const { t } = useTranslation();
-  const lang = useLang();
-  const create = useCreateHourEntry();
-  const update = useUpdateHourEntry();
-  const mutation = entry ? update : create;
+  const mutation = useCreateHourEntry();
   const [values, setValues] = useState<HourFormValues>(() => ({
-    date: entry?.date ?? todayIso(),
-    comment: entry?.comment ?? '',
-    hours: entry ? hoursToInput(entry.hours, lang) : '',
+    date: todayIso(),
+    comment: '',
+    hours: '',
   }));
   const [clientErrors, setClientErrors] = useState<Record<string, string>>({});
 
@@ -56,13 +53,11 @@ export function HourEntryForm({ entry, onClose, onSaved }: Props) {
     setClientErrors(translated);
     if (!body) return;
     mutation.reset();
-    const done = { onSuccess: onSaved };
-    if (entry) update.mutate({ id: entry.id, body }, done);
-    else create.mutate(body, done);
+    mutation.mutate(body, { onSuccess: onSaved });
   };
 
   return (
-    <Dialog title={t(entry ? 'hours.editTitle' : 'hours.addTitle')} onClose={onClose}>
+    <Dialog title={t('hours.addTitle')} onClose={onClose}>
       <form className="form" onSubmit={submit} noValidate>
         <Field label={t('hours.date')} error={errors.date}>
           {(props) => (

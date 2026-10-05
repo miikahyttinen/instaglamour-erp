@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import type { Id } from '../../api/types';
@@ -23,6 +24,7 @@ function MonthEntries({ partnerId, partnerName, month }: { partnerId: Id; partne
   const prefix = `${year}-${String(month).padStart(2, '0')}-`;
   const monthEntries = entries.data?.filter((e) => e.date.startsWith(prefix)) ?? [];
   const own = partnerId === me.id;
+  const [savedOtherYear, setSavedOtherYear] = useState<number | null>(null);
   const title = t('hours.monthEntries', {
     partner: partnerName,
     month: t(`hours.months.m${month}`),
@@ -41,7 +43,21 @@ function MonthEntries({ partnerId, partnerName, month }: { partnerId: Id; partne
       {entries.data && monthEntries.length === 0 && (
         <p className="muted small">{t('hours.emptyMonth')}</p>
       )}
-      {monthEntries.length > 0 && <HourEntryList entries={monthEntries} editable={own} />}
+      {savedOtherYear !== null && (
+        <p className="notice" role="status">
+          {t('hours.savedOtherYear', { year: savedOtherYear })}
+        </p>
+      )}
+      {monthEntries.length > 0 && (
+        <HourEntryList
+          entries={monthEntries}
+          editable={own}
+          onSaved={(entry) => {
+            const entryYear = Number(entry.date.slice(0, 4));
+            if (entryYear !== year) setSavedOtherYear(entryYear);
+          }}
+        />
+      )}
       {!own && monthEntries.length > 0 && <p className="meta hours-read-only">{t('hours.readOnly')}</p>}
     </section>
   );
@@ -151,7 +167,12 @@ export function HoursTotalsPage() {
                 })}
               </div>
               {open && selectedMonth !== null && (
-                <MonthEntries partnerId={row.partnerId} partnerName={name} month={selectedMonth} />
+                <MonthEntries
+                  key={`${row.partnerId}-${selectedMonth}`}
+                  partnerId={row.partnerId}
+                  partnerName={name}
+                  month={selectedMonth}
+                />
               )}
             </section>
           );
