@@ -11,3 +11,6 @@
 - [ ] Month detail kept but compact: one partner × month table below (12 month columns + total; phone: cards or horizontal-scroll inside its own frame without page scroll); tapping a partner's month still shows that month's entries (own entries editable inline as today, others read-only).
 - [ ] Remove the per-partner 12-box cards and the total-tile month bars (avoid duplication).
 - [ ] FI/EN texts; uses existing `/api/hours/totals` (no API change); unit tests updated; tests, lint, build pass; headless check both themes at 375/1440 (own port). `frontend/` only, do not edit `e2e/` (PM will update it).
+
+## Change 2026-10-05 (owner): plain list, no bar charts
+Replaces the share bars and the partner × month table: list Partner | Hours with a total row; tapping a partner expands their entries by month; no MiniBars on either hours page.
