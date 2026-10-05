@@ -1,4 +1,4 @@
-# E2E findings — TASK-004, TASK-007, TASK-008
+# E2E findings — TASK-004, TASK-007, TASK-008 … TASK-014
 
 Mismatches and bugs found while running the real frontend against the real backend.
 The e2e suite does not fix `frontend/` or `backend/` code; it records problems here and marks
@@ -41,6 +41,13 @@ see TASK-013: 4 tests failed (as reported in TASK-013) because the suite still e
 `08-budget` / `11-cross-checks` to the "Category A…I" seed and the new markup, and adding the
 add / rename / remove row flow to `08-budget`: **108 passed, 0 failed, 30 skipped** (same 30 as
 above) at 375 px and 1280 px from a fresh database. No new findings.
+
+Run of 2026-10-05 against `main` at `25a908b` (hours as spreadsheet-style tables, TASK-136), see
+[TASK-014](#task-014--suite-update-for-the-hours-tables): the baseline failed 4 tests (07 "log own
+hours" and 10 "hours totals with a month opened", both projects) because they used the removed
+`hours-grand-total`, per-partner total labels and month cells — suite problems, not app bugs.
+After updating 07 / 10 and adding `tests/14-hours-tables.spec.ts`: **122 passed, 0 failed,
+30 skipped** (same 30 as above) at 375 px and 1280 px from a fresh database. No new findings.
 
 | Id | Severity | Side to fix | Summary |
 |---|---|---|---|
@@ -153,6 +160,24 @@ above) at 375 px and 1280 px from a fresh database. No new findings.
   `test.fixme('collapsed: the hover / focus tooltip shows the label and keeps the accessible name (F-005)')`
   (fails with `Expected: "Vuosi"`, `Received: "Vuosi Vuosi"`). The reachability test in the same
   file finds every collapsed item by its name with the pointer moved away and passes.
+
+---
+
+## TASK-014 — suite update for the hours tables
+
+TASK-136 replaced the hours totals (tile, per-partner list, expandable month groups) with one flat
+table "Tuntikirjaukset <year>" (Päivä | Osakas | Kommentti | Tunnit, total row, partner filter
+`?partner=`) and My hours with the table "Omat tunnit <year>". The list / expand version
+originally described in TASK-014 is obsolete; the suite follows the revised section.
+
+| Spec / helper | Change |
+|---|---|
+| `hours.ts` (new) | Table locators, partner filter, total row, `readRows()` (input values for own rows, text for others; dates normalised to ISO), `expectOrdered()` (column order with the UI's `fi-FI` base comparison; ties free), `expectFlatNoCharts()` |
+| 07 hours | Totals page: `hours-grand-total` → total row `hours-table-total`; the per-partner label `Yhteensä <partner>` → filter "Osakas" = me, total row = my hours; also checks the new entry is an own inline row. Same expected figures as before |
+| 10 no horizontal scroll | "hours totals with a month opened" (no months any more) → "hours totals filtered by a partner and sorted by comment" |
+| 14 hours tables (new) | See README; 7 tests per project |
+
+No assertion was removed or loosened; no app bug found.
 
 ---
 
