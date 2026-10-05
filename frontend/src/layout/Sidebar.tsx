@@ -5,7 +5,18 @@ import { NavLink } from 'react-router-dom';
 import type { Language } from '../api/enums';
 import { Logo } from '../components/Logo';
 import { useTheme, type Theme } from '../theme/theme';
+import { useAccountLabels } from './accountLabels';
 import { NAV_ITEMS } from './navItems';
+
+/** The drawer's account controls (on desktop they live in the top bar, see TopbarControls). */
+export interface SidebarAccount {
+  /** Signed-in partner's name (shown above sign out). */
+  name: string;
+  language: Language;
+  onLanguageChange: (language: Language) => void;
+  onSignOut: () => void;
+  signingOut?: boolean;
+}
 
 export interface SidebarProps {
   /** rail: desktop sidebar (collapsible); drawer: phone overlay content (always expanded). */
@@ -20,21 +31,18 @@ export interface SidebarProps {
   closeRef?: Ref<HTMLButtonElement>;
   /** Called after a nav link is clicked (the drawer closes). */
   onNavigate?: () => void;
-  /** Signed-in partner's name (shown when expanded) and language. */
-  name: string;
-  language: Language;
-  onLanguageChange: (language: Language) => void;
-  onSignOut: () => void;
-  signingOut?: boolean;
+  /** Drawer only: language / theme / sign out at the bottom. */
+  account?: SidebarAccount;
   /** Override the logo / toggle theme (styleguide panels). */
   theme?: Theme;
   id?: string;
 }
 
 /**
- * Logo, icon nav (Layout v2), then language / theme / sign out and the collapse toggle.
- * Every item is a `.nav-item` (icon + `.nav-item-label`); collapsed, labels are visually hidden
- * and shown as a CSS tooltip (`data-tooltip`).
+ * Logo and icon nav (Layout v2). Bottom (Layout v2.1): the rail has only the collapse toggle
+ * (no divider); the drawer has language / theme / sign out. Every item is a `.nav-item`
+ * (icon + `.nav-item-label`); collapsed, labels are visually hidden and shown as a CSS tooltip
+ * (`data-tooltip`).
  */
 export function Sidebar({
   variant,
@@ -43,24 +51,13 @@ export function Sidebar({
   onClose,
   closeRef,
   onNavigate,
-  name,
-  language,
-  onLanguageChange,
-  onSignOut,
-  signingOut,
+  account,
   theme: themeOverride,
   id,
 }: SidebarProps) {
   const { t } = useTranslation();
-  const { theme: current, toggleTheme } = useTheme();
-  const theme = themeOverride ?? current;
   const isCollapsed = variant === 'rail' && collapsed;
   const tip = (text: string) => (isCollapsed ? text : undefined);
-
-  const nextLanguage: Language = language === 'fi' ? 'en' : 'fi';
-  const languageLabel = t('header.switchLanguage', { language: t(`language.${nextLanguage}`) });
-  const themeLabel = theme === 'dark' ? t('header.switchToLight') : t('header.switchToDark');
-  const signedIn = t('header.signedInAs', { name });
   const toggleLabel = collapsed ? t('nav.expand') : t('nav.collapse');
 
   return (
@@ -110,46 +107,10 @@ export function Sidebar({
         </ul>
       </nav>
 
-      <div className="sidebar-foot">
-        <button
-          type="button"
-          className="nav-item"
-          aria-label={languageLabel}
-          data-tooltip={tip(languageLabel)}
-          onClick={() => onLanguageChange(nextLanguage)}
-        >
-          <Languages />
-          <span className="nav-item-label" lang={nextLanguage}>
-            {t(`language.${nextLanguage}`)}
-          </span>
-          <span className="nav-item-code" aria-hidden="true">
-            {language.toUpperCase()}
-          </span>
-        </button>
-        <button
-          type="button"
-          className="nav-item"
-          aria-label={themeLabel}
-          data-tooltip={tip(themeLabel)}
-          onClick={toggleTheme}
-        >
-          {theme === 'dark' ? <Sun /> : <Moon />}
-          <span className="nav-item-label">
-            {theme === 'dark' ? t('header.themeLight') : t('header.themeDark')}
-          </span>
-        </button>
-        {!isCollapsed && <p className="sidebar-user">{signedIn}</p>}
-        <button
-          type="button"
-          className="nav-item"
-          data-tooltip={tip(`${t('header.signOut')} · ${signedIn}`)}
-          onClick={onSignOut}
-          disabled={signingOut}
-        >
-          <LogOut />
-          <span className="nav-item-label">{t('header.signOut')}</span>
-        </button>
-        {variant === 'rail' && onToggleCollapsed && (
+      {variant === 'drawer' && account && <DrawerAccount {...account} theme={themeOverride} />}
+
+      {variant === 'rail' && onToggleCollapsed && (
+        <div className="sidebar-foot sidebar-foot-rail">
           <button
             type="button"
             className="nav-item sidebar-toggle"
@@ -160,8 +121,50 @@ export function Sidebar({
             {collapsed ? <PanelLeftOpen /> : <PanelLeftClose />}
             <span className="nav-item-label">{toggleLabel}</span>
           </button>
-        )}
-      </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Phone drawer bottom: language, theme, "Signed in as", sign out (labelled rows). */
+function DrawerAccount({
+  name,
+  language,
+  onLanguageChange,
+  onSignOut,
+  signingOut,
+  theme: themeOverride,
+}: SidebarAccount & { theme?: Theme }) {
+  const { theme: current, toggleTheme } = useTheme();
+  const theme = themeOverride ?? current;
+  const labels = useAccountLabels(language, theme, name);
+
+  return (
+    <div className="sidebar-foot">
+      <button
+        type="button"
+        className="nav-item"
+        aria-label={labels.languageLabel}
+        onClick={() => onLanguageChange(labels.nextLanguage)}
+      >
+        <Languages />
+        <span className="nav-item-label" lang={labels.nextLanguage}>
+          {labels.nextLanguageName}
+        </span>
+        <span className="nav-item-code" aria-hidden="true">
+          {language.toUpperCase()}
+        </span>
+      </button>
+      <button type="button" className="nav-item" aria-label={labels.themeLabel} onClick={toggleTheme}>
+        {theme === 'dark' ? <Sun /> : <Moon />}
+        <span className="nav-item-label">{labels.themeText}</span>
+      </button>
+      <p className="sidebar-user">{labels.signedIn}</p>
+      <button type="button" className="nav-item" onClick={onSignOut} disabled={signingOut}>
+        <LogOut />
+        <span className="nav-item-label">{labels.signOutLabel}</span>
+      </button>
     </div>
   );
 }

@@ -12,6 +12,7 @@ import { SectionLabel } from '../components/SectionLabel';
 import { StatGrid, StatTile } from '../components/StatTile';
 import { NavDrawer } from '../layout/NavDrawer';
 import { Sidebar } from '../layout/Sidebar';
+import { TopbarControls } from '../layout/TopbarControls';
 import { YearSelector } from '../layout/YearSelector';
 import type { Theme } from '../theme/theme';
 
@@ -59,12 +60,11 @@ export function LayoutShowcase({ theme }: { theme: Theme }) {
       setDemo((d) => ({ ...d, ...patch }));
       window.setTimeout(resolve, 300);
     });
-  const sidebarProps = {
+  const account = {
     name: 'Partner A',
     language: lang,
     onLanguageChange: setLang,
     onSignOut: () => undefined,
-    theme,
   };
 
   return (
@@ -72,7 +72,9 @@ export function LayoutShowcase({ theme }: { theme: Theme }) {
       <SectionLabel>App shell: sidebar, top bar, drawer</SectionLabel>
       <p className="meta sg-note-top">
         Sidebar ≥ 900 px (expanded 232 px / collapsed 64 px, stored in localStorage
-        &apos;ig-sidebar&apos;). Phone: top bar ☰ · logo · year; ☰ opens the drawer.
+        &apos;ig-sidebar&apos;); its bottom has only the collapse toggle. Desktop top bar: year ·
+        language · theme · sign out (Layout v2.1). Phone: top bar ☰ · logo · year; ☰ opens the
+        drawer, which has language, theme and sign out at the bottom.
       </p>
       <div className="sg-shell-row">
         {([false, true] as const).map((isCollapsed) => (
@@ -82,7 +84,7 @@ export function LayoutShowcase({ theme }: { theme: Theme }) {
           >
             <aside className="sidebar">
               <Sidebar
-                {...sidebarProps}
+                theme={theme}
                 variant="rail"
                 collapsed={isCollapsed}
                 onToggleCollapsed={() => undefined}
@@ -94,6 +96,7 @@ export function LayoutShowcase({ theme }: { theme: Theme }) {
                   <p className="topbar-context">{isCollapsed ? 'Collapsed' : 'Expanded'}</p>
                   <div className="topbar-end">
                     <YearSelector year={year} onChange={setYear} />
+                    <TopbarControls {...account} theme={theme} />
                   </div>
                 </div>
               </div>
@@ -113,7 +116,7 @@ export function LayoutShowcase({ theme }: { theme: Theme }) {
       <div className={['shell', 'sg-shell', 'sg-shell-single', collapsed && 'is-collapsed'].filter(Boolean).join(' ')}>
         <aside className="sidebar">
           <Sidebar
-            {...sidebarProps}
+            theme={theme}
             variant="rail"
             collapsed={collapsed}
             onToggleCollapsed={() => setCollapsed((c) => !c)}
@@ -128,7 +131,8 @@ export function LayoutShowcase({ theme }: { theme: Theme }) {
       {drawerOpen && (
         <NavDrawer onClose={() => setDrawerOpen(false)} initialFocus={closeRef}>
           <Sidebar
-            {...sidebarProps}
+            account={account}
+            theme={theme}
             variant="drawer"
             onClose={() => setDrawerOpen(false)}
             closeRef={closeRef}

@@ -47,6 +47,11 @@ describe('/styleguide (dev only)', () => {
       // Sidebar demos: expanded + collapsed + interactive rail.
       expect(p.getAllByRole('navigation', { name: 'Päävalikko' })).toHaveLength(3);
       expect(panel.querySelectorAll('.sg-shell.is-collapsed')).toHaveLength(1);
+      // Layout v2.1: account controls in the two top-bar demos, not in the rails.
+      expect(p.getAllByRole('button', { name: 'Kirjaudu ulos' })).toHaveLength(2);
+      for (const rail of panel.querySelectorAll<HTMLElement>('aside.sidebar')) {
+        expect(within(rail).queryByRole('button', { name: 'Kirjaudu ulos' })).toBeNull();
+      }
     }
 
     // Only one theme.
