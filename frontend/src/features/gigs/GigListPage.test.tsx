@@ -140,8 +140,17 @@ describe('gig list (UC-003)', () => {
     expect(screen.getByText('Not fully staffed', { selector: '.tag' })).toBeInTheDocument();
   });
 
-  it('shows a table with economics columns on desktop', async () => {
+  it('shows cards instead of the table at 900–1199 px (next to the sidebar)', async () => {
     installMatchMedia({ [DESKTOP_QUERY]: true });
+    addMockGig({ venue: 'Venue X' });
+    renderApp('/gigs');
+    expect(await screen.findByRole('list', { name: 'Keikkalista' })).toBeInTheDocument();
+    expect(screen.queryByRole('table', { name: 'Keikkalista' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Näytä talous' })).toBeInTheDocument();
+  });
+
+  it('shows a table with economics columns on wide desktops (≥ 1200 px)', async () => {
+    installMatchMedia({ [DESKTOP_QUERY]: true, '(min-width: 1200px)': true });
     const gig = addMockGig({ venue: 'Venue X' });
     gig.status = 'CANCELLED';
     renderApp('/gigs?cancelled=1');
