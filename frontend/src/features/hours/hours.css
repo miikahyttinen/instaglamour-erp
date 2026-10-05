@@ -1,4 +1,6 @@
-/* Hours feature (UC-018, UC-019). Mobile-first; tablet ≥ 600 px, desktop ≥ 900 px. Tokens only. */
+/* Hours feature (UC-018, UC-019). Mobile-first; tablet ≥ 600 px, desktop ≥ 900 px. Tokens only.
+   Both tabs show one flat spreadsheet-style table (shared .data-table look): no grouping, no
+   collapsing, no charts. Phones keep the table; it scrolls sideways inside its own frame. */
 
 /* ---------- Tabs (My hours / Totals) under the page head ---------- */
 .hours-page .hours-tabs {
@@ -29,206 +31,98 @@
   border-bottom-color: var(--accent);
 }
 
-/* ---------- Year / grand total tile ---------- */
-/* One tile (no chart): it spans the whole row at every width. */
+/* ---------- Year total tile (My hours) ---------- */
 .hours-page .hours-stats > * {
   --span: 12;
 }
-
-/* ---------- Column widths shared by month heads and entry rows ---------- */
-.hours-page {
-  --hours-col-date: var(--label-w);
-  --hours-col-amount: calc(var(--label-w) * 3 / 4);
-  --hours-col-actions: var(--control-h);
-  --hours-col-gap: var(--space-4);
-  /* Inline hours: padding + border + state icon slot right of the unit (shared token). */
-  --hours-state-slot: var(--inline-num-trail);
+.hours-page .hours-stats {
+  margin-bottom: var(--space-5);
 }
 
-/* ---------- Month groups (My hours) ---------- */
-.hours-page .hours-month {
-  margin: 0;
-}
-.hours-page .hours-month + .hours-month {
-  margin-top: var(--section-gap);
-}
-/* Month name at the page edge; the month total ends where the hours values in the rows end. */
-.hours-page .hours-month-head {
+/* ---------- Partner filter (Totals) ---------- */
+.hours-page .hours-filters {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-2);
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-2) var(--space-5);
   margin-bottom: var(--space-4);
-  padding-right: calc(var(--hairline) + var(--card-pad) + var(--hours-state-slot));
 }
-.hours-page .hours-month-head .section-label {
-  margin: 0;
+.hours-page .hours-filter {
+  flex: 1 1 100%;
+  max-width: calc(var(--label-w) * 2);
 }
-.hours-page .hours-month-total {
-  font-weight: var(--fw-bold);
-  font-variant-numeric: tabular-nums;
-}
-
-/* ---------- Entry rows (a surface with hairline rows) ---------- */
-.hours-page .hour-entries {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  background: var(--surface);
-  border: var(--hairline) solid var(--border);
-  border-radius: var(--radius);
-}
-/* Read-only rows. Phones: date + hours on the first line, comment below. */
-.hours-page .hour-entry {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) var(--hours-col-amount);
-  grid-template-areas:
-    'date amount'
-    'comment comment';
-  align-items: baseline;
-  gap: var(--space-1) var(--hours-col-gap);
-  min-height: var(--row-h);
-  padding: var(--cell-pad-y) var(--card-pad);
-  border-top: var(--hairline) solid var(--border);
-}
-.hours-page .hour-entry:first-child {
-  border-top: 0;
-}
-/* Own entries: date, comment and hours are inline fields (NFR-8); delete button on the right.
-   Phones: date + hours on the first line, comment + delete on the second. The controls are
-   --control-h high, so the rows need less vertical padding. */
-.hours-page .hour-entries-editable .hour-entry {
-  grid-template-areas:
-    'date amount'
-    'comment actions';
-  /* Controls are equally high; top-aligned so a wrapped hours error (F-004) only grows down. */
-  align-items: start;
-  gap: 0 var(--hours-col-gap);
-  padding: var(--space-1) var(--card-pad);
-}
-.hours-page .hour-date {
-  grid-area: date;
-  font-family: var(--font-mono);
-  font-size: var(--fs-label);
-  letter-spacing: var(--ls-label);
-  text-transform: uppercase;
-  color: var(--label);
-  font-variant-numeric: tabular-nums;
-}
-.hours-page .hour-comment {
-  grid-area: comment;
-  overflow-wrap: anywhere;
-}
-.hours-page .hour-amount {
-  grid-area: amount;
-  text-align: right;
-  font-weight: var(--fw-bold);
-  font-variant-numeric: tabular-nums;
-  min-width: 0;
-}
-/* Read-only hours end where the inline hours' unit ends (left of the state slot). */
-.hours-page .hour-amount:not(.inline-field) {
-  padding-right: var(--hours-state-slot);
-}
-/* Keep the value on one line, but not the inline field's error (F-004): it wraps in the column. */
-.hours-page .hour-amount:not(.inline-field),
-.hours-page .hour-amount .inline-control {
-  white-space: nowrap;
-}
-.hours-page .hour-amount .field-error {
-  white-space: normal;
-  overflow-wrap: anywhere;
-  font-weight: var(--fw-regular);
-  text-align: right;
-}
-/* Inline date: keep the mono label look of the read-only date, sized to its content. */
-.hours-page .hour-date.inline-field {
-  justify-self: start;
-  max-width: 100%;
-}
-.hours-page .hour-date .inline-input {
-  font: inherit;
-  letter-spacing: inherit;
-  text-transform: inherit;
-  color: var(--label);
-}
-.hours-page .hour-amount .inline-input {
-  font-weight: var(--fw-bold);
-}
-.hours-page .hour-actions {
-  grid-area: actions;
-  display: flex;
-  justify-content: flex-end;
-}
-.hours-page .hour-actions .hour-delete:hover:not(:disabled) {
-  color: var(--danger-fg);
-}
-
-/* ---------- Totals: partner list (hand-written .data-table, 2 columns at every width) ---------- */
-.hours-page .hours-summary > .section-label {
-  margin-top: var(--section-gap);
-}
-.hours-page .hours-summary-table tbody th {
-  font-weight: var(--fw-medium);
-}
-/* Row headers: like the shared last-row rule for cells, so the total row's strong top line is
-   not split by the last partner's hairline. */
-.hours-page .hours-summary-table tbody tr:last-child th {
-  border-bottom: 0;
-}
-.hours-page .hours-summary-row {
-  cursor: pointer;
-}
-.hours-page .hours-summary-row.is-open th,
-.hours-page .hours-summary-row.is-open td {
-  background: var(--surface-2);
-}
-/* The toggle fills the name cell, so the tap target is the whole cell (≥ --tap high). */
-.hours-page .hours-summary-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  min-height: var(--tap);
-  margin: calc(var(--cell-pad-y) * -1) 0;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  overflow-wrap: anywhere;
-  cursor: pointer;
-}
-.hours-page .hours-summary-icon {
-  flex: none;
-  width: var(--icon);
-  height: var(--icon);
-  stroke-width: var(--icon-stroke);
-  color: var(--label);
-}
-.hours-page .hours-summary-hours,
-.hours-page .hours-summary-table tfoot td {
-  font-weight: var(--fw-bold);
-}
-/* Expanded partner: the entries by month span both columns; no row hover inside. */
-.hours-page .hours-summary-table tbody tr.hours-summary-detail:hover td {
-  background: transparent;
-}
-.hours-page .hours-summary-detail > td {
-  height: auto;
-  padding-top: var(--space-4);
-  padding-bottom: var(--card-pad);
-}
-.hours-page .hours-partner-entries .hours-month + .hours-month {
-  margin-top: var(--space-5);
-}
-.hours-page .hours-partner-entries .hours-read-only {
-  margin: 0 0 var(--space-4);
+.hours-page .hours-filter label {
+  margin-top: 0;
 }
 .hours-page .hours-read-only {
-  margin: var(--space-2) 0 0;
-  padding: 0;
+  margin: 0;
+  padding-bottom: var(--space-2);
   color: var(--label);
+}
+
+/* ---------- Table ---------- */
+.hours-page .hours-table {
+  /* Plain hours (others' rows, total) end where an inline field's "h" ends (shared token). */
+  --hours-state-slot: var(--inline-num-trail);
+}
+/* Fixed columns hug their content; the comment takes the rest. */
+.hours-page .hours-table .hours-col-date,
+.hours-page .hours-table .hours-col-partner,
+.hours-page .hours-table .hours-col-hours,
+.hours-page .hours-table .hours-col-actions {
+  width: 1%;
+  white-space: nowrap;
+}
+.hours-page .hours-table td.hours-col-partner {
+  max-width: var(--label-w);
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+/* Comment: never narrower than a readable column (the frame scrolls on phones instead). */
+.hours-page .hours-table td.hours-col-comment > * {
+  display: block;
+  min-width: calc(var(--label-w) * 1.1);
+  overflow-wrap: anywhere;
+}
+.hours-page .hours-table td.hours-col-date .inline-field {
+  min-width: calc(var(--label-w) * 0.85);
+}
+.hours-page .hours-table td.hours-col-hours .inline-field {
+  min-width: calc(var(--label-w) * 0.6);
+}
+.hours-page .hours-table td.hours-col-hours,
+.hours-page .hours-table tfoot td.hours-col-hours {
+  font-weight: var(--fw-bold);
+}
+.hours-page .hours-table .hours-col-hours .inline-input {
+  font-weight: var(--fw-bold);
+}
+/* Header and plain values end at the inline field's unit. */
+.hours-page .hours-table thead th.hours-col-hours {
+  padding-right: calc(var(--cell-pad-x) + var(--hours-state-slot));
+}
+/* Own rows hold controls: tighter vertical padding (rows stay ≥ --row-h). */
+.hours-page .hours-table tr.hours-row-own td {
+  padding-top: var(--space-1);
+  padding-bottom: var(--space-1);
+}
+/* Inline errors wrap inside the column instead of widening it. */
+.hours-page .hours-table .field-error {
+  white-space: normal;
+  min-width: 0;
+}
+.hours-page .hours-table td.hours-col-hours .field-error {
+  text-align: right;
+}
+.hours-page .hours-table td.hours-col-actions {
+  padding-left: 0;
+  text-align: right;
+}
+.hours-page .hours-table .hours-delete:hover:not(:disabled) {
+  color: var(--danger-fg);
+}
+.hours-page .hours-table tfoot th {
+  text-align: left;
 }
 
 .hours-page .hours-delete-summary {
@@ -239,22 +133,139 @@
   max-width: var(--label-w);
 }
 
-@media (min-width: 900px) {
-  /* One line per entry: date | comment | hours (| delete). */
-  .hours-page .hour-entry {
-    grid-template-columns: var(--hours-col-date) minmax(0, 1fr) var(--hours-col-amount);
-    grid-template-areas: 'date comment amount';
+@media (min-width: 600px) {
+  .hours-page .hours-filter {
+    flex: 0 1 calc(var(--label-w) * 2);
   }
-  .hours-page .hour-entries-editable .hour-entry {
-    grid-template-columns:
-      var(--hours-col-date) minmax(0, 1fr) var(--hours-col-amount)
-      var(--hours-col-actions);
-    grid-template-areas: 'date comment amount actions';
+}
+
+/* ---------- Phones (< 600 px): compact rows, same frame ----------
+   Four columns plus inline controls don't fit 375 px, and a sideways-scrolling table would hide
+   the hours and the total. Each entry becomes one compact two-line row inside the same frame:
+     date · partner ............ hours
+     comment ................. delete
+   The header stays as a row of sort buttons; the total row stays at the bottom. */
+@media (max-width: 599px) {
+  .hours-page .hours-table,
+  .hours-page .hours-table thead,
+  .hours-page .hours-table tbody,
+  .hours-page .hours-table tfoot {
+    display: block;
   }
-  .hours-page .hours-month-head {
-    padding-right: calc(
-      var(--hairline) + var(--card-pad) + var(--hours-col-actions) + var(--hours-col-gap) +
-        var(--hours-state-slot)
-    );
+  .hours-page .hours-table thead tr {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 var(--space-4);
+    padding: 0 var(--card-pad);
+    background: var(--surface-2);
+    border-bottom: var(--hairline) solid var(--border);
+  }
+  .hours-page .hours-table thead th,
+  .hours-page .hours-table thead th.hours-col-hours {
+    display: block;
+    width: auto;
+    padding: var(--space-2) 0;
+    border: 0;
+    background: transparent;
+  }
+  .hours-page .hours-table thead th .th-sort {
+    min-height: var(--tap);
+  }
+  /* The numeric header reads like the others here (label, then icon). */
+  .hours-page .hours-table thead th.num .th-sort {
+    flex-direction: row;
+  }
+  .hours-page .hours-table thead th.hours-col-actions {
+    display: none;
+  }
+  .hours-page .hours-table tbody tr {
+    display: grid;
+    grid-template-columns: calc(var(--label-w) * 0.8) minmax(0, 1fr) auto;
+    grid-template-areas:
+      'date partner hours'
+      'comment comment actions';
+    align-items: center;
+    gap: 0 var(--space-3);
+    padding: var(--space-2) var(--card-pad);
+    border-bottom: var(--hairline) solid var(--border);
+  }
+  .hours-page .hours-table tbody tr:last-child {
+    border-bottom: 0;
+  }
+  .hours-page .hours-table tbody tr:hover td {
+    background: transparent;
+  }
+  /* :is() with the column classes outranks the desktop column widths above. */
+  .hours-page .hours-table
+    :is(.hours-col-date, .hours-col-partner, .hours-col-comment, .hours-col-hours, .hours-col-actions) {
+    width: auto;
+  }
+  .hours-page .hours-table tbody td,
+  .hours-page .hours-table tr.hours-row-own td {
+    display: block;
+    width: auto;
+    height: auto;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+  }
+  .hours-page .hours-table td.hours-col-date {
+    grid-area: date;
+  }
+  .hours-page .hours-table td.hours-col-partner {
+    grid-area: partner;
+    max-width: none;
+    color: var(--text-muted);
+    font-size: var(--fs-small);
+  }
+  .hours-page .hours-table td.hours-col-comment {
+    grid-area: comment;
+  }
+  .hours-page .hours-table td.hours-col-comment > * {
+    min-width: 0;
+  }
+  .hours-page .hours-table td.hours-col-hours {
+    grid-area: hours;
+  }
+  .hours-page .hours-table td.hours-col-actions {
+    grid-area: actions;
+  }
+  /* Others' rows: plain values keep the control height, so all rows have the same rhythm. */
+  .hours-page .hours-table tbody tr:not(.hours-row-own) td.hours-col-date,
+  .hours-page .hours-table tbody tr:not(.hours-row-own) td.hours-col-hours,
+  .hours-page .hours-table tbody tr:not(.hours-row-own) td.hours-col-comment {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    min-height: var(--control-h);
+  }
+  .hours-page .hours-table tbody tr:not(.hours-row-own) td.hours-col-date,
+  .hours-page .hours-table tbody tr:not(.hours-row-own) td.hours-col-comment {
+    justify-content: flex-start;
+  }
+  .hours-page .hours-table td.hours-col-date .inline-field,
+  .hours-page .hours-table td.hours-col-hours .inline-field {
+    min-width: 0;
+  }
+  .hours-page .hours-table td.hours-col-hours .inline-numeric input {
+    width: calc(var(--label-w) * 0.35);
+  }
+  .hours-page .hours-table tfoot tr {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: var(--cell-pad-y) var(--card-pad);
+    border-top: var(--hairline) solid var(--border-strong);
+  }
+  .hours-page .hours-table tfoot th,
+  .hours-page .hours-table tfoot td {
+    display: block;
+    width: auto;
+    height: auto;
+    padding: 0;
+    border: 0;
+  }
+  .hours-page .hours-table tfoot td.hours-col-actions {
+    display: none;
   }
 }

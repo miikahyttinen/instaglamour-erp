@@ -1,19 +1,21 @@
 import { describe, expect, it } from 'vitest';
 import type { HourEntry } from '../../api/types';
 import {
-  groupByMonth,
+  DEFAULT_HOUR_SORT,
   isValidHours,
+  nextHourSort,
   parseHours,
-  partnerHourRows,
+  sortHourRows,
   sumHours,
+  toHourRows,
   validateHourForm,
 } from './hoursLogic';
 
-const entry = (id: string, date: string, hours: number): HourEntry => ({
+const entry = (id: string, date: string, hours: number, comment = 'Planning', partnerId = 'p'): HourEntry => ({
   id,
-  partnerId: 'p',
+  partnerId,
   date,
-  comment: 'Planning',
+  comment,
   hours,
 });
 
@@ -48,58 +50,45 @@ describe('hours input', () => {
   });
 });
 
-describe('grouping', () => {
-  it('groups by month, newest month first, with month totals', () => {
-    const groups = groupByMonth([
-      entry('3', '2030-03-05', 1),
-      entry('2', '2030-01-20', 2.5),
-      entry('1', '2030-01-02', 0.25),
-    ]);
-    expect(groups.map((g) => [g.month, g.total, g.entries.length])).toEqual([
-      [3, 1, 1],
-      [1, 2.75, 2],
-    ]);
-    expect(sumHours(groups.flatMap((g) => g.entries))).toBe(3.75);
-  });
-});
+describe('hours table rows (UC-018, UC-019)', () => {
+  // API order: newest first (date, then creation).
+  const a = toHourRows(
+    [
+      entry('a3', '2030-03-05', 1, 'Rehearsal', 'a'),
+      entry('a2', '2030-01-20', 2.5, 'admin', 'a'),
+      entry('a1', '2030-01-20', 0.25, 'Planning', 'a'),
+    ],
+    'Partner A',
+  );
+  const b = toHourRows([entry('b1', '2030-01-20', 4, 'Sound check', 'b')], 'Partner B');
+  const ids = (rows: { entry: HourEntry }[]) => rows.map((r) => r.entry.id);
 
-describe('partner hour rows (UC-019)', () => {
-  const totals = (rows: [string, number][]) => ({
-    year: 2030,
-    partners: rows.map(([partnerId, total]) => ({ partnerId, months: Array.from({ length: 12 }, () => 0), total })),
-    grandTotal: rows.reduce((s, [, h]) => s + h, 0),
-  });
-
-  it('sorts by hours (most first), then by name; 0 h partners included', () => {
-    const rows = partnerHourRows(
-      totals([
-        ['c', 0],
-        ['b', 5.25],
-        ['a', 4.25],
-        ['d', 5.25],
-      ]),
-      [
-        { id: 'a', name: 'Partner A' },
-        { id: 'b', name: 'Partner B' },
-        { id: 'c', name: 'Partner C' },
-        { id: 'd', name: 'Partner Ä' },
-      ],
-      'Unknown',
-      'fi-FI',
-    );
-    expect(rows.map((r) => [r.name, r.total])).toEqual([
-      ['Partner B', 5.25],
-      ['Partner Ä', 5.25],
-      ['Partner A', 4.25],
-      ['Partner C', 0],
+  it('ranks creation by reversed API order and sums hours', () => {
+    expect(a.map((r) => [r.entry.id, r.created])).toEqual([
+      ['a3', 3],
+      ['a2', 2],
+      ['a1', 1],
     ]);
+    expect(sumHours([...a, ...b].map((r) => r.entry))).toBe(7.75);
   });
 
-  it('adds reference partners missing from the response (0 h) and names unknown ids', () => {
-    const rows = partnerHourRows(totals([['x', 2]]), [{ id: 'a', name: 'Partner A' }], 'Unknown');
-    expect(rows).toEqual([
-      { partnerId: 'x', name: 'Unknown', total: 2 },
-      { partnerId: 'a', name: 'Partner A', total: 0 },
-    ]);
+  it('defaults to date ascending; ties by partner, then creation', () => {
+    expect(DEFAULT_HOUR_SORT).toEqual({ key: 'date', dir: 'asc' });
+    expect(ids(sortHourRows([...b, ...a], DEFAULT_HOUR_SORT))).toEqual(['a1', 'a2', 'b1', 'a3']);
+  });
+
+  it('sorts by date descending, partner, comment (case-insensitive) and hours', () => {
+    const rows = [...a, ...b];
+    expect(ids(sortHourRows(rows, { key: 'date', dir: 'desc' }))).toEqual(['a3', 'a1', 'a2', 'b1']);
+    expect(ids(sortHourRows(rows, { key: 'partner', dir: 'desc' }))).toEqual(['b1', 'a1', 'a2', 'a3']);
+    expect(ids(sortHourRows(rows, { key: 'comment', dir: 'asc' }))).toEqual(['a2', 'a1', 'a3', 'b1']);
+    expect(ids(sortHourRows(rows, { key: 'hours', dir: 'asc' }))).toEqual(['a1', 'a3', 'a2', 'b1']);
+    expect(ids(sortHourRows(rows, { key: 'hours', dir: 'desc' }))).toEqual(['b1', 'a2', 'a3', 'a1']);
+  });
+
+  it('clicking the sorted column flips it; another column starts ascending', () => {
+    expect(nextHourSort({ key: 'date', dir: 'asc' }, 'date')).toEqual({ key: 'date', dir: 'desc' });
+    expect(nextHourSort({ key: 'date', dir: 'desc' }, 'date')).toEqual({ key: 'date', dir: 'asc' });
+    expect(nextHourSort({ key: 'date', dir: 'desc' }, 'hours')).toEqual({ key: 'hours', dir: 'asc' });
   });
 });
