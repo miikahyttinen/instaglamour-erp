@@ -68,20 +68,29 @@ describe('GET /api/years/{year}', () => {
     await call(s, 'POST', '/api/hours', { date: '2027-02-01', comment: 'Work 1', hours: 1 });
 
     // Budget
-    const catA = await createBudgetCategory('CAT_A', { sortOrder: 1 });
-    const fuel = await createBudgetCategory('CAT_FUEL', { sortOrder: 2, budgeted: false });
+    const catA = await createBudgetCategory('Category A', { sortOrder: 1 });
+    const catB = await createBudgetCategory('Category B', { sortOrder: 2 });
+    const removed = await createBudgetCategory('Category C', { sortOrder: 3 });
     await call(s, 'PUT', `/api/budget/2026/${catA.id}`, {
       budgetExpenseCents: 100000,
       budgetIncomeCents: 20000,
       actualExpenseCents: 90000,
       actualIncomeCents: 30000,
     });
-    await call(s, 'PUT', `/api/budget/2026/${fuel.id}`, {
+    await call(s, 'PUT', `/api/budget/2026/${catB.id}`, {
       budgetExpenseCents: 0,
       budgetIncomeCents: 0,
       actualExpenseCents: 10000,
       actualIncomeCents: 0,
     });
+    // A removed row's values are kept but excluded from the year page
+    await call(s, 'PUT', `/api/budget/2026/${removed.id}`, {
+      budgetExpenseCents: 10000,
+      budgetIncomeCents: 10000,
+      actualExpenseCents: 10000,
+      actualIncomeCents: 10000,
+    });
+    expect((await call(s, 'DELETE', `/api/budget-categories/${removed.id}`)).statusCode).toBe(204);
 
     const year = await get('/api/years/2026');
     const gigList = await get('/api/gigs?year=2026&status=CANCELLED&q=nothing-matches');

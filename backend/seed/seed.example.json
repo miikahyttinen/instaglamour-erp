@@ -61,16 +61,15 @@
     "fees.load_in_deduction": 1000
   },
   "budgetCategories": [
-    { "code": "RENT", "nameFi": "Vuokra", "nameEn": "Rent" },
-    { "code": "INSURANCE", "nameFi": "Vakuutukset", "nameEn": "Insurance" },
-    { "code": "ACCOUNTING", "nameFi": "Kirjanpito", "nameEn": "Accounting" },
-    { "code": "SOFTWARE", "nameFi": "Ohjelmistot", "nameEn": "Software" },
-    { "code": "MARKETING", "nameFi": "Markkinointi", "nameEn": "Marketing" },
-    { "code": "EQUIPMENT", "nameFi": "Kalusto", "nameEn": "Equipment" },
-    { "code": "VEHICLE", "nameFi": "Ajoneuvo", "nameEn": "Vehicle" },
-    { "code": "FUEL", "nameFi": "Polttoaine", "nameEn": "Fuel", "budgeted": false },
-    { "code": "OTHER_INCOME", "nameFi": "Muut tuotot", "nameEn": "Other income" },
-    { "code": "OTHER", "nameFi": "Muut kulut", "nameEn": "Other expenses" }
+    { "name": "Category A" },
+    { "name": "Category B" },
+    { "name": "Category C" },
+    { "name": "Category D" },
+    { "name": "Category E" },
+    { "name": "Category F" },
+    { "name": "Category G" },
+    { "name": "Category H" },
+    { "name": "Category I" }
   ],
   "gigs": [
     {
@@ -192,14 +191,14 @@
     { "partner": "partner.e@example.com", "date": "2026-09-22", "comment": "Marketing", "hours": 0.75 }
   ],
   "budget": [
-    { "year": 2025, "category": "RENT", "budgetExpenseCents": 1200000, "actualExpenseCents": 1200000 },
-    { "year": 2025, "category": "INSURANCE", "budgetExpenseCents": 200000, "actualExpenseCents": 190000 },
-    { "year": 2026, "category": "RENT", "budgetExpenseCents": 1200000, "actualExpenseCents": 900000 },
-    { "year": 2026, "category": "INSURANCE", "budgetExpenseCents": 200000, "actualExpenseCents": 200000 },
-    { "year": 2026, "category": "ACCOUNTING", "budgetExpenseCents": 300000, "actualExpenseCents": 150000 },
-    { "year": 2026, "category": "SOFTWARE", "budgetExpenseCents": 100000, "actualExpenseCents": 60000 },
-    { "year": 2026, "category": "MARKETING", "budgetExpenseCents": 200000, "actualExpenseCents": 50000 },
-    { "year": 2026, "category": "FUEL", "actualExpenseCents": 80000 },
-    { "year": 2026, "category": "OTHER_INCOME", "budgetIncomeCents": 100000, "actualIncomeCents": 30000 }
+    { "year": 2025, "category": "Category A", "budgetExpenseCents": 1200000, "actualExpenseCents": 1200000 },
+    { "year": 2025, "category": "Category B", "budgetExpenseCents": 200000, "actualExpenseCents": 190000 },
+    { "year": 2026, "category": "Category A", "budgetExpenseCents": 1200000, "actualExpenseCents": 900000 },
+    { "year": 2026, "category": "Category B", "budgetExpenseCents": 200000, "actualExpenseCents": 200000 },
+    { "year": 2026, "category": "Category C", "budgetExpenseCents": 300000, "actualExpenseCents": 150000 },
+    { "year": 2026, "category": "Category D", "budgetExpenseCents": 100000, "actualExpenseCents": 60000 },
+    { "year": 2026, "category": "Category E", "budgetExpenseCents": 200000, "actualExpenseCents": 50000 },
+    { "year": 2026, "category": "Category G", "budgetExpenseCents": 100000, "actualExpenseCents": 80000 },
+    { "year": 2026, "category": "Category H", "budgetIncomeCents": 100000, "actualIncomeCents": 30000 }
   ]
 }

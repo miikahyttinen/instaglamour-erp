@@ -50,6 +50,35 @@ const gig = z.strictObject({
   costLines: z.array(costLine).optional(),
 });
 
+/** Keys of the pre-TASK-012 budget category format; rejected with a conversion hint. */
+const LEGACY_CATEGORY_KEYS = ['nameFi', 'nameEn', 'budgeted'];
+export const LEGACY_CATEGORY_HINT =
+  'nameFi, nameEn and budgeted are no longer supported: give one "name" (use the old nameFi) and leave out ' +
+  'actuals-only rows (budgeted: false, e.g. FUEL) or mark them "active": false; see seed/README.md';
+
+const budgetCategory = z.strictObject(
+  {
+    code: z.string().regex(/^[A-Z][A-Z0-9_]*$/, 'must be UPPER_SNAKE_CASE').optional(),
+    name,
+    active: z.boolean().default(true),
+  },
+  {
+    error: (issue) =>
+      issue.code === 'unrecognized_keys' && issue.keys.some((k) => LEGACY_CATEGORY_KEYS.includes(k)) ? LEGACY_CATEGORY_HINT : undefined,
+  },
+);
+
+/** Budget category names compare case-insensitively (like the app's DUPLICATE rule). */
+export const categoryNameKey = (n: string) => n.trim().toLowerCase();
+
+/**
+ * The seed entry a budget row's `category` refers to: by `code` if an entry has that code, else by
+ * name (case-insensitive).
+ */
+export function findSeedCategory<C extends { code?: string | undefined; name: string }>(categories: C[], ref: string): C | undefined {
+  return categories.find((c) => c.code === ref) ?? categories.find((c) => categoryNameKey(c.name) === categoryNameKey(ref));
+}
+
 export const seedSchema = z.strictObject({
   partners: z
     .array(z.strictObject({ name, email, language: z.enum(LANGUAGES).default('fi') }))
@@ -64,17 +93,7 @@ export const seedSchema = z.strictObject({
     )
     .default([]),
   settings: z.record(z.string(), cents),
-  budgetCategories: z
-    .array(
-      z.strictObject({
-        code: z.string().regex(/^[A-Z][A-Z0-9_]*$/, 'must be UPPER_SNAKE_CASE'),
-        nameFi: name,
-        nameEn: name,
-        budgeted: z.boolean().default(true),
-        active: z.boolean().default(true),
-      }),
-    )
-    .default([]),
+  budgetCategories: z.array(budgetCategory).default([]),
   gigs: z.array(gig).default([]),
   tasks: z
     .array(
@@ -140,13 +159,15 @@ export function validateSeed(input: unknown): ValidationResult {
   const partnerEmails = new Set(data.partners.map((p) => p.email));
   const personNames = new Set([...data.partners.map((p) => p.name), ...data.people.map((p) => p.name)]);
   const templates = new Map(data.lineupTemplates.map((t) => [t.name, t]));
-  const categoryCodes = new Set(data.budgetCategories.map((c) => c.code));
 
   for (const d of duplicates(data.partners.map((p) => p.email))) errors.push(`partners: duplicate email ${d}`);
   for (const d of duplicates([...data.partners.map((p) => p.name), ...data.people.map((p) => p.name)]))
     errors.push(`people: duplicate name "${d}" (partners are people too; don't list them again in people)`);
   for (const d of duplicates(data.lineupTemplates.map((t) => t.name))) errors.push(`lineupTemplates: duplicate name "${d}"`);
-  for (const d of duplicates(data.budgetCategories.map((c) => c.code))) errors.push(`budgetCategories: duplicate code ${d}`);
+  for (const d of duplicates(data.budgetCategories.flatMap((c) => (c.code ? [c.code] : []))))
+    errors.push(`budgetCategories: duplicate code ${d}`);
+  for (const d of duplicates(data.budgetCategories.map((c) => categoryNameKey(c.name))))
+    errors.push(`budgetCategories: duplicate name "${d}" (names are compared case-insensitively)`);
 
   for (const key of ALL_SETTING_KEYS) if (!(key in data.settings)) errors.push(`settings: missing ${key}`);
   for (const key of Object.keys(data.settings))
@@ -181,12 +202,14 @@ export function validateSeed(input: unknown): ValidationResult {
     if (!partnerEmails.has(h.partner)) errors.push(`hours.${i}.partner: unknown partner ${h.partner}`);
   });
   data.budget.forEach((b, i) => {
-    const category = data.budgetCategories.find((c) => c.code === b.category);
-    if (!categoryCodes.has(b.category)) errors.push(`budget.${i}.category: unknown category ${b.category}`);
-    else if (category && !category.budgeted && (b.budgetExpenseCents !== 0 || b.budgetIncomeCents !== 0))
-      errors.push(`budget.${i}: category ${b.category} is actuals-only; budget amounts must be 0`);
+    if (!findSeedCategory(data.budgetCategories, b.category))
+      errors.push(`budget.${i}.category: unknown category "${b.category}" (use a budgetCategories name or code)`);
   });
-  for (const d of duplicates(data.budget.map((b) => `${b.category}/${b.year}`)))
+  const categoryKey = (ref: string) => {
+    const c = findSeedCategory(data.budgetCategories, ref);
+    return c ? categoryNameKey(c.name) : ref;
+  };
+  for (const d of duplicates(data.budget.map((b) => `${categoryKey(b.category)}/${b.year}`)))
     errors.push(`budget: duplicate row ${d}`);
 
   return errors.length > 0 ? { ok: false, errors } : { ok: true, data };
