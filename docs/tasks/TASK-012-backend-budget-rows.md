@@ -1,7 +1,7 @@
 # TASK-012: Partner-managed budget rows — backend
 
 - **owner:** backend
-- **status:** todo
+- **status:** done
 - **spec:** UC-020, BR-008, BR-062, domain-model (BudgetCategory), api-contract (Budget rows, Reference, Budget)
 - **depends on:** none (UI TASK-134 runs in parallel)
 

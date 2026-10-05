@@ -1,7 +1,7 @@
 # TASK-134: Partner-managed budget rows — UI
 
 - **owner:** ui
-- **status:** todo
+- **status:** done
 - **spec:** UC-020, api-contract (Budget rows, Reference, Budget), design.md (inline editing)
 - **depends on:** none (backend TASK-012 runs in parallel)
 
