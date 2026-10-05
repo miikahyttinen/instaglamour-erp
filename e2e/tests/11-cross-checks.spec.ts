@@ -50,15 +50,17 @@ test('English amounts are parsed and shown in EN format (budget)', async ({ page
   await signIn(page, PARTNER_B, { language: 'en', selectedYear: year });
   await page.goto('/budget');
   await expect(page.getByRole('heading', { level: 1, name: `Budget ${year}` })).toBeVisible();
-  const insurance = page.getByLabel('Budget, expense, Insurance', { exact: true });
+  // Seed row "Category B" (synthetic); its name field is "Row name, Category B".
+  await expect(page.getByRole('textbox', { name: 'Row name, Category B', exact: true })).toHaveValue('Category B');
+  const cell = page.getByLabel('Budget, expense, Category B', { exact: true });
   // Inline cell: blur PUTs the whole row with the parsed EN amount.
-  const body = await editInline(page, insurance, '1,200.00', { method: 'PUT' });
+  const body = await editInline(page, cell, '1,200.00', { method: 'PUT' });
   expect(body).toMatchObject({ budgetExpenseCents: 120000 });
-  await expect(page.getByRole('status').filter({ hasText: 'Budget, expense, Insurance: saved' })).toHaveCount(1);
-  await expect(insurance).toHaveValue('1200.00');
+  await expect(page.getByRole('status').filter({ hasText: 'Budget, expense, Category B: saved' })).toHaveCount(1);
+  await expect(cell).toHaveValue('1200.00');
   await expect(page.locator('tfoot .budget-totals td').first()).toHaveText(enMoney(120000));
   await page.reload();
-  await expect(insurance).toHaveValue('1200.00');
+  await expect(cell).toHaveValue('1200.00');
   const budget = await api(page).get(`/budget?year=${year}`);
   expect(budget.totals.budgetExpenseCents).toBe(120000);
 });
