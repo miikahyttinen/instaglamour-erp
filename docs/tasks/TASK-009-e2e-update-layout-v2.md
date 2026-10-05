@@ -1,7 +1,7 @@
 # TASK-009: Update e2e suite for Layout v2 (sidebar, drawer, new breakpoints)
 
 - **owner:** backend (integration; edits `e2e/` only)
-- **status:** todo
+- **status:** done
 - **depends on:** TASK-125…130 (merged)
 
 ## Goal

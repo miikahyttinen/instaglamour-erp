@@ -1,7 +1,7 @@
 # TASK-132: Move language, theme and sign out to the top bar
 
 - **owner:** ui
-- **status:** todo
+- **status:** done
 - **spec:** docs/design.md → "Layout v2.1"
 - **depends on:** TASK-125
 
