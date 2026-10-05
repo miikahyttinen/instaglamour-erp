@@ -8,27 +8,68 @@
   margin-bottom: var(--space-4);
 }
 
-/* The list is one surface with hairline rows (like a table body). */
-.tasks-page .tasks-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+/* The list is one surface with hairline rows (like a table body), plus a column header row on
+   wide screens. */
+.tasks-page .tasks-table {
   background: var(--surface);
   border: var(--hairline) solid var(--border);
   border-radius: var(--radius);
 }
+.tasks-page .tasks-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
 
+/* Row layout: a grid; .task-body is flattened so its fields share the row's columns.
+   Phone/tablet: [check] title [delete]; description, owner + due date and tags below the title. */
 .tasks-page .task-item {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-2);
-  padding: var(--space-3) var(--space-2) var(--space-3) var(--space-1);
+  /* Containing block for visually hidden labels. */
+  position: relative;
+  display: grid;
+  grid-template-columns: var(--tap) minmax(0, 1fr) var(--tap);
+  grid-template-areas:
+    '.     err   err'
+    'check title delete'
+    '.     desc  desc'
+    '.     meta  meta'
+    '.     tags  tags';
+  align-items: center;
+  column-gap: var(--space-2);
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-1);
   border-top: var(--hairline) solid var(--border);
   border-left: calc(var(--hairline) * 2) solid transparent;
 }
 .tasks-page .task-item:first-child {
   border-top: 0;
 }
+.tasks-page .task-body {
+  display: contents;
+}
+.tasks-page .task-body > .field-error {
+  grid-area: err;
+  margin: 0 0 var(--space-1);
+}
+.tasks-page .task-check {
+  grid-area: check;
+}
+.tasks-page .task-title {
+  grid-area: title;
+}
+.tasks-page .task-desc {
+  grid-area: desc;
+}
+.tasks-page .task-meta {
+  grid-area: meta;
+}
+.tasks-page .task-tags {
+  grid-area: tags;
+}
+.tasks-page .task-delete {
+  grid-area: delete;
+  justify-self: end;
+}
+
 /* Overdue = warn status: a thin warn rule on the left, plus the warn tag. */
 .tasks-page .task-overdue {
   border-left-color: var(--warn-fg);
@@ -40,7 +81,6 @@
 
 /* Large tap target for one-tap done / reopen; the visible box is a small square. */
 .tasks-page .task-check {
-  flex: 0 0 auto;
   width: var(--tap);
   height: var(--tap);
   display: inline-flex;
@@ -80,14 +120,6 @@
   outline-offset: calc(var(--space-1) * -1);
 }
 
-.tasks-page .task-body {
-  flex: 1 1 auto;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-
 /* Inline fields (NFR-8): the title reads as the row heading, the description as secondary text. */
 .tasks-page .task-title .inline-input {
   font-size: var(--fs-body);
@@ -103,31 +135,112 @@
   color: var(--text-muted);
 }
 
-/* Owner + due date: side by side, wrapping on narrow screens. */
-.tasks-page .task-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1) var(--space-3);
-}
-.tasks-page .task-meta > .inline-field {
-  flex: 1 1 9rem;
-  max-width: 14rem;
+/* Owner + due date. The global label margin is dropped inside rows. */
+.tasks-page .task-meta .inline-field > label {
+  margin: 0;
 }
 .tasks-page .task-overdue .task-due .inline-input {
   color: var(--warn-fg);
 }
+@media (max-width: 599px) {
+  /* Phone: one label column (as wide as the longer label) beside the values, so each field is
+     one control row instead of label + control. */
+  .tasks-page .task-meta {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    column-gap: var(--space-3);
+    align-items: center;
+  }
+  .tasks-page .task-meta > .inline-field {
+    display: contents;
+  }
+  .tasks-page .task-meta > .inline-field > :not(label) {
+    grid-column: 2;
+  }
+}
+@media (min-width: 600px) {
+  /* Owner and due date side by side in two equal columns, labels above (top-aligned). */
+  .tasks-page .task-meta {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+    column-gap: var(--space-4);
+    margin-top: var(--space-1);
+  }
+  .tasks-page .task-meta .inline-field > label {
+    margin-bottom: var(--space-1);
+  }
+}
+
 .tasks-page .task-tags {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-1) var(--space-2);
-  margin: 0;
-}
-.tasks-page .task-delete {
-  flex: 0 0 auto;
+  margin: var(--space-1) 0 var(--space-1);
 }
 
-@media (min-width: 900px) {
+/* Column header row: only with the one-line row layout. */
+.tasks-page .tasks-head {
+  display: none;
+}
+
+/* ≥ 1200 px (content column ≥ 888 px next to the sidebar): one line per task in aligned columns:
+   [check] title (description and tags below) | owner | due date | [delete]. */
+@media (min-width: 1200px) {
+  .tasks-page .task-item,
+  .tasks-page .tasks-head {
+    grid-template-columns: var(--tap) minmax(0, 1fr) var(--label-w) var(--label-w) var(--tap);
+    column-gap: var(--space-4);
+  }
   .tasks-page .task-item {
-    padding: var(--space-3) var(--space-4) var(--space-3) var(--space-2);
+    grid-template-areas:
+      '.     err   .     .   .'
+      'check title owner due delete'
+      '.     desc  .     .   .'
+      '.     tags  .     .   .';
+  }
+  .tasks-page .task-meta {
+    display: contents;
+  }
+  .tasks-page .task-owner {
+    grid-area: owner;
+  }
+  .tasks-page .task-due {
+    grid-area: due;
+  }
+  /* The column header names the fields; the labels stay as the accessible names. */
+  .tasks-page .task-meta .inline-field > label {
+    position: absolute;
+    width: var(--hairline);
+    height: var(--hairline);
+    margin: calc(-1 * var(--hairline));
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+  }
+  .tasks-page .tasks-head {
+    display: grid;
+    grid-template-areas: '. title owner due .';
+    padding: var(--cell-pad-y) var(--space-2) var(--cell-pad-y) var(--space-1);
+    border-bottom: var(--hairline) solid var(--border);
+    border-left: calc(var(--hairline) * 2) solid transparent;
+    background: var(--surface-2);
+    font-family: var(--font-mono);
+    font-size: var(--fs-meta);
+    letter-spacing: var(--ls-label);
+    text-transform: uppercase;
+    color: var(--label);
+    white-space: nowrap;
+  }
+  .tasks-page .tasks-head-title {
+    grid-area: title;
+  }
+  .tasks-page .tasks-head-owner {
+    grid-area: owner;
+  }
+  .tasks-page .tasks-head-due {
+    grid-area: due;
   }
 }

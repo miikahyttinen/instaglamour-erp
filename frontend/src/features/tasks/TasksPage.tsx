@@ -74,11 +74,20 @@ export function TasksPage() {
       )}
       {tasks.data && tasks.data.length === 0 && <p className="empty">{t('tasks.empty')}</p>}
       {tasks.data && tasks.data.length > 0 && (
-        <ul className="tasks-list">
-          {tasks.data.map((task) => (
-            <TaskRow key={task.id} task={task} partners={partners} />
-          ))}
-        </ul>
+        <div className="tasks-table">
+          {/* Column headings for the desktop row layout. Decorative: each field keeps its own
+              (visually hidden) label as its accessible name. */}
+          <div className="tasks-head" aria-hidden="true">
+            <span className="tasks-head-title">{t('tasks.field.title')}</span>
+            <span className="tasks-head-owner">{t('tasks.field.owner')}</span>
+            <span className="tasks-head-due">{t('tasks.field.dueDate')}</span>
+          </div>
+          <ul className="tasks-list">
+            {tasks.data.map((task) => (
+              <TaskRow key={task.id} task={task} partners={partners} />
+            ))}
+          </ul>
+        </div>
       )}
 
       {adding && (
