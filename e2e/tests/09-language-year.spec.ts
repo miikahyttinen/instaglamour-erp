@@ -4,8 +4,11 @@ import {
   enMoney,
   expect,
   expectNoHorizontalScroll,
+  expectSignedInShown,
   goNav,
   isWide,
+  languageButton,
+  navDrawer,
   PARTNER_C,
   signIn,
   test,
@@ -13,35 +16,24 @@ import {
 
 // Flow 9: language switch to EN; year switch (UC-001 A1, BR-081). Uses Partner C so other flows
 // keep their Finnish UI; preferences are saved on the server and survive a reload.
+// Layout v2: language is one toggle named after the other language ("Vaihda kieleksi English"),
+// found by name on desktop and at the bottom of the ☰ drawer on phones.
 test('switch language to English and change the year', async ({ page }) => {
   await signIn(page, PARTNER_C, { language: 'fi', selectedYear: CURRENT_YEAR });
 
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 1, name: `Vuosi ${CURRENT_YEAR}` })).toBeVisible();
 
-  // Phones: language in the header menu. Desktop (900 px+): a language icon button in the header,
-  // with the signed-in partner in the sign-out button's description.
-  const wide = isWide(page);
-  if (wide) {
-    await expect(page.getByRole('button', { name: 'Kirjaudu ulos', exact: true })).toHaveAccessibleDescription(
-      /Kirjautuneena: Partner C/,
-    );
-    await page.getByRole('button', { name: 'Vaihda kieleksi English' }).click();
-  } else {
-    await page.getByRole('button', { name: 'Valikko' }).click();
-    await expect(page.getByText('Kirjautuneena: Partner C')).toBeVisible();
-    await page.getByRole('group', { name: 'Kieli' }).getByRole('button', { name: 'English' }).click();
-  }
+  await expectSignedInShown(page, 'Kirjautuneena: Partner C');
+  await (await languageButton(page, 'Vaihda kieleksi English')).click();
 
   await expect(page.getByRole('heading', { level: 1, name: `Year ${CURRENT_YEAR}` })).toBeVisible();
-  if (wide) {
-    // The toggle now offers the other language.
-    await expect(page.getByRole('button', { name: 'Change language to Suomi' })).toBeVisible();
-  } else {
-    await expect(
-      page.getByRole('group', { name: 'Language' }).getByRole('button', { name: 'English' }),
-    ).toHaveAttribute('aria-pressed', 'true');
+  // One toggle: it now offers the other language (phones: the drawer stays open on the same page).
+  await expect(await languageButton(page, 'Change language to Suomi')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Vaihda kieleksi English' })).toHaveCount(0);
+  if (!isWide(page)) {
     await page.keyboard.press('Escape');
+    await expect(navDrawer(page)).toBeHidden();
   }
   const year = await api(page).get(`/years/${CURRENT_YEAR}`);
   await expect(
@@ -49,7 +41,7 @@ test('switch language to English and change the year', async ({ page }) => {
   ).toBeVisible();
   await expectNoHorizontalScroll(page, 'year page (EN)');
 
-  // Year switch with the header buttons and the picker.
+  // Year switch with the top-bar buttons and the picker.
   await page.getByRole('button', { name: 'Next year' }).click();
   await expect(page.getByRole('heading', { level: 1, name: `Year ${CURRENT_YEAR + 1}` })).toBeVisible();
   await expect(page.getByRole('combobox', { name: 'Selected year' })).toHaveValue(String(CURRENT_YEAR + 1));
@@ -67,13 +59,11 @@ test('switch language to English and change the year', async ({ page }) => {
   expect(me.language).toBe('en');
   expect(me.selectedYear).toBe(CURRENT_YEAR - 1);
   await expectNoHorizontalScroll(page, 'gig list (EN)');
+  await expectSignedInShown(page, 'Signed in as Partner C');
 
   // Back to Finnish.
-  if (wide) {
-    await page.getByRole('button', { name: 'Change language to Suomi' }).click();
-  } else {
-    await page.getByRole('button', { name: 'Menu' }).click();
-    await page.getByRole('group', { name: 'Language' }).getByRole('button', { name: 'Suomi' }).click();
-  }
+  await (await languageButton(page, 'Change language to Suomi')).click();
   await expect(page.getByRole('heading', { level: 1, name: `Keikat ${CURRENT_YEAR - 1}` })).toBeVisible();
+  // The UI switches right away; the PATCH /api/me may land a moment later.
+  await expect.poll(async () => (await api(page).get('/me')).language, 'language saved on the server').toBe('fi');
 });
