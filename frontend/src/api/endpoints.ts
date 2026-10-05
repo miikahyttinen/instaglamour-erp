@@ -2,6 +2,8 @@
 import { apiRequest, buildUrl } from './client';
 import type {
   Attachment,
+  BudgetCategory,
+  BudgetCategoryInput,
   BudgetResponse,
   BudgetRow,
   BudgetRowUpdate,
@@ -161,4 +163,12 @@ export const budgetApi = {
     apiRequest<BudgetRow>(`/budget/${year}/${categoryId}`, { method: 'PUT', body }),
   copyFromPrevious: (year: number) =>
     apiRequest<BudgetResponse>(`/budget/${year}/copy-from-previous`, { method: 'POST' }),
+};
+
+export const budgetCategoriesApi = {
+  create: (body: BudgetCategoryInput) =>
+    apiRequest<BudgetCategory>('/budget-categories', { method: 'POST', body }),
+  rename: (id: Id, body: BudgetCategoryInput) =>
+    apiRequest<BudgetCategory>(`/budget-categories/${id}`, { method: 'PATCH', body }),
+  remove: (id: Id) => apiRequest<void>(`/budget-categories/${id}`, { method: 'DELETE' }),
 };

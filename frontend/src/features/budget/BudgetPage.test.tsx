@@ -32,7 +32,20 @@ function open(email?: string, year = YEAR) {
   return renderApp('/budget');
 }
 
-const rowOf = (name: string) => screen.getByRole('rowheader', { name: new RegExp(`^${name}`) }).closest('tr')!;
+/** Body row by its name field; the totals row by its header. */
+const rowOf = (name: string) =>
+  (name === 'Yhteensä' || name === 'Total'
+    ? screen.getByRole('rowheader', { name })
+    : screen.getByRole('textbox', { name: new RegExp(`^(Rivin nimi|Row name), ${name}$`) })
+  ).closest('tr')!;
+const findRow = async (name: string) => {
+  await screen.findByRole('textbox', { name: new RegExp(`^(Rivin nimi|Row name), ${name}$`) });
+  return rowOf(name);
+};
+const bodyRowNames = () =>
+  within(screen.getAllByRole('rowgroup')[1]!)
+    .getAllByRole('row')
+    .map((r) => (within(r).getAllByRole('textbox')[0] as HTMLInputElement).value);
 const variance = (row: HTMLElement) =>
   [...row.querySelectorAll('.budget-variance')].map((c) => c.textContent);
 const cells = (row: HTMLElement) => within(row).getAllByRole('cell').map((c) => c.textContent);
@@ -56,24 +69,18 @@ describe('budget page', () => {
     seedYear();
     open();
     expect(await screen.findByRole('heading', { name: 'Budjetti 2030' })).toBeInTheDocument();
-    await screen.findByRole('rowheader', { name: /^Kategoria A/ });
+    await findRow('Category A');
+    expect(bodyRowNames()).toEqual(['Category A', 'Category B', 'Category C']);
 
-    const bodyRows = within(screen.getAllByRole('rowgroup')[1]!).getAllByRole('row');
-    expect(bodyRows.map((r) => within(r).getByRole('rowheader').textContent)).toEqual([
-      'Kategoria A',
-      'Kategoria B',
-      'Kategoria CVain toteuma',
-    ]);
-
-    expect(screen.getByLabelText('Budjetti, kulut, Kategoria A')).toHaveValue('1000,00');
-    expect(screen.getByLabelText('Toteuma, kulut, Kategoria A')).toHaveValue('100,00');
-    expect(screen.getByLabelText('Budjetti, tulot, Kategoria B')).toHaveValue('2000,00');
-    expect(screen.getByLabelText('Toteuma, tulot, Kategoria B')).toHaveValue('1000,00');
+    expect(screen.getByLabelText('Budjetti, kulut, Category A')).toHaveValue('1000,00');
+    expect(screen.getByLabelText('Toteuma, kulut, Category A')).toHaveValue('100,00');
+    expect(screen.getByLabelText('Budjetti, tulot, Category B')).toHaveValue('2000,00');
+    expect(screen.getByLabelText('Toteuma, tulot, Category B')).toHaveValue('1000,00');
 
     // Variance = budget − actual (BR-060)
-    expect(variance(rowOf('Kategoria A'))).toEqual([fi(90000), fi(0)]);
-    expect(variance(rowOf('Kategoria B'))).toEqual([fi(0), fi(100000)]);
-    expect(variance(rowOf('Kategoria C'))).toEqual([fi(-10000), fi(0)]);
+    expect(variance(rowOf('Category A'))).toEqual([fi(90000), fi(0)]);
+    expect(variance(rowOf('Category B'))).toEqual([fi(0), fi(100000)]);
+    expect(variance(rowOf('Category C'))).toEqual([fi(-10000), fi(0)]);
 
     const totals = rowOf('Yhteensä');
     expect(cells(totals)).toEqual([
@@ -86,34 +93,44 @@ describe('budget page', () => {
     ]);
   });
 
-  it('uses English category names and texts for an English partner', async () => {
+  it('uses English texts for an English partner (row names are the same in both languages)', async () => {
     seedYear();
     open('partner.b@example.com');
     expect(await screen.findByRole('heading', { name: 'Budget 2030' })).toBeInTheDocument();
-    await screen.findByRole('rowheader', { name: /^Category A/ });
+    await findRow('Category A');
+    expect(screen.getByRole('button', { name: 'Add row' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Remove row Category A' })).toBeInTheDocument();
     expect(screen.getByLabelText('Budget, expense, Category A')).toHaveValue('1000.00');
     expect(cells(rowOf('Total'))[0]).toBe(en(100000));
     expect(screen.getByRole('button', { name: 'Copy budget from previous year' })).toBeInTheDocument();
   });
 
-  it('actuals-only categories have no budget cells', async () => {
+  it('every row has budget and actual cells; there are no actuals-only rows (AC-4)', async () => {
     seedYear();
     open();
-    await screen.findByRole('rowheader', { name: /^Kategoria C/ });
-    expect(screen.queryByLabelText('Budjetti, kulut, Kategoria C')).not.toBeInTheDocument();
-    expect(screen.queryByLabelText('Budjetti, tulot, Kategoria C')).not.toBeInTheDocument();
-    expect(screen.getByLabelText('Toteuma, kulut, Kategoria C')).toHaveValue('100,00');
-    expect(screen.getByLabelText('Toteuma, tulot, Kategoria C')).toBeInTheDocument();
-    expect(within(rowOf('Kategoria C')).getByText('Vain toteuma')).toBeInTheDocument();
+    await findRow('Category C');
+    for (const name of ['Category A', 'Category B', 'Category C']) {
+      for (const field of ['Budjetti, kulut', 'Budjetti, tulot', 'Toteuma, kulut', 'Toteuma, tulot']) {
+        expect(screen.getByLabelText(`${field}, ${name}`)).toBeInTheDocument();
+      }
+    }
+    expect(screen.getByLabelText('Toteuma, kulut, Category C')).toHaveValue('100,00');
+    expect(screen.queryByText('Vain toteuma')).not.toBeInTheDocument();
+    expect(document.querySelector('.tag')).toBeNull();
   });
 
   it('has no Save or Cancel buttons; a money cell saves on blur as cents (PUT the row)', async () => {
     seedYear();
     const puts = capturePuts();
     const { user } = open();
-    const input = await screen.findByLabelText('Budjetti, kulut, Kategoria A');
+    const input = await screen.findByLabelText('Budjetti, kulut, Category A');
     expect(screen.queryByRole('button', { name: /Tallenna|Peru/ })).not.toBeInTheDocument();
-    expect(within(screen.getByRole('table')).queryAllByRole('button')).toEqual([]);
+    // The only buttons in the table are the per-row remove buttons.
+    expect(within(screen.getByRole('table')).getAllByRole('button').map((b) => b.getAttribute('aria-label'))).toEqual([
+      'Poista rivi Category A',
+      'Poista rivi Category B',
+      'Poista rivi Category C',
+    ]);
 
     await user.clear(input);
     await user.type(input, '3 000');
@@ -126,10 +143,10 @@ describe('budget page', () => {
       body: { budgetExpenseCents: 300000, budgetIncomeCents: 0, actualExpenseCents: 10000, actualIncomeCents: 0 },
     });
     await waitFor(() => expect(budgetAmounts(db.budget, YEAR, A)?.budgetExpenseCents).toBe(300000));
-    expect(await screen.findByText('Budjetti, kulut, Kategoria A: tallennettu')).toBeInTheDocument();
+    expect(await screen.findByText('Budjetti, kulut, Category A: tallennettu')).toBeInTheDocument();
     expect(input).toHaveValue('3000,00');
     // Row variance and totals follow the saved row.
-    await waitFor(() => expect(variance(rowOf('Kategoria A'))).toEqual([fi(290000), fi(0)]));
+    await waitFor(() => expect(variance(rowOf('Category A'))).toEqual([fi(290000), fi(0)]));
     expect(cells(rowOf('Yhteensä'))[0]).toBe(fi(300000));
     expect(cells(rowOf('Yhteensä'))[4]).toBe(fi(280000));
     expect(screen.getByRole('region', { name: 'Poikkeama, kulut' }).textContent).toContain(fi(280000));
@@ -139,7 +156,7 @@ describe('budget page', () => {
     seedYear();
     const puts = capturePuts();
     const { user } = open();
-    const input = await screen.findByLabelText('Toteuma, tulot, Kategoria B');
+    const input = await screen.findByLabelText('Toteuma, tulot, Category B');
 
     await user.clear(input);
     await user.type(input, '1000');
@@ -161,8 +178,8 @@ describe('budget page', () => {
     seedYear();
     const puts = capturePuts();
     const { user } = open();
-    const budget = await screen.findByLabelText('Budjetti, kulut, Kategoria A');
-    const actual = screen.getByLabelText('Toteuma, kulut, Kategoria A');
+    const budget = await screen.findByLabelText('Budjetti, kulut, Category A');
+    const actual = screen.getByLabelText('Toteuma, kulut, Category A');
     await user.clear(budget);
     await user.type(budget, '2000');
     await user.click(actual); // blur → first PUT starts
@@ -180,14 +197,14 @@ describe('budget page', () => {
     await waitFor(() =>
       expect(budgetAmounts(db.budget, YEAR, A)).toMatchObject({ budgetExpenseCents: 200000, actualExpenseCents: 5000 }),
     );
-    await waitFor(() => expect(variance(rowOf('Kategoria A'))).toEqual([fi(195000), fi(0)]));
+    await waitFor(() => expect(variance(rowOf('Category A'))).toEqual([fi(195000), fi(0)]));
   });
 
-  it('saves an actuals-only row with zero budget fields; empty input counts as 0', async () => {
+  it('saves the whole row of a row with only actuals; empty input counts as 0', async () => {
     seedYear();
     const puts = capturePuts();
     const { user } = open();
-    const input = await screen.findByLabelText('Toteuma, kulut, Kategoria C');
+    const input = await screen.findByLabelText('Toteuma, kulut, Category C');
     await user.clear(input);
     await user.click(document.body);
     await waitFor(() => expect(puts).toHaveLength(1));
@@ -216,8 +233,8 @@ describe('budget page', () => {
     seedYear();
     const puts = capturePuts();
     const { user } = open();
-    const expense = await screen.findByLabelText('Toteuma, kulut, Kategoria A');
-    const income = screen.getByLabelText('Toteuma, tulot, Kategoria A');
+    const expense = await screen.findByLabelText('Toteuma, kulut, Category A');
+    const income = screen.getByLabelText('Toteuma, tulot, Category A');
     await user.clear(expense);
     await user.type(expense, '-10');
     await user.click(income);
@@ -240,7 +257,7 @@ describe('budget page', () => {
       ),
     );
     const { user } = open();
-    const input = await screen.findByLabelText('Toteuma, tulot, Kategoria B');
+    const input = await screen.findByLabelText('Toteuma, tulot, Category B');
     await user.clear(input);
     await user.type(input, '10');
     await user.click(document.body);
@@ -257,42 +274,41 @@ describe('budget page', () => {
     seedYear();
     setMockBudget(YEAR + 1, C, { actualExpenseCents: 1000 });
     const { user } = open(undefined, YEAR + 1);
-    await screen.findByLabelText('Budjetti, kulut, Kategoria A');
-    expect(screen.getByLabelText('Budjetti, kulut, Kategoria A')).toHaveValue('0,00');
+    await screen.findByLabelText('Budjetti, kulut, Category A');
+    expect(screen.getByLabelText('Budjetti, kulut, Category A')).toHaveValue('0,00');
 
     await user.click(screen.getByRole('button', { name: 'Kopioi budjetti edellisestä vuodesta' }));
     expect(await screen.findByText('Budjetti kopioitu vuodesta 2030.')).toHaveAttribute('role', 'status');
-    expect(screen.getByLabelText('Budjetti, kulut, Kategoria A')).toHaveValue('1000,00');
-    expect(screen.getByLabelText('Budjetti, tulot, Kategoria B')).toHaveValue('2000,00');
+    expect(screen.getByLabelText('Budjetti, kulut, Category A')).toHaveValue('1000,00');
+    expect(screen.getByLabelText('Budjetti, tulot, Category B')).toHaveValue('2000,00');
     // Actuals untouched: previous year's actuals are not copied, this year's stay.
-    expect(screen.getByLabelText('Toteuma, kulut, Kategoria A')).toHaveValue('0,00');
-    expect(screen.getByLabelText('Toteuma, kulut, Kategoria C')).toHaveValue('10,00');
+    expect(screen.getByLabelText('Toteuma, kulut, Category A')).toHaveValue('0,00');
+    expect(screen.getByLabelText('Toteuma, kulut, Category C')).toHaveValue('10,00');
   });
 
   it('shows the BUDGET_NOT_EMPTY message when the year already has budget numbers', async () => {
     seedYear();
     const { user } = open();
-    await screen.findByLabelText('Budjetti, kulut, Kategoria A');
+    await screen.findByLabelText('Budjetti, kulut, Category A');
     await user.click(screen.getByRole('button', { name: 'Kopioi budjetti edellisestä vuodesta' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Vuodelle on jo budjettilukuja.');
-    expect(screen.getByLabelText('Budjetti, kulut, Kategoria A')).toHaveValue('1000,00');
+    expect(screen.getByLabelText('Budjetti, kulut, Category A')).toHaveValue('1000,00');
   });
 
   it('follows the selected year', async () => {
     seedYear();
     const { user } = open();
-    await screen.findByLabelText('Budjetti, kulut, Kategoria A');
+    await screen.findByLabelText('Budjetti, kulut, Category A');
     await user.click(screen.getByRole('button', { name: 'Seuraava vuosi' }));
     expect(await screen.findByRole('heading', { name: 'Budjetti 2031' })).toBeInTheDocument();
-    await waitFor(() => expect(screen.getByLabelText('Budjetti, kulut, Kategoria A')).toHaveValue('0,00'));
+    await waitFor(() => expect(screen.getByLabelText('Budjetti, kulut, Category A')).toHaveValue('0,00'));
     expect(db.partners[0]!.selectedYear).toBe(YEAR + 1);
   });
 
   it('renders each row as a labelled card on phones (cells carry their labels)', async () => {
     seedYear();
     open();
-    await screen.findByRole('rowheader', { name: /^Kategoria A/ });
-    const rowA = rowOf('Kategoria A');
+    const rowA = await findRow('Category A');
     expect(rowA).toHaveClass('budget-row');
     const labels = within(rowA)
       .getAllByRole('cell')
@@ -311,7 +327,7 @@ describe('budget page', () => {
   it('shows the totals as stat tiles and colours variances by status', async () => {
     seedYear();
     open();
-    await screen.findByRole('rowheader', { name: /^Kategoria A/ });
+    await findRow('Category A');
 
     const expenses = screen.getByRole('region', { name: 'Kulut' });
     expect(expenses.textContent).toContain(fi(20000)); // actual
@@ -323,12 +339,11 @@ describe('budget page', () => {
     // Income below budget is worse than budget.
     expect(screen.getByRole('region', { name: 'Poikkeama, tulot' }).querySelector('.budget-variance-danger')).not.toBeNull();
 
-    const [aExpense] = rowOf('Kategoria A').querySelectorAll('.budget-variance');
+    const [aExpense] = rowOf('Category A').querySelectorAll('.budget-variance');
     expect(aExpense).toHaveClass('budget-variance-ok');
-    const [cExpense, cIncome] = rowOf('Kategoria C').querySelectorAll('.budget-variance');
+    const [cExpense, cIncome] = rowOf('Category C').querySelectorAll('.budget-variance');
     expect(cExpense).toHaveClass('budget-variance-danger'); // over budget
     expect(cIncome).not.toHaveClass('budget-variance-ok', 'budget-variance-danger'); // zero
-    expect(within(rowOf('Kategoria C')).getByText('Vain toteuma')).toHaveClass('tag', 'tag-muted');
   });
 
   it('shows a load error with retry', async () => {

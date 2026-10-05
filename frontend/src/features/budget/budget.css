@@ -1,7 +1,8 @@
 /* Budget page (UC-020). Built on the shared `.table-wrap > table.data-table` look. Tokens only.
    The grid has eight columns, four of them inputs. It is a table only when the page's content
    column is wide enough for it (a container query, so the expanded / collapsed sidebar counts);
-   narrower, every category is a card of label/value lines. */
+   narrower, every row is a card of label/value lines. The first cell holds the editable name and
+   the remove button. */
 
 .budget-page {
   container: budget-page / inline-size;
@@ -42,6 +43,71 @@
 }
 .budget-page .budget-table .inline-numeric input {
   min-width: calc(var(--space-7) * 2);
+}
+
+/* Row name (inline, UC-020 A3) and the remove button side by side; the button never shrinks. */
+.budget-page .budget-category-cell {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+}
+.budget-page .budget-name {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.budget-page .budget-name input {
+  font-weight: var(--fw-bold);
+}
+.budget-page .budget-name .field-error {
+  text-align: left;
+}
+.budget-page .budget-remove {
+  flex: none;
+}
+
+/* Empty state (no rows yet) and the add-row form below the table. */
+.budget-page .budget-empty {
+  margin: 0;
+  padding: var(--space-4) 0;
+  color: var(--text-muted);
+}
+.budget-page .budget-add {
+  margin-top: var(--section-gap);
+  --budget-add-w: calc(var(--label-w) * 2);
+}
+.budget-page .budget-add-form .field label {
+  margin-top: 0;
+}
+.budget-page .budget-add-actions {
+  margin-top: var(--space-2);
+}
+@media (min-width: 600px) {
+  /* Name field and Add on one line; label above the input, errors below it. */
+  .budget-page .budget-add-form {
+    display: grid;
+    grid-template-columns: minmax(0, var(--budget-add-w)) auto;
+    column-gap: var(--space-2);
+    justify-content: start;
+  }
+  .budget-page .budget-add-form .field {
+    display: contents;
+  }
+  .budget-page .budget-add-form .field > *,
+  .budget-page .budget-add-form .budget-add-error {
+    grid-column: 1;
+  }
+  .budget-page .budget-add-form .field > label {
+    grid-row: 1;
+  }
+  .budget-page .budget-add-form .field > input {
+    grid-row: 2;
+  }
+  .budget-page .budget-add-actions {
+    grid-column: 2;
+    grid-row: 2;
+    margin-top: 0;
+  }
 }
 
 /* ---------- Narrow content column: rows become cards ---------- */
@@ -101,6 +167,12 @@
     font-size: var(--fs-lg);
     text-align: left;
   }
+  .budget-page .budget-table .budget-category-cell {
+    flex: 1 1 auto;
+  }
+  .budget-page .budget-table .budget-name input {
+    font-size: var(--fs-lg);
+  }
   /* Label left (one line), value right-aligned in the rest; every line is one control high. */
   .budget-page .budget-table td[data-label] {
     display: grid;
@@ -127,9 +199,6 @@
   .budget-page .budget-table td[data-label] .field-error {
     grid-column: 1 / -1;
     margin: 0 0 var(--space-1);
-  }
-  .budget-page .budget-table .budget-na {
-    display: none;
   }
 }
 
@@ -164,14 +233,12 @@
     padding-right: calc(var(--cell-pad-x) + var(--budget-state-slot));
   }
   .budget-page .budget-table .budget-category {
-    min-width: calc(var(--label-w) * 3 / 4);
+    min-width: var(--label-w);
   }
-  /* Name on one line, the actuals-only tag below it. */
-  .budget-page .budget-category > span:first-child {
-    display: block;
-  }
-  .budget-page .budget-category .tag {
-    margin-top: var(--space-1);
+  /* The name cell keeps the input rows' tighter vertical padding. */
+  .budget-page .budget-table tbody .budget-category {
+    padding-top: var(--space-1);
+    padding-bottom: var(--space-1);
   }
   .budget-page .budget-table tbody tr:last-child th {
     border-bottom: 0;

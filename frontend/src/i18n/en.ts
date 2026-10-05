@@ -94,6 +94,7 @@ const en: Resources = {
     DESCRIPTION_REQUIRED: 'Description is required.',
     INVALID_HOURS: 'Hours must be 0.25–24 in quarter-hour steps.',
     TOO_LONG: 'Text is too long.',
+    DUPLICATE: 'This name is already in use.',
     UNKNOWN_REFERENCE: 'The selected item does not exist.',
     NOT_EDITABLE: 'This cannot be changed here.',
   },
