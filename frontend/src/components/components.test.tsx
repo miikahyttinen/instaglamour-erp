@@ -12,7 +12,7 @@ import { MiniBars } from './MiniBars';
 import { PageHead } from './PageHead';
 import { SectionLabel } from './SectionLabel';
 import { FieldList } from './FieldList';
-import { Field } from './fields';
+import { Field, MoneyInput } from './fields';
 import { spanStyle } from './grid';
 import { StatGrid, StatTile } from './StatTile';
 import { StatusTag } from './StatusTag';
@@ -144,6 +144,27 @@ describe('StatTile and MiniBars', () => {
     expect(screen.getByTestId('mini-bar').style.height).toBe('0%');
   });
 
+  it('MiniBars height: 48 px by default, px number, any CSS length, or the compact variant', () => {
+    const plot = (label: string) =>
+      screen
+        .getByRole('list', { name: label })
+        .parentElement!.querySelector<HTMLElement>('.mini-bars-plot')!;
+    render(
+      <>
+        <MiniBars bars={bars} label="Default" />
+        <MiniBars bars={bars} label="Px" height={40} />
+        <MiniBars bars={bars} label="Length" height="var(--space-5)" />
+        <MiniBars bars={bars} label="Compact" compact />
+        <MiniBars bars={bars} label="Both" compact height="2rem" />
+      </>,
+    );
+    expect(plot('Default').style.height).toBe('48px');
+    expect(plot('Px').style.height).toBe('40px');
+    expect(plot('Length').style.height).toBe('var(--space-5)');
+    expect(plot('Compact').style.height).toBe('var(--space-6)');
+    expect(plot('Both').style.height).toBe('2rem');
+  });
+
   it('StatTile shows mini bars when given', () => {
     render(<StatTile label="Per year" value="3" bars={bars} barsCaption="last 3 years" />);
     expect(screen.getByRole('list', { name: 'Per year' })).toBeInTheDocument();
@@ -212,6 +233,52 @@ describe('DataTable', () => {
       />,
     );
     expect(screen.getByRole('table')).not.toHaveClass('data-table-cards');
+  });
+
+  it('cardsBelow="lg" keeps the cards up to 1199 px (extra class); default is phones only', () => {
+    render(
+      <>
+        <DataTable caption="Phone" columns={columns()} rows={rows} rowKey={(r) => r.id} />
+        <DataTable
+          caption="Wide"
+          columns={columns()}
+          rows={rows}
+          rowKey={(r) => r.id}
+          cardsBelow="lg"
+        />
+        <DataTable
+          caption="None"
+          columns={columns()}
+          rows={rows}
+          rowKey={(r) => r.id}
+          cardsBelow="lg"
+          cardsOnPhone={false}
+        />
+      </>,
+    );
+    const phone = screen.getByRole('table', { name: 'Phone' });
+    expect(phone).toHaveClass('data-table-cards');
+    expect(phone).not.toHaveClass('data-table-cards-lg');
+    expect(screen.getByRole('table', { name: 'Wide' })).toHaveClass(
+      'data-table-cards',
+      'data-table-cards-lg',
+    );
+    const none = screen.getByRole('table', { name: 'None' });
+    expect(none).not.toHaveClass('data-table-cards');
+    expect(none).not.toHaveClass('data-table-cards-lg');
+  });
+});
+
+describe('MoneyInput', () => {
+  it('keeps the € inside the field wrapper, after the input, hidden from screen readers', async () => {
+    const onChange = vi.fn();
+    render(<Field label="Fee">{(p) => <MoneyInput {...p} value="" onChange={onChange} />}</Field>);
+    const input = screen.getByRole('textbox', { name: 'Fee' });
+    expect(input.parentElement).toHaveClass('money-input');
+    expect(input.nextElementSibling).toHaveTextContent('€');
+    expect(input.nextElementSibling).toHaveAttribute('aria-hidden', 'true');
+    await userEvent.type(input, '5');
+    expect(onChange).toHaveBeenLastCalledWith('5');
   });
 });
 

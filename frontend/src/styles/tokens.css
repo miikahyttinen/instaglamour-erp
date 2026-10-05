@@ -51,6 +51,9 @@
   --cell-pad-y: var(--space-3); /* DataTable header + cell padding (identical) */
   --cell-pad-x: var(--card-pad);
   --inline-pad-x: var(--space-2); /* inner side padding of quiet inline inputs */
+  /* Right of an inline money / hours unit: inner padding + border + state icon slot. Pad a plain
+     numeric value by this to end it where the inline field's unit ends. */
+  --inline-num-trail: calc(var(--inline-pad-x) + var(--hairline) + var(--space-1) + var(--icon));
   --icon: 16px;
   --icon-nav: 18px;
   --icon-stroke: 1.5;

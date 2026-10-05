@@ -369,6 +369,8 @@ label.switch input {
   width: 1.1rem;
   height: 1.1rem;
   flex: 0 0 auto;
+  /* No UA margin: the box starts at the control column edge like every other control. */
+  margin: 0;
 }
 .field-error {
   color: var(--danger-fg);
@@ -382,14 +384,15 @@ label.switch input {
 .inline-form .field {
   margin-bottom: var(--space-1);
 }
+/* A rendered legend ignores its own margin-top, so the fieldset carries the label spacing. */
 .check-group {
   border: 0;
   padding: 0;
-  margin: 0;
+  margin: var(--space-4) 0 0;
   min-width: 0;
 }
 .check-group legend {
-  margin-top: var(--space-4);
+  margin: 0 0 var(--space-1);
   padding: 0;
   font-family: var(--font-mono);
   font-size: var(--fs-label);
@@ -416,17 +419,54 @@ label.switch input {
 .inline-actions {
   margin-top: var(--space-2);
 }
+/* MoneyInput: the € sits inside the field, so money fields end at the same right edge as the
+   other controls. The wrapper draws the input box; the input inside is bare. */
 .money-input {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  min-height: var(--control-h);
+  padding-right: var(--space-3);
+  border: var(--hairline) solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--text);
 }
-.money-input input {
+.money-input:hover {
+  background: var(--surface-2);
+}
+.money-input:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 var(--hairline) var(--accent);
+}
+.money-input:has(input:user-invalid),
+.money-input:has(input[aria-invalid='true']) {
+  border-color: var(--danger-fg);
+}
+.money-input:has(input:disabled) {
+  opacity: 0.6;
+}
+.money-input input[type='text'] {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: calc(var(--control-h) - 2 * var(--hairline));
+  padding-right: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  opacity: 1;
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
-.money-input > span {
+/* Unit after a real (no-break) space, so the digits line up with formatted plain values. */
+.money-input > span,
+.inline-unit > span {
+  flex: 0 0 auto;
+  white-space: nowrap;
   color: var(--text-muted);
+}
+.money-input > span::before,
+.inline-unit > span::before {
+  content: '\00a0';
 }
 .inline-form {
   margin-top: var(--space-2);
@@ -460,14 +500,6 @@ label.switch input {
 .inline-control > .inline-unit {
   flex: 1 1 auto;
   min-width: 0;
-}
-.inline-unit {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-.inline-unit > span {
-  color: var(--text-muted);
 }
 .inline-numeric input {
   text-align: right;
@@ -524,6 +556,56 @@ select.inline-input:disabled {
   box-shadow: 0 0 0 var(--hairline) var(--danger-fg);
 }
 
+/* Inline money / hours: the unit (€ / h) sits inside the field, so these fields end at the same
+   right edge as the other inline fields. The wrapper draws the quiet box and its states; the
+   input inside is bare. A plain value padded by --inline-num-trail ends where the unit ends. */
+.inline-unit {
+  display: flex;
+  align-items: center;
+  min-height: var(--control-h);
+  padding-right: var(--inline-pad-x);
+  border: var(--hairline) solid transparent;
+  border-radius: var(--radius);
+  background-color: transparent;
+}
+.inline-unit:hover {
+  border-color: var(--border);
+}
+@media (hover: none) {
+  .inline-unit:not(:has(input:disabled)) {
+    border-color: var(--border);
+  }
+}
+.inline-unit:focus-within {
+  border-color: var(--accent);
+  background-color: var(--bg);
+  box-shadow: 0 0 0 var(--hairline) var(--accent);
+}
+.inline-unit:has(input:disabled) {
+  border-color: transparent;
+  cursor: default;
+}
+.inline-field.is-error .inline-unit {
+  border-color: var(--danger-fg);
+}
+.inline-field.is-error .inline-unit:focus-within {
+  box-shadow: 0 0 0 var(--hairline) var(--danger-fg);
+}
+.inline-field .inline-control > .inline-unit > input.inline-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: calc(var(--control-h) - 2 * var(--hairline));
+  padding-right: 0;
+  border: 0;
+  background-color: transparent;
+  box-shadow: none;
+}
+.inline-num-value {
+  padding-right: var(--inline-num-trail);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
 /* State indicator: the slot is always reserved so nothing shifts. */
 .inline-state {
   display: inline-flex;
@@ -565,7 +647,8 @@ select.inline-input:disabled {
   outline: var(--hairline) solid var(--danger-fg);
   outline-offset: 2px;
 }
-.inline-switch {
+/* label.switch.inline-switch beats the global label.switch tap size: 44 px phone, 36 px desktop. */
+label.switch.inline-switch {
   min-height: var(--control-h);
 }
 .inline-switch input[type='checkbox'] {
@@ -1521,6 +1604,81 @@ select.inline-input:disabled {
     border-color: var(--border-strong);
   }
   .data-table-cards tfoot td {
+    border: 0;
+  }
+}
+
+/* cardsBelow="lg": the same cards up to 1199 px (900–1199 px = desktop next to the sidebar). Keep
+   in sync with the block above. */
+@media (max-width: 1199px) {
+  .table-wrap:has(.data-table-cards-lg) {
+    background: transparent;
+    border: 0;
+    overflow: visible;
+  }
+  .data-table-cards-lg thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+  .data-table-cards-lg,
+  .data-table-cards-lg tbody,
+  .data-table-cards-lg tfoot {
+    display: block;
+  }
+  .data-table-cards-lg tr {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: var(--space-2);
+    padding: var(--space-2) var(--card-pad);
+    background: var(--surface);
+    border: var(--hairline) solid var(--border);
+    border-radius: var(--radius);
+  }
+  .data-table-cards-lg tbody tr:hover td {
+    background: transparent;
+  }
+  .data-table-cards-lg td {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-3);
+    height: auto;
+    padding: var(--space-1) 0;
+    border: 0;
+    text-align: right;
+  }
+  .data-table-cards-lg td::before {
+    content: attr(data-label);
+    flex: 0 0 auto;
+    max-width: 50%;
+    text-align: left;
+    font-family: var(--font-mono);
+    font-size: var(--fs-meta);
+    letter-spacing: var(--ls-label);
+    text-transform: uppercase;
+    color: var(--label);
+  }
+  .data-table-cards-lg td.cell-primary {
+    order: -1; /* card title first, whatever the column order */
+    display: block;
+    padding: var(--space-2) 0;
+    text-align: left;
+    font-size: var(--fs-lg);
+  }
+  .data-table-cards-lg td.cell-primary::before,
+  .data-table-cards-lg td:not([data-label])::before {
+    content: none;
+  }
+  .data-table-cards-lg .hide-phone {
+    display: none;
+  }
+  .data-table-cards-lg tfoot tr {
+    border-color: var(--border-strong);
+  }
+  .data-table-cards-lg tfoot td {
     border: 0;
   }
 }

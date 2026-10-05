@@ -41,8 +41,8 @@
   --hours-col-amount: calc(var(--label-w) * 3 / 4);
   --hours-col-actions: var(--control-h);
   --hours-col-gap: var(--space-4);
-  /* Inline fields reserve a state icon slot (+ gap) right of the value. */
-  --hours-state-slot: calc(var(--icon) + var(--space-1));
+  /* Inline hours: padding + border + state icon slot right of the unit (shared token). */
+  --hours-state-slot: var(--inline-num-trail);
 }
 
 /* ---------- Month groups (My hours) ---------- */

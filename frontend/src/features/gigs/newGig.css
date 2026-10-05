@@ -51,14 +51,6 @@
   border-top: var(--hairline) solid var(--border);
 }
 
-/* Technical setup: same distance above as a field label (a legend ignores its own margin-top). */
-.new-gig-page .check-group {
-  margin-top: var(--space-4);
-}
-.new-gig-page .check-group legend {
-  margin: 0 0 var(--space-1);
-}
-
 /* ---------- Total ---------- */
 .new-gig-page .new-gig-total {
   display: flex;
