@@ -1,7 +1,7 @@
 # TASK-120: Inline edit — cost lines
 
 - **owner:** ui
-- **status:** todo
+- **status:** done
 - **spec:** NFR-8, docs/design.md → Inline editing
 - **depends on:** TASK-118
 
