@@ -104,7 +104,18 @@
   text-align: right;
   font-weight: var(--fw-bold);
   font-variant-numeric: tabular-nums;
+  min-width: 0;
+}
+/* Keep the value on one line, but not the inline field's error (F-004): it wraps in the column. */
+.hours-page .hour-amount:not(.inline-field),
+.hours-page .hour-amount .inline-control {
   white-space: nowrap;
+}
+.hours-page .hour-amount .field-error {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  font-weight: var(--fw-regular);
+  text-align: right;
 }
 /* Inline date: keep the mono label look of the read-only date, sized to its content. */
 .hours-page .hour-date.inline-field {

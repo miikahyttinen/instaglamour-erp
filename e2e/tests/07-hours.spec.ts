@@ -118,9 +118,8 @@ test('edit own hours in place; Esc and invalid hours are not saved', async ({ pa
 });
 
 // NFR-1 with an inline error: the hours error message must wrap inside its column.
-// F-004: `.hours-page .hour-amount { white-space: nowrap }` is inherited by the field error, so
-// "Tunnit 0,25–24 neljännestunnin tarkkuudella." runs past the viewport (375 px: page 460 px wide).
-test.fixme('an invalid-hours error does not cause horizontal scrolling (F-004)', async ({ page }, testInfo) => {
+// F-004 (fixed in TASK-124): the field error used to inherit `white-space: nowrap` from `.hour-amount`.
+test('an invalid-hours error does not cause horizontal scrolling (F-004)', async ({ page }, testInfo) => {
   await signIn(page);
   const comment = `Synthetic wrap ${tagOf(testInfo)}-${suffix()}`;
   const date = tagOf(testInfo) === 'M' ? `${CURRENT_YEAR}-03-12` : `${CURRENT_YEAR}-03-13`;
