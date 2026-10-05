@@ -1,6 +1,10 @@
 /* Gig page (UC-004 … UC-013): header, sections, economics, cost table, attachments, history.
-   Tokens only (docs/design.md). Scoped under .gig-page. Phone first; ≥ 600 px table;
-   ≥ 900 px 2 columns. */
+   Tokens only (docs/design.md, Layout v2). Scoped under .gig-page. Phone first.
+   - Sections: 1 column; 2 columns from 1200 px (the 232 px sidebar leaves ~590 px at 900 px).
+   - Basic info / price: Card + FieldList (one label column).
+   - Economics: 2 tiles per row, 4 from 1200 px.
+   - Cost table: phone cards < 600 px; compact two-line rows while .cost-list is narrower than
+     the full table; full table when it fits. */
 
 /* ---------- Header ---------- */
 
@@ -63,7 +67,7 @@
   gap: var(--space-2) var(--space-4);
 }
 .gig-page .gig-notice-text {
-  flex: 1 1 240px;
+  flex: 1 1 calc(var(--label-w) * 1.5);
   min-width: 0;
 }
 .gig-page .gig-notice-text > :last-child {
@@ -80,8 +84,7 @@
 .gig-page .gig-sections {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 0 var(--space-6);
-  margin-top: calc(-1 * var(--space-3));
+  gap: 0 var(--section-gap);
 }
 .gig-page .gig-section {
   min-width: 0;
@@ -96,7 +99,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  min-height: calc(var(--tap) + var(--space-2));
+  min-height: var(--tap);
   color: var(--label);
   cursor: pointer;
   list-style: none;
@@ -113,7 +116,7 @@
 }
 .gig-page .gig-section summary:focus-visible {
   outline: var(--hairline) solid var(--accent);
-  outline-offset: 2px;
+  outline-offset: var(--space-1);
 }
 .gig-page .gig-section summary h2 {
   margin: 0;
@@ -122,54 +125,60 @@
   font-weight: var(--fw-regular);
   letter-spacing: var(--ls-label);
   text-transform: uppercase;
-  line-height: 1.4;
+  line-height: var(--lh-body);
   color: inherit;
 }
 .gig-page .gig-section-chevron {
   transform: rotate(-90deg);
-  transition: transform 0.15s ease;
+  transition: transform var(--dur) var(--ease);
+}
+@media (prefers-reduced-motion: reduce) {
+  .gig-page .gig-section-chevron {
+    transition: none;
+  }
 }
 .gig-page .gig-section[open] .gig-section-chevron {
   transform: none;
 }
 .gig-page .gig-section-body {
-  padding: var(--space-1) 0 var(--space-6);
+  padding: var(--space-2) 0 var(--section-gap);
 }
 
-/* ---------- Basic info / price (inline fields on a surface, NFR-8) ---------- */
+/* ---------- Basic info / price (Card + FieldList, inline fields, NFR-8) ---------- */
 
-.gig-page .gig-fields {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--space-3) var(--space-4);
-  padding: var(--space-4);
-  background: var(--surface);
-  border: var(--hairline) solid var(--border);
-  border-radius: var(--radius);
-}
-@media (min-width: 600px) {
-  .gig-page .gig-fields {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-.gig-page .gig-fields-wide {
-  grid-column: 1 / -1;
-}
-.gig-page .gig-fields .inline-field > label,
-.gig-page .gig-fields .inline-check-group > legend {
+/* Phones: FieldList stacks label above control; the first label starts at the card padding. */
+.gig-page .gig-fields .field-list > :first-child > label {
   margin-top: 0;
 }
-.gig-page .gig-fields-note {
-  margin: calc(-1 * var(--space-2)) 0 0;
+/* Checkboxes start at the control column edge like the quiet values (no UA margin). */
+.gig-page .gig-fields .check input {
+  margin-inline: 0;
 }
+/* Seller change hint: under the seller / producer controls (control column from 600 px). */
+.gig-page .gig-fields-note {
+  margin: 0;
+}
+/* Total price: a FieldList row (label column + value), the value right-aligned like the
+   money inputs above it. */
 .gig-page .gig-fields-total {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
   justify-content: space-between;
   gap: var(--space-2);
+  margin-top: var(--space-2);
   padding-top: var(--space-3);
   border-top: var(--hairline) solid var(--border);
+}
+@media (min-width: 600px) {
+  .gig-page .gig-fields-note {
+    padding-left: calc(var(--field-label-w) + var(--space-4));
+  }
+  .gig-page .gig-fields-total {
+    display: grid;
+    grid-template-columns: var(--field-label-w) minmax(0, 1fr);
+    column-gap: var(--space-4);
+  }
 }
 .gig-page .gig-fields-total-label {
   font-family: var(--font-mono);
@@ -179,6 +188,7 @@
   color: var(--label);
 }
 .gig-page .gig-fields-total-value {
+  text-align: right;
   font-size: var(--fs-lg);
   font-weight: var(--fw-bold);
   font-variant-numeric: tabular-nums;
@@ -191,19 +201,25 @@
 
 /* ---------- Economics (StatTiles) ---------- */
 
-/* 12-column StatGrid: 2 tiles per row, 4 from 900 px. */
+/* 12-column StatGrid: 2 tiles per row (phone too), 4 from 1200 px. The section body already
+   ends with --section-gap. */
 .gig-page .gig-econ-grid {
   margin-bottom: 0;
 }
 .gig-page .gig-econ-grid > * {
   --span: 6;
-  --span-md: 3;
+  --span-lg: 3;
 }
 .gig-page .gig-econ-grid .stat-tile-secondary {
   flex-wrap: wrap;
 }
 
 /* ---------- Cost table ---------- */
+
+/* The table's layout follows the width it actually gets (sidebar expanded or collapsed). */
+.gig-page .cost-list {
+  container: cost-list / inline-size;
+}
 
 .gig-page .cost-staffing {
   margin: 0 0 var(--space-3);
@@ -218,24 +234,24 @@
 /* Inline description under the type name (NFR-8). */
 .gig-page .cost-table .cost-description {
   margin-top: var(--space-1);
-  min-width: 10rem;
+  min-width: var(--label-w);
   font-weight: var(--fw-regular);
 }
 .gig-page .cost-table td.cost-budget .inline-field {
-  min-width: 8rem;
+  min-width: calc(var(--label-w) - var(--space-6));
 }
 /* Paid line: inline actual amount + who / when. */
 .gig-page .cost-table .cost-paid-edit {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  min-width: 9rem;
+  min-width: calc(var(--label-w) - var(--space-5));
 }
 .gig-page .cost-table .cost-paid-edit .inline-numeric input {
   color: var(--ok-fg);
 }
 .gig-page .cost-table td.cost-person .inline-field {
-  min-width: 10rem;
+  min-width: var(--label-w);
 }
 /* PersonSelect "new person" mode: name input + its actions. */
 .gig-page .person-create {
@@ -244,7 +260,7 @@
   gap: var(--space-1);
 }
 .gig-page .cost-table td.cost-person .person-create {
-  min-width: 12rem;
+  min-width: calc(var(--label-w) + var(--space-6));
   margin-top: var(--space-1);
 }
 .gig-page .cost-table td.cost-person .inline-actions {
@@ -258,8 +274,10 @@
   color: var(--ok-fg);
   text-align: left;
 }
+/* Icon centred on the first text line. */
 .gig-page .cost-table .paid-icon {
-  margin-top: 2px;
+  flex: 0 0 auto;
+  margin-top: calc((1lh - var(--icon)) / 2);
 }
 .gig-page .cost-hint {
   font-size: var(--fs-small);
@@ -289,11 +307,11 @@
   gap: var(--space-2) var(--space-4);
 }
 .gig-page .cost-inline-form .field {
-  flex: 0 1 14rem;
+  flex: 0 1 calc(var(--label-w) + var(--space-7));
   min-width: 0;
 }
 .gig-page .cost-inline-form .form-row {
-  flex: 1 1 24rem;
+  flex: 1 1 calc(var(--label-w) * 2 + var(--space-7));
 }
 .gig-page .cost-inline-form label {
   margin-top: 0;
@@ -426,7 +444,7 @@
   }
   .gig-page .cost-table thead th.cost-col-loadin {
     white-space: normal;
-    width: 7rem;
+    width: calc(var(--space-7) * 2);
   }
   .gig-page .cost-table td.cost-actions {
     width: 1%;
@@ -439,6 +457,139 @@
     overflow: hidden;
     clip: rect(0 0 0 0);
     white-space: nowrap;
+  }
+}
+
+/* Compact rows (≥ 600 px viewport, but the list narrower than the full table, ~1120 px; e.g.
+   600–1439 px with the sidebar expanded). Each line keeps the table surface and hairlines, on
+   three equal columns: type + actions, then person · budget · actual with their own small
+   labels, then the load-in switch (musician lines). */
+@media (min-width: 600px) {
+  @container cost-list (max-width: 1119px) {
+    .gig-page .cost-table,
+    .gig-page .cost-table tbody {
+      display: block;
+    }
+    .gig-page .cost-table thead {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+    }
+    .gig-page .cost-table tbody:not(:last-of-type) {
+      border-bottom: var(--hairline) solid var(--border);
+    }
+    .gig-page .cost-table tbody tr:not(.cost-extra-row) {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-areas:
+        'type actions actions'
+        'person budget paid';
+      align-items: start;
+      gap: var(--space-2) var(--space-4);
+      padding: var(--cell-pad-y) var(--cell-pad-x);
+    }
+    .gig-page .cost-table tbody tr:hover td {
+      background: transparent;
+    }
+    .gig-page .cost-table td,
+    .gig-page .cost-table tbody:not(:last-of-type) tr:last-child td {
+      height: auto;
+      padding: 0;
+      border: 0;
+    }
+    .gig-page .cost-table td.cost-type {
+      grid-area: type;
+      align-self: center;
+    }
+    .gig-page .cost-table td.cost-person {
+      grid-area: person;
+    }
+    /* Musician lines only: a third row under the person. */
+    .gig-page .cost-table td.cost-loadin {
+      grid-row: 3;
+      grid-column: 1;
+    }
+    .gig-page .cost-table td.cost-loadin.is-empty {
+      display: none;
+    }
+    .gig-page .cost-table td.cost-budget {
+      grid-area: budget;
+    }
+    .gig-page .cost-table td.cost-paid {
+      grid-area: paid;
+    }
+    .gig-page .cost-table td.cost-actions {
+      grid-area: actions;
+      width: auto;
+      align-self: center;
+    }
+    /* Column header text moves into each cell (same label style as the table head). */
+    .gig-page .cost-table td[data-label]::before {
+      content: attr(data-label);
+      display: block;
+      margin-bottom: var(--space-1);
+      font-family: var(--font-mono);
+      font-size: var(--fs-meta);
+      letter-spacing: var(--ls-label);
+      text-transform: uppercase;
+      color: var(--label);
+      white-space: nowrap;
+    }
+    /* Inline values need room for their hover / focus outline on the left. */
+    .gig-page .cost-table .cost-description,
+    .gig-page .cost-table td.cost-person .inline-field,
+    .gig-page .cost-table td.cost-budget .inline-field,
+    .gig-page .cost-table .cost-paid-edit,
+    .gig-page .cost-table td.cost-person .person-create {
+      min-width: 0;
+    }
+    .gig-page .cost-table .cost-description {
+      max-width: calc(var(--label-w) * 2);
+    }
+    /* Label row + control row, so tags and switches centre on the inputs' row. */
+    .gig-page .cost-table td.cost-paid {
+      display: grid;
+      grid-template-rows: auto minmax(var(--control-h), auto);
+      align-items: center;
+      justify-items: start;
+    }
+    /* Load-in: the switch's own text becomes the small label above the switch. */
+    .gig-page .cost-table .cost-loadin-switch .inline-switch {
+      display: grid;
+      grid-template-rows: auto var(--control-h);
+      align-items: center;
+      justify-items: start;
+      gap: 0;
+      min-height: 0;
+    }
+    .gig-page .cost-table .cost-loadin-switch .inline-switch input {
+      grid-row: 2;
+    }
+    .gig-page .cost-table .cost-loadin-switch .inline-switch > span {
+      position: static;
+      width: auto;
+      height: auto;
+      overflow: visible;
+      clip: auto;
+      grid-row: 1;
+      margin-bottom: var(--space-1);
+      font-family: var(--font-mono);
+      font-size: var(--fs-meta);
+      letter-spacing: var(--ls-label);
+      text-transform: uppercase;
+      color: var(--label);
+      white-space: nowrap;
+    }
+    .gig-page .cost-table tr.cost-extra-row {
+      display: block;
+    }
+    .gig-page .cost-table tr.cost-extra-row td {
+      display: block;
+      padding: var(--cell-pad-y) var(--cell-pad-x);
+      border-top: var(--hairline) solid var(--border);
+    }
   }
 }
 
@@ -458,8 +609,8 @@
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 0 var(--space-3);
-  padding: var(--space-2) var(--space-4);
-  min-height: 56px;
+  padding: var(--space-2) var(--card-pad);
+  min-height: var(--row-h);
   border-bottom: var(--hairline) solid var(--border);
 }
 .gig-page .attachment:last-child {
@@ -471,7 +622,7 @@
 .gig-page .attachment-text {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-1);
   min-width: 0;
 }
 .gig-page .attachment-name {
@@ -498,7 +649,7 @@
 /* ---------- History ---------- */
 
 .gig-page .history-filter {
-  max-width: 320px;
+  max-width: calc(var(--label-w) * 2);
   margin-bottom: var(--space-3);
 }
 .gig-page .history-filter label {
@@ -531,9 +682,10 @@
   overflow-wrap: anywhere;
 }
 
-/* ---------- Desktop: two-column sections ---------- */
+/* ---------- Wide desktop: two-column sections ---------- */
 
-@media (min-width: 900px) {
+/* From 1200 px only: at 900–1199 px the expanded sidebar leaves too little room for two columns. */
+@media (min-width: 1200px) {
   .gig-page .gig-sections {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     align-items: start;

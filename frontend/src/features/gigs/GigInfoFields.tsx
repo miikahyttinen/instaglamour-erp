@@ -9,6 +9,8 @@ import {
   InlineText,
   InlineTextarea,
 } from '../../components/inline';
+import { Card } from '../../components/Card';
+import { FieldList } from '../../components/FieldList';
 import { technicalSetupLabel } from '../../i18n/labels';
 import { useLang } from '../../i18n/useLang';
 import { formatMoney } from '../../lib/format';
@@ -55,64 +57,64 @@ export function GigBasicFields({
   };
 
   return (
-    <div className="gig-fields">
-      <InlineText
-        label={t('gigForm.lineupName')}
-        required
-        value={gig.lineupName}
-        field="lineupName"
-        disabled={readOnly}
-        onSave={(lineupName) => patch({ lineupName })}
-      />
-      <InlineText
-        label={t('gigForm.venue')}
-        required
-        value={gig.venue}
-        field="venue"
-        disabled={readOnly}
-        onSave={(venue) => patch({ venue })}
-      />
-      <InlineCheckboxGroup
-        className="gig-fields-wide"
-        label={t('gigForm.technicalSetup')}
-        value={gig.technicalSetup}
-        field="technicalSetup"
-        disabled={readOnly}
-        options={(reference?.technicalSetups ?? TECHNICAL_SETUPS).map((code) => ({
-          value: code,
-          label: technicalSetupLabel(t, code),
-        }))}
-        onSave={(technicalSetup) => patch({ technicalSetup })}
-      />
-      <InlineSelect
-        label={t('gigForm.seller')}
-        value={gig.sellerId}
-        field="sellerId"
-        disabled={readOnly}
-        options={partnerOptions(gig.sellerId)}
-        onSave={(sellerId) => savePartner({ sellerId })}
-      />
-      <InlineSelect
-        label={t('gigForm.producer')}
-        value={gig.producerId}
-        field="producerId"
-        disabled={readOnly}
-        options={partnerOptions(gig.producerId)}
-        onSave={(producerId) => savePartner({ producerId })}
-      />
-      {!readOnly && <p className="muted small gig-fields-wide gig-fields-note">{t('gig.sellerChangeHint')}</p>}
-      <InlineTextarea
-        className="gig-fields-wide"
-        label={t('gigForm.notes')}
-        value={gig.notes}
-        field="notes"
-        rows={3}
-        placeholder="–"
-        hint={readOnly ? undefined : t('gigForm.noCustomerData')}
-        disabled={readOnly}
-        onSave={(notes) => patch({ notes })}
-      />
-    </div>
+    <Card as="div" className="gig-fields">
+      <FieldList>
+        <InlineText
+          label={t('gigForm.lineupName')}
+          required
+          value={gig.lineupName}
+          field="lineupName"
+          disabled={readOnly}
+          onSave={(lineupName) => patch({ lineupName })}
+        />
+        <InlineText
+          label={t('gigForm.venue')}
+          required
+          value={gig.venue}
+          field="venue"
+          disabled={readOnly}
+          onSave={(venue) => patch({ venue })}
+        />
+        <InlineCheckboxGroup
+          label={t('gigForm.technicalSetup')}
+          value={gig.technicalSetup}
+          field="technicalSetup"
+          disabled={readOnly}
+          options={(reference?.technicalSetups ?? TECHNICAL_SETUPS).map((code) => ({
+            value: code,
+            label: technicalSetupLabel(t, code),
+          }))}
+          onSave={(technicalSetup) => patch({ technicalSetup })}
+        />
+        <InlineSelect
+          label={t('gigForm.seller')}
+          value={gig.sellerId}
+          field="sellerId"
+          disabled={readOnly}
+          options={partnerOptions(gig.sellerId)}
+          onSave={(sellerId) => savePartner({ sellerId })}
+        />
+        <InlineSelect
+          label={t('gigForm.producer')}
+          value={gig.producerId}
+          field="producerId"
+          disabled={readOnly}
+          options={partnerOptions(gig.producerId)}
+          onSave={(producerId) => savePartner({ producerId })}
+        />
+        {!readOnly && <p className="muted small gig-fields-note">{t('gig.sellerChangeHint')}</p>}
+        <InlineTextarea
+          label={t('gigForm.notes')}
+          value={gig.notes}
+          field="notes"
+          rows={3}
+          placeholder="–"
+          hint={readOnly ? undefined : t('gigForm.noCustomerData')}
+          disabled={readOnly}
+          onSave={(notes) => patch({ notes })}
+        />
+      </FieldList>
+    </Card>
   );
 }
 
@@ -122,36 +124,37 @@ export function GigPriceFields({ gig, readOnly }: Props) {
   const lang = useLang();
   const patch = useGigPatch(gig);
   return (
-    <div className="gig-fields">
-      <InlineMoney
-        label={t('gigForm.price')}
-        required
-        value={gig.priceCents}
-        field="priceCents"
-        disabled={readOnly}
-        onSave={(priceCents) => patch({ priceCents })}
-      />
-      <InlineMoney
-        label={t('gigForm.additionalSales')}
-        required
-        value={gig.additionalSalesCents}
-        field="additionalSalesCents"
-        disabled={readOnly}
-        onSave={(additionalSalesCents) => patch({ additionalSalesCents })}
-      />
-      <InlineText
-        className="gig-fields-wide"
-        label={t('gigForm.additionalSalesDescription')}
-        value={gig.additionalSalesDescription}
-        field="additionalSalesDescription"
-        placeholder="–"
-        disabled={readOnly}
-        onSave={(additionalSalesDescription) => patch({ additionalSalesDescription })}
-      />
-      <div className="gig-fields-wide gig-fields-total" role="group" aria-label={t('gigForm.totalPrice')}>
-        <span className="gig-fields-total-label">{t('gigForm.totalPrice')}</span>
-        <strong className="gig-fields-total-value">{formatMoney(gig.totalPriceCents, lang)}</strong>
-      </div>
-    </div>
+    <Card as="div" className="gig-fields">
+      <FieldList>
+        <InlineMoney
+          label={t('gigForm.price')}
+          required
+          value={gig.priceCents}
+          field="priceCents"
+          disabled={readOnly}
+          onSave={(priceCents) => patch({ priceCents })}
+        />
+        <InlineMoney
+          label={t('gigForm.additionalSales')}
+          required
+          value={gig.additionalSalesCents}
+          field="additionalSalesCents"
+          disabled={readOnly}
+          onSave={(additionalSalesCents) => patch({ additionalSalesCents })}
+        />
+        <InlineText
+          label={t('gigForm.additionalSalesDescription')}
+          value={gig.additionalSalesDescription}
+          field="additionalSalesDescription"
+          placeholder="–"
+          disabled={readOnly}
+          onSave={(additionalSalesDescription) => patch({ additionalSalesDescription })}
+        />
+        <div className="gig-fields-total" role="group" aria-label={t('gigForm.totalPrice')}>
+          <span className="gig-fields-total-label">{t('gigForm.totalPrice')}</span>
+          <strong className="gig-fields-total-value">{formatMoney(gig.totalPriceCents, lang)}</strong>
+        </div>
+      </FieldList>
+    </Card>
   );
 }
