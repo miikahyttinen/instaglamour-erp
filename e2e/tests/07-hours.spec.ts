@@ -15,6 +15,7 @@ import {
   test,
 } from './helpers';
 import { suffix } from './gigs';
+import { partnerFilter, tableTotal, totalsTable } from './hours';
 
 interface Totals {
   partners: { partnerId: string; months: number[]; total: number }[];
@@ -61,10 +62,14 @@ test('log own hours and see them in totals and on the year page', async ({ page 
   await expect(page.getByLabel(`Tunnit: ${fiDate(date)} ${comment}`, { exact: true })).toHaveValue('1,5');
   await expect(page.getByTestId('hours-year-total')).toHaveText(fiHours(ownBefore + added));
 
-  // Totals page.
+  // Totals page: the new entry is an own (editable) row; the total row = grand total; filtered by
+  // me, the total row = my year hours.
   await page.getByRole('link', { name: 'Yhteenveto' }).click();
-  await expect(page.getByTestId('hours-grand-total')).toHaveText(fiHours(before.grandTotal + added));
-  await expect(page.getByLabel(`Yhteensä ${me.name}`, { exact: true })).toHaveText(fiHours(mineBefore + added));
+  const table = totalsTable(page);
+  await expect(tableTotal(table)).toHaveText(fiHours(before.grandTotal + added));
+  await expect(table.getByLabel(`Tunnit: ${fiDate(date)} ${comment}`, { exact: true })).toHaveValue('1,5');
+  await partnerFilter(page).selectOption({ label: me.name });
+  await expect(tableTotal(table)).toHaveText(fiHours(mineBefore + added));
   await expectNoHorizontalScroll(page, 'hours totals');
 
   // Year page.

@@ -32,10 +32,14 @@ test.describe('no horizontal scroll on main pages', () => {
     await expectNoHorizontalScroll(page, 'gig list (economics open)');
   });
 
-  test('hours totals with a month opened', async ({ page }) => {
+  test('hours totals filtered by a partner and sorted by comment', async ({ page }) => {
     await page.goto('/hours/totals');
-    await page.locator('.hours-month-cell').first().click();
-    await expect(page.locator('.hours-month-detail')).toBeVisible();
-    await expectNoHorizontalScroll(page, 'hours totals (month open)');
+    const table = page.getByRole('table', { name: /^Tuntikirjaukset \d{4}$/ });
+    await expect(table).toBeVisible();
+    await table.getByRole('button', { name: 'Kommentti', exact: true }).click();
+    await expect(table.getByRole('columnheader', { name: 'Kommentti' })).toHaveAttribute('aria-sort', 'ascending');
+    await page.getByRole('combobox', { name: 'Osakas', exact: true }).selectOption({ label: 'Partner C' });
+    await expect(page).toHaveURL(/[?&]partner=/);
+    await expectNoHorizontalScroll(page, 'hours totals (filtered, sorted)');
   });
 });
