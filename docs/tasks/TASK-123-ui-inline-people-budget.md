@@ -1,7 +1,7 @@
 # TASK-123: Inline edit — people and budget
 
 - **owner:** ui
-- **status:** todo
+- **status:** done
 - **spec:** NFR-8, docs/design.md → Inline editing
 - **depends on:** TASK-118
 
