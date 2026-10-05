@@ -65,7 +65,7 @@ VITE_API_PROXY_TARGET=http://localhost:3100 VITE_PORT=5273 npm run dev
 | `src/api/endpoints.ts` | Typed function per endpoint |
 | `src/api/cache.ts` | Shared root query keys and `invalidateYearData()`: call it after every gig, cost line, hours or budget mutation |
 | `src/auth/` | `me` query, auth guard, sign-in page, `useSignedInPartner()` / `useSelectedYear()` |
-| `src/layout/` | App shell: header with year selector + menu (language, sign-out), nav |
+| `src/layout/` | App shell (Layout v2): collapsible sidebar, phone drawer, sticky top bar with year selector, `.page-container` |
 | `src/reference/useReference.ts` | Reference data, loaded once per session and cached |
 | `src/i18n/` | `fi.ts` / `en.ts` texts (glossary terms), label helpers for codes and errors |
 | `src/lib/format.ts` | Money (cents), date, hours and percent formatting per language |
@@ -118,16 +118,48 @@ production builds) and its texts are English on purpose.
 - Write titles and labels in normal case in i18n and JSX; CSS makes them uppercase
   (tests and screen readers see the normal-case text).
 - Icons: `lucide-react`. The app sets 16 px / stroke 1.5 for all icons (`LucideProvider` in
-  `App.tsx`); pass `size` only for exceptions (bottom nav uses 20). Icons are `aria-hidden`
+  `App.tsx`); pass `size` only for exceptions (sidebar items use `--icon-nav` 18 via CSS, ☰ uses 20). Icons are `aria-hidden`
   automatically; give icon-only buttons a label (`IconButton label=…`).
 - Status colour only means status: Sold/Played = `info`, Done/Paid = `ok`, Overdue / Not fully
   staffed / contract warnings = `warn`, Cancelled/Deleted = `danger` (or `muted`).
 - Breakpoints: phone first; `min-width: 600px` (tablet: dialogs centred, 2-column forms, tables
-  instead of cards); `min-width: 900px` (desktop: header nav + icon buttons, no bottom nav).
+  instead of cards); `min-width: 900px` (desktop: sidebar instead of the ☰ drawer);
+  `min-width: 1200px` (`lg` StatGrid spans).
   `useMediaQuery(DESKTOP_QUERY)` from `src/lib/useMediaQuery.ts` gives the same breakpoint in JS.
+  **Breakpoints are viewport widths, and from 900 px the sidebar takes 232 px (64 collapsed).**
+  At 900 px the content column is only about 590 px wide (900 − 232 − 2 × 40), narrower than a
+  600 px phone/tablet layout. Check every screen at 900 px with the sidebar expanded.
 - Pages: one `<PageHead>` (its `h1` is the page title), content directly on the page
-  background; cards and tables bring their own surface. `.page` is now transparent.
+  background; cards and tables bring their own surface. `.page` is transparent.
 - Touch targets stay ≥ 44 px on phones (`--control-h` is 44 px on phones, 36 px on desktop).
+
+### Layout v2: app shell and spacing rules
+
+- **Shell** (`src/layout/AppShell.tsx`). Desktop: `Sidebar` (variant `rail`) on the left with logo,
+  icon nav, language / theme / sign-out and the collapse toggle; a sticky top bar shows the
+  current section (left) and the year selector (right). Phone: a sticky top bar with ☰, the logo
+  and the year; ☰ opens `NavDrawer` with the same `Sidebar` (variant `drawer`). The drawer is a
+  modal dialog: it traps focus, closes on Esc, a backdrop click, navigation or the X, and returns
+  focus to ☰. There is no bottom nav.
+- Collapse state: `localStorage['ig-sidebar']` = `expanded` | `collapsed`
+  (`useSidebarCollapsed()`, try/catch). When collapsed, labels are visually hidden (they stay the
+  accessible names) and appear as a CSS tooltip from `data-tooltip`.
+- **Every route renders inside `.page-container`** (AppShell). It is left-aligned at the sidebar
+  edge, has `--page-pad` on both sides, a content width of at most `--content-max` 1200 px, and
+  `--space-5` / `--space-6` (desktop) above. **Don't add your own max-width or side padding on a
+  page.** Everything shares one left edge.
+- Vertical rhythm comes from the components: `PageHead`, `SectionLabel`, `.divider` and
+  `StatGrid` use `--section-gap` (32 → 40). Don't add extra margins between sections; if a
+  screen needs a different gap, use `--section-gap` / `--grid-gap` / `--space-*`.
+- Grids of tiles/cards: `StatGrid` + `span` (see below). Use `--grid-gap` for hand-made grids.
+- Tables: the cell x-padding is `--cell-pad-x` (= `--card-pad`), so the first column lines up with
+  the content of cards above. Header and body padding are identical. Numeric columns: `numeric`
+  (right, tabular). Rows are at least `--row-h` 48 px.
+- Forms / inline fields: wrap a section's fields in `<FieldList>` to get one label column
+  (`--label-w` 160 px; `labelWidth="sm" | "lg"`). Quiet inline values start exactly at the
+  label's / column header's left edge; only the hover / focus outline extends into the gutter
+  (`--inline-pad-x` + 1 px), so give inline fields at least 9 px of room on the left. Cards and
+  table cells already have it.
 
 ### Tokens (`src/styles/tokens.css`)
 
@@ -136,10 +168,16 @@ production builds) and its texts are English on purpose.
 | Colour | `--bg`, `--surface`, `--surface-2`, `--border`, `--border-strong`, `--text`, `--text-muted`, `--label`, `--accent`, `--accent-contrast`, `--backdrop` |
 | Status | `--info-fg/-bg/-border`, `--ok-fg/-bg/-border`, `--warn-fg/-bg/-border`, `--danger-fg/-bg/-border` |
 | Font | `--font-sans` (Afacad), `--font-mono` (JetBrains Mono) |
-| Type size | `--fs-meta` 10, `--fs-label` 11, `--fs-small` 13, `--fs-body` 15, `--fs-lg` 18, `--fs-figure` 24→28, `--fs-title` 24→32 (px; → = desktop) |
-| Type other | `--lh-tight`, `--lh-body`, `--ls-label` (0.14em), `--ls-title`, `--fw-regular`, `--fw-medium`, `--fw-bold` |
-| Spacing | `--space-1` … `--space-7` = 4/8/12/16/24/32/48 px, `--page-pad` 16→48, `--content-max` |
-| Shape / size | `--radius` (2 px, the max), `--hairline` (1 px), `--tap` 44, `--control-h` 44→36, `--icon` 16, `--icon-stroke`, `--header-h`, `--bottom-nav-h` |
+| Type size | `--fs-meta` 10, `--fs-label` 10, `--fs-small` 12, `--fs-body` 14, `--fs-lg` 16, `--fs-figure` 20, `--fs-title` 20→22 (px; → = desktop) |
+| Type other | `--lh-tight` 1.15, `--lh-body` 1.5, `--ls-label` (0.14em), `--ls-title`, `--fw-regular`, `--fw-medium`, `--fw-bold` |
+| Spacing | `--space-1` … `--space-7` = 4/8/12/16/24/32/48 px |
+| Layout | `--page-pad` 16→40, `--section-gap` 32→40, `--card-pad` 16→20, `--grid-gap` 16, `--content-max` 1200, `--label-w` 160 |
+| Table | `--row-h` 48, `--cell-pad-y` 12, `--cell-pad-x` (= `--card-pad`) |
+| Shape / size | `--radius` (2 px, the max), `--hairline` (1 px), `--tap` 44, `--control-h` 44→36, `--inline-pad-x` 8, `--icon` 16, `--icon-nav` 18, `--icon-stroke` |
+| Shell | `--topbar-h` 56, `--sidebar-w` 232, `--sidebar-w-collapsed` 64, `--drawer-w` min(280 px, 85vw), `--nav-item-h` 44→40 |
+| Motion | `--dur` 200 ms, `--ease`. Always add a `prefers-reduced-motion: reduce` override. |
+| Stacking | `--z-topbar` 20, `--z-sidebar` 30, `--z-drawer` 40, `--z-dialog` 50 |
+| Grid spans | `--span`, `--span-sm`, `--span-md`, `--span-lg` (registered, not inherited; see `StatGrid`) |
 
 
 ### Components (`src/components/`)
@@ -151,9 +189,11 @@ production builds) and its texts are English on purpose.
 | `IconButton` | `icon`, `label` (required: aria-label + tooltip), `variant?: 'plain' \| 'ghost'`, `text?` (short visible code), + `<button>` props | Edit/remove in rows, toolbars. |
 | `PageHead` | `title`, `subtitle?` (mono line), `actions?`, `children?` (above the title, e.g. back link) | `h1` + divider. |
 | `SectionLabel` | `as?: 'h2' \| 'h3' \| 'p'` (h2), `id?`, `children` | Mono label above a group. |
-| `Card` | `as?: 'section' \| 'div' \| 'article'`, `label?`, `title?` (h2), `actions?`, `flush?` (no padding) | Surface panel. |
-| `StatTile` | `label`, `value`, `caption?`, `secondaryValue?`, `secondaryCaption?`, `bars?: MiniBar[]`, `barsLabel?`, `barsCaption?` | A `region` named by `label`. Wrap tiles in `StatGrid`. |
-| `StatGrid` | `children`, `className?` | 1 col → 2 cols (600) → auto-fill 220 px (900). |
+| `Card` | `as?: 'section' \| 'div' \| 'article'`, `label?`, `title?` (h2), `actions?`, `flush?` (no padding), `span?: GridSpan` | Surface panel, `--card-pad`. A `DataTable` in a `flush` card loses its own frame. |
+| `StatTile` | `label`, `value`, `caption?`, `secondaryValue?`, `secondaryCaption?`, `bars?: MiniBar[]`, `barsLabel?`, `barsCaption?`, `span?: GridSpan` | A `region` named by `label`. Wrap tiles in `StatGrid`. |
+| `StatGrid` | `children`, `className?` | **12-column grid**, gap `--grid-gap`, rows stretch (equal heights per row), margin-bottom `--section-gap`. Children: `StatTile` / `Card` with `span`, or any element with `style={spanStyle(span)}`, or CSS `--span*` on the children. |
+| `GridSpan`, `spanStyle()` | `grid.ts`: `number` (all widths) or `{ base?, sm?, md?, lg? }` (< 600 / ≥ 600 / ≥ 900 / ≥ 1200 viewport) | A missing breakpoint falls back to the next smaller one. No span = 12 / 6 / 6 / 3. Example: `span={{ base: 6, sm: 4, lg: 2 }}` = 2, 3, then 6 per row. CSS version: `.my-grid > * { --span: 6; --span-lg: 3; }`. |
+| `FieldList` | `labelWidth?: 'sm' \| 'md' \| 'lg'` (120 / 160 / 200 px), `className?`, `children` (`Field`s / inline fields) | Phones: label above. From 600 px: label column + control column; hint/error under the control; checkbox groups put their legend in the label column. |
 | `MiniBars` | `bars: { label, value, current?, valueText? }[]`, `label` (accessible name), `showLabels?` (true), `height?` (48) | Bar labels must be unique. Screen readers get a "label: valueText" list. |
 | `StatusTag` | `tone?: 'info' \| 'ok' \| 'warn' \| 'danger' \| 'muted'` (muted), `children`, `title?` | Gig statuses: use `GigStatusTag` (gigs feature). |
 | `Notice` | `tone?: 'info' \| 'ok' \| 'warn' \| 'danger'` (info), `role?: 'alert' \| 'status' \| 'note'`, `children` | Same as `.notice` / `.notice-*`. |
@@ -247,19 +287,23 @@ status, error, dirty }`, rendered in `InlineFieldFrame` (`label`, `hideLabel?`, 
 gives the translated message. Texts: `inline.*` in `src/i18n/fi.ts` / `en.ts`.
 
 Theme in code: `useTheme()` → `{ theme, setTheme, toggleTheme }` (`src/theme/theme.ts`).
-Header controls: `ThemeToggle` / `ThemeButtons`, `LanguageToggle` / `LanguageButtons` in `src/layout/`.
+Shell parts in `src/layout/`: `Sidebar` (rail / drawer), `NavDrawer` (modal drawer, uses
+`useFocusTrap` from `src/lib/`), `sidebarState.ts`, `navItems.ts` (`NAV_ITEMS`,
+`activeNavItem(pathname)`), `YearSelector`, `ThemeToggle` and `LanguageButtons` (sign-in page).
 
 ### Shared classes (for hand-written markup)
 
 | Class | Use |
 |---|---|
-| `.label` / `.meta` / `.mono` | Mono uppercase label (11 px) / mono caption (10 px) / mono text |
-| `.muted`, `.small`, `.num`, `.visually-hidden` | Secondary text, 13 px text, right-aligned tabular number, screen-reader only |
+| `.label` / `.meta` / `.mono` | Mono uppercase label (10 px) / mono caption (10 px) / mono text |
+| `.muted`, `.small`, `.num`, `.visually-hidden` | Secondary text, 12 px text, right-aligned tabular number, screen-reader only |
 | `.btn` + `.btn-ghost/-primary/-danger`, `.btn-sm`, `.btn-block`, `.icon-btn` | What `Button`/`IconButton` render. |
 | `.segmented` | Toggle group of `<button aria-pressed>` |
 | `.tag .tag-<tone>` | What `StatusTag` renders. For gig statuses use `GigStatusTag` / `GigDeletedTag` (`src/features/gigs/GigStatusTag.tsx`; tones in `gigStatusTone.ts`). |
 | `.notice .notice-<ok\|warn\|error\|danger>` | Message box |
-| `.card`, `.stat-grid`, `.stat-tile`, `.section-label`, `.page-head`, `.divider` | As the components |
+| `.card`, `.stat-grid`, `.stat-tile`, `.section-label`, `.page-head`, `.divider`, `.field-list` | As the components |
+| `.page-container` | The content container (AppShell renders it; do not nest another) |
+| `.nav-item` (+ `.nav-item-label`, `data-tooltip`) | Sidebar item look (links and buttons) |
 | `.table-wrap > table.data-table[.data-table-cards]` | Table look; for card mode give each `td` a `data-label`, `.cell-primary` for the card title, `.hide-phone` |
 | `.form-row`, `.form-actions`, `.check-grid`, `label.check`, `.field-error`, `.field-hint` | Forms |
 | `.back-link`, `.empty`, `.filters` | Mono back link above a title, empty-state line, filter bar (segmented + controls). Used by People / Tasks; new screens should prefer their own scoped class. |

@@ -5,8 +5,10 @@
   margin: 0 0 var(--space-5);
 }
 /* Six tiles: 2 columns on phones (StatGrid default is 1), 3 from 600 px, 6 on wide screens. */
-.gig-list-page .gig-stat-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+.gig-list-page .gig-stat-grid > * {
+  --span: 6;
+  --span-sm: 4;
+  --span-lg: 2;
 }
 .gig-list-page .gig-stat-grid .stat-tile-value {
   overflow-wrap: anywhere;
@@ -261,9 +263,6 @@
 
 /* ---------- ≥ 600 px ---------- */
 @media (min-width: 600px) {
-  .gig-list-page .gig-stat-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
   .gig-list-page .gig-filters {
     grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr);
     align-items: end;
@@ -294,11 +293,5 @@
     flex-direction: row;
     align-items: center;
     gap: var(--space-1) var(--space-3);
-  }
-}
-
-@media (min-width: 1200px) {
-  .gig-list-page .gig-stat-grid {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 }

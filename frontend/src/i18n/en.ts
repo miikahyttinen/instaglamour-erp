@@ -21,6 +21,9 @@ const en: Resources = {
     tasks: 'Tasks',
     hours: 'Hours',
     budget: 'Budget',
+    collapse: 'Collapse menu',
+    expand: 'Expand menu',
+    close: 'Close menu',
   },
   header: {
     selectedYear: 'Selected year',

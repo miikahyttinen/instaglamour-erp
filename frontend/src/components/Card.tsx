@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { spanStyle, type GridSpan } from './grid';
 
 export interface CardProps {
   /** Element to render (default `section`). */
@@ -11,15 +12,29 @@ export interface CardProps {
   actions?: ReactNode;
   /** No inner padding — for a DataTable or list that runs edge to edge. */
   flush?: boolean;
+  /** Columns when the card sits in a StatGrid (see `GridSpan`). */
+  span?: GridSpan;
   className?: string;
   children?: ReactNode;
 }
 
-/** Surface panel: --surface, 1 px hairline border, 2 px radius, no shadow. */
-export function Card({ as: Tag = 'section', label, title, actions, flush, className, children }: CardProps) {
+/** Surface panel: --surface, 1 px hairline border, 2 px radius, no shadow, `--card-pad` padding. */
+export function Card({
+  as: Tag = 'section',
+  label,
+  title,
+  actions,
+  flush,
+  span,
+  className,
+  children,
+}: CardProps) {
   const hasHead = label || title || actions;
   return (
-    <Tag className={['card', flush && 'card-flush', className].filter(Boolean).join(' ')}>
+    <Tag
+      className={['card', flush && 'card-flush', className].filter(Boolean).join(' ')}
+      style={spanStyle(span)}
+    >
       {hasHead && (
         <div className="card-head">
           <div className="card-head-text">

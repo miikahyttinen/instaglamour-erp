@@ -11,7 +11,10 @@ import { Logo } from './Logo';
 import { MiniBars } from './MiniBars';
 import { PageHead } from './PageHead';
 import { SectionLabel } from './SectionLabel';
-import { StatTile } from './StatTile';
+import { FieldList } from './FieldList';
+import { Field } from './fields';
+import { spanStyle } from './grid';
+import { StatGrid, StatTile } from './StatTile';
 import { StatusTag } from './StatusTag';
 
 describe('Button', () => {
@@ -226,5 +229,51 @@ describe('Logo', () => {
     setTheme('dark');
     render(<Logo size="large" theme="light" />);
     expect(screen.getByRole('img').getAttribute('src')).toMatch(/logo-black-large\.png/);
+  });
+});
+
+describe('StatGrid spans (12 columns)', () => {
+  it('spanStyle sets only the given breakpoints, clamped to 1…12', () => {
+    expect(spanStyle(undefined)).toBeUndefined();
+    expect(spanStyle(6)).toEqual({ '--span': 6 });
+    expect(spanStyle({ base: 6, sm: 4, lg: 2 })).toEqual({ '--span': 6, '--span-sm': 4, '--span-lg': 2 });
+    expect(spanStyle({ md: 20, lg: 0 })).toEqual({ '--span-md': 12, '--span-lg': 1 });
+  });
+
+  it('StatTile and Card pass their span to the grid item; no span = CSS default', () => {
+    render(
+      <StatGrid className="extra">
+        <StatTile label="Gigs" value="12" span={{ base: 12, md: 4 }} />
+        <Card label="Side" span={8}>
+          x
+        </Card>
+        <StatTile label="Plain" value="1" />
+      </StatGrid>,
+    );
+    const tile = screen.getByRole('region', { name: 'Gigs' });
+    expect(tile.parentElement).toHaveClass('stat-grid', 'extra');
+    expect(tile.style.getPropertyValue('--span')).toBe('12');
+    expect(tile.style.getPropertyValue('--span-md')).toBe('4');
+    expect(screen.getByText('Side').closest<HTMLElement>('.card')!.style.getPropertyValue('--span')).toBe('8');
+    expect(screen.getByRole('region', { name: 'Plain' })).not.toHaveAttribute('style');
+  });
+});
+
+describe('FieldList', () => {
+  it('wraps fields in a label-column list (md default, sm / lg variants)', () => {
+    const { container, rerender } = render(
+      <FieldList>
+        <Field label="Venue">{(f) => <input {...f} type="text" />}</Field>
+      </FieldList>,
+    );
+    expect(screen.getByRole('textbox', { name: 'Venue' })).toBeInTheDocument();
+    expect(container.firstElementChild).toHaveClass('field-list');
+    expect(container.firstElementChild).not.toHaveClass('field-list-md');
+    rerender(
+      <FieldList labelWidth="lg" className="x">
+        <Field label="Venue">{(f) => <input {...f} type="text" />}</Field>
+      </FieldList>,
+    );
+    expect(container.firstElementChild).toHaveClass('field-list', 'field-list-lg', 'x');
   });
 });

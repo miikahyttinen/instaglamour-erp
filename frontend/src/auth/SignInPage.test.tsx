@@ -49,7 +49,9 @@ describe('sign-in page', () => {
     expect(await screen.findByRole('heading', { name: /^Vuosi \d{4}$/ })).toBeInTheDocument();
     const year = String(new Date().getFullYear());
     expect(screen.getAllByRole('combobox', { name: 'Valittu vuosi' })[0]).toHaveValue(year);
-    const nav = screen.getAllByRole('navigation', { name: 'Päävalikko' })[0]!;
+    // Phone: the navigation is in the ☰ drawer.
+    await user.click(screen.getByRole('button', { name: 'Valikko' }));
+    const nav = screen.getByRole('navigation', { name: 'Päävalikko' });
     for (const label of ['Vuosi', 'Keikat', 'Henkilöt', 'Tehtävät', 'Tunnit', 'Budjetti']) {
       expect(within(nav).getByRole('link', { name: label })).toBeInTheDocument();
     }

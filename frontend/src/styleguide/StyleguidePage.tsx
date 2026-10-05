@@ -1,6 +1,6 @@
 // Dev-only component reference (/styleguide, not in the navigation, not in production builds).
-// The reference for the screen restyles (TASK-111…116): if a screen needs something that is not
-// here, add it here first. Synthetic data only (BR-090). Texts are English on purpose: this page
+// The reference for screen work (Layout v2: TASK-125…130): if a screen needs something that is
+// not here, add it here first. Synthetic data only (BR-090). Texts are English on purpose: this page
 // is for developers and is not translated.
 import {
   Check,
@@ -35,6 +35,7 @@ import { ThemeToggle } from '../layout/ThemeToggle';
 import { formatMoney } from '../lib/format';
 import type { Theme } from '../theme/theme';
 import { InlineShowcase } from './InlineShowcase';
+import { LayoutShowcase } from './LayoutShowcase';
 import './styleguide.css';
 
 const COLOR_TOKENS = [
@@ -238,14 +239,16 @@ function Showcase({ theme }: { theme: Theme }) {
         ))}
       </div>
 
+      <LayoutShowcase theme={theme} />
+
       <SectionLabel>Typography</SectionLabel>
       <Card>
-        <p className="sg-type-title">Page title · Afacad 700 uppercase</p>
-        <h2>Heading h2 · Afacad 700 18 px</h2>
-        <h3>Heading h3 · Afacad 500 16 px</h3>
-        <p>Body text · Afacad 400 15 px. The quick brown fox jumps over the lazy dog. Åäö.</p>
-        <p className="muted small">.muted .small · secondary text 13 px</p>
-        <p className="label">.label · mono 11 px uppercase, wide spacing</p>
+        <p className="sg-type-title">Page title · Afacad 700 uppercase 22 px</p>
+        <h2>Heading h2 · Afacad 700 16 px</h2>
+        <h3>Heading h3 · Afacad 700 14 px</h3>
+        <p>Body text · Afacad 400 14 px. The quick brown fox jumps over the lazy dog. Åäö.</p>
+        <p className="muted small">.muted .small · secondary text 12 px</p>
+        <p className="label">.label · mono 10 px uppercase, wide spacing</p>
         <p className="meta">.meta · mono 10 px caption</p>
         <p className="stat-tile-value">12 345 €</p>
         <p className="mono">.mono · 2030-01-01 · 12:30</p>

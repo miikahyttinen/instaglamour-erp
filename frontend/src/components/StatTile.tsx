@@ -1,4 +1,5 @@
 import { useId, type ReactNode } from 'react';
+import { spanStyle, type GridSpan } from './grid';
 import { MiniBars, type MiniBar } from './MiniBars';
 
 export interface StatTileProps {
@@ -18,6 +19,8 @@ export interface StatTileProps {
   barsLabel?: string;
   /** Mono caption under the chart. */
   barsCaption?: string;
+  /** Columns in the 12-column StatGrid (see `GridSpan`). Default 12 / 6 / 6 / 3. */
+  span?: GridSpan;
   className?: string;
 }
 
@@ -31,6 +34,7 @@ export function StatTile({
   bars,
   barsLabel,
   barsCaption,
+  span,
   className,
 }: StatTileProps) {
   const labelId = useId();
@@ -38,6 +42,7 @@ export function StatTile({
     <section
       className={['stat-tile', className].filter(Boolean).join(' ')}
       aria-labelledby={labelId}
+      style={spanStyle(span)}
     >
       <p id={labelId} className="label stat-tile-label">
         {label}
@@ -60,7 +65,16 @@ export function StatTile({
   );
 }
 
-/** Responsive grid for StatTiles: 1 column on phones, 2 from 600 px, auto-fill on desktop. */
-export function StatGrid({ children, className }: { children: ReactNode; className?: string }) {
+export interface StatGridProps {
+  children: ReactNode;
+  className?: string;
+}
+
+/**
+ * 12-column grid for StatTiles and Cards (gap `--grid-gap`, equal heights per row). Give each
+ * child a `span` (StatTile / Card) or `style={spanStyle(...)}` (hand-written). Without spans:
+ * 1 per row on phones, 2 from 600 px, 4 from 1200 px.
+ */
+export function StatGrid({ children, className }: StatGridProps) {
   return <div className={['stat-grid', className].filter(Boolean).join(' ')}>{children}</div>;
 }

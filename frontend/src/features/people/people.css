@@ -157,7 +157,7 @@
     border: 0;
   }
   /* Two totals side by side keep the table in view. */
-  .people-page .stat-grid.person-totals {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .people-page .stat-grid.person-totals > * {
+    --span: 6;
   }
 }
