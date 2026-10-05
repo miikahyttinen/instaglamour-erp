@@ -19,12 +19,15 @@ Run of 2026-10-05 against `main` at `18de851` (inline editing, TASK-118…123), 
 [TASK-008](#task-008--suite-update-for-inline-editing): **71 passed, 3 skipped (1 by design,
 2 `test.fixme` for F-004), 0 failed** at 375 px and 1280 px from a fresh database.
 
+F-004 fixed in TASK-124: its test runs again (`tests/07-hours.spec.ts`: 6 passed at 375 px and
+1280 px).
+
 | Id | Severity | Side to fix | Summary |
 |---|---|---|---|
 | F-001 | minor | frontend | `/api` proxy target and dev port are hard-coded in `vite.config.ts` |
 | F-002 | minor | backend | `npm install` fails on a fresh checkout without `DATABASE_URL` |
 | F-003 | minor | frontend | Year page tiles: secondary figure is read before its label ("Keikkoja 5 1 Peruttuja") |
-| F-004 | major | frontend | My hours: an inline hours error does not wrap; the page scrolls sideways and the message is cut off |
+| F-004 | major | frontend | **Fixed (TASK-124).** My hours: an inline hours error does not wrap; the page scrolls sideways and the message is cut off |
 
 ---
 
@@ -82,6 +85,10 @@ Run of 2026-10-05 against `main` at `18de851` (inline editing, TASK-118…123), 
 
 ## F-004 — My hours: an inline hours error makes the page scroll sideways
 
+- **Status:** fixed in TASK-124. `nowrap` now applies only to the read-only value and the inline
+  control (`.hour-amount:not(.inline-field)`, `.hour-amount .inline-control`); the field error
+  wraps (`white-space: normal; overflow-wrap: anywhere`), right-aligned in its column. The test
+  below is a regular `test` again and passes at 375 px and 1280 px.
 - **Severity:** major (NFR-1; on a phone the only explanation of the error is cut off)
 - **Where:** `frontend/src/features/hours/hours.css` → `.hours-page .hour-amount { white-space: nowrap; }`
   (line ~102). The inline field's error paragraph (`.field-error`, from
@@ -96,7 +103,7 @@ Run of 2026-10-05 against `main` at `18de851` (inline editing, TASK-118…123), 
 - **Possible fix:** limit `nowrap` to the value, e.g. `.hours-page .hour-amount .inline-control
   { white-space: nowrap; }` and `.hours-page .hour-amount .field-error { white-space: normal;
   text-align: right; }` (or let the error span the whole grid row).
-- **Tests:** `e2e/tests/07-hours.spec.ts` → `test.fixme('an invalid-hours error does not cause
+- **Tests:** `e2e/tests/07-hours.spec.ts` → (was `test.fixme`) `test('an invalid-hours error does not cause
   horizontal scrolling (F-004)')`. The assertion was moved out of the inline-hours test into its own
   test so the rest of that flow (save, Esc, invalid not saved, reload) keeps running. Other inline
   errors (gig price, cost lines, tasks, people, budget) do not overflow; those tests check it.
