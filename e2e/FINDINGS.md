@@ -22,6 +22,12 @@ Run of 2026-10-05 against `main` at `18de851` (inline editing, TASK-118…123), 
 F-004 fixed in TASK-124: its test runs again (`tests/07-hours.spec.ts`: 6 passed at 375 px and
 1280 px).
 
+Run of 2026-10-05 against `main` at `b8437f8` (Layout v2, TASK-125…130; TASK-131 / TASK-132 not
+merged yet), see [TASK-009](#task-009--suite-update-for-layout-v2): **102 passed, 0 failed,
+30 skipped** from a fresh database — 2 `test.fixme` for F-005 (one per project), 1 by design
+(economics toggle, gig table ≥ 1200 px), 27 viewport-only (15 desktop-sidebar tests at 375 px,
+12 phone-drawer tests at 1280 px).
+
 | Id | Severity | Side to fix | Summary |
 |---|---|---|---|
 | F-001 | minor | frontend | `/api` proxy target and dev port are hard-coded in `vite.config.ts` |
