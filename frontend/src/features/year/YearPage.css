@@ -1,14 +1,32 @@
-/* Year page (UC-022). Phone first: one column; from 900 px gigs and upcoming gigs span the
-   width and hours | budget sit side by side. Tokens and shared classes only. */
+/* Year page (UC-022). The sections sit on the same 12-column grid as the gig tiles
+   (--grid-gap columns, --section-gap rows): gigs and upcoming gigs span the width; from 600 px
+   hours | budget sit side by side on the gig tiles' middle line, equally tall.
+   Tokens and shared classes only. */
 
 .year-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--space-5);
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: var(--section-gap) var(--grid-gap);
 }
 
 .year-section {
+  grid-column: 1 / -1;
   min-width: 0;
+}
+.year-hours,
+.year-budget {
+  display: flex;
+  flex-direction: column;
+}
+.year-hours > .year-tile,
+.year-budget > .table-wrap {
+  flex: 1 1 auto;
+}
+@media (min-width: 600px) {
+  .year-hours,
+  .year-budget {
+    grid-column: span 6;
+  }
 }
 
 /* Section label is a link to the section's page. */
@@ -48,18 +66,39 @@
 .year-tile .year-fig-label {
   overflow-wrap: anywhere;
 }
+/* Narrow tiles (2 per row on phones): the secondary caption drops under its figure. */
+.year-tile .stat-tile-secondary {
+  flex-wrap: wrap;
+  row-gap: var(--space-1);
+}
+
+/* Gig tiles: 2 per row up to 1199 px (phones too), 4 per row from 1200 px. Each tile is a
+   4-row subgrid (label | figure | secondary | chart), so labels, figures, secondary figures
+   and charts line up across a row and the tiles in a row are equally tall. */
 .stat-grid.year-tiles {
   margin-bottom: 0;
 }
-
-/* ---- Year result: emphasised tile in the page head ---- */
-
-.year-page .page-head {
-  align-items: stretch;
+.year-tiles > .year-tile {
+  --span: 6;
+  --span-lg: 3;
+  display: grid;
+  grid-template-rows: subgrid;
+  grid-row: span 4;
+  row-gap: var(--space-2);
 }
-.year-page .page-head-text {
-  align-self: flex-end;
+.year-tiles .stat-tile-value,
+.year-tiles .stat-tile-secondary {
+  margin-top: 0;
 }
+.year-tiles .stat-tile-bars {
+  align-self: end;
+  padding-top: 0;
+}
+
+/* ---- Year result: emphasised tile in the page head ----
+   Phones: full width under the title. From 600 px: as wide as one gig tile (1 of 2, from
+   1200 px 1 of 4), right-aligned over the last one, figure on the title baseline. */
+
 .year-page .page-actions {
   flex: 1 1 100%;
 }
@@ -75,11 +114,21 @@
   font-size: var(--fs-title);
 }
 @media (min-width: 600px) {
-  .year-page .page-actions {
-    flex: 0 1 auto;
+  .year-page .page-head-text {
+    flex: 1 1 0;
   }
-  .year-result {
-    min-width: calc(6 * var(--space-7));
+  /* Lift the tile by the subtitle line minus its own bottom padding + border, so its figure
+     (same size and line height as the title) sits on the title baseline. */
+  .year-page .page-actions {
+    flex: 0 0 calc((100% - var(--grid-gap)) / 2);
+    margin-bottom: calc(
+      var(--space-2) + var(--fs-small) * var(--lh-body) - var(--card-pad) - var(--hairline)
+    );
+  }
+}
+@media (min-width: 1200px) {
+  .year-page .page-actions {
+    flex-basis: calc((100% - 3 * var(--grid-gap)) / 4);
   }
 }
 
@@ -153,15 +202,5 @@
   /* Phone cards: no empty "staffing" line when the gig is fully staffed. */
   .year-upcoming-table td:empty {
     display: none;
-  }
-}
-
-@media (min-width: 900px) {
-  .year-layout {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .year-gigs,
-  .year-upcoming {
-    grid-column: 1 / -1;
   }
 }
