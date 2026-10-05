@@ -1,7 +1,7 @@
 # TASK-121: Inline edit — tasks
 
 - **owner:** ui
-- **status:** todo
+- **status:** done
 - **spec:** NFR-8, docs/design.md → Inline editing
 - **depends on:** TASK-118
 
