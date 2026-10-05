@@ -1,7 +1,7 @@
 # TASK-127: Align gig page
 
 - **owner:** ui
-- **status:** todo
+- **status:** done
 - **spec:** docs/design.md → "Layout v2"
 - **depends on:** TASK-125
 

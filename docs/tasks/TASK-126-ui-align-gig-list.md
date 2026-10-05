@@ -1,7 +1,7 @@
 # TASK-126: Align gig list and new gig form
 
 - **owner:** ui
-- **status:** todo
+- **status:** done
 - **spec:** docs/design.md → "Layout v2"
 - **depends on:** TASK-125
 

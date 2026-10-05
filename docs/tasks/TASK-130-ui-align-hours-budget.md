@@ -1,7 +1,7 @@
 # TASK-130: Align hours and budget
 
 - **owner:** ui
-- **status:** todo
+- **status:** done
 - **spec:** docs/design.md → "Layout v2"
 - **depends on:** TASK-125
 
