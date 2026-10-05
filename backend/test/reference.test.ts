@@ -2,7 +2,7 @@ import path from 'node:path';
 import type { FastifyInstance } from 'fastify';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { loadSeed, readSeedFile } from '../seed/load.js';
-import { EXPENSE_CATEGORIES, INTERNAL_ROLES, MUSICIAN_ROLES, TECHNICAL_SETUPS } from '../src/domain/enums.js';
+import { EXPENSE_CATEGORIES, INTERNAL_ROLES, LOGISTICS, MUSICIAN_ROLES, TECHNICAL_SETUPS } from '../src/domain/enums.js';
 import { closeTestDb, login, resetDb, testApp, testDb } from './helpers.js';
 
 const exampleSeed = path.resolve(import.meta.dirname, '../seed/seed.example.json');
@@ -27,7 +27,7 @@ describe('GET /api/reference', () => {
     const body = res.json();
 
     expect(Object.keys(body).sort()).toEqual(
-      ['budgetCategories', 'costTypes', 'lineupTemplates', 'partners', 'settings', 'technicalSetups'].sort(),
+      ['budgetCategories', 'costTypes', 'lineupTemplates', 'logistics', 'partners', 'settings', 'technicalSetups'].sort(),
     );
 
     expect(body.partners).toHaveLength(5);
@@ -67,7 +67,10 @@ describe('GET /api/reference', () => {
     expect(body.costTypes.musicianRoles).toContain('VOC');
     expect(INTERNAL_ROLES).toHaveLength(3);
     expect(body.costTypes.expenseCategories[0]).toBe('FUEL');
+    expect(body.technicalSetups).toEqual(['HOUSE_TECH', 'SET_A', 'SET_B', 'SET_C']);
     expect(body.technicalSetups).toEqual([...TECHNICAL_SETUPS]);
+    expect(body.logistics).toEqual(['OWN_VAN', 'RENTAL_VAN', 'TAXI', 'OTHER']);
+    expect(body.logistics).toEqual([...LOGISTICS]);
 
     expect(body.budgetCategories).toHaveLength(10);
     expect(body.budgetCategories[0]).toEqual({ id: expect.any(String), code: 'RENT', nameFi: 'Vuokra', nameEn: 'Rent', budgeted: true });

@@ -43,7 +43,9 @@ describe('POST /api/gigs', () => {
       lineupTemplateId: world.templateA.id,
       lineupName: 'Template A',
       venue: 'Venue X',
-      technicalSetup: ['HOUSE_TECH'],
+      technicalSetup: 'HOUSE_TECH',
+      logistics: null,
+      houseTechnician: false,
       sellerId: world.a.id,
       producerId: world.b.id,
       priceCents: 100000,
@@ -125,7 +127,9 @@ describe('POST /api/gigs', () => {
     expect(res.statusCode).toBe(201);
     expect(res.json()).toMatchObject({
       endDate: '2026-07-02',
-      technicalSetup: [],
+      technicalSetup: null,
+      logistics: null,
+      houseTechnician: false,
       additionalSalesCents: 0,
       marginBudgetPct: null,
       marginActualPct: null,
@@ -146,7 +150,17 @@ describe('POST /api/gigs', () => {
     [{ priceCents: 1000.5 }, { priceCents: 'INVALID_VALUE' }],
     [{ priceCents: '1000' }, { priceCents: 'INVALID_VALUE' }],
     [{ additionalSalesCents: -1000 }, { additionalSalesCents: 'NEGATIVE_AMOUNT' }],
-    [{ technicalSetup: ['NOPE'] }, { technicalSetup: 'INVALID_VALUE' }],
+    [{ technicalSetup: 'NOPE' }, { technicalSetup: 'INVALID_VALUE' }],
+    [{ technicalSetup: ['SET_A'] }, { technicalSetup: 'INVALID_VALUE' }],
+    [{ technicalSetup: 'HOUSE_TECHNICIAN' }, { technicalSetup: 'INVALID_VALUE' }],
+    [{ technicalSetup: 'OWN_PA' }, { technicalSetup: 'INVALID_VALUE' }],
+    [{ technicalSetup: 'set_a' }, { technicalSetup: 'INVALID_VALUE' }],
+    [{ logistics: 'VAN' }, { logistics: 'INVALID_VALUE' }],
+    [{ logistics: ['OWN_VAN'] }, { logistics: 'INVALID_VALUE' }],
+    [{ logistics: 1 }, { logistics: 'INVALID_VALUE' }],
+    [{ houseTechnician: 'true' }, { houseTechnician: 'INVALID_VALUE' }],
+    [{ houseTechnician: null }, { houseTechnician: 'INVALID_VALUE' }],
+    [{ houseTechnician: 1 }, { houseTechnician: 'INVALID_VALUE' }],
     [{ sellerId: undefined }, { sellerId: 'REQUIRED' }],
     [{ sellerId: UNKNOWN_ID }, { sellerId: 'UNKNOWN_REFERENCE' }],
     [{ producerId: 'not-a-uuid' }, { producerId: 'UNKNOWN_REFERENCE' }],
@@ -310,7 +324,9 @@ describe('PATCH /api/gigs/{id}', () => {
     const res = await call(s, 'PATCH', `/api/gigs/${gig.id}`, {
       venue: 'Venue Y',
       lineupName: 'Template A Big',
-      technicalSetup: ['SET_A', 'VAN'],
+      technicalSetup: 'SET_A',
+      logistics: 'OWN_VAN',
+      houseTechnician: true,
       priceCents: 200000,
       additionalSalesCents: 10000,
       additionalSalesDescription: 'Extra hour',
@@ -322,7 +338,9 @@ describe('PATCH /api/gigs/{id}', () => {
     expect(updated).toMatchObject({
       venue: 'Venue Y',
       lineupName: 'Template A Big',
-      technicalSetup: ['SET_A', 'VAN'],
+      technicalSetup: 'SET_A',
+      logistics: 'OWN_VAN',
+      houseTechnician: true,
       priceCents: 200000,
       additionalSalesCents: 10000,
       totalPriceCents: 210000,
@@ -335,7 +353,9 @@ describe('PATCH /api/gigs/{id}', () => {
       changes: [
         { field: 'lineupName', from: 'Template A', to: 'Template A Big' },
         { field: 'venue', from: 'Venue X', to: 'Venue Y' },
-        { field: 'technicalSetup', from: ['HOUSE_TECH'], to: ['SET_A', 'VAN'] },
+        { field: 'technicalSetup', from: 'HOUSE_TECH', to: 'SET_A' },
+        { field: 'logistics', from: null, to: 'OWN_VAN' },
+        { field: 'houseTechnician', from: false, to: true },
         { field: 'priceCents', from: 100000, to: 200000 },
         { field: 'additionalSalesCents', from: 0, to: 10000 },
         { field: 'additionalSalesDescription', from: null, to: 'Extra hour' },
@@ -353,6 +373,47 @@ describe('PATCH /api/gigs/{id}', () => {
     const events = await history(s, gig.id);
     expect(events.map((e) => e.type)).toEqual(['UPDATED', 'CREATED']);
     expect(events[0]!.details.changes).toEqual([{ field: 'priceCents', from: 100000, to: 200000 }]);
+  });
+
+  it('creates with technical setup, logistics and house technician', async () => {
+    const gig = await createGig(s, { technicalSetup: 'SET_C', logistics: 'TAXI', houseTechnician: true });
+    expect(gig).toMatchObject({ technicalSetup: 'SET_C', logistics: 'TAXI', houseTechnician: true });
+    const again = (await call(s, 'GET', `/api/gigs/${gig.id}`)).json();
+    expect(again).toMatchObject({ technicalSetup: 'SET_C', logistics: 'TAXI', houseTechnician: true });
+  });
+
+  it.each(['HOUSE_TECH', 'SET_A', 'SET_B', 'SET_C'])('accepts technicalSetup %s', async (value) => {
+    expect((await createGig(s, { technicalSetup: value })).technicalSetup).toBe(value);
+  });
+
+  it.each(['OWN_VAN', 'RENTAL_VAN', 'TAXI', 'OTHER'])('accepts logistics %s', async (value) => {
+    expect((await createGig(s, { logistics: value })).logistics).toBe(value);
+  });
+
+  it('clears technical setup and logistics with null and logs old → new', async () => {
+    const gig = await createGig(s, { technicalSetup: 'SET_B', logistics: 'RENTAL_VAN', houseTechnician: true });
+    const res = await call(s, 'PATCH', `/api/gigs/${gig.id}`, { technicalSetup: null, logistics: null, houseTechnician: false });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().gig).toMatchObject({ technicalSetup: null, logistics: null, houseTechnician: false });
+    const events = await history(s, gig.id);
+    expect(events[0]!.details.changes).toEqual([
+      { field: 'technicalSetup', from: 'SET_B', to: null },
+      { field: 'logistics', from: 'RENTAL_VAN', to: null },
+      { field: 'houseTechnician', from: true, to: false },
+    ]);
+  });
+
+  it('writes no event when the three fields are unchanged', async () => {
+    const gig = await createGig(s, { technicalSetup: 'SET_A', logistics: 'OTHER', houseTechnician: true });
+    const res = await call(s, 'PATCH', `/api/gigs/${gig.id}`, { technicalSetup: 'SET_A', logistics: 'OTHER', houseTechnician: true });
+    expect(res.statusCode).toBe(200);
+    expect((await history(s, gig.id)).map((e) => e.type)).toEqual(['CREATED']);
+  });
+
+  it('keeps the other two fields when only one is sent', async () => {
+    const gig = await createGig(s, { technicalSetup: 'SET_A', logistics: 'OWN_VAN', houseTechnician: true });
+    const res = await call(s, 'PATCH', `/api/gigs/${gig.id}`, { logistics: 'TAXI' });
+    expect(res.json().gig).toMatchObject({ technicalSetup: 'SET_A', logistics: 'TAXI', houseTechnician: true });
   });
 
   it('clears optional text with null or blank', async () => {
@@ -376,7 +437,11 @@ describe('PATCH /api/gigs/{id}', () => {
     [{ lineupName: null }, { lineupName: 'REQUIRED' }],
     [{ priceCents: -10000 }, { priceCents: 'NEGATIVE_AMOUNT' }],
     [{ priceCents: null }, { priceCents: 'REQUIRED' }],
-    [{ technicalSetup: 'SET_A' }, { technicalSetup: 'INVALID_VALUE' }],
+    [{ technicalSetup: ['SET_A'] }, { technicalSetup: 'INVALID_VALUE' }],
+    [{ technicalSetup: 'VAN' }, { technicalSetup: 'INVALID_VALUE' }],
+    [{ logistics: 'BUS' }, { logistics: 'INVALID_VALUE' }],
+    [{ houseTechnician: null }, { houseTechnician: 'INVALID_VALUE' }],
+    [{ houseTechnician: 'yes' }, { houseTechnician: 'INVALID_VALUE' }],
     [{ sellerId: UNKNOWN_ID }, { sellerId: 'UNKNOWN_REFERENCE' }],
     [{ producerId: 'x' }, { producerId: 'UNKNOWN_REFERENCE' }],
     [{ additionalSalesDescription: 'x'.repeat(501) }, { additionalSalesDescription: 'TOO_LONG' }],
