@@ -2,7 +2,7 @@ import { http, HttpResponse } from 'msw';
 import type { FieldCode } from '../api/enums';
 import { LANGUAGES } from '../api/enums';
 import type { DevLoginRequest, ReferenceData, UpdateMeRequest } from '../api/types';
-import { budgetHandlers } from './budgetHandlers';
+import { budgetCategoryHandlers, budgetHandlers } from './budgetHandlers';
 import { db, setMockSession } from './data';
 import { attachmentHandlers, costLineHandlers, gigHandlers } from './gigHandlers';
 import { hoursHandlers } from './hoursHandlers';
@@ -76,4 +76,5 @@ export const handlers = [
   ...tasksHandlers,
   ...hoursHandlers,
   ...budgetHandlers,
+  ...budgetCategoryHandlers,
 ];

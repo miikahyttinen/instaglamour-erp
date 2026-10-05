@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { invalidateYearData, rootKeys } from '../../api/cache';
-import { budgetApi } from '../../api/endpoints';
-import type { BudgetResponse, BudgetRow, BudgetRowUpdate, Id } from '../../api/types';
+import { budgetApi, budgetCategoriesApi } from '../../api/endpoints';
+import type { BudgetCategory, BudgetResponse, BudgetRow, BudgetRowUpdate, Id, ReferenceData } from '../../api/types';
+import { referenceKey } from '../../reference/useReference';
 
 export const budgetKey = (year: number) => [...rootKeys.budget, year] as const;
 
@@ -16,7 +17,6 @@ export const AMOUNT_FIELDS = [
   'actualIncomeCents',
 ] as const;
 export type AmountField = (typeof AMOUNT_FIELDS)[number];
-export const BUDGET_FIELDS: readonly AmountField[] = ['budgetExpenseCents', 'budgetIncomeCents'];
 
 export const FIELD_LABEL_KEYS = {
   budgetExpenseCents: 'budget.budgetExpense',
@@ -49,6 +49,55 @@ export function useSaveBudgetRow(year: number, categoryId: Id) {
       queryClient.setQueryData<BudgetResponse>(budgetKey(year), (old) => (old ? withRow(old, row) : old));
       // The year page shows budget totals and uses actuals in the year result (BR-063).
       void invalidateYearData(queryClient, 'budget');
+    },
+  });
+}
+
+// ---------- Budget rows (UC-020 A2–A4) ----------
+
+/**
+ * After a row is added, renamed or removed: patch the reference cache right away (so the page
+ * shows the right rows and names without a gap), then refetch reference, budget and year data.
+ */
+function useAfterRowChange() {
+  const queryClient = useQueryClient();
+  return (update: (categories: BudgetCategory[]) => BudgetCategory[]) => {
+    queryClient.setQueryData<ReferenceData>(referenceKey, (old) =>
+      old ? { ...old, budgetCategories: update(old.budgetCategories) } : old,
+    );
+    return Promise.all([
+      queryClient.invalidateQueries({ queryKey: referenceKey }),
+      invalidateYearData(queryClient, 'budget'),
+    ]).then(() => undefined);
+  };
+}
+
+export function useCreateBudgetRow() {
+  const after = useAfterRowChange();
+  return useMutation({
+    mutationFn: (name: string) => budgetCategoriesApi.create({ name }),
+    onSuccess: (created) => {
+      void after((list) => [...list.filter((c) => c.id !== created.id), created]);
+    },
+  });
+}
+
+export function useRenameBudgetRow() {
+  const after = useAfterRowChange();
+  return useMutation({
+    mutationFn: ({ id, name }: { id: Id; name: string }) => budgetCategoriesApi.rename(id, { name }),
+    onSuccess: (renamed) => {
+      void after((list) => list.map((c) => (c.id === renamed.id ? renamed : c)));
+    },
+  });
+}
+
+export function useRemoveBudgetRow() {
+  const after = useAfterRowChange();
+  return useMutation({
+    mutationFn: (id: Id) => budgetCategoriesApi.remove(id),
+    onSuccess: (_, id) => {
+      void after((list) => list.filter((c) => c.id !== id));
     },
   });
 }

@@ -96,6 +96,7 @@ const fi = {
     DESCRIPTION_REQUIRED: 'Kuvaus on pakollinen.',
     INVALID_HOURS: 'Tunnit 0,25–24 neljännestunnin tarkkuudella.',
     TOO_LONG: 'Teksti on liian pitkä.',
+    DUPLICATE: 'Nimi on jo käytössä.',
     UNKNOWN_REFERENCE: 'Valittua tietoa ei ole olemassa.',
     NOT_EDITABLE: 'Tätä tietoa ei voi muuttaa tässä.',
   },

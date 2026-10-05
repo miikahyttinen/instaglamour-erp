@@ -93,9 +93,11 @@ function initialReference(): MockDb['reference'] {
     technicalSetups: [...TECHNICAL_SETUPS],
     logistics: [...LOGISTICS],
     budgetCategories: [
-      { id: '00000000-0000-4000-8000-000000000201', code: 'CATEGORY_A', nameFi: 'Kategoria A', nameEn: 'Category A', budgeted: true },
-      { id: '00000000-0000-4000-8000-000000000202', code: 'CATEGORY_B', nameFi: 'Kategoria B', nameEn: 'Category B', budgeted: true },
-      { id: '00000000-0000-4000-8000-000000000203', code: 'CATEGORY_C', nameFi: 'Kategoria C', nameEn: 'Category C', budgeted: false },
+      // Active budget rows only, in creation order (UC-020). Removed rows leave this list; their
+      // amounts stay in db.budget. No fuel or actuals-only rows.
+      { id: '00000000-0000-4000-8000-000000000201', name: 'Category A' },
+      { id: '00000000-0000-4000-8000-000000000202', name: 'Category B' },
+      { id: '00000000-0000-4000-8000-000000000203', name: 'Category C' },
     ],
   };
 }

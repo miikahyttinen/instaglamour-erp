@@ -11,7 +11,7 @@ import type {
   TechnicalSetup,
   Logistics,
 } from '../api/enums';
-import type { BudgetCategory, GigSummary, Warning } from '../api/types';
+import type { GigSummary, Warning } from '../api/types';
 import { formatDate } from '../lib/format';
 
 // Helpers that turn contract codes into translated labels. Every code list in api/enums.ts
@@ -63,6 +63,3 @@ export function warningMessage(t: TFunction, warning: Warning, lang: Language): 
   return t(`warnings.${warning.code}`);
 }
 
-export function budgetCategoryName(category: BudgetCategory, lang: Language): string {
-  return lang === 'fi' ? category.nameFi : category.nameEn;
-}

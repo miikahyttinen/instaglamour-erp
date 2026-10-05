@@ -231,12 +231,15 @@ export interface Settings {
   loadInDeductionCents: Cents;
 }
 
+/** A budget row (UC-020): partner-managed, one name shown in both languages. Active rows only. */
 export interface BudgetCategory {
   id: Id;
-  code: string;
-  nameFi: string;
-  nameEn: string;
-  budgeted: boolean;
+  name: string;
+}
+
+/** `POST /api/budget-categories`, `PATCH /api/budget-categories/{id}`. */
+export interface BudgetCategoryInput {
+  name: string;
 }
 
 export interface ReferenceData {
