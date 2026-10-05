@@ -17,4 +17,4 @@ Restyle the tasks page and both hours pages (`src/features/tasks`, `src/features
 - Use only the tokens and shared components from TASK-110 (see `/styleguide` and `frontend/README.md`). Do not edit shared files (`src/styles.css`, `src/components/*`, layout, i18n core, api, mocks) — if a shared component is missing something, implement locally in your feature and report it.
 - Edit only your feature folder (CSS + TSX markup/classes). No behaviour changes; keep all tests passing (update selectors only if markup changes).
 - Check both themes at 375 and 1280 px in headless Chrome against `npm run dev:mock`; no horizontal scroll.
-- Style reference: `docs/design.md` (and, for look only, `/Users/miikahyttinen/dev/instaglamour-erp/design_help.png` — never copy text or data from it).
+- Style reference: `docs/design.md` (and, for look only, `<repo>/design_help.png` — never copy text or data from it).

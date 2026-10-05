@@ -23,6 +23,6 @@ Restyling individual feature screens beyond what shared styles give for free (TA
 
 ## Notes
 - Source files are gitignored and therefore NOT in your worktree. Read them from the main checkout:
-  - Logos: `/Users/miikahyttinen/dev/instaglamour-erp/frontend/assets/Instaglamour-Some-1080x1080px-black.jpg` and `…-white.jpg` (logo bbox ≈ x 50–1030, y 414–666).
-  - Style reference: `/Users/miikahyttinen/dev/instaglamour-erp/design_help.png` — look at it for style only; **never copy any text, names or numbers from it** (it contains real data).
+  - Logos: `<repo>/frontend/assets/Instaglamour-Some-1080x1080px-black.jpg` and `…-white.jpg` (logo bbox ≈ x 50–1030, y 414–666).
+  - Style reference: `<repo>/design_help.png` — look at it for style only; **never copy any text, names or numbers from it** (it contains real data).
 - New dependencies allowed: font packages, `lucide-react`. Image processing for the logo may use a local tool/script that is not committed, or a committed dev script — your choice, documented.
