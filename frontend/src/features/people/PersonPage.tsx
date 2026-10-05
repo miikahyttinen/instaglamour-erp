@@ -5,6 +5,8 @@ import type { Id, PersonCostLine } from '../../api/types';
 import { useSelectedYear } from '../../auth/SignedInContext';
 import { Button } from '../../components/Button';
 import { DataTable, type DataTableColumn } from '../../components/DataTable';
+import { FieldList } from '../../components/FieldList';
+import type { GridSpan } from '../../components/grid';
 import { Notice as NoticeMessage } from '../../components/Notice';
 import { PageHead } from '../../components/PageHead';
 import { SectionLabel } from '../../components/SectionLabel';
@@ -18,6 +20,9 @@ import { NoticeBox, type Notice } from './Notices';
 import { PersonActiveSwitch, PersonNameField } from './PersonFields';
 import { usePeopleList, usePersonCostLines } from './queries';
 import './people.css';
+
+/** Totals tiles: two per row on phones and tablets, four-per-row width from 1200 px. */
+const TOTALS_SPAN: GridSpan = { base: 6, lg: 3 };
 
 /**
  * One person: name and active edited in place (NFR-8), and their cost lines in the selected year
@@ -62,10 +67,10 @@ export function PersonPage() {
           >
             {backLink}
           </PageHead>
-          <div className="person-fields">
+          <FieldList className="person-fields">
             <PersonNameField person={person} label={t('people.name')} onNotice={setNotice} />
             <PersonActiveSwitch person={person} label={t('people.active')} onNotice={setNotice} />
-          </div>
+          </FieldList>
           <NoticeBox notice={notice} onDismiss={() => setNotice(null)} />
           <CostLines personId={person.id} />
         </>
@@ -81,7 +86,7 @@ function CostLines({ personId }: { personId: Id }) {
   const query = usePersonCostLines(personId, year);
   const title = t('people.lines.title', { year });
   const heading = (
-    <SectionLabel id="person-lines-title" className="person-lines-label">
+    <SectionLabel id="person-lines-title">
       {title}
     </SectionLabel>
   );
@@ -176,11 +181,13 @@ function CostLines({ personId }: { personId: Id }) {
         <>
           <StatGrid className="person-totals">
             <StatTile
+              span={TOTALS_SPAN}
               label={t('people.lines.totalBudgeted', { year })}
               value={money(totals.budgetedCents)}
               caption={t('people.lines.lineCount', { count: lines.length })}
             />
             <StatTile
+              span={TOTALS_SPAN}
               label={t('people.lines.totalActual', { year })}
               value={money(totals.actualCents)}
               caption={t('people.lines.paidCount', { count: paidCount })}

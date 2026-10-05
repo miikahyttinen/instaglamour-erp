@@ -1,8 +1,14 @@
 /* People register (UC-014). Design tokens only; tables become cards below 600 px (DataTable). */
 
-/* Add form: stacked on phones; field + button on one row from 600 px. */
+/* Width of the name input in the add form and in the table, so both line up. */
+.people-page {
+  --people-name-w: calc(var(--label-w) * 2);
+}
+
+/* Add form: stacked on phones; field + button on one row from 600 px. The add form and the list
+   are separate sections: the section rhythm applies between them. */
 .people-page .people-add {
-  margin-bottom: var(--space-5);
+  margin-bottom: var(--section-gap);
 }
 .people-page .people-name-form .field label {
   margin-top: 0;
@@ -14,7 +20,7 @@
 @media (min-width: 600px) {
   .people-page .people-name-form-inline {
     display: grid;
-    grid-template-columns: minmax(0, 360px) auto;
+    grid-template-columns: minmax(0, var(--people-name-w)) auto;
     column-gap: var(--space-2);
     justify-content: start;
   }
@@ -79,14 +85,15 @@
 .people-page .people-name-field {
   flex: 1 1 auto;
   min-width: 0;
-  max-width: 360px;
+  max-width: var(--people-name-w);
 }
 .people-page .people-open {
   display: inline-flex;
   flex: none;
   align-items: center;
   gap: var(--space-1);
-  min-height: var(--tap);
+  /* 44 px touch target on phones, 36 px desktop: rows stay at the table row height. */
+  min-height: var(--control-h);
   font-family: var(--font-mono);
   font-size: var(--fs-meta);
   letter-spacing: var(--ls-label);
@@ -98,9 +105,10 @@
   color: var(--text);
   text-decoration: underline;
 }
-.people-page .people-open svg {
-  width: 14px;
-  height: 14px;
+/* Switches follow the control height (44 px phone, 36 px desktop) like the other inline fields;
+   the global label.switch rule would keep them at the 44 px tap size on desktop too. */
+.people-page label.inline-switch {
+  min-height: var(--control-h);
 }
 .people-page .people-table tr.is-inactive .people-name-field input {
   color: var(--text-muted);
@@ -110,18 +118,10 @@
   white-space: nowrap;
 }
 
-/* Person page. */
-.people-page .person-fields {
-  display: grid;
-  gap: var(--space-3);
-  max-width: 360px;
-  margin-bottom: var(--space-4);
-}
-.people-page .person-lines-label {
-  margin-top: var(--space-5);
-}
+/* Person page. Fields: FieldList (one label column). Totals and the lines table are one block:
+   the tile gap also separates the tiles from the table. */
 .people-page .stat-grid.person-totals {
-  margin-bottom: var(--space-4);
+  margin-bottom: var(--grid-gap);
 }
 .people-page .person-lines .person-lines-date,
 .people-page .person-lines .person-lines-paid {
@@ -155,9 +155,4 @@
   .people-page .person-lines.data-table tfoot th {
     padding: var(--space-2) 0 var(--space-1);
     border: 0;
-  }
-  /* Two totals side by side keep the table in view. */
-  .people-page .stat-grid.person-totals > * {
-    --span: 6;
-  }
-}
+  }}
