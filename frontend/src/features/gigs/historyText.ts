@@ -57,8 +57,13 @@ export function formatValue(
     // Older events may hold a list of codes (multi-choice technicalSetup before 2026-10-05).
     const codes = (Array.isArray(value) ? value : [value]).map(String);
     if (codes.length === 0) return '–';
-    const namespace = field === 'technicalSetup' ? 'technicalSetup' : 'logistics';
-    return codes.map((code) => t(`${namespace}.${code}`, { defaultValue: code })).join(', ');
+    const label = (code: string) =>
+      field === 'logistics'
+        ? t(`logistics.${code}`, { defaultValue: code })
+        : t(`technicalSetup.${code}`, {
+            defaultValue: t(`legacyTechnicalSetup.${code}`, { defaultValue: code }),
+          });
+    return codes.map(label).join(', ');
   }
   if (typeof value === 'boolean') return value ? t('history.yes') : t('history.no');
   return String(value);

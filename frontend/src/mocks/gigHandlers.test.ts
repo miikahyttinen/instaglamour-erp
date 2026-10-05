@@ -82,6 +82,9 @@ describe('gig mocks', () => {
       logistics: 'INVALID_VALUE',
       houseTechnician: 'INVALID_VALUE',
     });
+    // houseTechnician: null is invalid; send true/false or leave it out.
+    const nullSwitch = await expectError(gigsApi.update(gig.id, { houseTechnician: null as never }));
+    expect(nullSwitch.fields).toEqual({ houseTechnician: 'INVALID_VALUE' });
     const ref = db.reference;
     expect(ref.technicalSetups).toEqual(['HOUSE_TECH', 'SET_A', 'SET_B', 'SET_C']);
     expect(ref.logistics).toEqual(['OWN_VAN', 'RENTAL_VAN', 'TAXI', 'OTHER']);
