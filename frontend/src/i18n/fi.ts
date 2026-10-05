@@ -175,6 +175,13 @@ const fi = {
     remove: 'Poista',
     dismiss: 'Piilota',
   },
+  /** Inline fields (components/inline): state texts, also announced to screen readers. */
+  inline: {
+    saving: 'Tallennetaan…',
+    saved: 'Tallennettu',
+    announceSaved: '{{label}}: tallennettu',
+    announceError: '{{label}}: {{error}}',
+  },
   gigs: {
     newGig: 'Uusi keikka',
     summaryTitle: 'Vuosi yhteensä',

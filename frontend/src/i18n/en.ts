@@ -173,6 +173,12 @@ const en: Resources = {
     remove: 'Remove',
     dismiss: 'Dismiss',
   },
+  inline: {
+    saving: 'Saving…',
+    saved: 'Saved',
+    announceSaved: '{{label}}: saved',
+    announceError: '{{label}}: {{error}}',
+  },
   gigs: {
     newGig: 'New gig',
     summaryTitle: 'Year total',
