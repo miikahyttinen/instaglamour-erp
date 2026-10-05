@@ -2,7 +2,7 @@
  * Fixed lists from docs/domain-model.md ("Fixed lists"). Shared by all backend modules;
  * the database enums in prisma/schema.prisma must contain exactly the same values.
  */
-import type { CostType, TechnicalSetup } from '../generated/prisma/enums.js';
+import type { CostType, Logistics, TechnicalSetup } from '../generated/prisma/enums.js';
 
 /** People roles that play / work the gig: load-in switch and staffing check apply (BR-023, BR-026). */
 export const MUSICIAN_ROLES = [
@@ -42,15 +42,11 @@ export const EXPENSE_CATEGORIES = [
 
 export const COST_TYPES = [...MUSICIAN_ROLES, ...INTERNAL_ROLES, ...EXPENSE_CATEGORIES] as const;
 
-export const TECHNICAL_SETUPS = [
-  'HOUSE_TECH',
-  'HOUSE_TECHNICIAN',
-  'SET_A',
-  'SET_B',
-  'SET_C',
-  'OWN_PA',
-  'VAN',
-] as const satisfies readonly TechnicalSetup[];
+/** Single choice (domain-model.md "TechnicalSetup"); a gig may also have none (null). */
+export const TECHNICAL_SETUPS = ['HOUSE_TECH', 'SET_A', 'SET_B', 'SET_C'] as const satisfies readonly TechnicalSetup[];
+
+/** Single choice (domain-model.md "Logistics"); a gig may also have none (null). */
+export const LOGISTICS = ['OWN_VAN', 'RENTAL_VAN', 'TAXI', 'OTHER'] as const satisfies readonly Logistics[];
 
 export type MusicianRole = (typeof MUSICIAN_ROLES)[number];
 

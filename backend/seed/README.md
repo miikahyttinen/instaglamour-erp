@@ -70,7 +70,9 @@ Partners, templates, people and categories are referenced by email / name / code
       "lineupTemplate": "Template A",                       // and/or lineupName (one is required)
       "lineupName": "Custom name",                          // default = template name
       "venue": "Venue X",
-      "technicalSetup": ["HOUSE_TECH"],                     // HOUSE_TECH, HOUSE_TECHNICIAN, SET_A, SET_B, SET_C, OWN_PA, VAN
+      "technicalSetup": "HOUSE_TECH",                       // optional, one of HOUSE_TECH | SET_A | SET_B | SET_C
+      "logistics": "OWN_VAN",                               // optional, one of OWN_VAN | RENTAL_VAN | TAXI | OTHER
+      "houseTechnician": false,                             // optional, default false
       "seller": "partner.a@example.com", "producer": "partner.b@example.com",
       "priceCents": 100000, "additionalSalesCents": 0, "additionalSalesDescription": "…", "notes": "…",
       "costLines": [                                        // omit → generated per BR-020/BR-021 from template + settings
@@ -99,6 +101,21 @@ Partners, templates, people and categories are referenced by email / name / code
 ```
 
 Unknown keys are rejected (catches typos). Seeded gigs get a `CREATED` history event by their seller.
+
+### Technical setup format change (TASK-010)
+
+`technicalSetup` used to be a list. It is now **one value or omitted**, and two new fields exist.
+A gig in an older seed file (e.g. your `seed.local.json`) with a list is rejected with a hint; convert it the
+same way the database migration converts existing gigs:
+
+| Old list contains | New fields |
+|---|---|
+| `SET_A`, `SET_B`, `SET_C`, `HOUSE_TECH` | `technicalSetup` = the first of these present, in this order (`SET_A` before `SET_B` before `SET_C` before `HOUSE_TECH`) |
+| `HOUSE_TECHNICIAN` | `"houseTechnician": true` |
+| `VAN` | `"logistics": "OWN_VAN"` |
+| `OWN_PA` | no equivalent: leave it out (or note it in `notes` if it matters) |
+
+Example: `["HOUSE_TECH", "HOUSE_TECHNICIAN", "VAN"]` → `"technicalSetup": "HOUSE_TECH", "houseTechnician": true, "logistics": "OWN_VAN"`.
 
 ## Making your local seed
 

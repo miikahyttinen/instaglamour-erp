@@ -1,8 +1,7 @@
 /** Input field schemas shared by the gig endpoints. Issues map to contract field codes (see http/errors.ts). */
 import { z } from 'zod';
 import { isIsoDate } from '../domain/dates.js';
-import { TECHNICAL_SETUPS } from '../domain/enums.js';
-import type { TechnicalSetup } from '../generated/prisma/enums.js';
+import { LOGISTICS, TECHNICAL_SETUPS } from '../domain/enums.js';
 
 /** Upper bound for money fields (Postgres int4). */
 export const MAX_CENTS = 2_000_000_000;
@@ -27,13 +26,14 @@ export const optionalText = (max = SHORT_TEXT_MAX) =>
     .optional()
     .transform((v) => (v === '' ? null : v));
 
-const technicalSetupSet: ReadonlySet<string> = new Set(TECHNICAL_SETUPS);
+/** Single TechnicalSetup code or null (= not set); anything else → INVALID_VALUE. */
+export const technicalSetup = z.enum(TECHNICAL_SETUPS, { message: 'INVALID_VALUE' }).nullable();
 
-/** Multi-select of TechnicalSetup codes; duplicates removed, order kept. */
-export const technicalSetup = z
-  .array(z.string(), { message: 'INVALID_VALUE' })
-  .refine((values) => values.every((v) => technicalSetupSet.has(v)), { message: 'INVALID_VALUE' })
-  .transform((values) => [...new Set(values)] as TechnicalSetup[]);
+/** Single Logistics code or null (= not set); anything else → INVALID_VALUE. */
+export const logistics = z.enum(LOGISTICS, { message: 'INVALID_VALUE' }).nullable();
+
+/** A boolean flag; null or any non-boolean → INVALID_VALUE (omit the field to keep / default it). */
+export const flag = z.boolean({ message: 'INVALID_VALUE' });
 
 /** One of a fixed list: missing → REQUIRED, anything else invalid → INVALID_VALUE. */
 export const oneOf = <const T extends readonly [string, ...string[]]>(values: T) =>

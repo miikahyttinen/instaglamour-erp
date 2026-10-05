@@ -71,12 +71,16 @@ enum CostType {
 
 enum TechnicalSetup {
   HOUSE_TECH
-  HOUSE_TECHNICIAN
   SET_A
   SET_B
   SET_C
-  OWN_PA
-  VAN
+}
+
+enum Logistics {
+  OWN_VAN
+  RENTAL_VAN
+  TAXI
+  OTHER
 }
 
 enum GigEventType {
@@ -206,7 +210,9 @@ model Gig {
   lineupTemplateId           String?          @map("lineup_template_id") @db.Uuid
   lineupName                 String           @map("lineup_name")
   venue                      String
-  technicalSetup             TechnicalSetup[] @default([]) @map("technical_setup")
+  technicalSetup             TechnicalSetup?  @map("technical_setup")
+  logistics                  Logistics?
+  houseTechnician            Boolean          @default(false) @map("house_technician")
   sellerId                   String           @map("seller_id") @db.Uuid
   producerId                 String           @map("producer_id") @db.Uuid
   priceCents                 Int              @map("price_cents")
@@ -226,8 +232,22 @@ model Gig {
   attachments    Attachment[]
   events         GigEvent[]
 
+  technicalSetupLegacy GigTechnicalSetupLegacy?
+
   @@index([startDate])
   @@map("gig")
+}
+
+/// Original multi-select technical_setup array of gigs that existed before TASK-010 (migration
+/// 20261005120000_technical_setup_single_logistics). Kept so no information is lost; not used by the API.
+model GigTechnicalSetupLegacy {
+  gigId          String   @id @map("gig_id") @db.Uuid
+  technicalSetup String[] @map("technical_setup")
+  migratedAt     DateTime @default(now()) @map("migrated_at")
+
+  gig Gig @relation(fields: [gigId], references: [id], onDelete: Cascade)
+
+  @@map("gig_technical_setup_legacy")
 }
 
 model CostLine {

@@ -69,6 +69,7 @@ export async function emptyDatabase(tx: Tx): Promise<void> {
   await tx.gigEvent.deleteMany();
   await tx.attachment.deleteMany();
   await tx.costLine.deleteMany();
+  await tx.gigTechnicalSetupLegacy.deleteMany();
   await tx.gig.deleteMany();
   await tx.task.deleteMany();
   await tx.hourEntry.deleteMany();
@@ -213,7 +214,9 @@ async function applySeed(tx: Tx, data: SeedData): Promise<SeedSummary> {
         lineupTemplateId: template?.id ?? null,
         lineupName,
         venue: g.venue,
-        technicalSetup: g.technicalSetup,
+        technicalSetup: g.technicalSetup ?? null,
+        logistics: g.logistics ?? null,
+        houseTechnician: g.houseTechnician,
         sellerId: partnerId(g.seller),
         producerId: partnerId(g.producer),
         priceCents: g.priceCents,

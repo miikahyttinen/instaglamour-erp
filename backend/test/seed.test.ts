@@ -90,7 +90,40 @@ describe('validateSeed', () => {
   });
 });
 
+describe('validateSeed: technical setup / logistics (TASK-010)', () => {
+  it('rejects the old multi-select list with a conversion hint', () => {
+    const data = example();
+    data.gigs[0]!.technicalSetup = ['HOUSE_TECH', 'VAN'];
+    const result = validateSeed(data);
+    expect(result.ok).toBe(false);
+    const errors = result.ok ? '' : result.errors.join('\n');
+    expect(errors).toMatch(/gigs\.0\.technicalSetup: technicalSetup is a single value now/);
+    expect(errors).toMatch(/seed\/README\.md/);
+  });
+
+  it.each([
+    [{ technicalSetup: 'OWN_PA' }, /gigs\.0\.technicalSetup: must be one of HOUSE_TECH, SET_A, SET_B, SET_C/],
+    [{ logistics: 'VAN' }, /gigs\.0\.logistics: must be one of OWN_VAN, RENTAL_VAN, TAXI, OTHER/],
+    [{ logistics: ['OWN_VAN'] }, /gigs\.0\.logistics: logistics is a single value now/],
+    [{ houseTechnician: 'yes' }, /gigs\.0\.houseTechnician/],
+  ])('rejects %j', (fields, message) => {
+    const data = example();
+    Object.assign(data.gigs[0]!, fields);
+    const result = validateSeed(data);
+    expect(result.ok ? '' : result.errors.join('\n')).toMatch(message);
+  });
+});
+
 describe('loadSeed', () => {
+  it('loads technicalSetup, logistics and houseTechnician (defaults null / null / false)', async () => {
+    await loadSeed(testDb(), example());
+    const pick = { technicalSetup: true, logistics: true, houseTechnician: true } as const;
+    const byVenue = async (venue: string) => testDb().gig.findFirstOrThrow({ where: { venue }, select: pick });
+    expect(await byVenue('Venue W')).toEqual({ technicalSetup: 'HOUSE_TECH', logistics: 'TAXI', houseTechnician: true });
+    expect(await byVenue('Venue Y')).toEqual({ technicalSetup: null, logistics: 'OWN_VAN', houseTechnician: false });
+    expect(await byVenue('Venue Z')).toEqual({ technicalSetup: null, logistics: null, houseTechnician: false });
+  });
+
   it('loads the example seed with BR-020/BR-021 lines for gigs without explicit cost lines', async () => {
     await loadSeed(testDb(), example());
     const gig = await testDb().gig.findFirstOrThrow({

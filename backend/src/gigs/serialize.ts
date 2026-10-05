@@ -78,6 +78,8 @@ export function toGigSummaryDto(gig: GigWithLines, today: string) {
     lineupName: gig.lineupName,
     venue: gig.venue,
     technicalSetup: gig.technicalSetup,
+    logistics: gig.logistics,
+    houseTechnician: gig.houseTechnician,
     sellerId: gig.sellerId,
     producerId: gig.producerId,
     priceCents: gig.priceCents,

@@ -5,13 +5,20 @@
  */
 import { z } from 'zod';
 import { isIsoDate } from '../src/domain/dates.js';
-import { ALL_SETTING_KEYS, COST_TYPES, DESCRIPTION_REQUIRED_TYPES, isMusicianRole, LANGUAGES, TECHNICAL_SETUPS } from '../src/domain/enums.js';
+import { ALL_SETTING_KEYS, COST_TYPES, DESCRIPTION_REQUIRED_TYPES, isMusicianRole, LANGUAGES, LOGISTICS, TECHNICAL_SETUPS } from '../src/domain/enums.js';
 
 const cents = z.number().int().nonnegative();
 const name = z.string().trim().min(1).max(500);
 const isoDate = z.string().refine(isIsoDate, 'must be a date in YYYY-MM-DD form');
 const email = z.string().trim().toLowerCase().email();
 const year = z.number().int().min(2000).max(2100);
+
+/** Error for a single-choice field; arrays get a hint about the pre-TASK-010 multi-select format. */
+const singleChoice = (field: string, values: readonly string[]) => (issue: { input?: unknown }) =>
+  Array.isArray(issue.input)
+    ? `${field} is a single value now (one of ${values.join(', ')}), not a list; ` +
+      'see seed/README.md (HOUSE_TECHNICIAN → houseTechnician: true, VAN → logistics: "OWN_VAN", OWN_PA → omit)'
+    : `must be one of ${values.join(', ')}`;
 
 const costLine = z.strictObject({
   type: z.enum(COST_TYPES),
@@ -30,7 +37,10 @@ const gig = z.strictObject({
   lineupTemplate: name.optional(),
   lineupName: name.optional(),
   venue: name,
-  technicalSetup: z.array(z.enum(TECHNICAL_SETUPS)).default([]),
+  // Single values since TASK-010; the old multi-select array is rejected with a hint.
+  technicalSetup: z.enum(TECHNICAL_SETUPS, { error: singleChoice('technicalSetup', TECHNICAL_SETUPS) }).optional(),
+  logistics: z.enum(LOGISTICS, { error: singleChoice('logistics', LOGISTICS) }).optional(),
+  houseTechnician: z.boolean().default(false),
   seller: email,
   producer: email,
   priceCents: cents,
