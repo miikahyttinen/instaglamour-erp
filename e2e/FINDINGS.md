@@ -1,4 +1,4 @@
-# E2E findings — TASK-004, TASK-007
+# E2E findings — TASK-004, TASK-007, TASK-008
 
 Mismatches and bugs found while running the real frontend against the real backend.
 The e2e suite does not fix `frontend/` or `backend/` code; it records problems here and marks
@@ -15,11 +15,16 @@ Run of 2026-10-04 against `main` at `bb6dfe3` (after the design restyle, TASK-11
 [TASK-007](#task-007--suite-update-after-the-design-restyle): **61 passed, 1 skipped (by design),
 0 failed, 0 `test.fixme`** at 375 px and 1280 px from a fresh database.
 
+Run of 2026-10-05 against `main` at `18de851` (inline editing, TASK-118…123), see
+[TASK-008](#task-008--suite-update-for-inline-editing): **71 passed, 3 skipped (1 by design,
+2 `test.fixme` for F-004), 0 failed** at 375 px and 1280 px from a fresh database.
+
 | Id | Severity | Side to fix | Summary |
 |---|---|---|---|
 | F-001 | minor | frontend | `/api` proxy target and dev port are hard-coded in `vite.config.ts` |
 | F-002 | minor | backend | `npm install` fails on a fresh checkout without `DATABASE_URL` |
 | F-003 | minor | frontend | Year page tiles: secondary figure is read before its label ("Keikkoja 5 1 Peruttuja") |
+| F-004 | major | frontend | My hours: an inline hours error does not wrap; the page scrolls sideways and the message is cut off |
 
 ---
 
@@ -74,6 +79,56 @@ Run of 2026-10-04 against `main` at `bb6dfe3` (after the design restyle, TASK-11
   `flex-direction: row-reverse`), or give the secondary figure a visually hidden prefix.
 - **Tests:** not a `test.fixme` — the e2e tests read each figure through its own label
   (`.year-fig-label` → `.year-fig-value`, `e2e/tests/year.ts`), which holds either way.
+
+## F-004 — My hours: an inline hours error makes the page scroll sideways
+
+- **Severity:** major (NFR-1; on a phone the only explanation of the error is cut off)
+- **Where:** `frontend/src/features/hours/hours.css` → `.hours-page .hour-amount { white-space: nowrap; }`
+  (line ~102). The inline field's error paragraph (`.field-error`, from
+  `components/inline/InlineFieldFrame.tsx`) sits inside `.hour-amount` and inherits `nowrap`, in a
+  7.5rem grid column.
+- **Steps:** My hours → an own entry → type `0,3` in its hours field ("Tunnit: <date> <comment>")
+  → leave the field.
+- **Expected:** "Tunnit 0,25–24 neljännestunnin tarkkuudella." wraps under the field; no horizontal
+  scrolling (NFR-1). The value is not saved — that part works.
+- **Actual:** the message stays on one line: the page is 460 px wide in a 375 px viewport (the text
+  is cut at "neljännestun…") and 1281 px in a 1280 px viewport.
+- **Possible fix:** limit `nowrap` to the value, e.g. `.hours-page .hour-amount .inline-control
+  { white-space: nowrap; }` and `.hours-page .hour-amount .field-error { white-space: normal;
+  text-align: right; }` (or let the error span the whole grid row).
+- **Tests:** `e2e/tests/07-hours.spec.ts` → `test.fixme('an invalid-hours error does not cause
+  horizontal scrolling (F-004)')`. The assertion was moved out of the inline-hours test into its own
+  test so the rest of that flow (save, Esc, invalid not saved, reload) keeps running. Other inline
+  errors (gig price, cost lines, tasks, people, budget) do not overflow; those tests check it.
+
+---
+
+## TASK-008 — suite update for inline editing
+
+After TASK-118…123 (no Edit/Save buttons; fields save on blur / Enter, selects and switches on
+change), the old suite failed 9 tests at 375 px (02 create/costs, 03, 05, 06, 07, 08 and three in
+11; the baseline run was stopped during the 1280 px pass, which showed the same failures so far). Every failure was the old
+interaction in the test, not an app bug. The flows now edit like a user does — focus, type, leave
+(blur) or press Enter — and assert that the request is one PATCH with just that field (budget: a
+PUT of the whole row), that the value is on the page, and that it is still there **after a
+reload** (and in the API), proving it reached the backend. No assertion was removed or loosened.
+
+Shared helpers in `tests/helpers.ts`: `editInline()` (focus → type → blur/Enter, waits for the 2xx
+write and returns its body), `selectInline()`, `expectEscReverts()` (Esc restores the saved value,
+leaving the field sends nothing), `expectInvalidNotSent()` (translated error as the field's
+accessible description, `aria-invalid`, typed value kept, no request), `expectNoEditSaveButtons()`
+and `trackWrites()`. `tests/gigs.ts`: `costField()` ("Budjetti: <line>" …), `totalPrice()` (group
+"Kokonaishinta"); `infoValue()` was removed (the info lists are inputs now).
+
+| Spec | Change | New checks |
+|---|---|---|
+| 02 create/costs | Budget cell and paid amount are inline inputs (`costField`); paid line shows time · partner next to the amount | New test: budget (blur), description (Enter, line renamed "Toimisto (…)"), paid amount (blur) → economics; Esc on budget and paid amount; `abc` → "Virheellinen arvo.", `-10` → "Summa ei voi olla negatiivinen."; reload + API; no Edit/Save in the cost table. Double booking: person select persists after reload |
+| 03 lifecycle | Price, additional sales and description edited in place (blur / Enter), reload checks; cancelled gig: price edited in place (no "Muokkaa hintaa" button); history now has one "Tietoja muutettu" per saved field (5 instead of 2) | New test: venue (Enter, heading follows), Esc on lineup name and price, `-100` price and empty lineup name refused with translated errors, reload + API; no Edit/Save buttons on the gig page (also when cancelled) |
+| 05 people | Rename via textbox "Nimi: <name>" (Enter), open via link "Avaa: <name>", deactivate via switch "Aktiivinen" on the person page | Esc and empty name ("Pakollinen tieto.") not saved; no dialog; no Rename/Activate/Deactivate/Edit/Save buttons (list and person page); visible "Nimi" / "Aktiivinen" fields on the person page; the deactivated notice is still shown after 2 s; reload + API. New test: reactivate from the list switch |
+| 06 tasks | Row found by its "Poista: <title>" button (the title is an input value); owner / due date read from their fields | New test: title (Enter), description and due date (blur), owner select (change); Esc; empty title refused; reload + API; delete through the "Poista tehtävä" dialog |
+| 07 hours | New entry checked through "Kommentti: <date> <comment>" / "Tunnit: …" values | New test: hours (blur) → year total, comment (Enter); Esc; `0,3` → INVALID_HOURS message and empty comment refused; reload + API. `test.fixme` for F-004 |
+| 08 budget | Cells saved on blur / Enter (PUT of the whole row, body asserted); no per-row Save | No buttons in the budget table; variance and totals after each save; Esc; `-10` refused; reload |
+| 11 cross-checks | Seller select saves on change (no "Muokkaa perustietoja"); EN budget cell saved on blur with "…: saved" announced; the hours notice is picked by its text (each inline field has its own polite live region) | Seller and moved Sales line persist after reload; EN value persists after reload |
 
 ---
 

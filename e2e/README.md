@@ -54,13 +54,13 @@ database that `npm run e2e` creates.
 | File | Flow |
 |---|---|
 | `01-login-year` | Dev login → year page figures match `GET /api/years/{year}`; sign out; ended session → sign-in with notice; unknown email refused |
-| `02-gig-create-costs` | New gig from a template → cost lines → assign a person → load-in switch → mark paid → economics; gig list summary and year page updated without reload; double-booking warning |
-| `03-gig-lifecycle` | Edit price and additional sales; move; cancel and adjust price; uncancel; delete; restore from the deleted view; history lists all events |
+| `02-gig-create-costs` | New gig from a template → cost lines → assign a person → load-in switch → mark paid → economics; gig list summary and year page updated without reload; double-booking warning; cost lines edited in place (budget, description, paid amount), Esc, invalid amounts |
+| `03-gig-lifecycle` | Gig info and price edited in place (Esc, invalid values, no Edit/Save buttons); edit price and additional sales; move; cancel and adjust price; uncancel; delete; restore from the deleted view; history lists all events |
 | `04-attachments` | Upload a synthetic PDF, download it, remove it; a fake PDF is refused (415) with a translated message |
-| `05-people` | Add, rename, deactivate; the person page shows their lines |
-| `06-tasks` | Add, mark done, reopen |
-| `07-hours` | Add own entry; totals page and year page updated |
-| `08-budget` | Edit a row; year page budget and year result; copy to the next year (and the 409 on a second copy) |
+| `05-people` | Add, rename in place, deactivate with the switch; Esc / empty name; the person page shows their lines; reactivate from the list |
+| `06-tasks` | Add, mark done, reopen; edit title / description / owner / due date in place, Esc, empty title; delete |
+| `07-hours` | Add own entry; totals page and year page updated; edit hours / comment in place, Esc, invalid hours |
+| `08-budget` | Edit a row in place (PUT per cell save, Esc, invalid amount); year page budget and year result; copy to the next year (and the 409 on a second copy) |
 | `09-language-year` | Switch to English; change year (buttons and picker); both survive a reload |
 | `10-no-horizontal-scroll` | No horizontal scroll on every main page (and with expanded content) |
 | `11-cross-checks` | Seller change moves Sales lines; EN amount input; upcoming gigs in an empty year; hours saved for another year; gig search + cancelled filter |
@@ -75,5 +75,12 @@ Every test also fails on uncaught page errors or `console.error` output in the b
   `tests/gigs.ts` (gig page, gig list), `tests/year.ts` (year page figures) and `tests/helpers.ts`
   (`pageHead`, `signOutFromHeader`). The app switches layout at **900 px** (`isWide()`): header
   icon buttons instead of the menu, and the gig list as a table instead of cards.
+- **Inline editing (NFR-8):** edit like a user — `editInline()` focuses the field, types, leaves
+  it (blur) or presses Enter and waits for the write; `selectInline()` for selects. Then assert the
+  value **after `page.reload()`** to prove it reached the backend. `expectEscReverts()` and
+  `expectInvalidNotSent()` check that nothing is sent; `expectNoEditSaveButtons()` that existing
+  items have no Edit/Save buttons. Input values are not text: use `toHaveValue()` on the field's
+  label ("Budjetti: Laulu", "Kommentti: <date> <comment>", "Nimi: <name>"…), not `getByText()`.
+  Every inline field has its own polite `role="status"` region, so pick page notices by text.
 - The tests never change `frontend/` or `backend/`. A failure caused by the app is recorded in
   `FINDINGS.md` and the test is marked `test.fixme('…', 'F-00x …')`.
