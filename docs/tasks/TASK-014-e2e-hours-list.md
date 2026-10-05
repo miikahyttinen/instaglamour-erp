@@ -1,7 +1,7 @@
 # TASK-014: e2e for the hours summary list
 
 - **owner:** backend (integration; edits `e2e/` only)
-- **status:** todo
+- **status:** done
 - **depends on:** TASK-135, TASK-136 (merged)
 
 ## Goal
