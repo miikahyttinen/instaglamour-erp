@@ -73,6 +73,8 @@ VITE_API_PROXY_TARGET=http://localhost:3100 VITE_PORT=5273 npm run dev
 | `src/features/<feature>/` | One folder per feature: `year`, `gigs`, `people`, `tasks`, `hours`, `budget`; pages, query hooks and the feature texts in `i18n.ts` (gig texts are still in `src/i18n/fi.ts` / `en.ts`) |
 | `src/features/gigs/` | Gig list, new gig, gig page (costs, attachments, history, move/cancel/delete dialogs) |
 | `src/components/` | Shared UI: `Button`/`IconButton`, `Card`, `StatTile`/`StatGrid`, `MiniBars`, `PageHead`, `SectionLabel`, `StatusTag`, `Notice`, `DataTable`, `Dialog`, `Field`, `MoneyInput`, `Logo` (see "Design system") |
+| `src/components/inline/` | Inline (save-on-blur) fields and `useInlineSave` (see "Inline editing") |
+| `src/lib/hours.ts` | Hours input parsing / validation / formatting (shared by the hours feature and `InlineHours`) |
 | `src/styles/` | `tokens.css` (all design tokens, dark + light), `fonts.css` (self-hosted fonts) |
 | `src/styles.css` | Global + shared component styles (tokens only) |
 | `src/theme/` | Dark/light theme: `useTheme()`, `setTheme()`, `initTheme()` |
@@ -160,6 +162,89 @@ production builds) and its texts are English on purpose.
 | `Field` | `label`, `error?`, `hint?`, `children(fieldProps)` | Spread `fieldProps` on the native `input`/`select`/`textarea`; they are styled globally. |
 | `MoneyInput` | `value`, `onChange`, + field props | Euro input. |
 | `Logo` | `size?: 'header' \| 'large'`, `theme?` (override), `className?` | White in dark, black in light. |
+
+### Inline editing (`src/components/inline/`, NFR-8)
+
+Existing items are edited in place: no Edit/Save buttons. Import everything from
+`components/inline`. See every component and state on `/styleguide` → "Inline editing".
+
+Behaviour (same for all): the field looks like a quiet value (hairline on hover, always on touch
+screens; input style on focus). **Blur saves**, Enter saves single-line fields (Ctrl/Cmd+Enter in
+`InlineTextarea`), **Esc** restores the last saved value. Unchanged values are not sent (`"1000"`
+equals `1000,00 €`). Selects, checkboxes, switches and checkbox groups save **on change**.
+Client-side checks run first (same `FieldCode`s as the API); invalid values are not sent.
+States: saving (spinner), saved (ok check, 1.5 s), error (danger border + translated message
+under the field; the typed value stays; the next blur retries). "Label: saved" / "Label: error" is
+announced in a polite live region. While a save runs the field stays editable; a newer value is
+saved right after. When the `value` prop changes (refetch), an unedited field follows it.
+
+Common props (`InlineBaseProps<T>`):
+
+| Prop | Type | Notes |
+|---|---|---|
+| `label` | `string` (required) | Visible mono label; `hideLabel` makes it visually hidden (table cells) but it stays the accessible name. |
+| `value` | per component | The **saved** value from the server. |
+| `onSave` | `(next) => Promise<unknown>` (required) | Return the API call. Reject (`ApiError`) → error state. Do cache invalidation / warnings / notices in here. |
+| `validate?` | `(next) => FieldCode \| null \| undefined` | Extra client-side check after parsing. |
+| `field?` | `string` | API field name: which code to show from a `VALIDATION_ERROR` (default: the first one). Other errors show `errors.<code>`. |
+| `disabled?`, `hint?`, `className?`, `hideLabel?` | | |
+
+| Component | Value / extra props | Parsing & checks |
+|---|---|---|
+| `InlineText` | `value: string` with `required`, else `string \| null`; `maxLength?`, `placeholder?`, `autoComplete?` | Trimmed. Empty → `REQUIRED` or `null`. Too long → `TOO_LONG`. |
+| `InlineTextarea` | as `InlineText` + `rows?` (2; grows with content in Chrome) | Enter = new line; Ctrl/Cmd+Enter or blur saves. |
+| `InlineMoney` | cents: `number` with `required`, else `number \| null`; `placeholder?` | Euro text ↔ cents via `parseMoneyField` / `centsToInput` (FI `1 234,50`, EN `1,234.50`). `NEGATIVE_AMOUNT`, `INVALID_VALUE`, `REQUIRED`. Re-formats on language change. |
+| `InlineHours` | `value: number`; `placeholder?` | `lib/hours.ts`: 0.25…24 in 0.25 steps else `INVALID_HOURS`; empty `REQUIRED`. |
+| `InlineDate` | `YYYY-MM-DD`: `string` with `required`, else `string \| null`; `min?`, `max?` | Native date input; saves on blur/Enter. `REQUIRED` / `INVALID_DATE`. |
+| `InlineSelect<V>` | `value: V`, `options: { value: V; label; disabled? }[]` (`V` = `string \| number \| null`) | Saves on change. Include the current value; `{ value: null, label: '–' }` for none. |
+| `InlineCheckbox` / `InlineSwitch` | `value: boolean` | Saves on change. Switch has `role="switch"`. |
+| `InlineCheckboxGroup<V>` | `value: V[]`, `options: { value: V; label }[]` (`V extends string`) | Saves the whole list (in `options` order) on each change. |
+
+```tsx
+import { InlineText, InlineTextarea, InlineMoney, InlineHours, InlineDate, InlineSelect,
+  InlineCheckbox, InlineSwitch, InlineCheckboxGroup } from '../../components/inline';
+
+// One PATCH per field; invalidate in onSave.
+const patch = (body: GigUpdate) => gigsApi.update(gig.id, body).then(() => invalidateYearData(qc));
+
+<InlineText label={t('gigForm.venue')} required value={gig.venue} field="venue"
+  onSave={(venue) => patch({ venue })} />
+<InlineTextarea label={t('gigForm.notes')} value={gig.notes} field="notes"
+  onSave={(notes) => patch({ notes })} />
+<InlineMoney label={t('gigForm.price')} required value={gig.priceCents} field="priceCents"
+  onSave={(priceCents) => patch({ priceCents })} />
+<InlineHours label={t('hours.hours')} value={entry.hours} field="hours"
+  onSave={(hours) => hoursApi.update(entry.id, { hours })} />
+<InlineDate label={t('tasks.dueDate')} value={task.dueDate} field="dueDate"
+  onSave={(dueDate) => tasksApi.update(task.id, { dueDate })} />
+<InlineSelect label={t('costs.person')} hideLabel value={line.personId} field="personId"
+  options={[{ value: null, label: '–' }, ...people.map((p) => ({ value: p.id, label: p.name }))]}
+  onSave={async (personId) => showWarnings((await costLinesApi.update(line.id, { personId })).warnings)} />
+<InlineCheckbox label={t('people.active')} value={person.active}
+  onSave={(active) => peopleApi.update(person.id, { active })} />
+<InlineSwitch label={t('costs.loadIn')} value={line.joinsLoadIn === true}
+  onSave={(joinsLoadIn) => costLinesApi.update(line.id, { joinsLoadIn })} />
+<InlineCheckboxGroup label={t('gigForm.technicalSetup')} value={gig.technicalSetup}
+  options={TECHNICAL_SETUPS.map((s) => ({ value: s, label: t(`technicalSetup.${s}`) }))}
+  onSave={(technicalSetup) => patch({ technicalSetup })} />
+
+// Budget row (PUT the whole row) in a table cell:
+<InlineMoney label={`${t('budget.budgeted')}, ${name}`} hideLabel value={row.budgetedCents}
+  field="budgetedCents" onSave={(budgetedCents) => budgetApi.put(row.id, { ...row, budgetedCents })} />
+```
+
+(Names of APIs/keys above are illustrative; use the real ones of your screen.)
+
+Read-only values (deleted gig, other partners' entries): render plain text, or pass `disabled`
+(looks like a muted value).
+
+**Custom control** (only if no component fits): `useInlineSave({ value, save, toDraft?, parse?,
+validate?, equals?, field?, disabled?, formatKey? })` → `{ draft, setDraft, commit(draft?), revert,
+status, error, dirty }`, rendered in `InlineFieldFrame` (`label`, `hideLabel?`, `hint?`, `status`,
+`error`, `disabled?`, `multiline?`, `children(controlProps)`). For text-like inputs spread
+`textControlProps(state, multiline?)` (value, onChange, blur/Enter/Esc). `InlineStateIcon` and
+`InlineAnnouncer` are the indicator and live region alone; `inlineErrorMessage(t, error, field?)`
+gives the translated message. Texts: `inline.*` in `src/i18n/fi.ts` / `en.ts`.
 
 Theme in code: `useTheme()` → `{ theme, setTheme, toggleTheme }` (`src/theme/theme.ts`).
 Header controls: `ThemeToggle` / `ThemeButtons`, `LanguageToggle` / `LanguageButtons` in `src/layout/`.

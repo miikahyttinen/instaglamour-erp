@@ -34,6 +34,7 @@ import { NAV_ITEMS } from '../layout/navItems';
 import { ThemeToggle } from '../layout/ThemeToggle';
 import { formatMoney } from '../lib/format';
 import type { Theme } from '../theme/theme';
+import { InlineShowcase } from './InlineShowcase';
 import './styleguide.css';
 
 const COLOR_TOKENS = [
@@ -340,6 +341,8 @@ function Showcase({ theme }: { theme: Theme }) {
           <Button>Cancel</Button>
         </div>
       </Card>
+
+      <InlineShowcase />
 
       <SectionLabel>Status tags</SectionLabel>
       <div className="sg-row">
