@@ -1,7 +1,7 @@
 # TASK-118: Inline edit foundation (save on blur)
 
 - **owner:** ui
-- **status:** todo
+- **status:** done
 - **spec:** NFR-8, docs/design.md → Inline editing
 - **depends on:** none (blocks TASK-119…123)
 
