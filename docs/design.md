@@ -72,3 +72,31 @@ Contrast must meet WCAG AA for text in both themes. (`--label` dark raised from 
 - One request per field change (PATCH with just that field; budget rows PUT the whole row).
 - Keyboard and screen reader: real inputs with labels; state changes announced via a polite live region.
 - Not inline: creating new items (form + Add), cancel/uncancel/delete (dialog with reason), gig dates (Move dialog), mark paid / unpay (action).
+
+## Layout v2 — sidebar, smaller type, more space (owner request 2026-10-05)
+Supersedes the header/nav and typography sizes above where they differ.
+
+### Sidebar navigation
+- Left sidebar on desktop/tablet (≥ 900 px): logo at top; nav items with **line icons** + label (Year, Gigs, People, Tasks, Hours, Budget); active item = `--surface-2` background + accent bar on the left; bottom area: language, theme toggle, sign out (with signed-in name as text when expanded).
+- **Collapsible:** expanded ≈ 232 px (icon + label), collapsed ≈ 64 px (icons only, label as tooltip and accessible name). Toggle button in the sidebar; state persisted in `localStorage` (try/catch); smooth width transition (respects reduced motion).
+- **Phone (< 900 px):** sidebar hidden; a top bar with ☰, logo and year selector; ☰ opens the sidebar as an overlay drawer from the left (backdrop, focus trap, Esc/backdrop/nav click closes). The bottom nav is removed.
+- **Top bar of the content area:** page context left (optional breadcrumb/back), **year selector** right. Sticky.
+
+### Typography (smaller)
+| Token | Size |
+|---|---|
+| `--fs-title` | 22 px (phone 20) |
+| `--fs-figure` | 20 px |
+| `--fs-lg` | 16 px |
+| `--fs-body` | 14 px |
+| `--fs-small` | 12 px |
+| `--fs-label` | 10 px (mono, letter-spacing 0.14em) |
+| `--fs-meta` | 10 px |
+Line-height body 1.5.
+
+### Space & alignment
+- 8 px grid. Section gap 40 px (phone 32), card padding 20 px (phone 16), gap between tiles/cards 16 px, page padding 40 px desktop / 16 px phone.
+- One content container: max width 1200 px, left-aligned to the sidebar edge + page padding; every page uses the same container, so titles, tiles, tables and forms share one left edge.
+- Grid: tiles in a 12-column grid (`StatGrid` spans), consistent heights per row; labels top-aligned; values baseline-aligned.
+- Tables: numeric columns right-aligned with tabular figures; header and cell padding identical; first column aligned with the page edge of cards above.
+- Forms/inline fields: labels in one column width per section; inputs aligned; consistent 36 px control height (44 px touch on phone).
