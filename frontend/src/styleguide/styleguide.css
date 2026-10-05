@@ -101,3 +101,33 @@
 .sg-note {
   margin-top: var(--space-4);
 }
+
+/* Inline editing section */
+.sg-note-top {
+  margin: 0 0 var(--space-2);
+}
+.sg-fail-toggle {
+  margin-bottom: var(--space-3);
+}
+.sg-inline-grid {
+  display: grid;
+  gap: var(--space-2) var(--space-4);
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (min-width: 600px) {
+  .sg-inline-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .sg-inline-wide {
+    grid-column: 1 / -1;
+  }
+}
+/* Pin the hover / focus look for the static state demo (mirrors styles.css). */
+.sg-force-hover input.inline-input {
+  border-color: var(--border);
+}
+.sg-force-focus input.inline-input {
+  border-color: var(--accent);
+  background-color: var(--bg);
+  box-shadow: 0 0 0 var(--hairline) var(--accent);
+}
