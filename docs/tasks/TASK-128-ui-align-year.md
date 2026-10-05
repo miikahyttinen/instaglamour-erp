@@ -1,7 +1,7 @@
 # TASK-128: Align year page
 
 - **owner:** ui
-- **status:** todo
+- **status:** done
 - **spec:** docs/design.md → "Layout v2"
 - **depends on:** TASK-125
 
