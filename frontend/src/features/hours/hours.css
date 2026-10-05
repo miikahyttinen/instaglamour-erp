@@ -76,13 +76,15 @@
 .hours-page .hour-entry:first-child {
   border-top: 0;
 }
-/* Own entries: edit / delete icon buttons on the right of the comment line. */
+/* Own entries: date, comment and hours are inline fields (NFR-8); delete button on the right.
+   Phones: date + hours on the first line, comment + delete on the second. */
 .hours-page .hour-entries-editable .hour-entry {
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) 7.5rem;
   grid-template-areas:
     'date amount'
     'comment actions';
-  padding-right: var(--space-2);
+  gap: 0 var(--space-2);
+  padding: var(--space-1) var(--space-2);
 }
 .hours-page .hour-date {
   grid-area: date;
@@ -104,8 +106,19 @@
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
-.hours-page .hour-entries-editable .hour-amount {
-  padding-right: var(--space-2);
+/* Inline date: keep the mono label look of the read-only date, sized to its content. */
+.hours-page .hour-date.inline-field {
+  justify-self: start;
+  max-width: 100%;
+}
+.hours-page .hour-date .inline-input {
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: var(--label);
+}
+.hours-page .hour-amount .inline-input {
+  font-weight: var(--fw-bold);
 }
 .hours-page .hour-actions {
   grid-area: actions;
@@ -244,12 +257,7 @@
     grid-template-areas: 'date comment amount';
   }
   .hours-page .hour-entries-editable .hour-entry {
-    grid-template-columns: 9rem minmax(0, 1fr) 6rem auto;
+    grid-template-columns: 11rem minmax(0, 1fr) 7.5rem auto;
     grid-template-areas: 'date comment amount actions';
-    padding-top: var(--space-1);
-    padding-bottom: var(--space-1);
-  }
-  .hours-page .hour-entries-editable .hour-amount {
-    padding-right: 0;
   }
 }

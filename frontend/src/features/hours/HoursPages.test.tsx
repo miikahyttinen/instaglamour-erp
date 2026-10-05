@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { http } from 'msw';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { HourEntry } from '../../api/types';
@@ -42,7 +42,7 @@ describe('my hours (UC-018)', () => {
     expect(await screen.findByRole('heading', { name: `Tunnit ${YEAR}` })).toBeInTheDocument();
     const march = await screen.findByRole('region', { name: 'Maaliskuu' });
     const january = screen.getByRole('region', { name: 'Tammikuu' });
-    expect(within(march).getByText('Rehearsal')).toBeInTheDocument();
+    expect(within(march).getByDisplayValue('Rehearsal')).toBeInTheDocument();
     expect(text(within(january).getByLabelText('Kuukausi yhteensä Tammikuu'))).toBe('3,5 h');
     expect(text(within(march).getByLabelText('Kuukausi yhteensä Maaliskuu'))).toBe('0,75 h');
     expect(text(screen.getByTestId('hours-year-total'))).toBe('4,25 h');
@@ -54,8 +54,8 @@ describe('my hours (UC-018)', () => {
       .map((r) => r.getAttribute('aria-label'));
     expect(screen.getByRole('region', { name: `Tuntisumma ${YEAR}` })).toBeInTheDocument();
     expect(regions).toEqual(['Maaliskuu', 'Tammikuu']);
-    expect(screen.queryByText('Old year')).not.toBeInTheDocument();
-    expect(screen.queryByText('Sound check')).not.toBeInTheDocument();
+    expect(screen.queryByDisplayValue('Old year')).not.toBeInTheDocument();
+    expect(screen.queryByDisplayValue('Sound check')).not.toBeInTheDocument();
   });
 
   it('adds an entry with today as default date and 0.25-step hours', async () => {
@@ -72,7 +72,7 @@ describe('my hours (UC-018)', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Tallenna' }));
 
     const february = await screen.findByRole('region', { name: 'Helmikuu' });
-    expect(within(february).getByText('Admin work')).toBeInTheDocument();
+    expect(within(february).getByDisplayValue('Admin work')).toBeInTheDocument();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     await waitFor(() => expect(text(screen.getByTestId('hours-year-total'))).toBe('5,5 h'));
     const saved = db.hours.entries.find((e) => e.comment === 'Admin work');
@@ -118,24 +118,125 @@ describe('my hours (UC-018)', () => {
     expect(screen.queryByText('Server says no')).not.toBeInTheDocument();
   });
 
-  it('edits an own entry', async () => {
+  it('has no Edit button or edit dialog: own entries are edited in place', async () => {
+    signInForYear();
+    renderApp('/hours');
+    const march = await screen.findByRole('region', { name: 'Maaliskuu' });
+    expect(screen.queryByRole('button', { name: /Muokkaa/ })).not.toBeInTheDocument();
+    expect(within(march).getByRole('textbox', { name: /^Kommentti: .* Rehearsal$/ })).toHaveValue('Rehearsal');
+    expect(within(march).getByRole('textbox', { name: /^Tunnit: .* Rehearsal$/ })).toHaveValue('0,75');
+    expect(within(march).getByLabelText(/^Päivämäärä: .* Rehearsal$/)).toHaveValue(`${YEAR}-03-12`);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('saves hours on blur with one PATCH and updates month and year totals', async () => {
+    const bodies: unknown[] = [];
+    server.events.on('request:start', async ({ request }) => {
+      if (request.method === 'PATCH') bodies.push(await request.clone().json());
+    });
     signInForYear();
     const { user } = renderApp('/hours');
-    await screen.findByRole('region', { name: 'Maaliskuu' });
-    await user.click(screen.getByRole('button', { name: /^Muokkaa: .* Rehearsal$/ }));
-    const dialog = screen.getByRole('dialog', { name: 'Muokkaa tuntikirjausta' });
-    const hours = within(dialog).getByLabelText('Tunnit');
-    expect(hours).toHaveValue('0,75');
+    const march = await screen.findByRole('region', { name: 'Maaliskuu' });
+    const hours = within(march).getByRole('textbox', { name: /^Tunnit: .* Rehearsal$/ });
     await user.clear(hours);
     await user.type(hours, '2,5');
-    await user.click(within(dialog).getByRole('button', { name: 'Tallenna' }));
+    expect(bodies).toHaveLength(0);
+    await user.click(document.body);
 
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
-    const march = screen.getByRole('region', { name: 'Maaliskuu' });
     await waitFor(() =>
       expect(text(within(march).getByLabelText('Kuukausi yhteensä Maaliskuu'))).toBe('2,5 h'),
     );
+    expect(text(screen.getByTestId('hours-year-total'))).toBe('6 h');
     expect(db.hours.entries.find((e) => e.id === 'e3')?.hours).toBe(2.5);
+    expect(bodies).toEqual([{ hours: 2.5 }]);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    server.events.removeAllListeners();
+  });
+
+  it('Enter saves the comment; Esc restores the saved value without sending', async () => {
+    signInForYear();
+    const { user } = renderApp('/hours');
+    const january = await screen.findByRole('region', { name: 'Tammikuu' });
+    const comment = within(january).getByRole('textbox', { name: /^Kommentti: .* Planning$/ });
+    await user.clear(comment);
+    await user.type(comment, 'Planning session{Enter}');
+    await waitFor(() => expect(db.hours.entries.find((e) => e.id === 'e1')?.comment).toBe('Planning session'));
+
+    const admin = within(january).getByRole('textbox', { name: /^Kommentti: .* Admin$/ });
+    await user.type(admin, ' changed');
+    await user.keyboard('{Escape}');
+    expect(admin).toHaveValue('Admin');
+    await user.click(document.body);
+    expect(db.hours.entries.find((e) => e.id === 'e2')?.comment).toBe('Admin');
+  });
+
+  it('shows INVALID_HOURS / REQUIRED under the field and does not send', async () => {
+    signInForYear();
+    const { user } = renderApp('/hours');
+    const march = await screen.findByRole('region', { name: 'Maaliskuu' });
+    const hours = within(march).getByRole('textbox', { name: /^Tunnit: .* Rehearsal$/ });
+    await user.clear(hours);
+    await user.type(hours, '1,3');
+    await user.click(document.body);
+    expect(within(march).getByText('Tunnit 0,25–24 neljännestunnin tarkkuudella.')).toBeInTheDocument();
+    expect(hours).toHaveAttribute('aria-invalid', 'true');
+    expect(hours).toHaveValue('1,3');
+
+    const comment = within(march).getByRole('textbox', { name: /^Kommentti: .* Rehearsal$/ });
+    await user.clear(comment);
+    await user.click(document.body);
+    expect(within(march).getByText('Pakollinen tieto.')).toBeInTheDocument();
+    const saved = db.hours.entries.find((e) => e.id === 'e3');
+    expect(saved).toMatchObject({ hours: 0.75, comment: 'Rehearsal' });
+  });
+
+  it('shows a translated server field error under the inline field', async () => {
+    server.use(
+      http.patch('/api/hours/:id', () =>
+        errorResponse(400, 'VALIDATION_ERROR', 'Server says no', { hours: 'INVALID_HOURS' }),
+      ),
+    );
+    signInForYear().language = 'en';
+    const { user } = renderApp('/hours');
+    const march = await screen.findByRole('region', { name: 'March' });
+    const hours = within(march).getByRole('textbox', { name: /^Hours: .* Rehearsal$/ });
+    await user.clear(hours);
+    await user.type(hours, '2{Enter}');
+    expect(await within(march).findByText('Hours must be 0.25–24 in quarter-hour steps.')).toBeInTheDocument();
+    expect(screen.queryByText('Server says no')).not.toBeInTheDocument();
+    expect(hours).toHaveValue('2');
+  });
+
+  it('changing the date moves the entry to its new month', async () => {
+    signInForYear();
+    const { user } = renderApp('/hours');
+    const march = await screen.findByRole('region', { name: 'Maaliskuu' });
+    const date = within(march).getByLabelText(/^Päivämäärä: .* Rehearsal$/);
+    act(() => date.focus());
+    fireEvent.change(date, { target: { value: `${YEAR}-02-10` } });
+    await user.tab();
+
+    const february = await screen.findByRole('region', { name: 'Helmikuu' });
+    expect(within(february).getByDisplayValue('Rehearsal')).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole('region', { name: 'Maaliskuu' })).not.toBeInTheDocument());
+    expect(text(screen.getByTestId('hours-year-total'))).toBe('4,25 h');
+    expect(db.hours.entries.find((e) => e.id === 'e3')?.date).toBe(`${YEAR}-02-10`);
+  });
+
+  it('moving an entry to another year shows the notice and removes it from this year', async () => {
+    signInForYear();
+    const { user } = renderApp('/hours');
+    const march = await screen.findByRole('region', { name: 'Maaliskuu' });
+    const date = within(march).getByLabelText(/^Päivämäärä: .* Rehearsal$/);
+    act(() => date.focus());
+    fireEvent.change(date, { target: { value: `${YEAR + 1}-03-12` } });
+    await user.tab();
+
+    expect(
+      await screen.findByText(`Tallennettu vuodelle ${YEAR + 1}. Vaihda vuotta nähdäksesi kirjauksen.`),
+    ).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole('region', { name: 'Maaliskuu' })).not.toBeInTheDocument());
+    expect(text(screen.getByTestId('hours-year-total'))).toBe('3,5 h');
   });
 
   it('deletes an own entry after confirmation', async () => {
@@ -199,6 +300,8 @@ describe('hours totals (UC-019)', () => {
     expect(await within(detail).findByText('Sound check')).toBeInTheDocument();
     expect(within(detail).getByText('Meeting')).toBeInTheDocument();
     expect(within(detail).queryByRole('button', { name: /Muokkaa|Poista/ })).not.toBeInTheDocument();
+    expect(within(detail).queryByRole('textbox')).not.toBeInTheDocument();
+    expect(detail.querySelector('input')).toBeNull();
     expect(within(detail).getByText('Vain omia kirjauksia voi muokata.')).toBeInTheDocument();
 
     // Tapping the same month again closes it.
@@ -206,15 +309,23 @@ describe('hours totals (UC-019)', () => {
     expect(screen.queryByRole('region', { name: `Partner B: Maaliskuu ${YEAR}` })).not.toBeInTheDocument();
   });
 
-  it('own entries in the month view can be edited', async () => {
+  it('own entries in the month view are edited inline and the totals update', async () => {
     signInForYear();
     const { user } = renderApp('/hours/totals');
     const partnerA = await screen.findByRole('region', { name: 'Partner A' });
     await user.click(within(partnerA).getByRole('button', { name: /^Partner A, Tammikuu/ }));
     const detail = await screen.findByRole('region', { name: `Partner A: Tammikuu ${YEAR}` });
-    expect(await within(detail).findByText('Planning')).toBeInTheDocument();
-    expect(within(detail).getByRole('button', { name: /^Muokkaa: .* Planning$/ })).toBeInTheDocument();
-    expect(within(detail).queryByText('Rehearsal')).not.toBeInTheDocument();
+    expect(await within(detail).findByDisplayValue('Planning')).toBeInTheDocument();
+    expect(within(detail).queryByDisplayValue('Rehearsal')).not.toBeInTheDocument();
+    expect(within(detail).queryByRole('button', { name: /Muokkaa/ })).not.toBeInTheDocument();
+    expect(within(detail).getByRole('button', { name: /^Poista: .* Planning$/ })).toBeInTheDocument();
+
+    const hours = within(detail).getByRole('textbox', { name: /^Tunnit: .* Planning$/ });
+    await user.clear(hours);
+    await user.type(hours, '3{Enter}');
+    await waitFor(() => expect(text(within(partnerA).getByLabelText('Yhteensä Partner A'))).toBe('5,25 h'));
+    expect(within(partnerA).getByRole('button', { name: 'Partner A, Tammikuu: 4,5 h' })).toBeInTheDocument();
+    expect(text(screen.getByTestId('hours-grand-total'))).toBe('10,5 h');
   });
 
   it('switches between my hours and totals with tabs', async () => {
