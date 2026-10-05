@@ -1,7 +1,7 @@
 # TASK-135: Hours summary — total hours and hours per partner first
 
 - **owner:** ui
-- **status:** todo
+- **status:** done
 - **spec:** UC-019 (owner request 2026-10-05: "totals should show total hours and hours for each partner")
 - **depends on:** none
 
