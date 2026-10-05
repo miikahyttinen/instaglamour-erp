@@ -118,6 +118,102 @@ export async function expectNoHorizontalScroll(page: Page, where: string): Promi
   ).toBeLessThanOrEqual(m.client);
 }
 
+// ---- Inline editing (NFR-8, docs/design.md → Inline editing) ----
+
+const WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+const isApiWrite = (method: string, url: string) =>
+  WRITE_METHODS.has(method) && new URL(url).pathname.startsWith('/api/');
+
+/**
+ * Records every API write the page sends (POST/PUT/PATCH/DELETE). Used to prove that Esc and an
+ * invalid value send nothing.
+ */
+export function trackWrites(page: Page): string[] {
+  const list: string[] = [];
+  page.on('request', (req) => {
+    if (isApiWrite(req.method(), req.url())) list.push(`${req.method()} ${new URL(req.url()).pathname}`);
+  });
+  return list;
+}
+
+/**
+ * Edits an inline field like a user: focus it, type the value, leave it (blur) or press Enter.
+ * Waits for the write request this causes and expects a 2xx answer (the value reached the
+ * backend). Returns the request body.
+ */
+export async function editInline(
+  page: Page,
+  field: Locator,
+  value: string,
+  opts: { commit?: 'blur' | 'Enter'; method?: 'PATCH' | 'PUT' | 'POST' } = {},
+): Promise<unknown> {
+  await field.click();
+  await expect(field).toBeFocused();
+  await field.fill(value);
+  const response = page.waitForResponse(
+    (res) =>
+      isApiWrite(res.request().method(), res.url()) && (!opts.method || res.request().method() === opts.method),
+  );
+  if (opts.commit === 'Enter') await field.press('Enter');
+  else await field.blur();
+  const res = await response;
+  expect(res.ok(), `${res.request().method()} ${res.url()} → ${res.status()}`).toBeTruthy();
+  return res.request().postDataJSON();
+}
+
+/** Inline select: saves on change (no blur needed). Waits for the write and returns its body. */
+export async function selectInline(page: Page, select: Locator, label: string): Promise<unknown> {
+  const response = page.waitForResponse((res) => isApiWrite(res.request().method(), res.url()));
+  await select.selectOption({ label });
+  const res = await response;
+  expect(res.ok(), `${res.request().method()} ${res.url()} → ${res.status()}`).toBeTruthy();
+  return res.request().postDataJSON();
+}
+
+/**
+ * Esc: type a new value, press Esc → the last saved value is back; leaving the field then sends
+ * nothing. The caller reloads to prove the saved value is unchanged.
+ */
+export async function expectEscReverts(page: Page, field: Locator, typed: string, saved: string): Promise<void> {
+  const writes = trackWrites(page);
+  await field.click();
+  await field.fill(typed);
+  await expect(field).toHaveValue(typed);
+  await field.press('Escape');
+  await expect(field).toHaveValue(saved);
+  await field.blur();
+  await page.waitForTimeout(300); // a save would leave right away on blur
+  expect(writes, 'Esc and leaving the field send nothing').toEqual([]);
+}
+
+/**
+ * Invalid value: leaving the field shows the translated error under it (the typed value stays,
+ * the field is marked invalid) and nothing is sent. The caller reloads to prove it wasn't saved.
+ */
+export async function expectInvalidNotSent(page: Page, field: Locator, typed: string, message: string): Promise<void> {
+  const writes = trackWrites(page);
+  await field.click();
+  await field.fill(typed);
+  await field.blur();
+  await expect(field).toHaveAttribute('aria-invalid', 'true');
+  await expect(field).toHaveAccessibleDescription(new RegExp(escapeRegExp(message)));
+  await expect(field).toHaveValue(typed);
+  await page.waitForTimeout(300);
+  expect(writes, 'an invalid value is not sent').toEqual([]);
+}
+
+/** NFR-8: existing items have no Edit / Save buttons (creating a new item keeps its own form). */
+export async function expectNoEditSaveButtons(scope: Locator, where: string): Promise<void> {
+  await expect(
+    scope.getByRole('button', { name: /^(Muokkaa|Tallenna|Muuta nimeä)/ }),
+    `${where}: no Edit/Save buttons`,
+  ).toHaveCount(0);
+}
+
+export function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 /** Thin JSON API helper on the page's cookie jar (for setup and cross-checks only). */
 export function api(page: Page) {
   const req: APIRequestContext = page.request;

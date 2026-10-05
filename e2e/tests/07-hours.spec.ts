@@ -1,9 +1,31 @@
-import { api, CURRENT_YEAR, expect, expectNoHorizontalScroll, fiHours, goNav, signIn, tagOf, test } from './helpers';
+import {
+  api,
+  CURRENT_YEAR,
+  editInline,
+  expect,
+  expectEscReverts,
+  expectInvalidNotSent,
+  expectNoEditSaveButtons,
+  expectNoHorizontalScroll,
+  fiDate,
+  fiHours,
+  goNav,
+  signIn,
+  tagOf,
+  test,
+} from './helpers';
 import { suffix } from './gigs';
 
 interface Totals {
   partners: { partnerId: string; months: number[]; total: number }[];
   grandTotal: number;
+}
+
+interface HourEntry {
+  id: string;
+  date: string;
+  comment: string;
+  hours: number;
 }
 
 // Flow 7: hours — add own entry; totals page shows it; year page hours updated (UC-018, UC-019, UC-022).
@@ -26,13 +48,17 @@ test('log own hours and see them in totals and on the year page', async ({ page 
   await page.getByRole('button', { name: 'Lisää tunnit' }).click();
   const dialog = page.getByRole('dialog', { name: 'Uusi tuntikirjaus' });
   // Date defaults to today (in the selected year for this suite).
-  await expect(dialog.getByLabel('Päivämäärä')).toHaveValue(new RegExp(`^${CURRENT_YEAR}-`));
+  const dateField = dialog.getByLabel('Päivämäärä');
+  await expect(dateField).toHaveValue(new RegExp(`^${CURRENT_YEAR}-`));
+  const date = await dateField.inputValue();
   await dialog.getByLabel('Kommentti').fill(comment);
   await dialog.getByLabel('Tunnit', { exact: true }).fill('1,5');
   await dialog.getByRole('button', { name: 'Tallenna' }).click();
   await expect(dialog).toBeHidden();
 
-  await expect(page.getByText(comment)).toBeVisible();
+  // Own entries are inline fields: the comment is the value of "Kommentti: <date> <comment>".
+  await expect(page.getByLabel(`Kommentti: ${fiDate(date)} ${comment}`, { exact: true })).toHaveValue(comment);
+  await expect(page.getByLabel(`Tunnit: ${fiDate(date)} ${comment}`, { exact: true })).toHaveValue('1,5');
   await expect(page.getByTestId('hours-year-total')).toHaveText(fiHours(ownBefore + added));
 
   // Totals page.
@@ -46,4 +72,62 @@ test('log own hours and see them in totals and on the year page', async ({ page 
   const hours = page.getByRole('region', { name: 'Tunnit' });
   await expect(hours.getByRole('link', { name: `${me.name} ${fiHours(mineBefore + added)}` })).toBeVisible();
   await expect(hours.getByRole('link', { name: `Yhteensä ${fiHours(before.grandTotal + added)}` })).toBeVisible();
+});
+
+// Own hour entries are edited in place (NFR-8): hours and comment save on blur / Enter, the year
+// total follows; Esc reverts; invalid hours (not a 0.25 step) are refused.
+test('edit own hours in place; Esc and invalid hours are not saved', async ({ page }, testInfo) => {
+  await signIn(page);
+  const comment = `Synthetic edit ${tagOf(testInfo)}-${suffix()}`;
+  const renamed = `${comment} B`;
+  const date = tagOf(testInfo) === 'M' ? `${CURRENT_YEAR}-03-10` : `${CURRENT_YEAR}-03-11`;
+  const entry = (await api(page).post('/hours', { date, comment, hours: 1 })) as HourEntry;
+  const own = (await api(page).get(`/hours?year=${CURRENT_YEAR}`)) as HourEntry[];
+  const total = own.reduce((sum, e) => sum + e.hours, 0); // includes the new entry
+
+  await page.goto('/hours');
+  await expect(page.getByRole('heading', { level: 1, name: `Tunnit ${CURRENT_YEAR}` })).toBeVisible();
+  await expect(page.getByTestId('hours-year-total')).toHaveText(fiHours(total));
+  await expectNoEditSaveButtons(page.getByRole('main'), 'my hours');
+
+  const of = (field: string, c: string) => page.getByLabel(`${field}: ${fiDate(date)} ${c}`, { exact: true });
+
+  // Hours: blur saves one PATCH with just the hours; the year total follows.
+  await expect(of('Tunnit', comment)).toHaveValue('1');
+  expect(await editInline(page, of('Tunnit', comment), '2,5')).toEqual({ hours: 2.5 });
+  await expect(page.getByTestId('hours-year-total')).toHaveText(fiHours(total + 1.5));
+
+  // Comment: Enter saves; the entry's fields are then named after the new comment.
+  expect(await editInline(page, of('Kommentti', comment), renamed, { commit: 'Enter' })).toEqual({ comment: renamed });
+  await expect(of('Kommentti', renamed)).toHaveValue(renamed);
+
+  // Esc reverts; invalid hours and an empty comment show the translated error and are not sent.
+  await expectEscReverts(page, of('Tunnit', renamed), '7', '2,5');
+  await expectInvalidNotSent(page, of('Tunnit', renamed), '0,3', 'Tunnit 0,25–24 neljännestunnin tarkkuudella.');
+  await expectInvalidNotSent(page, of('Kommentti', renamed), '', 'Pakollinen tieto.');
+  await expect(page.getByTestId('hours-year-total')).toHaveText(fiHours(total + 1.5));
+  // No-horizontal-scroll with the hours error shown: separate test below (F-004).
+
+  // Reload: the saved values persisted, the invalid ones were never saved.
+  await page.reload();
+  await expect(of('Tunnit', renamed)).toHaveValue('2,5');
+  await expect(of('Kommentti', renamed)).toHaveValue(renamed);
+  await expect(page.getByTestId('hours-year-total')).toHaveText(fiHours(total + 1.5));
+  const saved = ((await api(page).get(`/hours?year=${CURRENT_YEAR}`)) as HourEntry[]).find((e) => e.id === entry.id);
+  expect(saved).toMatchObject({ comment: renamed, hours: 2.5, date });
+});
+
+// NFR-1 with an inline error: the hours error message must wrap inside its column.
+// F-004: `.hours-page .hour-amount { white-space: nowrap }` is inherited by the field error, so
+// "Tunnit 0,25–24 neljännestunnin tarkkuudella." runs past the viewport (375 px: page 460 px wide).
+test.fixme('an invalid-hours error does not cause horizontal scrolling (F-004)', async ({ page }, testInfo) => {
+  await signIn(page);
+  const comment = `Synthetic wrap ${tagOf(testInfo)}-${suffix()}`;
+  const date = tagOf(testInfo) === 'M' ? `${CURRENT_YEAR}-03-12` : `${CURRENT_YEAR}-03-13`;
+  await api(page).post('/hours', { date, comment, hours: 1 });
+
+  await page.goto('/hours');
+  const hours = page.getByLabel(`Tunnit: ${fiDate(date)} ${comment}`, { exact: true });
+  await expectInvalidNotSent(page, hours, '0,3', 'Tunnit 0,25–24 neljännestunnin tarkkuudella.');
+  await expectNoHorizontalScroll(page, 'my hours with an hours error');
 });

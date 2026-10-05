@@ -1,5 +1,18 @@
-import { api, CURRENT_YEAR, enMoney, expect, fiHours, PARTNER_B, signIn, tagOf, test } from './helpers';
-import { costLine, createGigViaApi, gigListRows, reference, suffix } from './gigs';
+import {
+  api,
+  CURRENT_YEAR,
+  editInline,
+  enMoney,
+  expect,
+  expectNoEditSaveButtons,
+  fiHours,
+  PARTNER_B,
+  selectInline,
+  signIn,
+  tagOf,
+  test,
+} from './helpers';
+import { costField, costLine, createGigViaApi, gigListRows, reference, suffix } from './gigs';
 
 // Extra integration checks beyond the nine smoke flows: places where the UI depends on
 // cross-endpoint behaviour of the backend.
@@ -12,10 +25,12 @@ test('changing the seller moves the unpaid Sales line and the UI names it (BR-02
   const partnerB = ref.partners.find((p) => p.name === 'Partner B');
 
   await page.goto(`/gigs/${gig.id}`);
-  await page.getByRole('button', { name: 'Muokkaa perustietoja' }).click();
-  await page.getByLabel('Myyjä').selectOption({ label: 'Partner B' });
+  await expectNoEditSaveButtons(page.getByRole('main'), 'gig page');
+  // The hint is shown next to the seller / producer selects before anything is changed.
   await expect(page.getByText('Vanhan myyjän / tuottajan maksamattomat')).toBeVisible();
-  await page.getByRole('button', { name: 'Tallenna' }).click();
+  // The select saves on change: one PATCH with just the seller.
+  const seller = page.getByLabel('Myyjä', { exact: true });
+  expect(await selectInline(page, seller, 'Partner B')).toEqual({ sellerId: partnerB?.id });
 
   const notice = page.getByRole('status').filter({ hasText: 'Muutokset tallennettu.' });
   await expect(notice).toContainText('Rivit siirtyivät uudelle henkilölle:');
@@ -25,6 +40,9 @@ test('changing the seller moves the unpaid Sales line and the UI names it (BR-02
 
   const after = await api(page).get(`/gigs/${gig.id}`);
   expect(after.sellerId).toBe(partnerB?.id);
+  await page.reload();
+  await expect(seller.locator('option:checked')).toHaveText('Partner B');
+  await expect(costField(page, 'Henkilö', 'Myynti').locator('option:checked')).toHaveText('Partner B');
 });
 
 test('English amounts are parsed and shown in EN format (budget)', async ({ page }, testInfo) => {
@@ -32,11 +50,15 @@ test('English amounts are parsed and shown in EN format (budget)', async ({ page
   await signIn(page, PARTNER_B, { language: 'en', selectedYear: year });
   await page.goto('/budget');
   await expect(page.getByRole('heading', { level: 1, name: `Budget ${year}` })).toBeVisible();
-  await page.getByLabel('Budget, expense, Insurance').fill('1,200.00');
-  await page.getByRole('button', { name: 'Save Insurance' }).click();
-  await expect(page.getByRole('status')).toContainText('Insurance');
-  await expect(page.getByLabel('Budget, expense, Insurance')).toHaveValue('1200.00');
+  const insurance = page.getByLabel('Budget, expense, Insurance', { exact: true });
+  // Inline cell: blur PUTs the whole row with the parsed EN amount.
+  const body = await editInline(page, insurance, '1,200.00', { method: 'PUT' });
+  expect(body).toMatchObject({ budgetExpenseCents: 120000 });
+  await expect(page.getByRole('status').filter({ hasText: 'Budget, expense, Insurance: saved' })).toHaveCount(1);
+  await expect(insurance).toHaveValue('1200.00');
   await expect(page.locator('tfoot .budget-totals td').first()).toHaveText(enMoney(120000));
+  await page.reload();
+  await expect(insurance).toHaveValue('1200.00');
   const budget = await api(page).get(`/budget?year=${year}`);
   expect(budget.totals.budgetExpenseCents).toBe(120000);
 });
@@ -64,7 +86,8 @@ test('hours saved for another year show a notice and are not added to this year'
   await dialog.getByLabel('Kommentti').fill(comment);
   await dialog.getByLabel('Tunnit', { exact: true }).fill('2');
   await dialog.getByRole('button', { name: 'Tallenna' }).click();
-  await expect(page.getByRole('status')).toHaveText(
+  // The page has a polite live region per inline field, so pick the notice by its text.
+  await expect(page.getByRole('status').filter({ hasText: 'Tallennettu vuodelle' })).toHaveText(
     `Tallennettu vuodelle ${CURRENT_YEAR + 1}. Vaihda vuotta nähdäksesi kirjauksen.`,
   );
   await expect(page.getByTestId('hours-year-total')).toHaveText(fiHours(total));

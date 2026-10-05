@@ -1,5 +1,20 @@
-import { api, expect, expectNoHorizontalScroll, fiInput, fiMoney, goNav, SEED, signIn, tagOf, test } from './helpers';
-import { costLine, costLines, createGigViaApi, econTile, suffix, totalPriceLine } from './gigs';
+import {
+  api,
+  editInline,
+  expect,
+  expectEscReverts,
+  expectInvalidNotSent,
+  expectNoEditSaveButtons,
+  expectNoHorizontalScroll,
+  fiInput,
+  fiMoney,
+  goNav,
+  SEED,
+  signIn,
+  tagOf,
+  test,
+} from './helpers';
+import { costField, costLine, costLines, createGigViaApi, econTile, suffix, totalPriceLine } from './gigs';
 import { yearFigure } from './year';
 
 // Flow 2: create gig from a template → cost lines → assign a person → load-in switch → mark paid →
@@ -52,15 +67,18 @@ test('create a gig from a template, staff it, switch load-in, mark paid', async 
   await loadIn.click();
   await expect(loadIn).not.toBeChecked();
   const vocBudget = fee - SEED.loadInDeductionCents;
-  await expect(voc.locator('td.cost-budget')).toHaveText(fiMoney(vocBudget));
+  // The budget cell is an inline money field now; it shows the deducted budget.
+  await expect(costField(page, 'Budjetti', 'Laulu')).toHaveValue(fiInput(vocBudget));
   await expect(econTile(page, 'Kulut').budget).toHaveText(fiMoney(budgeted - SEED.loadInDeductionCents));
 
   // Mark paid with the default amount (= budgeted).
   await voc.getByRole('button', { name: 'Merkitse maksetuksi' }).click();
-  await expect(voc.getByLabel('Maksettu summa')).toHaveValue(fiInput(vocBudget));
+  await expect(voc.getByLabel('Maksettu summa', { exact: true })).toHaveValue(fiInput(vocBudget));
   await voc.getByRole('button', { name: 'Merkitse maksetuksi' }).click();
-  await expect(voc.locator('.paid-info')).toContainText(`Maksettu ${fiMoney(vocBudget)}`);
+  // Paid: the amount is an inline field ("Maksettu summa: Laulu"); time and partner next to it.
+  await expect(costField(page, 'Maksettu summa', 'Laulu')).toHaveValue(fiInput(vocBudget));
   await expect(voc.locator('.paid-info')).toContainText('Partner A');
+  await expect(voc.getByRole('button', { name: 'Poista maksumerkintä' })).toBeVisible();
 
   // Economics update: actual costs and actual margin.
   await expect(econTile(page, 'Kulut').actual).toHaveText(fiMoney(vocBudget));
@@ -120,4 +138,69 @@ test('double booking shows a warning naming the other gig', async ({ page }, tes
   await expect(warning.getByRole('link', { name: 'Template A' })).toBeVisible();
   await expect(guitar.getByLabel('Henkilö: Kitara').locator('option:checked')).toHaveText('Person 1');
   await expectNoHorizontalScroll(page, 'gig page with warning');
+  // The select saved on change: still there after a reload.
+  await page.reload();
+  await expect(costField(page, 'Henkilö', 'Kitara').locator('option:checked')).toHaveText('Person 1');
+});
+
+// Cost lines are edited in place (NFR-8, UC-005): no Edit/Save buttons; budget, description and
+// paid amount save on blur / Enter; Esc reverts; invalid amounts are not sent.
+test('cost lines are edited in place; Esc and invalid amounts are not saved', async ({ page }, testInfo) => {
+  await signIn(page);
+  const venue = `Venue ${tagOf(testInfo)}-${suffix()}`;
+  const fee = SEED.templateB.roleFeeCents;
+  const budgeted = 3 * fee + 3 * SEED.internalFeeCents;
+  const guitarBudget = 30000;
+  const djPaid = 10000;
+  const note = 'Synthetic note';
+  const gig = await createGigViaApi(page, { startDate: '2026-11-28', venue });
+
+  await page.goto(`/gigs/${gig.id}`);
+  await expect(costLines(page)).toHaveCount(6);
+  await expectNoEditSaveButtons(page.getByRole('table', { name: 'Kulut ja miehitys' }), 'cost lines');
+
+  // Budget: blur saves one PATCH with just that field; the economics follow.
+  const guitar = costField(page, 'Budjetti', 'Kitara');
+  await expect(guitar).toHaveValue(fiInput(fee));
+  expect(await editInline(page, guitar, fiInput(guitarBudget))).toEqual({ budgetedCents: guitarBudget });
+  await expect(econTile(page, 'Kulut').budget).toHaveText(fiMoney(budgeted - fee + guitarBudget));
+
+  // Description: Enter saves; the line is then named after it.
+  expect(await editInline(page, costField(page, 'Kuvaus', 'Toimisto'), note, { commit: 'Enter' })).toEqual({
+    description: note,
+  });
+  await expect(costLine(page, `Toimisto (${note})`)).toBeVisible();
+
+  // Paid amount: after marking paid, the amount itself is edited in place.
+  const dj = costLine(page, 'DJ');
+  await dj.getByRole('button', { name: 'Merkitse maksetuksi' }).click();
+  await dj.getByRole('button', { name: 'Merkitse maksetuksi' }).click();
+  const paid = costField(page, 'Maksettu summa', 'DJ');
+  await expect(paid).toHaveValue(fiInput(fee));
+  expect(await editInline(page, paid, fiInput(djPaid))).toEqual({ actualCents: djPaid });
+  await expect(econTile(page, 'Kulut').actual).toHaveText(fiMoney(djPaid));
+
+  // Esc reverts without saving; invalid amounts show the translated error and are not sent.
+  const voc = costField(page, 'Budjetti', 'Laulu');
+  await expectEscReverts(page, voc, fiInput(90000), fiInput(fee));
+  await expectEscReverts(page, paid, fiInput(90000), fiInput(djPaid));
+  await expectInvalidNotSent(page, voc, 'abc', 'Virheellinen arvo.');
+  await expectInvalidNotSent(page, paid, '-10', 'Summa ei voi olla negatiivinen.');
+  await expectNoHorizontalScroll(page, 'cost lines with field errors');
+
+  // Reload: saved values persisted, the others are unchanged.
+  await page.reload();
+  await expect(guitar).toHaveValue(fiInput(guitarBudget));
+  await expect(costField(page, 'Kuvaus', `Toimisto (${note})`)).toHaveValue(note);
+  await expect(paid).toHaveValue(fiInput(djPaid));
+  await expect(voc).toHaveValue(fiInput(fee));
+  await expect(voc).not.toHaveAttribute('aria-invalid', 'true');
+  await expect(econTile(page, 'Kulut').budget).toHaveText(fiMoney(budgeted - fee + guitarBudget));
+  await expect(econTile(page, 'Kulut').actual).toHaveText(fiMoney(djPaid));
+  const saved = await api(page).get(`/gigs/${gig.id}`);
+  const byType = (type: string) => saved.costLines.find((l: { type: string }) => l.type === type);
+  expect(byType('GUITAR').budgetedCents).toBe(guitarBudget);
+  expect(byType('VOC').budgetedCents).toBe(fee);
+  expect(byType('OFFICE').description).toBe(note);
+  expect(byType('DJ').actualCents).toBe(djPaid);
 });

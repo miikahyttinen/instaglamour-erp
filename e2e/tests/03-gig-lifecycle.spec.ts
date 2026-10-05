@@ -1,5 +1,67 @@
-import { api, expect, expectNoHorizontalScroll, fiDate, fiInput, fiMoney, pageHead, signIn, tagOf, test } from './helpers';
-import { createGigViaApi, gigListRows, infoValue as priceValue, suffix, totalPriceLine } from './gigs';
+import {
+  api,
+  editInline,
+  expect,
+  expectEscReverts,
+  expectInvalidNotSent,
+  expectNoEditSaveButtons,
+  expectNoHorizontalScroll,
+  fiDate,
+  fiInput,
+  fiMoney,
+  pageHead,
+  signIn,
+  tagOf,
+  test,
+} from './helpers';
+import { createGigViaApi, gigListRows, suffix, totalPrice } from './gigs';
+
+// Gig info and price are edited in place (NFR-8): no Edit/Save buttons; blur or Enter saves one
+// PATCH per field; Esc reverts; invalid values are not sent.
+test('gig basic info and price are edited in place; Esc and invalid values are not saved', async ({
+  page,
+}, testInfo) => {
+  await signIn(page);
+  const venue = `Venue ${tagOf(testInfo)}-${suffix()}`;
+  const renamedVenue = `${venue} B`;
+  const gig = await createGigViaApi(page, { startDate: '2026-11-21', venue, priceCents: 100000 });
+
+  await page.goto(`/gigs/${gig.id}`);
+  await expect(page.getByRole('heading', { level: 1, name: `${gig.lineupName} · ${venue}` })).toBeVisible();
+  await expectNoEditSaveButtons(page.getByRole('main'), 'gig page');
+
+  const venueField = page.getByLabel('Paikka', { exact: true });
+  const lineupField = page.getByLabel('Kokoonpanon nimi', { exact: true });
+  const price = page.getByLabel('Hinta (alv 0 %)', { exact: true });
+  await expect(venueField).toHaveValue(venue);
+  await expect(lineupField).toHaveValue(gig.lineupName);
+  await expect(price).toHaveValue(fiInput(100000));
+
+  // Text field, Enter saves: one PATCH with just that field; the heading follows.
+  const body = await editInline(page, venueField, renamedVenue, { commit: 'Enter' });
+  expect(body).toEqual({ venue: renamedVenue });
+  await expect(page.getByRole('heading', { level: 1, name: `${gig.lineupName} · ${renamedVenue}` })).toBeVisible();
+
+  // Esc reverts without saving (text and money field).
+  await expectEscReverts(page, lineupField, 'Synthetic lineup', gig.lineupName);
+  await expectEscReverts(page, price, fiInput(900000), fiInput(100000));
+
+  // Invalid values show the translated error under the field and are not sent.
+  await expectInvalidNotSent(page, price, '-100', 'Summa ei voi olla negatiivinen.');
+  await expectInvalidNotSent(page, lineupField, '', 'Pakollinen tieto.');
+  await expectNoHorizontalScroll(page, 'gig page with field errors');
+
+  // Reload: the saved venue persisted; the reverted and invalid values never reached the backend.
+  await page.reload();
+  await expect(venueField).toHaveValue(renamedVenue);
+  await expect(lineupField).toHaveValue(gig.lineupName);
+  await expect(price).toHaveValue(fiInput(100000));
+  await expect(price).not.toHaveAttribute('aria-invalid', 'true');
+  const saved = await api(page).get(`/gigs/${gig.id}`);
+  expect(saved.venue).toBe(renamedVenue);
+  expect(saved.lineupName).toBe(gig.lineupName);
+  expect(saved.priceCents).toBe(100000);
+});
 
 // Flow 3: edit price and additional sales; move; cancel (adjust price); uncancel; delete and
 // restore; history shows the events (UC-007, UC-009, UC-010, UC-012, UC-013, UC-025).
@@ -15,17 +77,20 @@ test('edit price, move, cancel, uncancel, delete, restore — all in history', a
   await page.goto(`/gigs/${gig.id}`);
   await expect(page.getByRole('heading', { level: 1, name: title })).toBeVisible();
 
-  // Edit price and additional sales (UC-007).
-  await page.getByRole('button', { name: 'Muokkaa hintaa ja lisämyyntiä' }).click();
-  await page.getByLabel('Hinta (alv 0 %)').fill(fiInput(200000));
-  await page.getByLabel('Lisämyynti', { exact: true }).fill(fiInput(10000));
-  await page.getByLabel('Lisämyynnin kuvaus').fill('Extra set');
-  await expect(totalPriceLine(page)).toContainText(fiMoney(210000));
-  await page.getByRole('button', { name: 'Tallenna' }).click();
-  await expect(page.getByRole('status').filter({ hasText: 'Muutokset tallennettu.' })).toBeVisible();
-  await expect(priceValue(page, 'Hinta (alv 0 %)')).toHaveText(fiMoney(200000));
-  await expect(priceValue(page, 'Lisämyynti')).toHaveText(fiMoney(10000));
-  await expect(priceValue(page, 'Kokonaishinta')).toHaveText(fiMoney(210000));
+  // Edit price and additional sales in place (UC-007): each field saves on its own.
+  const price = page.getByLabel('Hinta (alv 0 %)', { exact: true });
+  const extra = page.getByLabel('Lisämyynti', { exact: true });
+  const extraDescription = page.getByLabel('Lisämyynnin kuvaus', { exact: true });
+  expect(await editInline(page, price, fiInput(200000))).toEqual({ priceCents: 200000 });
+  await expect(totalPrice(page)).toContainText(fiMoney(200000));
+  expect(await editInline(page, extra, fiInput(10000), { commit: 'Enter' })).toEqual({ additionalSalesCents: 10000 });
+  expect(await editInline(page, extraDescription, 'Extra set')).toEqual({ additionalSalesDescription: 'Extra set' });
+  await expect(totalPrice(page)).toContainText(fiMoney(210000));
+  await page.reload();
+  await expect(price).toHaveValue(fiInput(200000));
+  await expect(extra).toHaveValue(fiInput(10000));
+  await expect(extraDescription).toHaveValue('Extra set');
+  await expect(totalPrice(page)).toContainText(fiMoney(210000));
 
   // Move (UC-009).
   await page.getByRole('group', { name: 'Toiminnot' }).getByRole('button', { name: 'Siirrä' }).click();
@@ -45,11 +110,16 @@ test('edit price, move, cancel, uncancel, delete, restore — all in history', a
   await cancelDialog.getByRole('button', { name: 'Peru keikka' }).click();
   await expect(cancelDialog).toBeHidden();
   await expect(pageHead(page)).toContainText('Peruttu');
-  await page.getByRole('button', { name: 'Muokkaa hintaa', exact: true }).click();
-  await page.getByLabel('Hinta (alv 0 %)').fill(fiInput(10000));
-  await page.getByLabel('Lisämyynti', { exact: true }).fill(fiInput(0));
-  await page.getByRole('button', { name: 'Tallenna' }).click();
-  await expect(priceValue(page, 'Kokonaishinta')).toHaveText(fiMoney(10000));
+  await expect(page.getByRole('status').filter({ hasText: 'Keikka on peruttu.' })).toBeVisible();
+  // Price stays editable in place on a cancelled gig (UC-010).
+  await expectNoEditSaveButtons(page.getByRole('main'), 'cancelled gig');
+  await editInline(page, price, fiInput(10000));
+  await editInline(page, extra, fiInput(0));
+  await expect(totalPrice(page)).toContainText(fiMoney(10000));
+  await page.reload();
+  await expect(price).toHaveValue(fiInput(10000));
+  await expect(extra).toHaveValue(fiInput(0));
+  await expect(totalPrice(page)).toContainText(fiMoney(10000));
   await expectNoHorizontalScroll(page, 'cancelled gig');
 
   // Uncancel (UC-012).
@@ -84,14 +154,19 @@ test('edit price, move, cancel, uncancel, delete, restore — all in history', a
   await page.getByRole('button', { name: 'Keikat', exact: true }).click();
   await page.getByRole('link', { name: title }).click();
   await expect(page.getByRole('heading', { level: 1, name: title })).toBeVisible();
+  // Inline editing sends one PATCH per field, so each saved field is its own "updated" event:
+  // 3 before the move (price, additional sales, description), 2 after cancelling (price, sales).
   const history = page.getByRole('list', { name: 'Muutoshistoria' }).locator('.history-title strong');
   await expect(history).toHaveText([
     'Palautettu poistosta',
     'Poistettu',
     'Palautettu myydyksi',
     'Tietoja muutettu',
+    'Tietoja muutettu',
     'Peruttu',
     'Siirretty',
+    'Tietoja muutettu',
+    'Tietoja muutettu',
     'Tietoja muutettu',
     'Keikka luotu',
   ]);
@@ -101,8 +176,11 @@ test('edit price, move, cancel, uncancel, delete, restore — all in history', a
     'DELETED',
     'UNCANCELLED',
     'UPDATED',
+    'UPDATED',
     'CANCELLED',
     'MOVED',
+    'UPDATED',
+    'UPDATED',
     'UPDATED',
     'CREATED',
   ]);
