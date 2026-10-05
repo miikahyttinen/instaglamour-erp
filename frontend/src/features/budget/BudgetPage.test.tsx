@@ -83,7 +83,6 @@ describe('budget page', () => {
       fi(100000), // actual income
       fi(80000), // variance expense
       fi(100000), // variance income
-      '',
     ]);
   });
 
@@ -108,32 +107,80 @@ describe('budget page', () => {
     expect(within(rowOf('Kategoria C')).getByText('Vain toteuma')).toBeInTheDocument();
   });
 
-  it('edits a row inline in euros and saves it as cents', async () => {
+  it('has no Save or Cancel buttons; a money cell saves on blur as cents (PUT the row)', async () => {
     seedYear();
     const puts = capturePuts();
     const { user } = open();
     const input = await screen.findByLabelText('Budjetti, kulut, Kategoria A');
-    const save = screen.getByRole('button', { name: 'Tallenna Kategoria A' });
-    expect(save).toBeDisabled();
+    expect(screen.queryByRole('button', { name: /Tallenna|Peru/ })).not.toBeInTheDocument();
+    expect(within(screen.getByRole('table')).queryAllByRole('button')).toEqual([]);
 
     await user.clear(input);
     await user.type(input, '3 000');
-    // Live variance while typing
-    expect(variance(rowOf('Kategoria A'))).toEqual([fi(290000), fi(0)]);
-    await user.click(save);
+    expect(puts).toEqual([]); // typing alone sends nothing
+    await user.click(document.body); // blur
 
-    expect(await screen.findByRole('status')).toHaveTextContent('Tallennettu: Kategoria A.');
-    expect(puts).toEqual([
-      {
-        path: `/api/budget/${YEAR}/${A}`,
-        body: { budgetExpenseCents: 300000, budgetIncomeCents: 0, actualExpenseCents: 10000, actualIncomeCents: 0 },
-      },
-    ]);
-    expect(budgetAmounts(db.budget, YEAR, A)?.budgetExpenseCents).toBe(300000);
-    expect(screen.getByLabelText('Budjetti, kulut, Kategoria A')).toHaveValue('3000,00');
+    await waitFor(() => expect(puts).toHaveLength(1));
+    expect(puts[0]).toEqual({
+      path: `/api/budget/${YEAR}/${A}`,
+      body: { budgetExpenseCents: 300000, budgetIncomeCents: 0, actualExpenseCents: 10000, actualIncomeCents: 0 },
+    });
+    await waitFor(() => expect(budgetAmounts(db.budget, YEAR, A)?.budgetExpenseCents).toBe(300000));
+    expect(await screen.findByText('Budjetti, kulut, Kategoria A: tallennettu')).toBeInTheDocument();
+    expect(input).toHaveValue('3000,00');
+    // Row variance and totals follow the saved row.
+    await waitFor(() => expect(variance(rowOf('Kategoria A'))).toEqual([fi(290000), fi(0)]));
     expect(cells(rowOf('Yhteensä'))[0]).toBe(fi(300000));
     expect(cells(rowOf('Yhteensä'))[4]).toBe(fi(280000));
-    expect(screen.getByRole('button', { name: 'Tallenna Kategoria A' })).toBeDisabled();
+    expect(screen.getByRole('region', { name: 'Poikkeama, kulut' }).textContent).toContain(fi(280000));
+  });
+
+  it('Enter saves; an unchanged value is not sent; Esc restores the saved value', async () => {
+    seedYear();
+    const puts = capturePuts();
+    const { user } = open();
+    const input = await screen.findByLabelText('Toteuma, tulot, Kategoria B');
+
+    await user.clear(input);
+    await user.type(input, '1000');
+    await user.click(document.body); // same as 1000,00 → nothing sent
+    expect(input).toHaveValue('1000,00');
+
+    await user.clear(input);
+    await user.type(input, '5{Escape}');
+    expect(input).toHaveValue('1000,00');
+
+    await user.clear(input);
+    await user.type(input, '1500{Enter}');
+    await waitFor(() => expect(puts).toHaveLength(1));
+    expect(puts[0]!.body.actualIncomeCents).toBe(150000);
+    expect(puts[0]!.body.budgetIncomeCents).toBe(200000);
+  });
+
+  it('two cells saved quickly one after another both end up in the row', async () => {
+    seedYear();
+    const puts = capturePuts();
+    const { user } = open();
+    const budget = await screen.findByLabelText('Budjetti, kulut, Kategoria A');
+    const actual = screen.getByLabelText('Toteuma, kulut, Kategoria A');
+    await user.clear(budget);
+    await user.type(budget, '2000');
+    await user.click(actual); // blur → first PUT starts
+    await user.clear(actual);
+    await user.type(actual, '50');
+    await user.click(document.body); // second PUT while the first may still be running
+
+    await waitFor(() => expect(puts).toHaveLength(2));
+    expect(puts[1]!.body).toEqual({
+      budgetExpenseCents: 200000,
+      budgetIncomeCents: 0,
+      actualExpenseCents: 5000,
+      actualIncomeCents: 0,
+    });
+    await waitFor(() =>
+      expect(budgetAmounts(db.budget, YEAR, A)).toMatchObject({ budgetExpenseCents: 200000, actualExpenseCents: 5000 }),
+    );
+    await waitFor(() => expect(variance(rowOf('Kategoria A'))).toEqual([fi(195000), fi(0)]));
   });
 
   it('saves an actuals-only row with zero budget fields; empty input counts as 0', async () => {
@@ -142,10 +189,22 @@ describe('budget page', () => {
     const { user } = open();
     const input = await screen.findByLabelText('Toteuma, kulut, Kategoria C');
     await user.clear(input);
-    await user.type(input, '10');
-    await user.click(screen.getByRole('button', { name: 'Tallenna Kategoria C' }));
-    await screen.findByRole('status');
+    await user.click(document.body);
+    await waitFor(() => expect(puts).toHaveLength(1));
     expect(puts[0]!.body).toEqual({
+      budgetExpenseCents: 0,
+      budgetIncomeCents: 0,
+      actualExpenseCents: 0,
+      actualIncomeCents: 0,
+    });
+
+    // The saved empty cell shows the saved 0.
+    await waitFor(() => expect(input).toHaveValue('0,00'));
+    await user.clear(input);
+    await user.type(input, '10');
+    await user.click(document.body);
+    await waitFor(() => expect(puts).toHaveLength(2));
+    expect(puts[1]!.body).toEqual({
       budgetExpenseCents: 0,
       budgetIncomeCents: 0,
       actualExpenseCents: 1000,
@@ -161,17 +220,19 @@ describe('budget page', () => {
     const income = screen.getByLabelText('Toteuma, tulot, Kategoria A');
     await user.clear(expense);
     await user.type(expense, '-10');
+    await user.click(income);
     await user.clear(income);
     await user.type(income, 'abc');
-    await user.click(screen.getByRole('button', { name: 'Tallenna Kategoria A' }));
+    await user.click(document.body);
 
-    expect(screen.getByText('Summa ei voi olla negatiivinen.')).toBeInTheDocument();
+    expect(await screen.findByText('Summa ei voi olla negatiivinen.')).toBeInTheDocument();
     expect(screen.getByText('Virheellinen arvo.')).toBeInTheDocument();
     expect(expense).toHaveAttribute('aria-invalid', 'true');
+    expect(expense).toHaveValue('-10'); // typed value stays
     expect(puts).toEqual([]);
   });
 
-  it('shows translated server errors, never the server message', async () => {
+  it('shows translated server errors under the cell, never the server message', async () => {
     seedYear();
     server.use(
       http.put('/api/budget/:year/:categoryId', () =>
@@ -182,22 +243,14 @@ describe('budget page', () => {
     const input = await screen.findByLabelText('Toteuma, tulot, Kategoria B');
     await user.clear(input);
     await user.type(input, '10');
-    await user.click(screen.getByRole('button', { name: 'Tallenna Kategoria B' }));
+    await user.click(document.body);
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Tarkista lomakkeen tiedot.');
-    expect(screen.getByText('Summa ei voi olla negatiivinen.')).toBeInTheDocument();
+    expect(await screen.findByText('Summa ei voi olla negatiivinen.')).toBeInTheDocument();
+    expect(input).toHaveAttribute('aria-invalid', 'true');
+    expect(input).toHaveValue('10');
     expect(screen.queryByText(/Internal English text/)).not.toBeInTheDocument();
-  });
-
-  it('cancel discards unsaved edits', async () => {
-    seedYear();
-    const { user } = open();
-    const input = await screen.findByLabelText('Budjetti, tulot, Kategoria B');
-    await user.clear(input);
-    await user.type(input, '10');
-    await user.click(screen.getByRole('button', { name: 'Peru muutokset: Kategoria B' }));
-    expect(screen.getByLabelText('Budjetti, tulot, Kategoria B')).toHaveValue('2000,00');
-    expect(screen.getByRole('button', { name: 'Tallenna Kategoria B' })).toBeDisabled();
+    // Totals unchanged.
+    expect(cells(rowOf('Yhteensä'))[3]).toBe(fi(100000));
   });
 
   it('copies budget numbers (not actuals) from the previous year', async () => {
@@ -208,7 +261,7 @@ describe('budget page', () => {
     expect(screen.getByLabelText('Budjetti, kulut, Kategoria A')).toHaveValue('0,00');
 
     await user.click(screen.getByRole('button', { name: 'Kopioi budjetti edellisestä vuodesta' }));
-    expect(await screen.findByRole('status')).toHaveTextContent('Budjetti kopioitu vuodesta 2030.');
+    expect(await screen.findByText('Budjetti kopioitu vuodesta 2030.')).toHaveAttribute('role', 'status');
     expect(screen.getByLabelText('Budjetti, kulut, Kategoria A')).toHaveValue('1000,00');
     expect(screen.getByLabelText('Budjetti, tulot, Kategoria B')).toHaveValue('2000,00');
     // Actuals untouched: previous year's actuals are not copied, this year's stay.

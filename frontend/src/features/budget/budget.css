@@ -56,9 +56,6 @@
     border: var(--hairline) solid var(--border);
     border-radius: var(--radius);
   }
-  .budget-page .budget-table .budget-row-dirty {
-    border-color: var(--accent);
-  }
   .budget-page .budget-table .budget-totals {
     border-color: var(--border-strong);
   }
@@ -108,13 +105,6 @@
   .budget-page .budget-table .budget-na {
     display: none;
   }
-  .budget-page .budget-actions-inner {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    gap: var(--space-2);
-    margin-top: var(--space-3);
-  }
 }
 
 /* ---------- Desktop (≥ 900 px): table ---------- */
@@ -143,21 +133,7 @@
   .budget-page .budget-table tbody tr:last-child th {
     border-bottom: 0;
   }
-  .budget-page .budget-table .money-input {
-    gap: var(--space-1);
-  }
-  .budget-page .budget-table .money-input input {
+  .budget-page .budget-table .inline-numeric input {
     min-width: 6.5rem;
-  }
-  .budget-page .budget-row-dirty > * {
-    background: var(--surface-2);
-  }
-  /* Accent bar marks a row with unsaved edits. */
-  .budget-page .budget-row-dirty > .budget-category {
-    box-shadow: inset 2px 0 0 var(--accent);
-  }
-  .budget-page .budget-actions-inner {
-    display: flex;
-    gap: var(--space-2);
   }
 }
