@@ -109,13 +109,24 @@ describe('history descriptions (UC-013)', () => {
       ...base,
       type: 'UPDATED',
       details: {
-        changes: [{ field: 'technicalSetup', from: [], to: ['HOUSE_TECH', 'OWN_PA'] }],
+        changes: [
+          { field: 'technicalSetup', from: [], to: ['HOUSE_TECH', 'VAN'] },
+          { field: 'technicalSetup', from: ['OWN_PA', 'HOUSE_TECHNICIAN'], to: 'SET_B' },
+          { field: 'technicalSetup', from: ['SET_A'], to: null },
+          { field: 'technicalSetup', from: 'SET_C', to: [] },
+        ],
         movedCostLineIds: [],
       },
     };
     expect(describeEvent(i18n.getFixedT('fi'), 'fi', legacy, ctx).lines).toEqual([
-      'Tekniikka: – → Talon tekniikka, OWN_PA',
+      'Tekniikka: – → Talon tekniikka, Pakettiauto',
+      'Tekniikka: Oma PA, Talon teknikko → Setti B',
+      'Tekniikka: Setti A → –',
+      'Tekniikka: Setti C → –',
     ]);
+    expect(describeEvent(i18n.getFixedT('en'), 'en', legacy, ctx).lines[1]).toBe(
+      'Technical setup: Own PA, House technician → Set B',
+    );
   });
 
   it('filters by category', () => {

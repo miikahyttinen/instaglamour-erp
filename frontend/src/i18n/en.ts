@@ -376,6 +376,12 @@ const en: Resources = {
     yes: 'yes',
     no: 'no',
   },
+  /** History only: technicalSetup codes from before 2026-10-05 (multi-choice). */
+  legacyTechnicalSetup: {
+    HOUSE_TECHNICIAN: 'House technician',
+    OWN_PA: 'Own PA',
+    VAN: 'Van',
+  },
   historyField: {
     lineupName: 'Lineup',
     venue: 'Venue',

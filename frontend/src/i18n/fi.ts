@@ -379,6 +379,12 @@ const fi = {
     yes: 'kyllä',
     no: 'ei',
   },
+  /** History only: technicalSetup codes from before 2026-10-05 (multi-choice). */
+  legacyTechnicalSetup: {
+    HOUSE_TECHNICIAN: 'Talon teknikko',
+    OWN_PA: 'Oma PA',
+    VAN: 'Pakettiauto',
+  },
   historyField: {
     lineupName: 'Kokoonpano',
     venue: 'Paikka',
