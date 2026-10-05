@@ -37,54 +37,100 @@ describe('gig page (UC-004, UC-007)', () => {
     expect(section('Talous')).not.toHaveAttribute('open');
   });
 
-  it('edits basic info and shows which Sales/Production lines moved (BR-027)', async () => {
+  it('has no Edit buttons: basic info and price are inline fields (NFR-8)', async () => {
+    const gig = addMockGig();
+    renderApp(`/gigs/${gig.id}`);
+    await screen.findByRole('heading', { name: 'Template A · Venue X', level: 1 });
+    const basic = section('Perustiedot');
+    const price = section('Hinta ja lisämyynti');
+    for (const area of [basic, price]) {
+      expect(within(area).queryAllByRole('button')).toHaveLength(0);
+    }
+    expect(screen.queryByRole('button', { name: 'Muokkaa perustietoja' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Muokkaa hintaa ja lisämyyntiä' })).not.toBeInTheDocument();
+    expect(within(basic).getByRole('textbox', { name: 'Kokoonpanon nimi' })).toHaveValue('Template A');
+    expect(within(basic).getByRole('textbox', { name: 'Paikka' })).toHaveValue('Venue X');
+    expect(within(basic).getByRole('group', { name: 'Tekniikka' })).toBeInTheDocument();
+    expect(within(basic).getByRole('textbox', { name: 'Muistiinpanot' })).toBeInTheDocument();
+    expect(within(price).getByRole('textbox', { name: 'Hinta (alv 0 %)' })).toHaveValue('1000,00');
+    expect(within(price).getByRole('textbox', { name: 'Lisämyynti' })).toHaveValue('0,00');
+  });
+
+  it('edits basic info in place and shows which Sales/Production lines moved (BR-027)', async () => {
     const gig = addMockGig();
     // A split production line held by Partner B stays where it is.
     addCostLine(db.gigs, gig, { type: 'PRODUCTION', personId: partnerB().personId, description: null, budgetedCents: 1000 }, partnerA().id);
     const { user } = renderApp(`/gigs/${gig.id}`);
-    await user.click(await screen.findByRole('button', { name: 'Muokkaa perustietoja' }));
     await screen.findAllByRole('option', { name: 'Partner C' });
-    const form = section('Perustiedot');
-    await user.clear(within(form).getByRole('textbox', { name: 'Paikka' }));
-    await user.type(within(form).getByRole('textbox', { name: 'Paikka' }), 'Venue Y');
-    await user.selectOptions(within(form).getByRole('combobox', { name: 'Myyjä' }), 'Partner C');
-    expect(within(form).getByText(/maksamattomat Myynti/)).toBeInTheDocument();
-    await user.click(within(form).getByRole('button', { name: 'Tallenna' }));
+    const basic = section('Perustiedot');
 
+    // Text: blur saves; Enter saves; empty required text is not sent.
+    const venue = within(basic).getByRole('textbox', { name: 'Paikka' });
+    await user.clear(venue);
+    await user.tab();
+    expect(await within(basic).findByText('Pakollinen tieto.')).toBeInTheDocument();
+    expect(gig.venue).toBe('Venue X');
+    await user.type(venue, 'Venue Y');
+    await user.tab();
+    expect(await screen.findByRole('heading', { name: 'Template A · Venue Y', level: 1 })).toBeInTheDocument();
+    expect(gig.venue).toBe('Venue Y');
+    await user.type(within(basic).getByRole('textbox', { name: 'Kokoonpanon nimi' }), ' 2{Enter}');
+    await waitFor(() => expect(gig.lineupName).toBe('Template A 2'));
+
+    // Technical setup saves on each change.
+    await user.click(within(basic).getByRole('checkbox', { name: 'Oma PA' }));
+    await waitFor(() => expect(gig.technicalSetup).toEqual(['OWN_PA']));
+
+    // Notes: textarea, blur saves.
+    await user.type(within(basic).getByRole('textbox', { name: 'Muistiinpanot' }), 'Stage left');
+    await user.tab();
+    await waitFor(() => expect(gig.notes).toBe('Stage left'));
+
+    // Seller: saves on change; the moved lines are named.
+    expect(within(basic).getByText(/maksamattomat Myynti/)).toBeInTheDocument();
+    await user.selectOptions(within(basic).getByRole('combobox', { name: 'Myyjä' }), 'Partner C');
     const notice = await screen.findByText('Rivit siirtyivät uudelle henkilölle:');
+    expect(notice.parentElement).toHaveTextContent('Muutokset tallennettu.');
     expect(notice.parentElement).toHaveTextContent('Myynti: Partner A → Partner C');
     expect(notice.parentElement).not.toHaveTextContent('Tuotanto');
-    expect(screen.getByRole('heading', { name: 'Template A · Venue Y', level: 1 })).toBeInTheDocument();
 
-    await waitFor(() => expect(historyItems()[0]).toHaveTextContent('Tietoja muutettu'));
-    expect(historyItems()[0]).toHaveTextContent('Paikka: Venue X → Venue Y');
-    expect(historyItems()[0]).toHaveTextContent('Myyjä: Partner A → Partner C');
+    await waitFor(() => expect(historyItems()[0]).toHaveTextContent('Myyjä: Partner A → Partner C'));
     expect(historyItems()[0]).toHaveTextContent('Siirrettyjä Myynti- / Tuotanto-rivejä: 1');
+    expect(historyItems().some((li) => /Paikka: Venue X → Venue Y/.test(li.textContent ?? ''))).toBe(true);
   });
 
-  it('edits price and additional sales; total and history update (UC-007)', async () => {
+  it('edits price and additional sales in place; total, economics and history update (UC-007)', async () => {
     const gig = addMockGig();
     const { user } = renderApp(`/gigs/${gig.id}`);
-    await user.click(await screen.findByRole('button', { name: 'Muokkaa hintaa ja lisämyyntiä' }));
+    await screen.findByRole('heading', { name: 'Template A · Venue X', level: 1 });
     const form = section('Hinta ja lisämyynti');
+    const totalTile = () => within(section('Talous')).getByRole('region', { name: 'Kokonaishinta' });
     const price = within(form).getByRole('textbox', { name: 'Hinta (alv 0 %)' });
-    expect(price).toHaveValue('1000,00');
     await user.clear(price);
-    await user.type(price, '2000');
-    await user.clear(within(form).getByRole('textbox', { name: 'Lisämyynti' }));
-    await user.type(within(form).getByRole('textbox', { name: 'Lisämyynti' }), '-1');
-    await user.click(within(form).getByRole('button', { name: 'Tallenna' }));
-    expect(within(form).getByText('Summa ei voi olla negatiivinen.')).toBeInTheDocument();
-    await user.clear(within(form).getByRole('textbox', { name: 'Lisämyynti' }));
-    await user.type(within(form).getByRole('textbox', { name: 'Lisämyynti' }), '100');
-    await user.type(within(form).getByRole('textbox', { name: 'Lisämyynnin kuvaus' }), 'Extra set');
-    await user.click(within(form).getByRole('button', { name: 'Tallenna' }));
+    await user.type(price, '2000{Enter}');
+    await waitFor(() => expect(totalTile()).toHaveTextContent(/2\s000,00\s€/));
+    expect(within(form).getByRole('group', { name: 'Kokonaishinta' })).toHaveTextContent(/2\s000,00\s€/);
+    expect(price).toHaveValue('2000,00');
 
-    expect(await screen.findByText('Muutokset tallennettu.')).toBeInTheDocument();
-    expect(within(section('Hinta ja lisämyynti')).getByText(/2\s100,00\s€/)).toBeInTheDocument();
-    await waitFor(() => expect(historyItems()[0]).toHaveTextContent(/Hinta: 1\s000,00\s€ → 2\s000,00\s€/));
-    expect(historyItems()[0]).toHaveTextContent(/Lisämyynti: 0,00\s€ → 100,00\s€/);
-    expect(historyItems()[0]).toHaveTextContent('Lisämyynnin kuvaus: – → Extra set');
+    const sales = within(form).getByRole('textbox', { name: 'Lisämyynti' });
+    await user.clear(sales);
+    await user.type(sales, '-1');
+    await user.tab();
+    expect(await within(form).findByText('Summa ei voi olla negatiivinen.')).toBeInTheDocument();
+    expect(gig.additionalSalesCents).toBe(0);
+    await user.clear(sales);
+    await user.type(sales, '100');
+    await user.tab();
+    await waitFor(() => expect(totalTile()).toHaveTextContent(/2\s100,00\s€/));
+    expect(within(form).queryByText('Summa ei voi olla negatiivinen.')).not.toBeInTheDocument();
+    await user.type(within(form).getByRole('textbox', { name: 'Lisämyynnin kuvaus' }), 'Extra set');
+    await user.tab();
+    await waitFor(() => expect(gig.additionalSalesDescription).toBe('Extra set'));
+
+    await waitFor(() => expect(historyItems()[0]).toHaveTextContent('Lisämyynnin kuvaus: – → Extra set'));
+    const texts = historyItems().map((li) => li.textContent ?? '');
+    expect(texts.some((x) => /Hinta: 1\s000,00\s€ → 2\s000,00\s€/.test(x))).toBe(true);
+    expect(texts.some((x) => /Lisämyynti: 0,00\s€ → 100,00\s€/.test(x))).toBe(true);
   });
 
   it('cancel requires a reason and reminds to adjust the price; uncancel keeps the history (UC-010, UC-012)', async () => {
@@ -102,9 +148,12 @@ describe('gig page (UC-004, UC-007)', () => {
     expect(await screen.findByText(/Muuta hinta ja lisämyynti vastaamaan/)).toBeInTheDocument();
     expect(screen.getByText('Peruttu', { selector: '.tag' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Siirrä' })).not.toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Muokkaa hintaa' }));
-    expect(within(section('Hinta ja lisämyynti')).getByRole('textbox', { name: 'Hinta (alv 0 %)' })).toBeInTheDocument();
-    await user.click(within(section('Hinta ja lisämyynti')).getByRole('button', { name: 'Peruuta' }));
+    // The cancelled gig's price stays editable in place.
+    const price = within(section('Hinta ja lisämyynti')).getByRole('textbox', { name: 'Hinta (alv 0 %)' });
+    expect(price).toBeEnabled();
+    await user.clear(price);
+    await user.type(price, '100{Enter}');
+    await waitFor(() => expect(gig.priceCents).toBe(10000));
 
     await user.click(screen.getByRole('button', { name: 'Palauta myydyksi' }));
     const uncancel = screen.getByRole('dialog', { name: 'Palauta keikka myydyksi' });
@@ -114,8 +163,9 @@ describe('gig page (UC-004, UC-007)', () => {
 
     await waitFor(() => expect(historyItems()[0]).toHaveTextContent('Palautettu myydyksi'));
     expect(historyItems()[0]).toHaveTextContent('Syy: Back on');
-    expect(historyItems()[1]).toHaveTextContent('Peruttu');
-    expect(historyItems()[1]).toHaveTextContent('Syy: Client called off');
+    expect(historyItems()[1]).toHaveTextContent(/Hinta: 1\s000,00\s€ → 100,00\s€/);
+    expect(historyItems()[2]).toHaveTextContent('Peruttu');
+    expect(historyItems()[2]).toHaveTextContent('Syy: Client called off');
   });
 
   it('moves a gig, shows overlap warnings and logs old and new dates (UC-009)', async () => {
@@ -168,7 +218,12 @@ describe('gig page (UC-004, UC-007)', () => {
 
     renderApp(`/gigs/${gig.id}`);
     expect(await screen.findAllByText(/Keikka on poistettu/)).not.toHaveLength(0);
-    expect(screen.queryAllByRole('button', { name: 'Muokkaa perustietoja' })).toHaveLength(0);
+    // The first render (gig list after delete) is still mounted: check the latest gig page.
+    const last = (role: string, name: string) => screen.getAllByRole(role, { name }).at(-1)!;
+    expect(last('textbox', 'Paikka')).toBeDisabled();
+    expect(last('textbox', 'Hinta (alv 0 %)')).toBeDisabled();
+    expect(last('combobox', 'Myyjä')).toBeDisabled();
+    expect(last('checkbox', 'Oma PA')).toBeDisabled();
     expect(screen.queryAllByRole('button', { name: 'Merkitse maksetuksi' })).toHaveLength(0);
     const restore = screen.getAllByRole('button', { name: 'Palauta keikka' }).at(-1)!;
     await user.click(restore);

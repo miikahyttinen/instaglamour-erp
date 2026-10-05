@@ -136,72 +136,51 @@
   padding: var(--space-1) 0 var(--space-6);
 }
 
-/* ---------- Basic info / price (label + value grid on a surface) ---------- */
+/* ---------- Basic info / price (inline fields on a surface, NFR-8) ---------- */
 
-.gig-page .gig-info {
+.gig-page .gig-fields {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-4);
-  margin: 0;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3) var(--space-4);
   padding: var(--space-4);
   background: var(--surface);
   border: var(--hairline) solid var(--border);
   border-radius: var(--radius);
 }
-.gig-page .gig-info > div {
-  min-width: 0;
+@media (min-width: 600px) {
+  .gig-page .gig-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
-.gig-page .gig-info dt {
-  font-family: var(--font-mono);
-  font-size: var(--fs-meta);
-  letter-spacing: var(--ls-label);
-  text-transform: uppercase;
-  line-height: 1.5;
-  color: var(--label);
-}
-.gig-page .gig-info dd {
-  margin: var(--space-1) 0 0;
-  overflow-wrap: anywhere;
-}
-.gig-page .gig-info-wide {
+.gig-page .gig-fields-wide {
   grid-column: 1 / -1;
 }
-.gig-page .gig-info-figure {
-  font-size: var(--fs-lg);
-  font-weight: var(--fw-bold);
-  font-variant-numeric: tabular-nums;
-}
-.gig-page .gig-info-actions {
-  margin-top: var(--space-3);
-}
-
-/* Edit forms (basic / price) */
-.gig-page .gig-edit-form {
-  padding: var(--space-4);
-  background: var(--surface);
-  border: var(--hairline) solid var(--border);
-  border-radius: var(--radius);
-}
-.gig-page .gig-edit-form > .field:first-child label,
-.gig-page .gig-edit-form > .form-row:first-child .field label {
+.gig-page .gig-fields .inline-field > label,
+.gig-page .gig-fields .inline-check-group > legend {
   margin-top: 0;
 }
-.gig-page .gig-edit-total {
+.gig-page .gig-fields-note {
+  margin: calc(-1 * var(--space-2)) 0 0;
+}
+.gig-page .gig-fields-total {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
+  justify-content: space-between;
   gap: var(--space-2);
-  margin: var(--space-3) 0 0;
+  padding-top: var(--space-3);
+  border-top: var(--hairline) solid var(--border);
 }
-.gig-page .gig-edit-total-label {
+.gig-page .gig-fields-total-label {
   font-family: var(--font-mono);
   font-size: var(--fs-label);
   letter-spacing: var(--ls-label);
   text-transform: uppercase;
   color: var(--label);
 }
-.gig-page .gig-edit-total-value {
+.gig-page .gig-fields-total-value {
   font-size: var(--fs-lg);
+  font-weight: var(--fw-bold);
   font-variant-numeric: tabular-nums;
 }
 
