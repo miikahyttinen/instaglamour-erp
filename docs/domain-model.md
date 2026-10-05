@@ -74,7 +74,9 @@ Concurrent edits: last save wins.
 | lineup_template_id | → LineupTemplate | null = custom lineup |
 | lineup_name | string | required |
 | venue | string | required |
-| technical_setup | TechnicalSetup[] | multi-select |
+| technical_setup | TechnicalSetup \| null | dropdown; null = not set |
+| logistics | Logistics \| null | dropdown; null = not set |
+| house_technician | bool | default false |
 | seller_id | → Partner | required |
 | producer_id | → Partner | required |
 | price | money | required |
@@ -185,10 +187,14 @@ One row per category per year. All four numbers are typed in by partners.
 
 FI/EN labels live in the translation files.
 
-### TechnicalSetup (multi-select)
-`HOUSE_TECH`, `HOUSE_TECHNICIAN`, `SET_A`, `SET_B`, `SET_C`, `OWN_PA`, `VAN`
+### TechnicalSetup (single choice)
+`HOUSE_TECH` (house tech), `SET_A`, `SET_B`, `SET_C` (own PA sets)
+
+### Logistics (single choice)
+`OWN_VAN`, `RENTAL_VAN`, `TAXI`, `OTHER`
 
 ## Change log
+- 2026-10-05 – Technical setup single choice, new Logistics field, house_technician boolean (owner request) (PM)
 - 2026-10-03 – First draft and iterations (PM)
 - 2026-10-03 – BudgetCategory active/sort_order (PM)
 - 2026-10-03 – Simplified MVP: no Played status, price + additional sales fields, one notes field, one cost list, paid timestamp, plain attachments, seed-only templates/settings, simple people/tasks, budget as one row per category per year (PM)

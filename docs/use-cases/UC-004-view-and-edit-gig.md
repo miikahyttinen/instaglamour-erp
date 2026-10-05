@@ -16,8 +16,8 @@ Partner opens a gig.
 - Gig exists and is not deleted.
 
 ## Main flow
-1. Page shows: header (dates, lineup, venue, status / played), basic info (technical setup, seller, producer, notes), price + additional sales, economics (total price, budgeted and actual costs, margin, margin %), cost list (UC-005), attachments (UC-008), actions (Move, Cancel/Uncancel, Delete), history (UC-013).
-2. Partner edits any of: lineup name, venue, technical setup, seller, producer, price, additional sales amount/description, notes.
+1. Page shows: header (dates, lineup, venue, status / played), basic info (technical setup, logistics, house technician, seller, producer, notes), price + additional sales, economics (total price, budgeted and actual costs, margin, margin %), cost list (UC-005), attachments (UC-008), actions (Move, Cancel/Uncancel, Delete), history (UC-013).
+2. Partner edits any of: lineup name, venue, technical setup, logistics, house technician, seller, producer, price, additional sales amount/description, notes.
 3. Partner saves.
 4. System saves (last save wins), applies BR-027 if seller/producer changed, and logs `UPDATED` with old → new values.
 
@@ -40,3 +40,4 @@ Partner opens a gig.
 ## Change log
 - 2026-10-03 – First version and iterations (PM)
 - 2026-10-03 – Simplified MVP (PM)
+- 2026-10-05 – Technical setup dropdown, logistics, house technician (PM)

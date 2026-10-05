@@ -73,7 +73,7 @@ Internal roles (OFFICE, SALES, PRODUCTION) and expenses never warn.
   "id": "…", "startDate": "2026-05-01", "endDate": null, "year": 2026,
   "status": "SOLD", "played": false,
   "lineupTemplateId": "…", "lineupName": "Template A",  // lineupTemplateId: null for a custom lineup "venue": "Venue X",
-  "technicalSetup": ["HOUSE_TECH"], "sellerId": "…", "producerId": "…",
+  "technicalSetup": "SET_A", "logistics": "OWN_VAN", "houseTechnician": false, "sellerId": "…", "producerId": "…",
   "priceCents": 100000, "additionalSalesCents": 0, "additionalSalesDescription": null,
   "notes": null,
   "totalPriceCents": 100000, "budgetedCostsCents": 70000, "actualCostsCents": 0,
@@ -174,7 +174,8 @@ Session lifetime: 30 days sliding.
   "lineupTemplates": [{ "id": "…", "name": "Template A", "roles": [{ "role": "VOC", "defaultFeeCents": 30000 }] }],  // roles are musician roles only, in template order
   "settings": { "officeDefaultCents": 0, "salesDefaultCents": 0, "productionDefaultCents": 0, "loadInDeductionCents": 0 },
   "costTypes": { "musicianRoles": ["VOC", "…"], "internalRoles": ["OFFICE", "SALES", "PRODUCTION"], "expenseCategories": ["FUEL", "…"] },
-  "technicalSetups": ["HOUSE_TECH", "…"],
+  "technicalSetups": ["HOUSE_TECH", "SET_A", "SET_B", "SET_C"],
+  "logistics": ["OWN_VAN", "RENTAL_VAN", "TAXI", "OTHER"],
   "budgetCategories": [{ "id": "…", "code": "INSURANCE", "nameFi": "…", "nameEn": "…", "budgeted": true }]  // active categories only, in sortOrder
 }
 ```
@@ -223,17 +224,18 @@ Sorted by `startDate` ascending.
 {
   "startDate": "2026-05-01", "endDate": null,
   "lineupTemplateId": "…", "lineupName": null,
-  "venue": "Venue X", "technicalSetup": [],
+  "venue": "Venue X", "technicalSetup": null, "logistics": null, "houseTechnician": false,
   "sellerId": "…", "producerId": "…",
   "priceCents": 100000, "additionalSalesCents": 0, "additionalSalesDescription": null,
   "notes": null
 }
 ```
 - Required: `startDate`, `venue`, `sellerId`, `producerId`, `priceCents`, and either `lineupTemplateId` or `lineupName` (custom).
+- `technicalSetup`: one of `HOUSE_TECH | SET_A | SET_B | SET_C` or `null`; `logistics`: one of `OWN_VAN | RENTAL_VAN | TAXI | OTHER` or `null`; `houseTechnician`: boolean (default false). Invalid value → 400 `INVALID_VALUE`.
 - With a template and no `lineupName`, `lineupName` = template name.
 - Creates cost lines per BR-020 / BR-021 using current seeded settings; logs `CREATED`.
 
-**GigUpdate** (all optional): `lineupName`, `venue`, `technicalSetup`, `sellerId`, `producerId`,
+**GigUpdate** (all optional): `lineupName`, `venue`, `technicalSetup`, `logistics`, `houseTechnician`, `sellerId`, `producerId`,
 `priceCents`, `additionalSalesCents`, `additionalSalesDescription`, `notes`.
 `startDate` / `endDate` → 400 `NOT_EDITABLE` (use move). Allowed on CANCELLED gigs.
 Seller/producer change applies BR-027; moved line ids are returned and logged in `UPDATED.details.movedCostLineIds` (no separate cost events). Logs one `UPDATED` with all changed fields.
@@ -304,6 +306,7 @@ Duplicate = case-insensitive exact name match with another person.
 | `POST /api/budget/{year}/copy-from-previous` | — | 200 same as GET. Copies budget fields from `year − 1`; actuals untouched. 409 `BUDGET_NOT_EMPTY` if any budget field in `year` is non-zero |
 
 ## Change log
+- 2026-10-05 – technicalSetup is a single value or null; new `logistics` and `houseTechnician`; reference adds `logistics` (owner request, breaking change for technicalSetup) (PM)
 - 2026-10-03 – First version (PM)
 - 2026-10-03 – Double booking for musician-role lines only (owner decision, behaviour change) (PM)
 - 2026-10-03 – Clarifications after TASK-003: inactive budget categories, `year` = 4-digit integer in queries, unknown filter ids return empty lists (PM)

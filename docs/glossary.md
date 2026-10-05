@@ -17,7 +17,9 @@ Code, API and specs use the English term; the UI shows the user's language.
 | Lineup | Kokoonpano | Band configuration of a gig |
 | Lineup template | Kokoonpanopohja | Standard lineup with roles and default fees (seed) |
 | Venue | Paikka | Where the gig is |
-| Technical setup | Tekniikka | House tech, own sets, van… |
+| Technical setup | Tekniikka | House tech or own PA set A/B/C (one choice) |
+| Logistics | Logistiikka | Own van, rental van, taxi, other |
+| House technician | Talon teknikko | Venue provides a technician (yes/no) |
 | Price | Hinta (alv 0 %) | Agreed price excl. VAT |
 | Additional sales | Lisämyynti | Extra sold on top (amount + description) |
 | Total price | Kokonaishinta | Price + additional sales |
