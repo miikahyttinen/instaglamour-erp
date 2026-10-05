@@ -22,12 +22,19 @@ Run of 2026-10-05 against `main` at `18de851` (inline editing, TASK-118…123), 
 F-004 fixed in TASK-124: its test runs again (`tests/07-hours.spec.ts`: 6 passed at 375 px and
 1280 px).
 
+Run of 2026-10-05 against `main` at `b8437f8` (Layout v2, TASK-125…130; TASK-131 / TASK-132 not
+merged yet), see [TASK-009](#task-009--suite-update-for-layout-v2): **102 passed, 0 failed,
+30 skipped** from a fresh database — 2 `test.fixme` for F-005 (one per project), 1 by design
+(economics toggle, gig table ≥ 1200 px), 27 viewport-only (15 desktop-sidebar tests at 375 px,
+12 phone-drawer tests at 1280 px).
+
 | Id | Severity | Side to fix | Summary |
 |---|---|---|---|
 | F-001 | minor | frontend | `/api` proxy target and dev port are hard-coded in `vite.config.ts` |
 | F-002 | minor | backend | `npm install` fails on a fresh checkout without `DATABASE_URL` |
 | F-003 | minor | frontend | Year page tiles: secondary figure is read before its label ("Keikkoja 5 1 Peruttuja") |
 | F-004 | major | frontend | **Fixed (TASK-124).** My hours: an inline hours error does not wrap; the page scrolls sideways and the message is cut off |
+| F-005 | minor | frontend | Collapsed sidebar: while the CSS tooltip shows (hover / focus), it is added to the item's accessible name ("Vuosi Vuosi") |
 
 ---
 
@@ -107,6 +114,74 @@ F-004 fixed in TASK-124: its test runs again (`tests/07-hours.spec.ts`: 6 passed
   horizontal scrolling (F-004)')`. The assertion was moved out of the inline-hours test into its own
   test so the rest of that flow (save, Esc, invalid not saved, reload) keeps running. Other inline
   errors (gig price, cost lines, tasks, people, budget) do not overflow; those tests check it.
+
+## F-005 — Collapsed sidebar: the tooltip is added to the accessible name
+
+- **Severity:** minor (accessibility; navigation works, and the name is right while no tooltip shows)
+- **Where:** `frontend/src/styles.css` → `.nav-item[data-tooltip]::after { content: attr(data-tooltip); … }`
+  together with `visibility: visible` on `:hover` / `:focus-visible`; set from
+  `frontend/src/layout/Sidebar.tsx` (`data-tooltip={tip(label)}` on the nav links and foot buttons).
+- **Steps:** desktop (≥ 900 px) → collapse the sidebar ("Pienennä valikko") → hover or Tab to a
+  nav item, e.g. "Vuosi".
+- **Expected:** the tooltip shows the label and the accessible name stays the label ("Vuosi"),
+  as docs/design.md says: "icons only, label as tooltip **and** accessible name".
+- **Actual:** while the tooltip is visible, Chromium includes the CSS generated content in the
+  name computation: the link is announced as **"Vuosi Vuosi"**. A screen-reader user tabbing
+  through the collapsed rail (focus shows the tooltip) hears every item twice. The sign-out
+  button (no `aria-label`, tooltip "Kirjaudu ulos · Kirjautuneena: …") gets
+  "Kirjaudu ulos Kirjaudu ulos · Kirjautuneena: …". Buttons with an `aria-label` (language,
+  theme) are not affected.
+- **Possible fix:** give the generated content empty alternative text,
+  `content: attr(data-tooltip) / "";` (supported in Chromium/Safari; keep the plain
+  `content: attr(data-tooltip)` before it as a fallback), or render the tooltip as an
+  `aria-hidden="true"` element instead of `::after`.
+- **Tests:** `e2e/tests/12-layout-v2.spec.ts` →
+  `test.fixme('collapsed: the hover / focus tooltip shows the label and keeps the accessible name (F-005)')`
+  (fails with `Expected: "Vuosi"`, `Received: "Vuosi Vuosi"`). The reachability test in the same
+  file finds every collapsed item by its name with the pointer moved away and passes.
+
+---
+
+## TASK-009 — suite update for Layout v2
+
+After TASK-125…130 (sidebar / drawer, smaller type, per-screen alignment), the baseline run on
+`885bbc6` gave **66 passed, 7 failed, 1 skipped**. Every failure was the old navigation in the
+tests, not an app bug: six phone flows (02, 05, 06, 07, 08, 09) waited for the bottom nav,
+which is gone, and 09 on desktop expected the signed-in name as the sign-out button's
+description (it is visible text in the expanded sidebar now) and the old phone language group.
+
+| Spec / helper | Change |
+|---|---|
+| `helpers.ts` | `goNav()` uses the sidebar on desktop and ☰ → drawer link on phones, and asserts the drawer closes. New: `navDrawer()`, `menuButton()`, `openDrawer()`, `signOutButton()`, `languageButton()`, `themeButton()`, `expectSignedInShown()` (visible text **or** the sign-out button's accessible description, so it holds before and after TASK-132). Desktop account controls are found by accessible name on the whole page, never by sidebar position. `GIG_TABLE_MIN_WIDTH = 1200` |
+| `gigs.ts` | `gigListRows()` switches at 1200 px (`isGigTable()`), not 900 px |
+| `pages.ts` (new) | The busiest seed records and the list of main pages, shared by 10 and 12 |
+| 09 language/year | One flow for both viewports: the single language toggle ("Vaihda kieleksi English" → "Change language to Suomi", the old name gone); the drawer closes with Esc; signed-in partner shown in FI and EN; final language checked on the server |
+| 10 no horizontal scroll | Uses `pages.ts`; the economics-toggle test is skipped where the gig list is a table (≥ 1200 px) instead of "desktop" |
+
+New checks (`12-layout-v2.spec.ts`):
+
+- **Sidebar persistence (desktop):** expanded by default (≈ 232 px, labels visible, no ☰ or
+  drawer); collapse → ≈ 64 px, `localStorage` `ig-sidebar=collapsed`; still collapsed after a
+  reload and in a new tab; expand with the keyboard (Enter) → persists after a reload.
+- **Collapsed nav reachable by name:** each of the six links found by its exact accessible name,
+  in the viewport, ≤ 64 px wide, tooltip text = label, opens its page with `aria-current="page"`,
+  the rail stays collapsed; Enter on a focused link navigates; language, theme and sign-out found
+  by name. Tooltip vs. name: F-005 (`fixme`).
+- **Phone drawer:** no navigation landmark and no rail when closed; ☰ `aria-expanded` false →
+  true; dialog "Päävalikko" `aria-modal`, focus on "Sulje valikko", six links, current page
+  marked, language / theme / sign-out at the bottom, page scroll locked; **focus trap**: Tab and
+  Shift+Tab (all focusables + 2, so it wraps both ways) never leave the drawer; **Esc** closes and
+  returns focus to ☰; **backdrop** click closes without navigating; **close button** closes;
+  **navigation** closes (also a link to the current page); browser **Back** closes it.
+- **No horizontal scroll in both sidebar states:** every main page with the sidebar expanded and
+  collapsed at 900, 1280 and 1440 px; on phones every main page with the drawer closed and open.
+- **Breakpoints:** gig list cards at 1199 px, table (7 columns) at 1200 and 1440 px; gig page cost
+  list compact rows at 1280 px (expanded sidebar, list 968 px) and the full table at 1440 px,
+  with the table / rowgroup semantics kept in both.
+- **Theme:** one toggle named after the other theme; `data-theme` flips and survives a reload.
+
+Not added as a project: a 1440 px project would rerun the writing flows, which tag records per
+viewport (`M` / `D`) and expect a fresh database; 1440 px is covered by resizing in 12 instead.
 
 ---
 

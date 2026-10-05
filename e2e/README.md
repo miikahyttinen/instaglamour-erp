@@ -34,6 +34,8 @@ All configuration is passed as environment variables (`scripts/env.mjs`); no `.e
 or written. The values there are local-only placeholders, not secrets.
 
 Every flow runs twice: project **`mobile-375`** (375 × 812, touch) and **`desktop-1280`**.
+Other widths (900, 1199, 1200, 1440 px) are checked inside `12-layout-v2` by resizing the desktop
+page, without a third project (the flows that write data tag records per viewport, `M` / `D`).
 The suite shares one database and runs with one worker, in file order; it expects the fresh
 database that `npm run e2e` creates.
 
@@ -61,9 +63,10 @@ database that `npm run e2e` creates.
 | `06-tasks` | Add, mark done, reopen; edit title / description / owner / due date in place, Esc, empty title; delete |
 | `07-hours` | Add own entry; totals page and year page updated; edit hours / comment in place, Esc, invalid hours |
 | `08-budget` | Edit a row in place (PUT per cell save, Esc, invalid amount); year page budget and year result; copy to the next year (and the 409 on a second copy) |
-| `09-language-year` | Switch to English; change year (buttons and picker); both survive a reload |
+| `09-language-year` | Switch to English with the one language toggle; change year (buttons and picker); both survive a reload; signed-in partner shown |
 | `10-no-horizontal-scroll` | No horizontal scroll on every main page (and with expanded content) |
 | `11-cross-checks` | Seller change moves Sales lines; EN amount input; upcoming gigs in an empty year; hours saved for another year; gig search + cancelled filter |
+| `12-layout-v2` | Desktop: sidebar collapse / expand persists across reload and tabs; collapsed nav items and account controls reachable by accessible name; tooltip keeps the name (F-005, `fixme`); gig list cards below 1200 px / table from 1200 px (1199, 1200, 1440); cost list compact rows at 1280 px, full table at 1440 px; no horizontal scroll on every page with the sidebar expanded and collapsed at 900, 1280 and 1440 px. Phone: ☰ drawer opens, traps focus, closes on Esc / backdrop / close / navigation / back, returns focus to ☰; no horizontal scroll on every page with the drawer open. Both: one theme toggle, persists across reload |
 
 Every test also fails on uncaught page errors or `console.error` output in the browser.
 
@@ -73,8 +76,14 @@ Every test also fails on uncaught page errors or `console.error` output in the b
   values typed by the tests are 1000 cents or multiples of 10000 cents.
 - Prefer accessible roles and names; shared locators for the restyled markup live in
   `tests/gigs.ts` (gig page, gig list), `tests/year.ts` (year page figures) and `tests/helpers.ts`
-  (`pageHead`, `signOutFromHeader`). The app switches layout at **900 px** (`isWide()`): header
-  icon buttons instead of the menu, and the gig list as a table instead of cards.
+  (`pageHead`, `goNav`, `openDrawer`, `signOutFromHeader`, `languageButton`, `themeButton`,
+  `expectSignedInShown`). Shared page list: `tests/pages.ts`.
+- **Layout v2:** from **900 px** (`isWide()`) the main nav is a collapsible left sidebar; below
+  that, ☰ ("Valikko") opens it as the drawer dialog "Päävalikko" — `goNav()` opens the drawer on
+  phones and checks that it closes. Language, theme and sign-out are found **by accessible name**,
+  in the drawer on phones and anywhere on the page on desktop (not by sidebar position), so the
+  move to the top bar (TASK-132) needs no test change. The gig list is a table only from
+  **1200 px** (`isGigTable()` in `tests/gigs.ts`), cards below.
 - **Inline editing (NFR-8):** edit like a user — `editInline()` focuses the field, types, leaves
   it (blur) or presses Enter and waits for the write; `selectInline()` for selects. Then assert the
   value **after `page.reload()`** to prove it reached the backend. `expectEscReverts()` and

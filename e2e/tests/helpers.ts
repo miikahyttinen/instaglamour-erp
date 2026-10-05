@@ -75,10 +75,13 @@ export async function signIn(
 }
 
 /**
- * The app switches layout at 900 px (frontend `DESKTOP_QUERY`): from there the header shows
- * language / theme / sign-out as icon buttons (no menu) and the gig list is a table, not cards.
+ * Layout v2 (docs/design.md): from 900 px (frontend `DESKTOP_QUERY`) a collapsible left sidebar
+ * holds the main navigation; below that a top bar with ☰ opens the same sidebar as a modal drawer
+ * (dialog "Päävalikko"). There is no bottom nav and no header nav.
  */
 export const DESKTOP_MIN_WIDTH = 900;
+/** The gig list is a table only from 1200 px (frontend `GIG_TABLE_QUERY`); cards below that. */
+export const GIG_TABLE_MIN_WIDTH = 1200;
 
 export function isWide(page: Page): boolean {
   return (page.viewportSize()?.width ?? 0) >= DESKTOP_MIN_WIDTH;
@@ -89,18 +92,82 @@ export function pageHead(page: Page): Locator {
   return page.getByRole('main').locator('header.page-head');
 }
 
-/** Signs out from the header: the menu on phones, the sign-out icon button on desktop. */
-export async function signOutFromHeader(page: Page): Promise<void> {
-  if (!isWide(page)) await page.getByRole('button', { name: 'Valikko' }).click();
-  await page.getByRole('button', { name: 'Kirjaudu ulos', exact: true }).click();
+export const NAV_NAME = /^(Päävalikko|Main menu)$/;
+
+/** The phone navigation drawer (modal dialog). */
+export function navDrawer(page: Page): Locator {
+  return page.getByRole('dialog', { name: NAV_NAME });
 }
 
-/** Clicks a main-navigation link (bottom bar on phones, header on desktop). */
+/** The ☰ button in the phone top bar. */
+export function menuButton(page: Page): Locator {
+  return page.getByRole('button', { name: /^(Valikko|Menu)$/ });
+}
+
+/** Phone: opens the drawer with ☰ (unless it is open) and waits for it. */
+export async function openDrawer(page: Page): Promise<Locator> {
+  const drawer = navDrawer(page);
+  if (!(await drawer.isVisible())) await menuButton(page).click();
+  await expect(drawer).toBeVisible();
+  return drawer;
+}
+
+/**
+ * Where language / theme / sign-out live: the drawer on phones (opened first), the whole page on
+ * desktop. On desktop they are found by accessible name anywhere (sidebar foot today, the content
+ * top bar after TASK-132), never by position.
+ */
+async function accountScope(page: Page): Promise<Page | Locator> {
+  return isWide(page) ? page : openDrawer(page);
+}
+
+/** The sign-out button. */
+export async function signOutButton(page: Page): Promise<Locator> {
+  return (await accountScope(page)).getByRole('button', { name: /^(Kirjaudu ulos|Sign out)$/ });
+}
+
+/** The single language toggle; its name offers the other language ("Vaihda kieleksi English"). */
+export async function languageButton(page: Page, name: string): Promise<Locator> {
+  return (await accountScope(page)).getByRole('button', { name, exact: true });
+}
+
+/** The single theme toggle ("Vaihda tummaan teemaan" / "Vaihda vaaleaan teemaan", EN alike). */
+export async function themeButton(page: Page): Promise<Locator> {
+  return (await accountScope(page)).getByRole('button', {
+    name: /^(Vaihda (tummaan|vaaleaan) teemaan|Switch to (dark|light) theme)$/i,
+  });
+}
+
+/**
+ * UC-001: the signed-in partner is shown — as visible text (drawer, expanded sidebar) or as the
+ * sign-out button's accessible description (desktop top bar after TASK-132).
+ */
+export async function expectSignedInShown(page: Page, text: string): Promise<void> {
+  const scope = await accountScope(page);
+  const signOut = await signOutButton(page);
+  await expect(async () => {
+    if (await scope.getByText(text, { exact: true }).isVisible()) return;
+    await expect(signOut).toHaveAccessibleDescription(new RegExp(escapeRegExp(text)), { timeout: 250 });
+  }, `"${text}" is visible or is the sign-out button's description`).toPass({ timeout: 10_000 });
+}
+
+/** Signs out: from the drawer on phones, the sign-out button on desktop. */
+export async function signOutFromHeader(page: Page): Promise<void> {
+  await (await signOutButton(page)).click();
+}
+
+/**
+ * Clicks a main-navigation link: in the sidebar on desktop; on phones ☰ → link in the drawer,
+ * and the drawer must close on navigation.
+ */
 export async function goNav(page: Page, label: string): Promise<void> {
-  await page
-    .getByRole('navigation', { name: /Päävalikko|Main menu/ })
-    .getByRole('link', { name: label, exact: true })
-    .click();
+  if (isWide(page)) {
+    await page.getByRole('navigation', { name: NAV_NAME }).getByRole('link', { name: label, exact: true }).click();
+    return;
+  }
+  const drawer = await openDrawer(page);
+  await drawer.getByRole('navigation', { name: NAV_NAME }).getByRole('link', { name: label, exact: true }).click();
+  await expect(drawer, 'the drawer closes after navigation').toBeHidden();
 }
 
 /** NFR-1: no horizontal scrolling on the page. */

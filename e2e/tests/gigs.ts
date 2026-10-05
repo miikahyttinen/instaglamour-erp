@@ -1,5 +1,5 @@
 import type { Locator, Page } from '@playwright/test';
-import { api, isWide, SEED } from './helpers';
+import { api, GIG_TABLE_MIN_WIDTH, SEED } from './helpers';
 
 export interface Reference {
   partners: { id: string; name: string; email: string }[];
@@ -94,9 +94,14 @@ export function costField(page: Page, field: 'Budjetti' | 'Kuvaus' | 'Maksettu s
     .getByLabel(`${field}: ${line}`, { exact: true });
 }
 
-/** Rows of the gig list: a table from 900 px, cards (list items) below that. */
+/** The gig list is a table from 1200 px (Layout v2), cards below that. */
+export function isGigTable(page: Page): boolean {
+  return (page.viewportSize()?.width ?? 0) >= GIG_TABLE_MIN_WIDTH;
+}
+
+/** Rows of the gig list: a table from 1200 px, cards (list items) below that. */
 export function gigListRows(page: Page): Locator {
-  return isWide(page)
+  return isGigTable(page)
     ? page.getByRole('table', { name: 'Keikkalista' }).getByRole('row').filter({ has: page.getByRole('cell') })
     : page.getByRole('list', { name: 'Keikkalista' }).getByRole('listitem');
 }
