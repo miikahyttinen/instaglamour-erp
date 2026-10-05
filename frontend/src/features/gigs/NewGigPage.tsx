@@ -3,7 +3,7 @@ import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import type { FieldCode, TechnicalSetup } from '../../api/enums';
+import type { FieldCode, Logistics, TechnicalSetup } from '../../api/enums';
 import { gigsApi } from '../../api/endpoints';
 import type { GigCreate } from '../../api/types';
 import { useSignedInPartner } from '../../auth/SignedInContext';
@@ -18,7 +18,8 @@ import { useLang } from '../../i18n/useLang';
 import { formatMoney } from '../../lib/format';
 import { parseMoneyField } from '../../lib/moneyField';
 import { useReference } from '../../reference/useReference';
-import { PartnerOptions, TechnicalSetupPicker } from './formParts';
+import { PartnerOptions } from './formParts';
+import { NONE_LABEL, useLogisticsOptions, useTechnicalSetupOptions } from './gigOptions';
 import { useApplyGig } from './queries';
 import './newGig.css';
 
@@ -30,7 +31,9 @@ interface FormState {
   lineup: string; // template id or CUSTOM
   lineupName: string;
   venue: string;
-  technicalSetup: TechnicalSetup[];
+  technicalSetup: TechnicalSetup | '';
+  logistics: Logistics | '';
+  houseTechnician: boolean;
   sellerId: string;
   producerId: string;
   price: string;
@@ -47,6 +50,8 @@ const FIELD_TO_CONTROL: Record<string, keyof FormState> = {
   lineupName: 'lineupName',
   venue: 'venue',
   technicalSetup: 'technicalSetup',
+  logistics: 'logistics',
+  houseTechnician: 'houseTechnician',
   sellerId: 'sellerId',
   producerId: 'producerId',
   priceCents: 'price',
@@ -69,7 +74,9 @@ export function NewGigPage() {
     lineup: '',
     lineupName: '',
     venue: '',
-    technicalSetup: [],
+    technicalSetup: '',
+    logistics: '',
+    houseTechnician: false,
     sellerId: me.id,
     producerId: me.id,
     price: '',
@@ -77,6 +84,8 @@ export function NewGigPage() {
     additionalSalesDescription: '',
     notes: '',
   });
+  const technicalSetupOptions = useTechnicalSetupOptions(reference);
+  const logisticsOptions = useLogisticsOptions(reference);
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
@@ -130,7 +139,9 @@ export function NewGigPage() {
       lineupTemplateId: form.lineup === CUSTOM ? null : form.lineup,
       lineupName: form.lineup === CUSTOM ? form.lineupName.trim() : null,
       venue: form.venue.trim(),
-      technicalSetup: form.technicalSetup,
+      technicalSetup: form.technicalSetup || null,
+      logistics: form.logistics || null,
+      houseTechnician: form.houseTechnician,
       sellerId: form.sellerId,
       producerId: form.producerId,
       priceCents: priceParsed.cents ?? 0,
@@ -219,13 +230,60 @@ export function NewGigPage() {
             )}
           </Field>
 
-          <TechnicalSetupPicker
-            legend={t('gigForm.technicalSetup')}
-            options={reference?.technicalSetups}
-            value={form.technicalSetup}
-            onChange={(value) => set('technicalSetup', value)}
-            error={errors.technicalSetup}
-          />
+          <div className="form-row">
+            <Field label={t('gigForm.technicalSetup')} error={errors.technicalSetup}>
+              {(p) => (
+                <select
+                  {...p}
+                  value={form.technicalSetup}
+                  onChange={(e) => set('technicalSetup', e.target.value as TechnicalSetup | '')}
+                >
+                  <option value="">{NONE_LABEL}</option>
+                  {technicalSetupOptions.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </Field>
+            <Field label={t('gigForm.logistics')} error={errors.logistics}>
+              {(p) => (
+                <select
+                  {...p}
+                  value={form.logistics}
+                  onChange={(e) => set('logistics', e.target.value as Logistics | '')}
+                >
+                  <option value="">{NONE_LABEL}</option>
+                  {logisticsOptions.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </Field>
+          </div>
+
+          <div className="field new-gig-switch">
+            {/* Same look as InlineSwitch (`inline-switch` draws the switch). */}
+            <label className="switch inline-switch">
+              <input
+                type="checkbox"
+                role="switch"
+                checked={form.houseTechnician}
+                aria-invalid={errors.houseTechnician ? true : undefined}
+                aria-describedby={errors.houseTechnician ? 'new-gig-house-tech-error' : undefined}
+                onChange={(e) => set('houseTechnician', e.target.checked)}
+              />
+              <span>{t('gigForm.houseTechnician')}</span>
+            </label>
+            {errors.houseTechnician && (
+              <p id="new-gig-house-tech-error" className="field-error">
+                {errors.houseTechnician}
+              </p>
+            )}
+          </div>
 
           <div className="form-row">
             <Field label={t('gigForm.seller')} error={errors.sellerId}>

@@ -25,7 +25,21 @@ describe('new gig (UC-002)', () => {
     await user.selectOptions(screen.getByRole('combobox', { name: 'Kokoonpano' }), 'Template A');
     expect(screen.getByText('Roolit: Laulu, Kitara, Basso, Rummut')).toBeInTheDocument();
     await user.type(screen.getByRole('textbox', { name: 'Paikka' }), 'Venue X');
-    await user.click(screen.getByRole('checkbox', { name: 'Pakettiauto' }));
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+    const setup = screen.getByRole('combobox', { name: 'Tekniikka' });
+    expect(setup).toHaveDisplayValue('–');
+    expect(within(setup).getAllByRole('option').map((o) => o.textContent)).toEqual([
+      '–', 'Talon tekniikka', 'Setti A', 'Setti B', 'Setti C',
+    ]);
+    await user.selectOptions(setup, 'Setti C');
+    const logistics = screen.getByRole('combobox', { name: 'Logistiikka' });
+    expect(within(logistics).getAllByRole('option').map((o) => o.textContent)).toEqual([
+      '–', 'Oma paku', 'Vuokrapaku', 'Taksi', 'Muu',
+    ]);
+    await user.selectOptions(logistics, 'Oma paku');
+    const houseTech = screen.getByRole('switch', { name: 'Talon teknikko' });
+    expect(houseTech).not.toBeChecked();
+    await user.click(houseTech);
     await user.selectOptions(screen.getByRole('combobox', { name: 'Tuottaja' }), partnerB().id);
     await user.type(screen.getByRole('textbox', { name: 'Hinta (alv 0 %)' }), '1000');
     await user.type(screen.getByRole('textbox', { name: 'Lisämyynti' }), '100');
@@ -37,7 +51,13 @@ describe('new gig (UC-002)', () => {
       'Laulu', 'Kitara', 'Basso', 'Rummut', 'Toimisto', 'Myynti', 'Tuotanto',
     ]);
     const gig = db.gigs.gigs.at(-1)!;
-    expect(gig).toMatchObject({ priceCents: 100000, additionalSalesCents: 10000, technicalSetup: ['VAN'] });
+    expect(gig).toMatchObject({
+      priceCents: 100000,
+      additionalSalesCents: 10000,
+      technicalSetup: 'SET_C',
+      logistics: 'OWN_VAN',
+      houseTechnician: true,
+    });
     // Sales person = seller, Production person = producer (AC-2).
     expect(await within(lines()[5]!).findByDisplayValue('Partner A')).toBeInTheDocument();
     expect(within(lines()[6]!).getByDisplayValue('Partner B')).toBeInTheDocument();
@@ -60,6 +80,8 @@ describe('new gig (UC-002)', () => {
     await user.click(screen.getByRole('button', { name: 'Luo keikka' }));
     expect(await screen.findByRole('heading', { name: 'Lineup Z · Venue X' })).toBeInTheDocument();
     expect(lines().map((li) => li.getAttribute('aria-label'))).toEqual(['Toimisto', 'Myynti', 'Tuotanto']);
+    // Nothing chosen: technical setup and logistics are sent as null, house technician as false.
+    expect(db.gigs.gigs.at(-1)).toMatchObject({ technicalSetup: null, logistics: null, houseTechnician: false });
   });
 
   it('shows localized field errors, keeps the input and saves nothing', async () => {

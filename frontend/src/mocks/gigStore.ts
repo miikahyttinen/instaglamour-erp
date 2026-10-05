@@ -4,7 +4,7 @@
 // BR-022 double booking, BR-026 load-in switch, BR-027 seller/producer change, history events.
 // Synthetic data only (BR-090). This file does not import mocks/data.ts (no import cycle):
 // callers pass in the settings and templates they need.
-import type { CostType, GigEventType, GigStatus, TechnicalSetup } from '../api/enums';
+import type { CostType, GigEventType, GigStatus, Logistics, TechnicalSetup } from '../api/enums';
 import { isMusicianRole } from '../api/enums';
 import type {
   Attachment,
@@ -31,7 +31,9 @@ export interface MockGig {
   lineupTemplateId: Id | null;
   lineupName: string;
   venue: string;
-  technicalSetup: TechnicalSetup[];
+  technicalSetup: TechnicalSetup | null;
+  logistics: Logistics | null;
+  houseTechnician: boolean;
   sellerId: Id;
   producerId: Id;
   priceCents: number;
@@ -111,7 +113,9 @@ export function toSummary(state: GigState, gig: MockGig, today = todayIso()): Gi
     lineupTemplateId: gig.lineupTemplateId,
     lineupName: gig.lineupName,
     venue: gig.venue,
-    technicalSetup: [...gig.technicalSetup],
+    technicalSetup: gig.technicalSetup,
+    logistics: gig.logistics,
+    houseTechnician: gig.houseTechnician,
     sellerId: gig.sellerId,
     producerId: gig.producerId,
     priceCents: gig.priceCents,
@@ -240,7 +244,9 @@ export interface NewGigInput {
   lineupTemplateId: Id | null;
   lineupName: string | null;
   venue: string;
-  technicalSetup: TechnicalSetup[];
+  technicalSetup: TechnicalSetup | null;
+  logistics: Logistics | null;
+  houseTechnician: boolean;
   sellerId: Id;
   producerId: Id;
   priceCents: number;
@@ -286,7 +292,9 @@ export function createGig(
     lineupTemplateId: template?.id ?? null,
     lineupName: input.lineupName ?? template?.name ?? '',
     venue: input.venue,
-    technicalSetup: [...input.technicalSetup],
+    technicalSetup: input.technicalSetup,
+    logistics: input.logistics,
+    houseTechnician: input.houseTechnician,
     sellerId: input.sellerId,
     producerId: input.producerId,
     priceCents: input.priceCents,
@@ -424,6 +432,8 @@ export type GigPatchField =
   | 'lineupName'
   | 'venue'
   | 'technicalSetup'
+  | 'logistics'
+  | 'houseTechnician'
   | 'sellerId'
   | 'producerId'
   | 'priceCents'
@@ -435,6 +445,8 @@ export const GIG_PATCH_FIELDS: GigPatchField[] = [
   'lineupName',
   'venue',
   'technicalSetup',
+  'logistics',
+  'houseTechnician',
   'sellerId',
   'producerId',
   'priceCents',

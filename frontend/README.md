@@ -87,7 +87,7 @@ VITE_API_PROXY_TARGET=http://localhost:3100 VITE_PORT=5273 npm run dev
 
 - **Never** show the server's `message`; translate `error.code` and field codes with
   `apiErrorMessage()` / `apiFieldErrors()` from `src/i18n/labels.ts`.
-- Code labels: `t('costType.BASS')`, `t('technicalSetup.VAN')`, `t('gigStatus.PLAYED')`,
+- Code labels: `t('costType.BASS')`, `t('technicalSetup.SET_A')`, `t('logistics.OWN_VAN')`, `t('gigStatus.PLAYED')`,
   `t('gigEventType.MOVED')`, … A test fails if any code is missing in FI or EN.
 - Money is integer cents end to end; format with `formatMoney(cents, lang)` and parse input
   with `parseMoneyToCents(text, lang)`.
@@ -275,9 +275,15 @@ const patch = (body: GigUpdate) => gigsApi.update(gig.id, body).then(() => inval
   onSave={(active) => peopleApi.update(person.id, { active })} />
 <InlineSwitch label={t('costs.loadIn')} value={line.joinsLoadIn === true}
   onSave={(joinsLoadIn) => costLinesApi.update(line.id, { joinsLoadIn })} />
-<InlineCheckboxGroup label={t('gigForm.technicalSetup')} value={gig.technicalSetup}
-  options={TECHNICAL_SETUPS.map((s) => ({ value: s, label: t(`technicalSetup.${s}`) }))}
+// One choice or none (gig page basic info; options from features/gigs/gigOptions.ts):
+<InlineSelect<TechnicalSetup | null> label={t('gigForm.technicalSetup')} value={gig.technicalSetup}
+  field="technicalSetup" options={[{ value: null, label: NONE_LABEL }, ...technicalSetupOptions]}
   onSave={(technicalSetup) => patch({ technicalSetup })} />
+<InlineSwitch label={t('gigForm.houseTechnician')} value={gig.houseTechnician} field="houseTechnician"
+  onSave={(houseTechnician) => patch({ houseTechnician })} />
+// Multi-choice list (no current use in the app; see /styleguide):
+<InlineCheckboxGroup label="…" value={selected} options={codes.map((c) => ({ value: c, label: t(`ns.${c}`) }))}
+  onSave={(next) => save(next)} />
 
 // Budget row (PUT the whole row) in a table cell:
 <InlineMoney label={`${t('budget.budgeted')}, ${name}`} hideLabel value={row.budgetedCents}

@@ -36,10 +36,9 @@
 .new-gig-page .form-row {
   column-gap: var(--grid-gap);
 }
-/* Checkboxes: two per row on phones, three from 600 px, four from 1200 px,
-   with the grid gap so they line up with the field pairs. */
-.new-gig-page .check-grid {
-  column-gap: var(--grid-gap);
+/* House technician switch: under the technical setup / logistics pair. */
+.new-gig-page .new-gig-switch {
+  margin-top: var(--space-4);
 }
 
 /* ---------- Sections ---------- */

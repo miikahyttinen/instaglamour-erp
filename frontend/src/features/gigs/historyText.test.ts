@@ -21,7 +21,9 @@ const events: GigEvent[] = [
       changes: [
         { field: 'priceCents', from: 100000, to: 200000 },
         { field: 'sellerId', from: 'pa', to: 'pb' },
-        { field: 'technicalSetup', from: [], to: ['VAN', 'OWN_PA'] },
+        { field: 'technicalSetup', from: null, to: 'SET_A' },
+        { field: 'logistics', from: 'OWN_VAN', to: 'RENTAL_VAN' },
+        { field: 'houseTechnician', from: false, to: true },
         { field: 'notes', from: null, to: 'Note' },
       ],
       movedCostLineIds: ['l1'],
@@ -75,7 +77,7 @@ describe('history descriptions (UC-013)', () => {
   it('describes every event in Finnish with old → new values', () => {
     expect(describeAll('fi')).toEqual([
       'Keikka luotu',
-      'Tietoja muutettu | Hinta: 1 000,00 € → 2 000,00 € | Myyjä: Partner A → Partner B | Tekniikka: – → Pakettiauto, Oma PA | Muistiinpanot: – → Note | Siirrettyjä Myynti- / Tuotanto-rivejä: 1',
+      'Tietoja muutettu | Hinta: 1 000,00 € → 2 000,00 € | Myyjä: Partner A → Partner B | Tekniikka: – → Setti A | Logistiikka: Oma paku → Vuokrapaku | Talon teknikko: ei → kyllä | Muistiinpanot: – → Note | Siirrettyjä Myynti- / Tuotanto-rivejä: 1',
       'Siirretty | 1.6.2030 → 1.7.2030–2.7.2030 | Syy: Venue asked',
       'Peruttu | Syy: Called off',
       'Palautettu myydyksi | Syy: Back on',
@@ -94,12 +96,26 @@ describe('history descriptions (UC-013)', () => {
   it('describes events in English', () => {
     const en = describeAll('en');
     expect(en[1]).toBe(
-      'Details changed | Price: €1,000.00 → €2,000.00 | Seller: Partner A → Partner B | Technical setup: – → Van, Own PA | Notes: – → Note | Sales / Production lines moved: 1',
+      'Details changed | Price: €1,000.00 → €2,000.00 | Seller: Partner A → Partner B | Technical setup: – → Set A | Logistics: Own van → Rental van | House technician: no → yes | Notes: – → Note | Sales / Production lines moved: 1',
     );
     expect(en[2]).toBe('Moved | 1 Jun 2030 → 1 Jul 2030–2 Jul 2030 | Reason: Venue asked');
     expect(en[8]).toBe(
       'Cost line changed | Bass: Budget: €100.00 → €90.00; Load-in & soundcheck: yes → no; Person: – → Person 1',
     );
+  });
+
+  it('still shows older multi-choice technical setup events', () => {
+    const legacy: GigEvent = {
+      ...base,
+      type: 'UPDATED',
+      details: {
+        changes: [{ field: 'technicalSetup', from: [], to: ['HOUSE_TECH', 'OWN_PA'] }],
+        movedCostLineIds: [],
+      },
+    };
+    expect(describeEvent(i18n.getFixedT('fi'), 'fi', legacy, ctx).lines).toEqual([
+      'Tekniikka: – → Talon tekniikka, OWN_PA',
+    ]);
   });
 
   it('filters by category', () => {

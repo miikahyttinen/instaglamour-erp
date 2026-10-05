@@ -9,6 +9,7 @@ import {
   SIGN_IN_ERROR_CODES,
   TASK_STATUSES,
   TECHNICAL_SETUPS,
+  LOGISTICS,
   WARNING_CODES,
 } from '../api/enums';
 import en from './en';
@@ -34,6 +35,7 @@ const locales = { fi: flatten(fi as Tree), en: flatten(en as Tree) };
 const enumNamespaces: [string, readonly string[]][] = [
   ['costType', COST_TYPES],
   ['technicalSetup', TECHNICAL_SETUPS],
+  ['logistics', LOGISTICS],
   ['gigStatus', GIG_DISPLAY_STATUSES],
   ['taskStatus', TASK_STATUSES],
   ['gigEventType', GIG_EVENT_TYPES],

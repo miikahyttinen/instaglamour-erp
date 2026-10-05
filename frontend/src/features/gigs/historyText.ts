@@ -1,7 +1,7 @@
 import type { TFunction } from 'i18next';
-import type { CostType, GigEventType, Language, TechnicalSetup } from '../../api/enums';
+import type { CostType, GigEventType, Language } from '../../api/enums';
 import type { DateRange, FieldChange, GigEvent, Partner, Person } from '../../api/types';
-import { costTypeLabel, gigEventTypeLabel, technicalSetupLabel } from '../../i18n/labels';
+import { costTypeLabel, gigEventTypeLabel } from '../../i18n/labels';
 import { formatDateRange, formatMoney } from '../../lib/format';
 
 export interface HistoryContext {
@@ -53,10 +53,12 @@ export function formatValue(
   if (field === 'personId' && typeof value === 'string') {
     return ctx.people?.find((p) => p.id === value)?.name ?? '–';
   }
-  if (field === 'technicalSetup' && Array.isArray(value)) {
-    return value.length === 0
-      ? '–'
-      : value.map((code) => technicalSetupLabel(t, code as TechnicalSetup)).join(', ');
+  if (field === 'technicalSetup' || field === 'logistics') {
+    // Older events may hold a list of codes (multi-choice technicalSetup before 2026-10-05).
+    const codes = (Array.isArray(value) ? value : [value]).map(String);
+    if (codes.length === 0) return '–';
+    const namespace = field === 'technicalSetup' ? 'technicalSetup' : 'logistics';
+    return codes.map((code) => t(`${namespace}.${code}`, { defaultValue: code })).join(', ');
   }
   if (typeof value === 'boolean') return value ? t('history.yes') : t('history.no');
   return String(value);
