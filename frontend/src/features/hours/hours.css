@@ -4,7 +4,8 @@
 .hours-page .hours-tabs {
   display: flex;
   gap: var(--space-5);
-  margin: calc(var(--space-5) * -1) 0 var(--space-5);
+  /* Part of the page head: pulled up into its gap; the usual section gap below. */
+  margin: calc(var(--space-5) * -1) 0 var(--section-gap);
   border-bottom: var(--hairline) solid var(--border);
 }
 .hours-page .hours-tabs a {
@@ -29,21 +30,36 @@
 }
 
 /* ---------- Year / grand total tile ---------- */
-/* One tile, so let it span the row instead of a 220 px auto-fill column. */
+/* One tile with 12 month bars: it spans the whole row at every width. */
 .hours-page .hours-stats > * {
   --span: 12;
 }
 
+/* ---------- Column widths shared by month heads and entry rows ---------- */
+.hours-page {
+  --hours-col-date: var(--label-w);
+  --hours-col-amount: calc(var(--label-w) * 3 / 4);
+  --hours-col-actions: var(--control-h);
+  --hours-col-gap: var(--space-4);
+  /* Inline fields reserve a state icon slot (+ gap) right of the value. */
+  --hours-state-slot: calc(var(--icon) + var(--space-1));
+}
+
 /* ---------- Month groups (My hours) ---------- */
 .hours-page .hours-month {
-  margin: 0 0 var(--space-5);
+  margin: 0;
 }
+.hours-page .hours-month + .hours-month {
+  margin-top: var(--section-gap);
+}
+/* Month name at the page edge; the month total ends where the hours values in the rows end. */
 .hours-page .hours-month-head {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: var(--space-2);
-  margin-bottom: var(--space-2);
+  margin-bottom: var(--space-4);
+  padding-right: calc(var(--hairline) + var(--card-pad) + var(--hours-state-slot));
 }
 .hours-page .hours-month-head .section-label {
   margin: 0;
@@ -62,29 +78,33 @@
   border: var(--hairline) solid var(--border);
   border-radius: var(--radius);
 }
+/* Read-only rows. Phones: date + hours on the first line, comment below. */
 .hours-page .hour-entry {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) var(--hours-col-amount);
   grid-template-areas:
     'date amount'
     'comment comment';
-  align-items: center;
-  gap: var(--space-1) var(--space-3);
-  padding: var(--space-3) var(--space-4);
+  align-items: baseline;
+  gap: var(--space-1) var(--hours-col-gap);
+  min-height: var(--row-h);
+  padding: var(--cell-pad-y) var(--card-pad);
   border-top: var(--hairline) solid var(--border);
 }
 .hours-page .hour-entry:first-child {
   border-top: 0;
 }
 /* Own entries: date, comment and hours are inline fields (NFR-8); delete button on the right.
-   Phones: date + hours on the first line, comment + delete on the second. */
+   Phones: date + hours on the first line, comment + delete on the second. The controls are
+   --control-h high, so the rows need less vertical padding. */
 .hours-page .hour-entries-editable .hour-entry {
-  grid-template-columns: minmax(0, 1fr) 7.5rem;
   grid-template-areas:
     'date amount'
     'comment actions';
-  gap: 0 var(--space-2);
-  padding: var(--space-1) var(--space-2);
+  /* Controls are equally high; top-aligned so a wrapped hours error (F-004) only grows down. */
+  align-items: start;
+  gap: 0 var(--hours-col-gap);
+  padding: var(--space-1) var(--card-pad);
 }
 .hours-page .hour-date {
   grid-area: date;
@@ -105,6 +125,10 @@
   font-weight: var(--fw-bold);
   font-variant-numeric: tabular-nums;
   min-width: 0;
+}
+/* Read-only hours end where the inline hours' unit ends (left of the state slot). */
+.hours-page .hour-amount:not(.inline-field) {
+  padding-right: var(--hours-state-slot);
 }
 /* Keep the value on one line, but not the inline field's error (F-004): it wraps in the column. */
 .hours-page .hour-amount:not(.inline-field),
@@ -144,14 +168,14 @@
 .hours-page .hours-partners {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: var(--space-3);
+  gap: var(--grid-gap);
 }
 .hours-page .hours-partner-head {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: var(--space-2);
-  margin-bottom: var(--space-3);
+  margin-bottom: var(--space-4);
 }
 .hours-page .hours-partner-name {
   min-width: 0;
@@ -169,7 +193,7 @@
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--space-1);
-  margin-top: var(--space-2);
+  margin-top: var(--space-3);
 }
 .hours-page .hours-month-cell {
   display: flex;
@@ -217,17 +241,23 @@
   color: var(--accent-contrast);
 }
 
-/* Month entries opened inside a partner card. */
+/* Month entries opened inside a partner card: flush rows, so dates and comments share the
+   card's content edge (the inline fields' hover outline uses the card padding). */
 .hours-page .hours-month-detail {
-  margin-top: var(--space-4);
-  padding-top: var(--space-4);
+  margin-top: var(--card-pad);
+  padding-top: var(--card-pad);
   border-top: var(--hairline) solid var(--border);
 }
 .hours-page .hours-month-detail .section-label {
-  margin: 0 0 var(--space-3);
+  margin: 0 0 var(--space-2);
 }
 .hours-page .hours-month-detail .hour-entries {
   background: transparent;
+  border: 0;
+}
+.hours-page .hours-month-detail .hour-entry {
+  padding-left: 0;
+  padding-right: 0;
 }
 .hours-page .hours-read-only {
   margin: var(--space-2) 0 0;
@@ -240,7 +270,7 @@
 }
 
 .hours-page .hours-input {
-  max-width: 10rem;
+  max-width: var(--label-w);
 }
 
 /* Phones: 12 month labels don't fit under the tile bars (they truncate to "TA…"). The bars stay;
@@ -258,17 +288,29 @@
 }
 
 @media (min-width: 900px) {
-  /* 12 columns with the same gap as the mini bars, so each button sits under its bar. */
-  .hours-page .hours-month-grid {
-    grid-template-columns: repeat(12, minmax(0, 1fr));
-  }
-  .hours-page .hour-entry,
-  .hours-page .hour-entries-editable .hour-entry {
-    grid-template-columns: 9rem minmax(0, 1fr) 6rem;
+  /* One line per entry: date | comment | hours (| delete). */
+  .hours-page .hour-entry {
+    grid-template-columns: var(--hours-col-date) minmax(0, 1fr) var(--hours-col-amount);
     grid-template-areas: 'date comment amount';
   }
   .hours-page .hour-entries-editable .hour-entry {
-    grid-template-columns: 11rem minmax(0, 1fr) 7.5rem auto;
+    grid-template-columns:
+      var(--hours-col-date) minmax(0, 1fr) var(--hours-col-amount)
+      var(--hours-col-actions);
     grid-template-areas: 'date comment amount actions';
+  }
+  .hours-page .hours-month-head {
+    padding-right: calc(
+      var(--hairline) + var(--card-pad) + var(--hours-col-actions) + var(--hours-col-gap) +
+        var(--hours-state-slot)
+    );
+  }
+}
+
+@media (min-width: 1200px) {
+  /* 12 month buttons in one row only when the labels fit (the sidebar takes 232 px); with the
+     same gap as the mini bars, so each button sits under its bar. */
+  .hours-page .hours-month-grid {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
   }
 }
