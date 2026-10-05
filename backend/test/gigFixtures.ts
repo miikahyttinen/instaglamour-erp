@@ -106,9 +106,7 @@ export async function history(s: Session, gigId: string) {
 
 export const UNKNOWN_ID = '00000000-0000-4000-8000-000000000000';
 
-/** A budget category (seed-only in the app). */
-export function createBudgetCategory(code: string, options: { budgeted?: boolean; active?: boolean; sortOrder?: number } = {}) {
-  return testDb().budgetCategory.create({
-    data: { code, nameFi: `Kategoria ${code}`, nameEn: `Category ${code}`, ...options },
-  });
+/** A budget row, written directly (tests of the API use POST /api/budget-categories). */
+export function createBudgetCategory(name: string, options: { active?: boolean; sortOrder?: number } = {}) {
+  return testDb().budgetCategory.create({ data: { name, ...options } });
 }

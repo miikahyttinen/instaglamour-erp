@@ -1,9 +1,9 @@
-/** Budget endpoints (docs/api-contract.md "Budget"; UC-020; BR-060, BR-062). */
+/** Budget endpoints (docs/api-contract.md "Budget"; UC-020; BR-060, BR-062). Every active row takes all four amounts. */
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import type { AppDeps } from '../app.js';
 import { amountsOf, loadActiveBudgetCategories, loadBudget, toBudgetRowDto, type BudgetAmounts } from '../budget/store.js';
-import { AppError, notFound, parseInput, validationError, type FieldCode } from '../http/errors.js';
+import { AppError, notFound, parseInput } from '../http/errors.js';
 import { money, yearString } from '../gigs/schemas.js';
 import { inTransaction, isUuid } from '../gigs/store.js';
 
@@ -17,8 +17,7 @@ const putBody = z.object({
   actualIncomeCents: money,
 });
 
-const BUDGET_FIELDS = ['budgetExpenseCents', 'budgetIncomeCents'] as const;
-const AMOUNT_FIELDS = [...BUDGET_FIELDS, 'actualExpenseCents', 'actualIncomeCents'] as const;
+const AMOUNT_FIELDS = ['budgetExpenseCents', 'budgetIncomeCents', 'actualExpenseCents', 'actualIncomeCents'] as const;
 
 const sameAmounts = (a: BudgetAmounts, b: BudgetAmounts) => AMOUNT_FIELDS.every((f) => a[f] === b[f]);
 
@@ -35,16 +34,9 @@ export function budgetRoutes(app: FastifyInstance, deps: AppDeps): void {
     const body = parseInput(putBody, request.body);
     const { categoryId } = request.params;
 
-    // Inactive categories are hidden (domain model), so they can't be edited either.
+    // Removed (inactive) rows are hidden from every year, so they can't be edited either (404).
     const category = isUuid(categoryId) ? await db.budgetCategory.findUnique({ where: { id: categoryId } }) : null;
     if (!category?.active) throw notFound('Budget category not found');
-
-    // Actuals-only categories (e.g. fuel) take no budget numbers.
-    if (!category.budgeted) {
-      const fields: Record<string, FieldCode> = {};
-      for (const f of BUDGET_FIELDS) if (body[f] !== 0) fields[f] = 'INVALID_VALUE';
-      if (Object.keys(fields).length > 0) throw validationError(fields);
-    }
 
     const where = { categoryId_year: { categoryId, year } };
     const existing = await db.budgetYear.findUnique({ where });
@@ -58,7 +50,7 @@ export function budgetRoutes(app: FastifyInstance, deps: AppDeps): void {
     const { year } = parseInput(yearParams, request.params);
 
     await inTransaction(db, async (tx) => {
-      const categories = (await loadActiveBudgetCategories(tx)).filter((c) => c.budgeted);
+      const categories = await loadActiveBudgetCategories(tx);
       const ids = categories.map((c) => c.id);
       const [target, previous] = await Promise.all([
         tx.budgetYear.findMany({ where: { year, categoryId: { in: ids } } }),

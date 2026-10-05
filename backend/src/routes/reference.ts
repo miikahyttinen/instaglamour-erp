@@ -1,6 +1,6 @@
 /** GET /api/reference (docs/api-contract.md "Reference data"). */
 import type { FastifyInstance } from 'fastify';
-import { loadActiveBudgetCategories } from '../budget/store.js';
+import { loadActiveBudgetCategories, toBudgetCategoryDto } from '../budget/store.js';
 import { EXPENSE_CATEGORIES, INTERNAL_ROLES, LOGISTICS, MUSICIAN_ROLES, SETTING_KEYS, TECHNICAL_SETUPS } from '../domain/enums.js';
 import { toPartnerDto } from '../serializers.js';
 import type { AppDeps } from '../app.js';
@@ -50,13 +50,7 @@ export function referenceRoutes(app: FastifyInstance, deps: AppDeps): void {
       },
       technicalSetups: [...TECHNICAL_SETUPS],
       logistics: [...LOGISTICS],
-      budgetCategories: categories.map((c) => ({
-        id: c.id,
-        code: c.code,
-        nameFi: c.nameFi,
-        nameEn: c.nameEn,
-        budgeted: c.budgeted,
-      })),
+      budgetCategories: categories.map(toBudgetCategoryDto),
     };
   });
 }

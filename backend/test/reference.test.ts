@@ -72,20 +72,28 @@ describe('GET /api/reference', () => {
     expect(body.logistics).toEqual(['OWN_VAN', 'RENTAL_VAN', 'TAXI', 'OTHER']);
     expect(body.logistics).toEqual([...LOGISTICS]);
 
-    expect(body.budgetCategories).toHaveLength(10);
-    expect(body.budgetCategories[0]).toEqual({ id: expect.any(String), code: 'RENT', nameFi: 'Vuokra', nameEn: 'Rent', budgeted: true });
-    expect(body.budgetCategories.find((c: { code: string }) => c.code === 'FUEL')).toMatchObject({ budgeted: false });
+    // Only { id, name }: no code / nameFi / nameEn / budgeted (TASK-012)
+    expect(body.budgetCategories).toHaveLength(9);
+    expect(body.budgetCategories[0]).toEqual({ id: expect.any(String), name: 'Category A' });
+    for (const c of body.budgetCategories) expect(Object.keys(c).sort()).toEqual(['id', 'name']);
   });
 
-  it('lists active budget categories only, in sort order', async () => {
-    await testDb().budgetCategory.update({ where: { code: 'RENT' }, data: { active: false } });
+  it('lists active budget rows only, in sort order, and follows add / rename / remove', async () => {
     const cookie = await login(app, 'partner.a@example.com');
-    const body = (await app.inject({ method: 'GET', url: '/api/reference', headers: { cookie } })).json();
-    const codes = body.budgetCategories.map((c: { code: string }) => c.code);
-    expect(codes).toHaveLength(9);
-    expect(codes).not.toContain('RENT');
-    const active = await testDb().budgetCategory.findMany({ where: { active: true }, orderBy: [{ sortOrder: 'asc' }, { code: 'asc' }] });
-    expect(codes).toEqual(active.map((c) => c.code));
+    const names = async (): Promise<string[]> => {
+      const res = await app.inject({ method: 'GET', url: '/api/reference', headers: { cookie } });
+      return res.json<{ budgetCategories: { name: string }[] }>().budgetCategories.map((c) => c.name);
+    };
+    const send = (method: 'POST' | 'PATCH' | 'DELETE', url: string, payload?: object) =>
+      app.inject({ method, url, headers: { cookie }, ...(payload ? { payload } : {}) });
+
+    const a = await testDb().budgetCategory.findFirstOrThrow({ where: { name: 'Category A' } });
+    const b = await testDb().budgetCategory.findFirstOrThrow({ where: { name: 'Category B' } });
+    expect((await send('DELETE', `/api/budget-categories/${a.id}`)).statusCode).toBe(204);
+    expect((await send('PATCH', `/api/budget-categories/${b.id}`, { name: 'Category B2' })).statusCode).toBe(200);
+    expect((await send('POST', '/api/budget-categories', { name: 'Category J' })).statusCode).toBe(201);
+
+    expect(await names()).toEqual(['Category B2', 'Category C', 'Category D', 'Category E', 'Category F', 'Category G', 'Category H', 'Category I', 'Category J']);
   });
 
   it('returns 401 without a session', async () => {

@@ -3,12 +3,12 @@
  *
  * Idempotency rules (natural keys):
  * - Reference data is upserted — the seed file wins:
- *   partner (email), person (name), lineup template (name; roles replaced), setting (key),
- *   budget category (code).
+ *   partner (email), person (name), lineup template (name; roles replaced), setting (key).
  * - Business data is only inserted when its natural key is not in the database yet, so data
  *   partners have since edited in the app is never overwritten:
- *   gig (startDate + venue + lineupName), task (title + owner), hour entry (partner + date + comment),
- *   budget row (category + year).
+ *   budget category (code if given, else name, case-insensitive; removed rows count too — partners
+ *   manage the rows in the app), gig (startDate + venue + lineupName), task (title + owner),
+ *   hour entry (partner + date + comment), budget row (category + year).
  */
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -17,7 +17,7 @@ import { dateFromIso } from '../src/domain/dates.js';
 import { defaultCostLines } from '../src/domain/costLines.js';
 import { isMusicianRole, SETTING_KEYS } from '../src/domain/enums.js';
 import type { Prisma } from '../src/generated/prisma/client.js';
-import { validateSeed, type SeedData } from './schema.js';
+import { findSeedCategory, validateSeed, type SeedData } from './schema.js';
 
 type Tx = Prisma.TransactionClient;
 
@@ -36,6 +36,7 @@ export interface SeedSummary {
   lineupTemplates: number;
   settings: number;
   budgetCategories: number;
+  budgetCategoriesCreated: number;
   gigsCreated: number;
   tasksCreated: number;
   hoursCreated: number;
@@ -74,6 +75,7 @@ export async function emptyDatabase(tx: Tx): Promise<void> {
   await tx.task.deleteMany();
   await tx.hourEntry.deleteMany();
   await tx.budgetYear.deleteMany();
+  await tx.budgetCategoryLegacy.deleteMany();
   await tx.budgetCategory.deleteMany();
   await tx.templateRole.deleteMany();
   await tx.lineupTemplate.deleteMany();
@@ -105,6 +107,24 @@ async function upsertPersonByName(tx: Tx, name: string, active: boolean): Promis
   return (await tx.person.create({ data: { name, active } })).id;
 }
 
+/**
+ * The database row a seed category stands for: by `code` if given, else by name (case-insensitive,
+ * like the app's DUPLICATE rule). Removed rows count too, so a re-run never brings back a row the
+ * partners removed; an active row wins over a removed one with the same name.
+ */
+async function findCategory(tx: Tx, c: SeedData['budgetCategories'][number]): Promise<{ id: string } | null> {
+  if (c.code) {
+    const byCode = await tx.budgetCategory.findUnique({ where: { code: c.code }, select: { id: true } });
+    if (byCode) return byCode;
+  }
+  const rows = await tx.$queryRaw<{ id: string }[]>`
+    SELECT "id"::text FROM "budget_category"
+    WHERE lower(btrim("name")) = lower(btrim(${c.name}))
+    ORDER BY "active" DESC, "updated_at" DESC
+    LIMIT 1`;
+  return rows[0] ?? null;
+}
+
 async function applySeed(tx: Tx, data: SeedData): Promise<SeedSummary> {
   const summary: SeedSummary = {
     partners: 0,
@@ -112,6 +132,7 @@ async function applySeed(tx: Tx, data: SeedData): Promise<SeedSummary> {
     lineupTemplates: 0,
     settings: 0,
     budgetCategories: 0,
+    budgetCategoriesCreated: 0,
     gigsCreated: 0,
     tasksCreated: 0,
     hoursCreated: 0,
@@ -167,12 +188,18 @@ async function applySeed(tx: Tx, data: SeedData): Promise<SeedSummary> {
     productionDefaultCents: data.settings[SETTING_KEYS.productionDefault] ?? 0,
   };
 
-  // Budget categories
-  const categoryIdByCode = new Map<string, string>();
-  for (const [sortOrder, c] of data.budgetCategories.entries()) {
-    const fields = { nameFi: c.nameFi, nameEn: c.nameEn, budgeted: c.budgeted, active: c.active, sortOrder };
-    const category = await tx.budgetCategory.upsert({ where: { code: c.code }, create: { code: c.code, ...fields }, update: fields });
-    categoryIdByCode.set(c.code, category.id);
+  // Budget categories (insert only: partners manage the rows in the app)
+  const categoryIdByEntry = new Map<SeedData['budgetCategories'][number], string>();
+  for (const c of data.budgetCategories) {
+    let id = (await findCategory(tx, c))?.id;
+    if (!id) {
+      // Appended after the existing rows, in listed order (sort order = creation order).
+      const { _max } = await tx.budgetCategory.aggregate({ _max: { sortOrder: true } });
+      const sortOrder = (_max.sortOrder ?? -1) + 1;
+      id = (await tx.budgetCategory.create({ data: { code: c.code ?? null, name: c.name, active: c.active, sortOrder } })).id;
+      summary.budgetCategoriesCreated++;
+    }
+    categoryIdByEntry.set(c, id);
     summary.budgetCategories++;
   }
 
@@ -259,7 +286,7 @@ async function applySeed(tx: Tx, data: SeedData): Promise<SeedSummary> {
 
   // Budget rows (insert only)
   for (const b of data.budget) {
-    const categoryId = categoryIdByCode.get(b.category)!;
+    const categoryId = categoryIdByEntry.get(findSeedCategory(data.budgetCategories, b.category)!)!;
     if (await tx.budgetYear.findUnique({ where: { categoryId_year: { categoryId, year: b.year } } })) continue;
     await tx.budgetYear.create({
       data: {

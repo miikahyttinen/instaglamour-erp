@@ -4,7 +4,7 @@ The seed fills a local database. **Real business data never goes into the reposi
 
 | File | Committed? | Content |
 |---|---|---|
-| `seed.local.json` | **No** (gitignored) | Real partners, people, templates, fees, budget categories… |
+| `seed.local.json` | **No** (gitignored) | Real partners, people, templates, fees, budget rows… |
 | `seed.example.json` | Yes | Synthetic demo data only ("Partner A", "Person 1", "Venue X", round dummy amounts, `@example.com`) |
 
 `npm run db:seed` loads `seed.local.json` if it exists, otherwise `seed.example.json`.
@@ -28,7 +28,7 @@ The whole file is validated first. If anything is wrong, every problem is printe
 | Person | `name` | `active` updated |
 | Lineup template | `name` | Roles replaced by the file's roles |
 | Setting | key | Value updated |
-| Budget category | `code` | Names, `budgeted`, `active`, order updated |
+| Budget category (row) | `code` if given, else `name` (case-insensitive; removed rows count too) | Inserted only if missing — partners manage the rows in the app, so a re-run never renames, reorders or brings back a row they removed |
 | Gig | `startDate` + `venue` + `lineupName` | Inserted only if missing (never overwrites app edits) |
 | Task | `title` + owner | Inserted only if missing |
 | Hour entry | partner + `date` + `comment` | Inserted only if missing |
@@ -39,7 +39,7 @@ Nothing is ever deleted except with `--reset`.
 ## Format
 
 All money is **integer cents** (EUR, excl. VAT): `30000` = 300.00 €. Dates are `YYYY-MM-DD`.
-Partners, templates, people and categories are referenced by email / name / code.
+Partners, templates, people and budget categories are referenced by email / name (budget categories: name or `code`).
 
 ```jsonc
 {
@@ -58,9 +58,10 @@ Partners, templates, people and categories are referenced by email / name / code
     "fees.production_default": 10000,
     "fees.load_in_deduction": 1000
   },
-  "budgetCategories": [               // listed order = display order
-    { "code": "FUEL", "nameFi": "Polttoaine", "nameEn": "Fuel", "budgeted": false, "active": true }
-  ],                                  // budgeted default true; false = actuals only
+  "budgetCategories": [               // the yearly budget rows; new rows are added after existing ones, in listed order
+    { "name": "Category A" },                                   // one name (both languages); unique, case-insensitive
+    { "name": "Category B", "code": "CAT_B", "active": true }   // code optional (UPPER_SNAKE_CASE stable key); active default true
+  ],
 
   // Optional business data (demo / migration):
   "gigs": [
@@ -94,9 +95,9 @@ Partners, templates, people and categories are referenced by email / name / code
     { "partner": "partner.a@example.com", "date": "2026-03-02", "comment": "…", "hours": 1.5 }  // 0.25…24, 0.25 steps
   ],
   "budget": [
-    { "year": 2026, "category": "RENT",
+    { "year": 2026, "category": "Category A",                // a budgetCategories name (case-insensitive) or code
       "budgetExpenseCents": 0, "budgetIncomeCents": 0, "actualExpenseCents": 0, "actualIncomeCents": 0 }
-  ]                                   // amounts default 0; budget amounts must be 0 for budgeted=false categories
+  ]                                   // amounts default 0; every row takes budget and actual amounts
 }
 ```
 
@@ -116,6 +117,23 @@ same way the database migration converts existing gigs:
 | `OWN_PA` | no equivalent: leave it out (or note it in `notes` if it matters) |
 
 Example: `["HOUSE_TECH", "HOUSE_TECHNICIAN", "VAN"]` → `"technicalSetup": "HOUSE_TECH", "houseTechnician": true, "logistics": "OWN_VAN"`.
+
+### Budget category format change (TASK-012)
+
+Budget rows are now managed by the partners in the app; the seed only provides the starting rows.
+Each row has **one `name`**; `nameFi`, `nameEn` and `budgeted` are gone and there are no actuals-only rows
+(the special fuel row is removed — actual fuel, if tracked, goes into a row of the partners' choosing, BR-008).
+An older seed file with the old keys is **rejected** (nothing is loaded) with a message naming each entry.
+Convert it the same way the database migration `20261005200000_budget_category_name` converts existing rows:
+
+| Old entry | New entry |
+|---|---|
+| `"nameFi": "X", "nameEn": "Y"` | `"name": "X"` (the old `nameFi`) |
+| `"code": "RENT"` | keep it (optional; it makes re-runs match the row even after it is renamed in the app) |
+| `"budgeted": false` (e.g. `FUEL`) | leave the entry out together with its `budget` entries, or keep it as a removed row with `"active": false` (its values are loaded but hidden from every year and total) |
+| `"budgeted": true` | drop the key |
+
+`budget[].category` may stay a code if the category keeps its `code`, or use the name.
 
 ## Making your local seed
 

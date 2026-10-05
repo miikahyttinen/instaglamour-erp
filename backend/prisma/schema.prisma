@@ -358,22 +358,42 @@ model HourEntry {
 // Yearly budget
 // ---------------------------------------------------------------------------
 
+/// A budget row, managed by the partners (UC-020). Active names are unique case-insensitively
+/// (partial unique index "budget_category_active_name_key" on lower(btrim(name)) WHERE active,
+/// created in migration 20261005200000_budget_category_name).
 model BudgetCategory {
   id        String   @id @default(uuid()) @db.Uuid
-  code      String   @unique
-  nameFi    String   @map("name_fi")
-  nameEn    String   @map("name_en")
-  /// false = actuals only (e.g. FUEL).
-  budgeted  Boolean  @default(true)
-  /// Inactive categories are hidden from the budget page but keep their history.
+  /// Optional stable key used only by seed files for idempotency; null for rows added in the app.
+  code      String?  @unique
+  /// One name, shown in both languages.
+  name      String
+  /// Removing a row sets false: hidden from every year and total, its values are kept.
   active    Boolean  @default(true)
+  /// Display order (creation order).
   sortOrder Int      @default(0) @map("sort_order")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  years BudgetYear[]
+  years  BudgetYear[]
+  legacy BudgetCategoryLegacy?
 
   @@map("budget_category")
+}
+
+/// Original values of the budget categories that existed before TASK-012 (migration
+/// 20261005200000_budget_category_name). Kept so no information is lost; not used by the API.
+model BudgetCategoryLegacy {
+  categoryId String   @id @map("category_id") @db.Uuid
+  code       String
+  nameFi     String   @map("name_fi")
+  nameEn     String   @map("name_en")
+  budgeted   Boolean
+  active     Boolean
+  migratedAt DateTime @default(now()) @map("migrated_at")
+
+  category BudgetCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@map("budget_category_legacy")
 }
 
 model BudgetYear {

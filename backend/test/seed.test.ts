@@ -114,6 +114,104 @@ describe('validateSeed: technical setup / logistics (TASK-010)', () => {
   });
 });
 
+describe('validateSeed: budget categories (TASK-012)', () => {
+  type Cat = { code?: string; name?: string; active?: boolean; nameFi?: string; nameEn?: string; budgeted?: boolean };
+  const withCategories = (categories: Cat[], budget: unknown[] = []) => ({ ...example(), budgetCategories: categories, budget });
+  const errorsOf = (data: unknown) => {
+    const result = validateSeed(data);
+    return result.ok ? '' : result.errors.join('\n');
+  };
+
+  it('rejects the old nameFi / nameEn / budgeted format with a conversion hint', () => {
+    const errors = errorsOf(withCategories([{ code: 'CAT_F', nameFi: 'Kategoria F', nameEn: 'Category F', budgeted: false }]));
+    expect(errors).toMatch(/budgetCategories\.0: nameFi, nameEn and budgeted are no longer supported: give one "name"/);
+    expect(errors).toMatch(/seed\/README\.md/);
+    expect(errors).toMatch(/budgetCategories\.0\.name/); // name is required
+  });
+
+  it('rejects duplicate names (case-insensitive) and codes', () => {
+    const errors = errorsOf(
+      withCategories([{ name: 'Category A' }, { name: ' category a', active: false }, { code: 'CAT_B', name: 'Category B' }, { code: 'CAT_B', name: 'Category C' }]),
+    );
+    expect(errors).toMatch(/budgetCategories: duplicate name "category a"/);
+    expect(errors).toMatch(/budgetCategories: duplicate code CAT_B/);
+  });
+
+  it('budget rows refer to a category by name (case-insensitive) or code; unknown and duplicate rows are errors', () => {
+    const cats = [{ name: 'Category A' }, { code: 'CAT_B', name: 'Category B' }];
+    expect(errorsOf(withCategories(cats, [{ year: 2026, category: 'category a' }, { year: 2026, category: 'CAT_B' }]))).toBe('');
+    const errors = errorsOf(
+      withCategories(cats, [
+        { year: 2026, category: 'Category Z' },
+        { year: 2026, category: 'CAT_B' },
+        { year: 2026, category: 'Category B' },
+      ]),
+    );
+    expect(errors).toMatch(/budget\.0\.category: unknown category "Category Z"/);
+    expect(errors).toMatch(/budget: duplicate row category b\/2026/);
+  });
+
+  it('every row takes budget and actual amounts (no actuals-only rows)', () => {
+    expect(errorsOf(withCategories([{ name: 'Category A' }], [{ year: 2026, category: 'Category A', budgetExpenseCents: 10000, actualExpenseCents: 1000 }]))).toBe('');
+  });
+});
+
+describe('loadSeed: budget categories (TASK-012)', () => {
+  const rows = () => testDb().budgetCategory.findMany({ orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }] });
+
+  it('loads the example rows in listed order, active, without codes and without a fuel row', async () => {
+    await loadSeed(testDb(), example());
+    const all = await rows();
+    expect(all.map((c) => c.name)).toEqual(['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'].map((l) => `Category ${l}`));
+    expect(all.every((c) => c.active && c.code === null)).toBe(true);
+    expect(all.map((c) => c.sortOrder)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8]);
+    const a = all[0]!;
+    expect(await testDb().budgetYear.findMany({ where: { categoryId: a.id }, orderBy: { year: 'asc' }, select: { year: true, budgetExpenseCents: true } })).toEqual([
+      { year: 2025, budgetExpenseCents: 1200000 },
+      { year: 2026, budgetExpenseCents: 1200000 },
+    ]);
+  });
+
+  it('is insert-only: a re-run never brings back, renames or reorders rows the partners changed', async () => {
+    const data = { ...example(), budgetCategories: [{ code: 'CAT_A', name: 'Category A' }, { name: 'Category B' }, { name: 'Category C' }], budget: [] };
+    await loadSeed(testDb(), data);
+    const [a, b, c] = await rows();
+    // In the app: rename the coded row, remove one, add one
+    await testDb().budgetCategory.update({ where: { id: a!.id }, data: { name: 'Category A2' } });
+    await testDb().budgetCategory.update({ where: { id: b!.id }, data: { active: false } });
+    await testDb().budgetCategory.create({ data: { name: 'Category D', sortOrder: 3 } });
+
+    const summary = await loadSeed(testDb(), data);
+    expect(summary).toMatchObject({ budgetCategories: 3, budgetCategoriesCreated: 0 });
+    const after = await rows();
+    expect(after.map((r) => [r.name, r.active])).toEqual([
+      ['Category A2', true], // matched by code
+      ['Category B', false], // matched by name, stays removed
+      ['Category C', true],
+      ['Category D', true],
+    ]);
+    expect(after[2]!.id).toBe(c!.id);
+  });
+
+  it('matches names case-insensitively; new rows go after existing ones; active: false is kept', async () => {
+    await testDb().budgetCategory.create({ data: { name: 'Category A', sortOrder: 5 } });
+    const summary = await loadSeed(testDb(), {
+      ...example(),
+      budgetCategories: [{ name: 'CATEGORY A' }, { name: 'Category B', active: false }, { code: 'CAT_C', name: 'Category C' }],
+      budget: [{ year: 2026, category: 'CAT_C', actualExpenseCents: 10000 }, { year: 2026, category: 'category a', budgetIncomeCents: 1000 }],
+    });
+    expect(summary).toMatchObject({ budgetCategoriesCreated: 2, budgetRowsCreated: 2 });
+    const all = await rows();
+    expect(all.map((r) => [r.name, r.code, r.active, r.sortOrder])).toEqual([
+      ['Category A', null, true, 5],
+      ['Category B', null, false, 6],
+      ['Category C', 'CAT_C', true, 7],
+    ]);
+    expect(await testDb().budgetYear.findFirstOrThrow({ where: { categoryId: all[2]!.id } })).toMatchObject({ actualExpenseCents: 10000 });
+    expect(await testDb().budgetYear.findFirstOrThrow({ where: { categoryId: all[0]!.id } })).toMatchObject({ budgetIncomeCents: 1000 });
+  });
+});
+
 describe('loadSeed', () => {
   it('loads technicalSetup, logistics and houseTechnician (defaults null / null / false)', async () => {
     await loadSeed(testDb(), example());
