@@ -1,7 +1,7 @@
 # TASK-136: Hours as spreadsheet-style tables
 
 - **owner:** ui
-- **status:** todo
+- **status:** done
 - **spec:** UC-018, UC-019 (owner choice 2026-10-05: "All entries in one table", Excel style, no collapsing)
 - **depends on:** TASK-135 (merged; this replaces its partner list / expandable rows and the month groups)
 
