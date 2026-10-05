@@ -1,7 +1,10 @@
-/* New gig form (NewGigPage). Tokens only; scoped under .new-gig-page. */
+/* New gig form (NewGigPage). Tokens only; scoped under .new-gig-page.
+   Layout v2: the form sits on the page container's 12-column grid (gap --grid-gap). It is full
+   width below 1200 px (1–2 field columns) and spans 8 of 12 columns from 1200 px; field pairs
+   split it into two 4-column halves, so every edge lands on a grid line. */
 
 .new-gig-page .new-gig-back {
-  margin: 0 0 var(--space-3);
+  margin: 0 0 var(--space-2);
 }
 .new-gig-page .new-gig-back a {
   display: inline-flex;
@@ -19,29 +22,52 @@
   color: var(--text);
 }
 
+/* ---------- Grid ---------- */
 .new-gig-page .new-gig-form {
-  max-width: 760px;
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  column-gap: var(--grid-gap);
 }
-.new-gig-page .new-gig-section {
-  padding: 0 0 var(--space-5);
+.new-gig-page .new-gig-form > * {
+  grid-column: 1 / -1;
+  min-width: 0;
 }
-.new-gig-page .new-gig-section + .new-gig-section {
-  padding-top: var(--space-5);
-  border-top: var(--hairline) solid var(--border);
+/* Field pairs: same gap as the grid, so each half is exactly half of the form's columns. */
+.new-gig-page .form-row {
+  column-gap: var(--grid-gap);
 }
-.new-gig-page .new-gig-section .section-label {
-  margin: 0 0 var(--space-2);
-  color: var(--text-muted);
+/* Checkboxes: two per row on phones, three from 600 px, four from 1200 px,
+   with the grid gap so they line up with the field pairs. */
+.new-gig-page .check-grid {
+  column-gap: var(--grid-gap);
 }
 
+/* ---------- Sections ---------- */
+/* Hairline + --section-gap above and below it between sections (like .divider). The section
+   label keeps its own spacing from SectionLabel. */
+.new-gig-page .new-gig-section + .new-gig-section {
+  margin-top: var(--section-gap);
+  padding-top: var(--section-gap);
+  border-top: var(--hairline) solid var(--border);
+}
+
+/* Technical setup: same distance above as a field label (a legend ignores its own margin-top). */
+.new-gig-page .check-group {
+  margin-top: var(--space-4);
+}
+.new-gig-page .check-group legend {
+  margin: 0 0 var(--space-1);
+}
+
+/* ---------- Total ---------- */
 .new-gig-page .new-gig-total {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
   gap: var(--space-2);
-  margin: var(--space-4) 0 0;
-  padding: var(--space-3) var(--space-4);
+  margin: var(--space-5) 0 0;
+  padding: var(--space-4) var(--card-pad);
   background: var(--surface);
   border: var(--hairline) solid var(--border);
   border-radius: var(--radius);
@@ -55,15 +81,31 @@
   font-family: var(--font-sans);
   font-size: var(--fs-figure);
   font-weight: var(--fw-bold);
+  line-height: var(--lh-tight);
   letter-spacing: normal;
   color: var(--text);
   font-variant-numeric: tabular-nums;
 }
 
+/* ---------- Error + actions ---------- */
 .new-gig-page .new-gig-error {
-  margin: 0 0 var(--space-4);
+  margin: var(--section-gap) 0 0;
 }
 .new-gig-page .new-gig-actions {
-  padding-top: var(--space-4);
+  margin-top: var(--section-gap);
+  padding-top: var(--space-5);
   border-top: var(--hairline) solid var(--border);
+}
+.new-gig-page .new-gig-error + .new-gig-actions {
+  margin-top: var(--space-5);
+}
+
+/* ---------- ≥ 1200 px ---------- */
+@media (min-width: 1200px) {
+  .new-gig-page .new-gig-form > * {
+    grid-column: 1 / span 8;
+  }
+  .new-gig-page .check-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
 }
