@@ -1,12 +1,28 @@
-/* Budget page (UC-020). Built on the shared `.table-wrap > table.data-table` look.
-   Below 900 px every category is a card of label/value lines (the grid has eight columns with
-   inputs, too wide for a tablet table); from 900 px a normal table. Tokens only. */
+/* Budget page (UC-020). Built on the shared `.table-wrap > table.data-table` look. Tokens only.
+   The grid has eight columns, four of them inputs. It is a table only when the page's content
+   column is wide enough for it (a container query, so the expanded / collapsed sidebar counts);
+   narrower, every category is a card of label/value lines. */
+
+.budget-page {
+  container: budget-page / inline-size;
+  /* Plain money values (variances, totals, headers) end where an input's "€" ends: the inline
+     field reserves its state icon slot (+ gap) to the right of the unit. */
+  --budget-state-slot: calc(var(--icon) + var(--space-1));
+}
 
 .budget-page .budget-hint {
   margin: 0 0 var(--space-4);
 }
-.budget-page .budget-stats {
-  margin-bottom: var(--space-5);
+
+/* Four tiles: 2 per row up to 1200 px (phones too), 4 per row from 1200 px. */
+.budget-page .budget-stats > * {
+  --span: 6;
+  --span-lg: 3;
+}
+/* A half-width phone tile can't fit the secondary figure and its caption on one line. */
+.budget-page .budget-stats .stat-tile-secondary {
+  flex-wrap: wrap;
+  row-gap: 0;
 }
 
 /* Variance colour: ok = on/better than budget, danger = worse (see variance.ts). */
@@ -24,10 +40,13 @@
   text-align: right;
   white-space: normal;
 }
+.budget-page .budget-table .inline-numeric input {
+  min-width: calc(var(--space-7) * 2);
+}
 
-/* ---------- Phone + tablet (< 900 px): rows become cards ---------- */
+/* ---------- Narrow content column: rows become cards ---------- */
 
-@media (max-width: 899px) {
+@container budget-page (max-width: 999.98px) {
   .budget-page .budget-table-wrap {
     background: transparent;
     border: 0;
@@ -50,11 +69,14 @@
     display: block;
   }
   .budget-page .budget-table .budget-row {
-    margin: 0 0 var(--space-2);
-    padding: var(--space-2) var(--space-4) var(--space-3);
+    margin: 0 0 var(--grid-gap);
+    padding: var(--space-2) var(--card-pad) var(--space-3);
     background: var(--surface);
     border: var(--hairline) solid var(--border);
     border-radius: var(--radius);
+  }
+  .budget-page .budget-table tfoot .budget-row {
+    margin-bottom: 0;
   }
   .budget-page .budget-table .budget-totals {
     border-color: var(--border-strong);
@@ -75,18 +97,22 @@
     flex-wrap: wrap;
     align-items: center;
     gap: var(--space-2);
-    padding: var(--space-2) 0;
+    min-height: var(--control-h);
     font-size: var(--fs-lg);
     text-align: left;
   }
+  /* Label left (one line), value right-aligned in the rest; every line is one control high. */
   .budget-page .budget-table td[data-label] {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 11rem);
+    grid-template-columns: auto minmax(0, 1fr);
     align-items: center;
-    gap: var(--space-1) var(--space-3);
-    padding: var(--space-1) 0;
+    gap: 0 var(--space-3);
+    min-height: var(--control-h);
     text-align: right;
     white-space: normal;
+  }
+  .budget-page .budget-table td[data-label]:not(.budget-input) {
+    padding-right: var(--budget-state-slot);
   }
   .budget-page .budget-table td[data-label]::before {
     content: attr(data-label);
@@ -100,28 +126,45 @@
   }
   .budget-page .budget-table td[data-label] .field-error {
     grid-column: 1 / -1;
-    margin: 0;
+    margin: 0 0 var(--space-1);
   }
   .budget-page .budget-table .budget-na {
     display: none;
   }
 }
 
-/* ---------- Desktop (≥ 900 px): table ---------- */
+/* ---------- Wide content column: table ---------- */
 
-@media (min-width: 900px) {
-  .budget-page .budget-table th,
-  .budget-page .budget-table td {
-    padding: var(--space-2) var(--space-3);
+@container budget-page (min-width: 1000px) {
+  /* Shared cell padding (--cell-pad-x = --card-pad), so the category column lines up with the
+     tile content above. Input cells are tighter vertically; rows stay at least --row-h. */
+  .budget-page .budget-table td.budget-input {
+    padding-top: var(--space-1);
+    padding-bottom: var(--space-1);
   }
   .budget-page .budget-table thead th {
-    padding-top: var(--space-3);
-    padding-bottom: var(--space-3);
     white-space: normal;
     vertical-align: bottom;
   }
+  /* The outer edges keep --cell-pad-x; between the money columns a smaller gutter (header and
+     body identical), so the table fits sooner. */
+  .budget-page .budget-table .num {
+    padding-left: var(--space-3);
+    padding-right: var(--space-3);
+  }
+  .budget-page .budget-table .num:last-child {
+    padding-right: var(--cell-pad-x);
+  }
+  .budget-page .budget-table thead th.num,
+  .budget-page .budget-table td.num:not(.budget-input) {
+    padding-right: calc(var(--space-3) + var(--budget-state-slot));
+  }
+  .budget-page .budget-table thead th.num:last-child,
+  .budget-page .budget-table td.num:not(.budget-input):last-child {
+    padding-right: calc(var(--cell-pad-x) + var(--budget-state-slot));
+  }
   .budget-page .budget-table .budget-category {
-    min-width: 9rem;
+    min-width: calc(var(--label-w) * 3 / 4);
   }
   /* Name on one line, the actuals-only tag below it. */
   .budget-page .budget-category > span:first-child {
@@ -132,8 +175,5 @@
   }
   .budget-page .budget-table tbody tr:last-child th {
     border-bottom: 0;
-  }
-  .budget-page .budget-table .inline-numeric input {
-    min-width: 6.5rem;
   }
 }
