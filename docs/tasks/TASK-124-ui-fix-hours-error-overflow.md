@@ -1,7 +1,7 @@
 # TASK-124: Fix hours error overflow (e2e finding F-004)
 
 - **owner:** ui
-- **status:** todo
+- **status:** done
 - **spec:** e2e/FINDINGS.md F-004, NFR-1
 - **depends on:** none
 
