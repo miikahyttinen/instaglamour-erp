@@ -19,7 +19,10 @@ import './budget.css';
 
 type Notice = { kind: 'success' | 'error'; text: string } | null;
 
-/** Yearly budget (UC-020): one row per active category, edited inline, with totals. */
+/**
+ * Yearly budget (UC-020): one row per active category with totals. Money cells save on blur
+ * (NFR-8); totals and variances come from the saved rows.
+ */
 export function BudgetPage() {
   const { t } = useTranslation();
   const lang = useLang();
@@ -159,9 +162,6 @@ export function BudgetPage() {
                   <th scope="col" className="num">
                     {t('budget.varianceIncome')}
                   </th>
-                  <th scope="col">
-                    <span className="visually-hidden">{t('budget.actions')}</span>
-                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -169,12 +169,11 @@ export function BudgetPage() {
                   const category = byId.get(row.categoryId);
                   return (
                     <BudgetRowEditor
-                      // Year or language change discards unsaved edits (typed text is language-specific).
-                      key={`${year}:${row.categoryId}:${lang}`}
+                      // A year change starts fresh fields; the cells re-format themselves on a language change.
+                      key={`${year}:${row.categoryId}`}
                       row={row}
                       categoryName={category ? budgetCategoryName(category, lang) : '–'}
                       budgeted={category?.budgeted ?? true}
-                      onSaved={(name) => show({ kind: 'success', text: t('budget.saved', { category: name }) })}
                     />
                   );
                 })}
@@ -201,7 +200,6 @@ export function BudgetPage() {
                   >
                     {money(totals.varianceIncomeCents)}
                   </td>
-                  <td className="budget-na" />
                 </tr>
               </tfoot>
             </table>

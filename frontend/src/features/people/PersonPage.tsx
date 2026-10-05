@@ -15,11 +15,14 @@ import { useLang } from '../../i18n/useLang';
 import { formatDate, formatMoney } from '../../lib/format';
 import { GigStatusTag } from '../gigs/GigStatusTag';
 import { NoticeBox, type Notice } from './Notices';
-import { PersonControls } from './PersonControls';
+import { PersonActiveSwitch, PersonNameField } from './PersonFields';
 import { usePeopleList, usePersonCostLines } from './queries';
 import './people.css';
 
-/** One person: name, rename / activate, and their cost lines in the selected year (UC-014 A2). */
+/**
+ * One person: name and active edited in place (NFR-8), and their cost lines in the selected year
+ * (UC-014 A2).
+ */
 export function PersonPage() {
   const { t } = useTranslation();
   const { id = '' } = useParams();
@@ -56,10 +59,13 @@ export function PersonPage() {
                 <StatusTag tone="muted">{t('people.inactiveBadge')}</StatusTag>
               )
             }
-            actions={<PersonControls person={person} onNotice={setNotice} />}
           >
             {backLink}
           </PageHead>
+          <div className="person-fields">
+            <PersonNameField person={person} label={t('people.name')} onNotice={setNotice} />
+            <PersonActiveSwitch person={person} label={t('people.active')} onNotice={setNotice} />
+          </div>
           <NoticeBox notice={notice} onDismiss={() => setNotice(null)} />
           <CostLines personId={person.id} />
         </>
