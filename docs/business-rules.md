@@ -21,7 +21,7 @@ Rules only — concrete values are seeded settings (`domain-model.md`).
 | BR-004 | **Margin %** = margin / total price, 1 decimal; "–" when total price = 0. |
 | BR-006 | **Total price** = price + additional sales amount. |
 | BR-007 | No customer or invoicing data is stored; it is in the contract attachment. Invoicing is a separate system. |
-| BR-008 | `FUEL` cost lines are estimates: budgeted amount only, never paid. Actual fuel is entered in the yearly budget. |
+| BR-008 | **Fuel** on a gig is an estimate only: a `FUEL` expense has a budgeted amount and never an actual amount. Actual fuel, if tracked, goes into a budget row of the partners' own choosing. |
 
 ## Gig lifecycle
 | ID | Rule |
@@ -79,6 +79,7 @@ Rules only — concrete values are seeded settings (`domain-model.md`).
 | BR-090 | No real names, numbers from the business, customer data or secrets ever go to the repository / GitHub. Seed data, `.env` and uploads are local and gitignored. Tests and the example seed use synthetic data only. |
 
 ## Change log
+- 2026-10-05 – BR-008/BR-062: partner-managed budget rows; fuel row and actuals-only rows removed (PM)
 - 2026-10-03 – First draft and iterations (PM)
 - 2026-10-03 – Simplified MVP rules (PM)
 - 2026-10-03 – BR-022: double booking for performers only (owner decision) (PM)

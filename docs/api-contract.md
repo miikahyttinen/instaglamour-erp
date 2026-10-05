@@ -41,7 +41,7 @@ The UI translates `code` and the field codes; it never shows `message` to users.
 | 415 | `UNSUPPORTED_FILE_TYPE` | Not PDF/DOCX/PNG/JPG |
 
 **Field codes:** `REQUIRED`, `INVALID_DATE`, `END_BEFORE_START`, `NEGATIVE_AMOUNT`, `INVALID_VALUE`,
-`DESCRIPTION_REQUIRED`, `INVALID_HOURS`, `TOO_LONG` (strings > 500 chars; notes/description > 5000),
+`DESCRIPTION_REQUIRED`, `INVALID_HOURS`, `DUPLICATE`, `TOO_LONG` (strings > 500 chars; notes/description > 5000),
 `UNKNOWN_REFERENCE` (id that doesn't exist), `NOT_EDITABLE` (e.g. dates in PATCH gig).
 
 ### Warning format (non-blocking, returned alongside success)
@@ -176,7 +176,7 @@ Session lifetime: 30 days sliding.
   "costTypes": { "musicianRoles": ["VOC", "…"], "internalRoles": ["OFFICE", "SALES", "PRODUCTION"], "expenseCategories": ["FUEL", "…"] },
   "technicalSetups": ["HOUSE_TECH", "SET_A", "SET_B", "SET_C"],
   "logistics": ["OWN_VAN", "RENTAL_VAN", "TAXI", "OTHER"],
-  "budgetCategories": [{ "id": "…", "code": "INSURANCE", "nameFi": "…", "nameEn": "…", "budgeted": true }]  // active categories only, in sortOrder
+  "budgetCategories": [{ "id": "…", "name": "Category A" }]  // active rows only, in sortOrder
 }
 ```
 
@@ -302,10 +302,21 @@ Duplicate = case-insensitive exact name match with another person.
 | Method & path | Request | Response |
 |---|---|---|
 | `GET /api/budget` | `?year=` | 200 `{ "year", "rows": [BudgetRow], "totals": { "budgetExpenseCents", "budgetIncomeCents", "actualExpenseCents", "actualIncomeCents", "varianceExpenseCents", "varianceIncomeCents" } }` — one row per active category (zeros if none stored) |
-| `PUT /api/budget/{year}/{categoryId}` | `{ "budgetExpenseCents", "budgetIncomeCents", "actualExpenseCents", "actualIncomeCents" }` | 200 `BudgetRow`. For `budgeted = false` categories the budget fields must be 0 (else 400 `INVALID_VALUE`) |
+| `PUT /api/budget/{year}/{categoryId}` | `{ "budgetExpenseCents", "budgetIncomeCents", "actualExpenseCents", "actualIncomeCents" }` | 200 `BudgetRow` (404 if the row is unknown or removed) |
 | `POST /api/budget/{year}/copy-from-previous` | — | 200 same as GET. Copies budget fields from `year − 1`; actuals untouched. 409 `BUDGET_NOT_EMPTY` if any budget field in `year` is non-zero |
 
+## Budget rows (UC-020)
+
+| Method & path | Request | Response |
+|---|---|---|
+| `POST /api/budget-categories` | `{ "name" }` | 201 `{ "id", "name" }`. Empty → 400 `name: REQUIRED`; duplicate among active rows (case-insensitive, trimmed) → 400 `name: DUPLICATE`; > 500 chars → `TOO_LONG` |
+| `PATCH /api/budget-categories/{id}` | `{ "name" }` | 200 `{ "id", "name" }`; same validation; 404 if unknown or removed |
+| `DELETE /api/budget-categories/{id}` | — | 204. Soft delete (active = false); year values kept; excluded from `GET /api/budget`, totals and the year page |
+
+`PUT /api/budget/{year}/{categoryId}` no longer has an actuals-only rule: all four fields accepted for every active row.
+
 ## Change log
+- 2026-10-05 – Budget rows managed via /api/budget-categories; reference budgetCategories = {id, name}; no `budgeted` flag (owner request, breaking) (PM)
 - 2026-10-05 – technicalSetup is a single value or null; new `logistics` and `houseTechnician`; reference adds `logistics` (owner request, breaking change for technicalSetup) (PM)
 - 2026-10-03 – First version (PM)
 - 2026-10-03 – Double booking for musician-role lines only (owner decision, behaviour change) (PM)

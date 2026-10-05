@@ -152,15 +152,13 @@ Types: `CREATED`, `UPDATED`, `MOVED`, `CANCELLED`, `UNCANCELLED`, `DELETED`, `RE
 | comment | string | required |
 | hours | decimal | 0.25…24, 0.25 steps |
 
-## BudgetCategory (seed only)
+## BudgetCategory (managed by partners)
 | Field | Type | Notes |
 |---|---|---|
 | id | uuid | |
-| code | string | stable id |
-| name_fi, name_en | string | |
-| budgeted | bool | false = actuals only (e.g. `FUEL`) |
-| active | bool | inactive categories are hidden |
-| sort_order | int | display order |
+| name | string | required, one name (shown in both languages); unique among active rows (case-insensitive) |
+| active | bool | removing a row sets false; its year values are kept |
+| sort_order | int | creation order |
 
 ## BudgetYear
 One row per category per year. All four numbers are typed in by partners.
@@ -194,6 +192,7 @@ FI/EN labels live in the translation files.
 `OWN_VAN`, `RENTAL_VAN`, `TAXI`, `OTHER`
 
 ## Change log
+- 2026-10-05 – Budget rows managed by partners (single name, no actuals-only rows, fuel row removed) (PM)
 - 2026-10-05 – Technical setup single choice, new Logistics field, house_technician boolean (owner request) (PM)
 - 2026-10-03 – First draft and iterations (PM)
 - 2026-10-03 – BudgetCategory active/sort_order (PM)
