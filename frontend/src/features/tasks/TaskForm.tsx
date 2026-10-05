@@ -1,38 +1,30 @@
 import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Trash2 } from 'lucide-react';
-import type { Id, Partner, Task } from '../../api/types';
+import type { Id, Partner } from '../../api/types';
 import { Button } from '../../components/Button';
 import { Field } from '../../components/fields';
 import { apiErrorMessage, apiFieldErrors } from '../../i18n/labels';
-import { useCreateTask, useDeleteTask, useUpdateTask } from './hooks';
+import { useCreateTask } from './hooks';
 
 interface Props {
-  /** Task to edit; omitted when adding a new one. */
-  task?: Task;
   partners: Partner[];
   meId: Id;
   onDone: () => void;
 }
 
-/** Add / edit form (UC-017 main flow 2, A1). Edit mode also offers delete with confirmation. */
-export function TaskForm({ task, partners, meId, onDone }: Props) {
+/** Add form (UC-017 main flow 2). Existing tasks are edited inline in `TaskRow` (NFR-8). */
+export function TaskForm({ partners, meId, onDone }: Props) {
   const { t } = useTranslation();
-  const [title, setTitle] = useState(task?.title ?? '');
-  const [ownerId, setOwnerId] = useState<Id>(task?.ownerId ?? meId);
-  const [dueDate, setDueDate] = useState(task?.dueDate ?? '');
-  const [description, setDescription] = useState(task?.description ?? '');
+  const [title, setTitle] = useState('');
+  const [ownerId, setOwnerId] = useState<Id>(meId);
+  const [dueDate, setDueDate] = useState('');
+  const [description, setDescription] = useState('');
   const [titleMissing, setTitleMissing] = useState(false);
-  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   const create = useCreateTask();
-  const update = useUpdateTask();
-  const remove = useDeleteTask();
-  const save = task ? update : create;
-  const error = save.error ?? remove.error;
-  const fieldErrors = apiFieldErrors(t, save.error);
+  const error = create.error;
+  const fieldErrors = apiFieldErrors(t, create.error);
   if (titleMissing) fieldErrors.title = t('fields.REQUIRED');
-  const busy = save.isPending || remove.isPending;
 
   const onSubmit = (event: FormEvent) => {
     event.preventDefault();
@@ -47,8 +39,7 @@ export function TaskForm({ task, partners, meId, onDone }: Props) {
       dueDate: dueDate || null,
       description: description.trim() || null,
     };
-    if (task) update.mutate({ id: task.id, body }, { onSuccess: onDone });
-    else create.mutate(body, { onSuccess: onDone });
+    create.mutate(body, { onSuccess: onDone });
   };
 
   return (
@@ -96,40 +87,12 @@ export function TaskForm({ task, partners, meId, onDone }: Props) {
         )}
       </Field>
 
-      {confirmingDelete && task ? (
-        <div className="notice notice-error" role="alertdialog" aria-label={t('common.remove')}>
-          <p>{t('tasks.confirmDelete', { title: task.title })}</p>
-          <div className="inline-actions">
-            <Button
-              variant="danger"
-              icon={Trash2}
-              disabled={busy}
-              onClick={() => remove.mutate(task.id, { onSuccess: onDone })}
-            >
-              {t('tasks.confirmDeleteYes')}
-            </Button>
-            <Button onClick={() => setConfirmingDelete(false)}>{t('common.cancel')}</Button>
-          </div>
-        </div>
-      ) : (
-        <div className="form-actions">
-          <Button type="submit" variant="primary" disabled={busy}>
-            {save.isPending ? t('common.saving') : t('common.save')}
-          </Button>
-          <Button onClick={onDone}>{t('common.cancel')}</Button>
-          {task && (
-            <Button
-              variant="danger"
-              icon={Trash2}
-              className="tasks-delete"
-              disabled={busy}
-              onClick={() => setConfirmingDelete(true)}
-            >
-              {t('common.remove')}
-            </Button>
-          )}
-        </div>
-      )}
+      <div className="form-actions">
+        <Button type="submit" variant="primary" disabled={create.isPending}>
+          {create.isPending ? t('common.saving') : t('common.save')}
+        </Button>
+        <Button onClick={onDone}>{t('common.cancel')}</Button>
+      </div>
     </form>
   );
 }
