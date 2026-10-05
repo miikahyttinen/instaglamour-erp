@@ -61,3 +61,14 @@ Contrast must meet WCAG AA for text in both themes. (`--label` dark raised from 
 
 ## Themes
 - Dark and light. Default follows the OS (`prefers-color-scheme`); the header toggle overrides it and is remembered in `localStorage` (per browser). No flash of wrong theme on load.
+
+## Inline editing (NFR-8)
+- Existing items have **no Edit/Save buttons**: fields look like quiet values (no border, hover shows a hairline, focus shows the input style) and are editable directly.
+- **Save on blur**; Enter also saves single-line fields (Ctrl/Cmd+Enter in textareas); **Esc** restores the last saved value. Unchanged values are not sent.
+- Per-field state: *saving* (subtle spinner/mono "Saving…"), *saved* (brief ok check, ~1.5 s), *error* (danger border + translated field error under the field; the typed value stays; retry on next blur).
+- Client-side validation runs before sending (same codes as the API); invalid values are not sent.
+- Selects, checkboxes and switches save immediately on change.
+- Money fields: euro input, sent as cents. Hours: 0.25 steps.
+- One request per field change (PATCH with just that field; budget rows PUT the whole row).
+- Keyboard and screen reader: real inputs with labels; state changes announced via a polite live region.
+- Not inline: creating new items (form + Add), cancel/uncancel/delete (dialog with reason), gig dates (Move dialog), mark paid / unpay (action).

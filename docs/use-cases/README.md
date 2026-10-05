@@ -39,4 +39,5 @@ UC-016 and UC-026 (seed only), UC-021 (→ UC-020), UC-023 (→ UC-022).
 - **NFR-4** Failed saves never lose the user's input.
 - **NFR-5** The selected year is in the header on every screen (BR-081).
 - **NFR-6** No real names, business numbers, customer data or secrets in the repository (BR-090).
+- **NFR-8** Inline editing: every editable field of an existing item is edited in place and **saves on blur** (and Enter in single-line fields); Esc reverts; per-field saving/saved/error state. Creating new items, reason-requiring actions (cancel/uncancel/delete), gig dates (Move) and mark paid keep their buttons/dialogs. See `docs/design.md` → Inline editing.
 - **NFR-7** Visual design per `docs/design.md`: dark and light theme (toggle in header, default follows OS), Afacad font, Instaglamour logo.
