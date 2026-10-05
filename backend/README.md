@@ -76,7 +76,8 @@ src/domain/        shared enums (CostType, TechnicalSetup…), dates, default co
                    gig economics / year gig sums (gigEconomics.ts), load-in switch (loadIn.ts)
 src/gigs/          gig data access (events, double-booking check, year gigs), input schemas, serializers
 src/hours/         hour entries + loadHoursTotals (single source for /api/hours/totals and the year page)
-src/budget/        budget rows + loadBudget (single source for /api/budget and the year page)
+src/budget/        budget rows + loadBudget (single source for /api/budget and the year page); rows are
+                   partner-managed (routes/budgetCategories.ts), removed = active false, values kept
 src/http/errors.ts contract error format + zod → field codes (`parseInput`)
 src/routes/        endpoints
 test/              Vitest (integration tests use the test database)
