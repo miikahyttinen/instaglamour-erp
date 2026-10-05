@@ -77,18 +77,21 @@ export function econTile(page: Page, label: string): { budget: Locator; actual: 
   };
 }
 
-/** Value of a label/value pair in the gig page's info lists (`<dt>` / `<dd>`). */
-export function infoValue(page: Page, label: string): Locator {
-  return page
-    .getByRole('main')
-    .locator('dl > div')
-    .filter({ has: page.getByRole('term').getByText(label, { exact: true }) })
-    .getByRole('definition');
-}
-
-/** The live "Kokonaishinta: …" line under the price inputs (new gig form and price edit form). */
+/** The live "Kokonaishinta: …" line under the price inputs of the new gig form. */
 export function totalPriceLine(page: Page): Locator {
   return page.getByRole('main').locator('p', { hasText: /^Kokonaishinta:/ });
+}
+
+/** Gig page: the saved total price under the inline price fields (`role="group"`). */
+export function totalPrice(page: Page): Locator {
+  return page.getByRole('main').getByRole('group', { name: 'Kokonaishinta', exact: true });
+}
+
+/** Cost line field on the gig page, e.g. `costField(page, 'Budjetti', 'Laulu')` → "Budjetti: Laulu". */
+export function costField(page: Page, field: 'Budjetti' | 'Kuvaus' | 'Maksettu summa' | 'Henkilö', line: string): Locator {
+  return page
+    .getByRole('table', { name: 'Kulut ja miehitys' })
+    .getByLabel(`${field}: ${line}`, { exact: true });
 }
 
 /** Rows of the gig list: a table from 900 px, cards (list items) below that. */
