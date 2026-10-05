@@ -94,23 +94,37 @@ describe('person page (UC-014 A2)', () => {
     expect(await screen.findByText(`Ei kulurivejä vuonna ${TEST_YEAR}.`)).toBeInTheDocument();
   });
 
-  it('can rename and activate an inactive person', async () => {
+  it('edits name and active in place, with no Edit buttons', async () => {
     const { user } = renderApp(`/people/${person('Person 9').id}`);
     const heading = await screen.findByRole('heading', { level: 1 });
     expect(heading).toHaveTextContent('Person 9');
     const head = () => screen.getByRole('heading', { level: 1 }).closest('header')!;
     expect(head()).toHaveTextContent('Ei käytössä');
+    expect(screen.queryByRole('button', { name: /Muuta nimeä|Ota käyttöön|Tallenna/ })).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'Ota käyttöön: Person 9' }));
+    const active = screen.getByRole('switch', { name: 'Aktiivinen' });
+    expect(active).not.toBeChecked();
+    await user.click(active);
     expect(await screen.findByText('Person 9 otettu käyttöön.')).toBeInTheDocument();
     await waitFor(() => expect(head()).not.toHaveTextContent('Ei käytössä'));
+    expect(active).toBeChecked();
 
-    await user.click(screen.getByRole('button', { name: 'Muuta nimeä: Person 9' }));
-    const dialog = await screen.findByRole('dialog');
-    await user.clear(within(dialog).getByLabelText('Uusi nimi'));
-    await user.type(within(dialog).getByLabelText('Uusi nimi'), 'Person 19');
-    await user.click(within(dialog).getByRole('button', { name: 'Tallenna' }));
+    const name = screen.getByLabelText('Nimi');
+    expect(name).toHaveValue('Person 9');
+    await user.clear(name);
+    await user.type(name, 'Person 19');
+    await user.click(document.body);
     expect(await screen.findByRole('heading', { name: 'Person 19', level: 1 })).toBeInTheDocument();
+    expect(db.gigs.people.some((p) => p.name === 'Person 19' && p.active)).toBe(true);
+  });
+
+  it('a duplicate name on the person page saves and shows the warning', async () => {
+    const { user } = renderApp(`/people/${person('Person 9').id}`);
+    const name = await screen.findByLabelText('Nimi');
+    await user.clear(name);
+    await user.type(name, 'Person 1{Enter}');
+    expect(await screen.findByText('Samanniminen henkilö on jo olemassa.')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Person 1', level: 1 })).toBeInTheDocument();
   });
 
   it('unknown person shows not found', async () => {

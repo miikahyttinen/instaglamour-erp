@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ChevronRight } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import type { PeopleActiveFilter, Person } from '../../api/types';
 import { Button } from '../../components/Button';
@@ -7,12 +8,11 @@ import { DataTable, type DataTableColumn } from '../../components/DataTable';
 import { Notice as NoticeMessage } from '../../components/Notice';
 import { PageHead } from '../../components/PageHead';
 import { SectionLabel } from '../../components/SectionLabel';
-import { StatusTag } from '../../components/StatusTag';
 import { warningMessage } from '../../i18n/labels';
 import { useLang } from '../../i18n/useLang';
 import { NameForm } from './NameForm';
 import { NoticeBox, type Notice } from './Notices';
-import { PersonControls } from './PersonControls';
+import { PersonActiveSwitch, PersonNameField } from './PersonFields';
 import { useCreatePerson, usePeopleList } from './queries';
 import './people.css';
 
@@ -26,7 +26,27 @@ function parseFilter(value: string | null): PeopleActiveFilter {
   return value === 'false' || value === 'all' ? value : 'true';
 }
 
-/** People register: list (active by default), add, rename, activate/deactivate (UC-014). */
+/**
+ * Accessible names must be unique per row, but duplicate names are allowed (DUPLICATE_NAME is a
+ * warning): repeated names get " (2)", " (3)"… in list order.
+ */
+function rowNames(people: readonly Person[]): Map<string, string> {
+  const total = new Map<string, number>();
+  for (const p of people) total.set(p.name, (total.get(p.name) ?? 0) + 1);
+  const seen = new Map<string, number>();
+  const names = new Map<string, string>();
+  for (const p of people) {
+    const n = (seen.get(p.name) ?? 0) + 1;
+    seen.set(p.name, n);
+    names.set(p.id, (total.get(p.name) ?? 0) > 1 ? `${p.name} (${n})` : p.name);
+  }
+  return names;
+}
+
+/**
+ * People register (UC-014): list (active by default), add; name and active are edited in place
+ * (NFR-8: no Edit buttons, the name saves on blur / Enter, the switch on change).
+ */
 export function PeoplePage() {
   const { t } = useTranslation();
   const lang = useLang();
@@ -48,6 +68,9 @@ export function PeoplePage() {
     });
   };
 
+  const names = rowNames(list.data ?? []);
+  const nameOf = (person: Person) => names.get(person.id) ?? person.name;
+
   const columns: DataTableColumn<Person>[] = [
     {
       key: 'name',
@@ -55,17 +78,36 @@ export function PeoplePage() {
       primary: true,
       cell: (person) => (
         <span className="people-name">
-          <Link to={person.id}>{person.name}</Link>
-          {!person.active && <StatusTag tone="muted">{t('people.inactiveBadge')}</StatusTag>}
+          <PersonNameField
+            person={person}
+            label={t('people.nameOf', { name: nameOf(person) })}
+            hideLabel
+            className="people-name-field"
+            onNotice={setNotice}
+          />
+          <Link
+            to={person.id}
+            className="people-open"
+            aria-label={t('people.openOf', { name: nameOf(person) })}
+          >
+            {t('people.open')}
+            <ChevronRight aria-hidden="true" />
+          </Link>
         </span>
       ),
     },
     {
-      key: 'actions',
-      label: t('people.actions'),
-      header: <span className="visually-hidden">{t('people.actions')}</span>,
-      className: 'people-actions-cell',
-      cell: (person) => <PersonControls person={person} onNotice={setNotice} />,
+      key: 'active',
+      label: t('people.active'),
+      className: 'people-active-cell',
+      cell: (person) => (
+        <PersonActiveSwitch
+          person={person}
+          label={t('people.activeOf', { name: nameOf(person) })}
+          hideLabel
+          onNotice={setNotice}
+        />
+      ),
     },
   ];
 

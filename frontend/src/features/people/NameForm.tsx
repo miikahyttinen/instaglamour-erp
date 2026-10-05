@@ -7,32 +7,28 @@ import { apiErrorMessage, apiFieldErrors } from '../../i18n/labels';
 interface Props {
   label: string;
   submitLabel: string;
-  initialName?: string;
   pending: boolean;
   /** Error of the last save (translated here; the server's message is never shown). */
   error: unknown;
   /** Resolves when saved; the form clears itself when `clearOnSuccess` is set. */
   onSubmit: (name: string) => Promise<unknown>;
   clearOnSuccess?: boolean;
-  onCancel?: () => void;
   /** Field and button on one row from 600 px (the add form on the list page). */
   inline?: boolean;
 }
 
-/** Name input for adding or renaming a person. Empty name → REQUIRED (UC-014 E1). */
+/** Name input for adding a person. Empty name → REQUIRED (UC-014 E1). */
 export function NameForm({
   label,
   submitLabel,
-  initialName = '',
   pending,
   error,
   onSubmit,
   clearOnSuccess = false,
-  onCancel,
   inline = false,
 }: Props) {
   const { t } = useTranslation();
-  const [name, setName] = useState(initialName);
+  const [name, setName] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
 
   const fieldError = localError ?? (error ? apiFieldErrors(t, error).name : undefined);
@@ -84,7 +80,6 @@ export function NameForm({
         <Button type="submit" variant="primary" disabled={pending}>
           {pending ? t('common.saving') : submitLabel}
         </Button>
-        {onCancel && <Button onClick={onCancel}>{t('common.cancel')}</Button>}
       </div>
     </form>
   );
