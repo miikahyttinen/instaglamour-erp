@@ -3,8 +3,8 @@ import type { HourEntry } from '../../api/types';
 import {
   groupByMonth,
   isValidHours,
-  monthTotals,
   parseHours,
+  partnerHourRows,
   sumHours,
   validateHourForm,
 } from './hoursLogic';
@@ -63,16 +63,43 @@ describe('grouping', () => {
   });
 });
 
-describe('month totals', () => {
-  it('sums hours per month into 12 slots, January first', () => {
-    const totals = monthTotals([
-      entry('a', '2030-01-08', 2),
-      entry('b', '2030-01-20', 1.5),
-      entry('c', '2030-12-31', 0.25),
+describe('partner hour rows (UC-019)', () => {
+  const totals = (rows: [string, number][]) => ({
+    year: 2030,
+    partners: rows.map(([partnerId, total]) => ({ partnerId, months: Array.from({ length: 12 }, () => 0), total })),
+    grandTotal: rows.reduce((s, [, h]) => s + h, 0),
+  });
+
+  it('sorts by hours (most first), then by name; 0 h partners included', () => {
+    const rows = partnerHourRows(
+      totals([
+        ['c', 0],
+        ['b', 5.25],
+        ['a', 4.25],
+        ['d', 5.25],
+      ]),
+      [
+        { id: 'a', name: 'Partner A' },
+        { id: 'b', name: 'Partner B' },
+        { id: 'c', name: 'Partner C' },
+        { id: 'd', name: 'Partner Ä' },
+      ],
+      'Unknown',
+      'fi-FI',
+    );
+    expect(rows.map((r) => [r.name, r.total])).toEqual([
+      ['Partner B', 5.25],
+      ['Partner Ä', 5.25],
+      ['Partner A', 4.25],
+      ['Partner C', 0],
     ]);
-    expect(totals).toHaveLength(12);
-    expect(totals[0]).toBe(3.5);
-    expect(totals[11]).toBe(0.25);
-    expect(totals.slice(1, 11).every((h) => h === 0)).toBe(true);
+  });
+
+  it('adds reference partners missing from the response (0 h) and names unknown ids', () => {
+    const rows = partnerHourRows(totals([['x', 2]]), [{ id: 'a', name: 'Partner A' }], 'Unknown');
+    expect(rows).toEqual([
+      { partnerId: 'x', name: 'Unknown', total: 2 },
+      { partnerId: 'a', name: 'Partner A', total: 0 },
+    ]);
   });
 });
