@@ -18,7 +18,7 @@ import { StatusTag } from '../../components/StatusTag';
 import { apiErrorMessage, gigDisplayStatus } from '../../i18n/labels';
 import { useLang } from '../../i18n/useLang';
 import { formatDate, formatDateRange, formatMoney, formatPercent, todayIso } from '../../lib/format';
-import { useMediaQuery } from '../../lib/useMediaQuery';
+import { WIDE_QUERY, useMediaQuery } from '../../lib/useMediaQuery';
 import { useReference } from '../../reference/useReference';
 import { GigStatusTag } from './GigStatusTag';
 import { useApplyGig, useGigList } from './queries';
@@ -26,12 +26,6 @@ import './gigList.css';
 
 type When = NonNullable<GigListQuery['when']>;
 const WHENS: When[] = ['all', 'upcoming', 'past'];
-
-/**
- * The 7-column table needs the content width of a ≥ 1200 px viewport (the sidebar takes
- * 232 px from 900 px). Below that the list is shown as cards. Same width as the `lg` grid spans.
- */
-const GIG_TABLE_QUERY = '(min-width: 1200px)';
 
 function partnerName(partners: Partner[] | undefined, id: string): string {
   return partners?.find((p) => p.id === id)?.name ?? '–';
@@ -320,7 +314,9 @@ interface GigRowsProps {
 
 /** Wide screens (≥ 1200 px): hairline table. Narrower: cards with economics on tap. */
 function GigRows(props: GigRowsProps) {
-  const wide = useMediaQuery(GIG_TABLE_QUERY);
+  // The 7-column table needs the content width of a ≥ 1200 px viewport (the sidebar takes
+  // 232 px from 900 px). Below that the list is shown as cards.
+  const wide = useMediaQuery(WIDE_QUERY);
   const today = todayIso();
   const firstUpcomingId = props.gigs.find((g) => g.startDate >= today)?.id;
   const containerRef = useScrollToFirstUpcoming(firstUpcomingId);

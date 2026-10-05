@@ -195,6 +195,7 @@ function CostLines({ personId }: { personId: Id }) {
           </StatGrid>
           <DataTable
             className="person-lines"
+            cardsBelow="lg"
             caption={title}
             columns={columns}
             rows={lines}

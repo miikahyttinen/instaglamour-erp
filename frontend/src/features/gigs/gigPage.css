@@ -150,10 +150,6 @@
 .gig-page .gig-fields .field-list > :first-child > label {
   margin-top: 0;
 }
-/* Checkboxes start at the control column edge like the quiet values (no UA margin). */
-.gig-page .gig-fields .check input {
-  margin-inline: 0;
-}
 /* Seller change hint: under the seller / producer controls (control column from 600 px). */
 .gig-page .gig-fields-note {
   margin: 0;

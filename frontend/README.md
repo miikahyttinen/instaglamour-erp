@@ -125,7 +125,8 @@ production builds) and its texts are English on purpose.
 - Breakpoints: phone first; `min-width: 600px` (tablet: dialogs centred, 2-column forms, tables
   instead of cards); `min-width: 900px` (desktop: sidebar instead of the ☰ drawer);
   `min-width: 1200px` (`lg` StatGrid spans).
-  `useMediaQuery(DESKTOP_QUERY)` from `src/lib/useMediaQuery.ts` gives the same breakpoint in JS.
+  `useMediaQuery(DESKTOP_QUERY)` / `useMediaQuery(WIDE_QUERY)` from `src/lib/useMediaQuery.ts` give
+  the 900 / 1200 px breakpoints in JS (don't write your own copies of the query).
   **Breakpoints are viewport widths, and from 900 px the sidebar takes 232 px (64 collapsed).**
   At 900 px the content column is only about 590 px wide (900 − 232 − 2 × 40), narrower than a
   600 px phone/tablet layout. Check every screen at 900 px with the sidebar expanded.
@@ -173,7 +174,7 @@ production builds) and its texts are English on purpose.
 | Spacing | `--space-1` … `--space-7` = 4/8/12/16/24/32/48 px |
 | Layout | `--page-pad` 16→40, `--section-gap` 32→40, `--card-pad` 16→20, `--grid-gap` 16, `--content-max` 1200, `--label-w` 160 |
 | Table | `--row-h` 48, `--cell-pad-y` 12, `--cell-pad-x` (= `--card-pad`) |
-| Shape / size | `--radius` (2 px, the max), `--hairline` (1 px), `--tap` 44, `--control-h` 44→36, `--inline-pad-x` 8, `--icon` 16, `--icon-nav` 18, `--icon-stroke` |
+| Shape / size | `--radius` (2 px, the max), `--hairline` (1 px), `--tap` 44, `--control-h` 44→36, `--inline-pad-x` 8, `--inline-num-trail` (space right of an inline money/hours unit), `--icon` 16, `--icon-nav` 18, `--icon-stroke` |
 | Shell | `--topbar-h` 56, `--sidebar-w` 232, `--sidebar-w-collapsed` 64, `--drawer-w` min(280 px, 85vw), `--nav-item-h` 44→40 |
 | Motion | `--dur` 200 ms, `--ease`. Always add a `prefers-reduced-motion: reduce` override. |
 | Stacking | `--z-topbar` 20, `--z-sidebar` 30, `--z-drawer` 40, `--z-dialog` 50 |
@@ -194,13 +195,13 @@ production builds) and its texts are English on purpose.
 | `StatGrid` | `children`, `className?` | **12-column grid**, gap `--grid-gap`, rows stretch (equal heights per row), margin-bottom `--section-gap`. Children: `StatTile` / `Card` with `span`, or any element with `style={spanStyle(span)}`, or CSS `--span*` on the children. |
 | `GridSpan`, `spanStyle()` | `grid.ts`: `number` (all widths) or `{ base?, sm?, md?, lg? }` (< 600 / ≥ 600 / ≥ 900 / ≥ 1200 viewport) | A missing breakpoint falls back to the next smaller one. No span = 12 / 6 / 6 / 3. Example: `span={{ base: 6, sm: 4, lg: 2 }}` = 2, 3, then 6 per row. CSS version: `.my-grid > * { --span: 6; --span-lg: 3; }`. |
 | `FieldList` | `labelWidth?: 'sm' \| 'md' \| 'lg'` (120 / 160 / 200 px), `className?`, `children` (`Field`s / inline fields) | Phones: label above. From 600 px: label column + control column; hint/error under the control; checkbox groups put their legend in the label column. |
-| `MiniBars` | `bars: { label, value, current?, valueText? }[]`, `label` (accessible name), `showLabels?` (true), `height?` (48) | Bar labels must be unique. Screen readers get a "label: valueText" list. |
+| `MiniBars` | `bars: { label, value, current?, valueText? }[]`, `label` (accessible name), `showLabels?` (true), `height?: number \| string` (48 px; a number is px, a string any CSS length), `compact?` (bar area `--space-6` 32 px, for tiles with a secondary figure) | Bar labels must be unique. Screen readers get a "label: valueText" list. |
 | `StatusTag` | `tone?: 'info' \| 'ok' \| 'warn' \| 'danger' \| 'muted'` (muted), `children`, `title?` | Gig statuses: use `GigStatusTag` (gigs feature). |
 | `Notice` | `tone?: 'info' \| 'ok' \| 'warn' \| 'danger'` (info), `role?: 'alert' \| 'status' \| 'note'`, `children` | Same as `.notice` / `.notice-*`. |
-| `DataTable<T>` | `columns`, `rows`, `rowKey`, `caption` (required, visually hidden unless `showCaption`), `empty?`, `cardsOnPhone?` (true), `rowClassName?`, `footer?` (`<tr>`s), `className?` | Column: `key`, `label`, `cell(row)`, `header?`, `numeric?`, `primary?` (card title on phones), `hideOnPhone?`, `sort?: 'asc' \| 'desc'`, `onSort?` (makes the header a sort button; caller owns the sort state), `className?`. |
+| `DataTable<T>` | `columns`, `rows`, `rowKey`, `caption` (required, visually hidden unless `showCaption`), `empty?`, `cardsOnPhone?` (true), `cardsBelow?: 'sm' \| 'lg'` (`sm` = cards below 600 px; `lg` = below 1200 px, for wide tables that would scroll next to the sidebar at 900–1199 px), `rowClassName?`, `footer?` (`<tr>`s), `className?` | Column: `key`, `label`, `cell(row)`, `header?`, `numeric?`, `primary?` (card title on phones), `hideOnPhone?`, `sort?: 'asc' \| 'desc'`, `onSort?` (makes the header a sort button; caller owns the sort state), `className?`. |
 | `Dialog` | `title`, `onClose`, `children` | Bottom sheet on phones, centred from 600 px. Put buttons in `<div className="form-actions">`. |
 | `Field` | `label`, `error?`, `hint?`, `children(fieldProps)` | Spread `fieldProps` on the native `input`/`select`/`textarea`; they are styled globally. |
-| `MoneyInput` | `value`, `onChange`, + field props | Euro input. |
+| `MoneyInput` | `value`, `onChange`, + field props | Euro input; the € sits inside the field, so it ends at the same right edge as other fields. |
 | `Logo` | `size?: 'header' \| 'large'`, `theme?` (override), `className?` | White in dark, black in light. |
 
 ### Inline editing (`src/components/inline/`, NFR-8)
@@ -239,6 +240,11 @@ Common props (`InlineBaseProps<T>`):
 | `InlineSelect<V>` | `value: V`, `options: { value: V; label; disabled? }[]` (`V` = `string \| number \| null`) | Saves on change. Include the current value; `{ value: null, label: '–' }` for none. |
 | `InlineCheckbox` / `InlineSwitch` | `value: boolean` | Saves on change. Switch has `role="switch"`. |
 | `InlineCheckboxGroup<V>` | `value: V[]`, `options: { value: V; label }[]` (`V extends string`) | Saves the whole list (in `options` order) on each change. |
+
+`InlineMoney` / `InlineHours` draw their unit (€ / h) inside the field, so they end at the same right
+edge as the other inline fields. To line a plain (read-only) number up digit-for-digit with them, put
+it in the same column with class `inline-num-value` (right-aligned, tabular, padded by
+`--inline-num-trail`) and format it with a no-break space before the unit, like `formatMoney`.
 
 ```tsx
 import { InlineText, InlineTextarea, InlineMoney, InlineHours, InlineDate, InlineSelect,

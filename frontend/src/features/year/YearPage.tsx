@@ -150,7 +150,7 @@ function GigsSection({ data }: { data: YearPageData }) {
             <MiniBars
               label={t('year.gigs.costsChart')}
               bars={budgetBars(budget, actual, g.budgetedCostsCents, g.actualCostsCents, lang)}
-              height={32}
+              compact
             />
           </div>
         </LinkTile>
@@ -160,7 +160,7 @@ function GigsSection({ data }: { data: YearPageData }) {
             <MiniBars
               label={t('year.gigs.marginChart')}
               bars={budgetBars(budget, actual, g.marginBudgetCents, g.marginActualCents, lang)}
-              height={32}
+              compact
             />
           </div>
         </LinkTile>

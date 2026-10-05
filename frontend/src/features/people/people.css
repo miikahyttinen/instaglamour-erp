@@ -105,11 +105,6 @@
   color: var(--text);
   text-decoration: underline;
 }
-/* Switches follow the control height (44 px phone, 36 px desktop) like the other inline fields;
-   the global label.switch rule would keep them at the 44 px tap size on desktop too. */
-.people-page label.inline-switch {
-  min-height: var(--control-h);
-}
 .people-page .people-table tr.is-inactive .people-name-field input {
   color: var(--text-muted);
 }
@@ -138,9 +133,16 @@
   text-align: left;
 }
 
-@media (min-width: 600px) {
+/* Cost lines: cards below 1200 px (DataTable cardsBelow="lg"), a table from 1200 px. */
+@media (min-width: 1200px) {
   .people-page .person-lines-lineup {
     justify-content: flex-start;
+  }
+}
+@media (max-width: 1199px) {
+  .people-page .person-lines.data-table tfoot th {
+    padding: var(--space-2) 0 var(--space-1);
+    border: 0;
   }
 }
 
@@ -152,7 +154,4 @@
   .people-page .people-table .people-active-cell {
     width: auto;
   }
-  .people-page .person-lines.data-table tfoot th {
-    padding: var(--space-2) 0 var(--space-1);
-    border: 0;
-  }}
+}

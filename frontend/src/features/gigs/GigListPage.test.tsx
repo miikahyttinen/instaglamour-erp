@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { formatMoney } from '../../lib/format';
-import { DESKTOP_QUERY } from '../../lib/useMediaQuery';
+import { DESKTOP_QUERY, WIDE_QUERY } from '../../lib/useMediaQuery';
 import { db } from '../../mocks/data';
 import { logEvent } from '../../mocks/gigStore';
 import { addMockGig, partnerA, partnerB, staffMockGig, TEST_YEAR } from '../../test/gigFixtures';
@@ -150,7 +150,7 @@ describe('gig list (UC-003)', () => {
   });
 
   it('shows a table with economics columns on wide desktops (≥ 1200 px)', async () => {
-    installMatchMedia({ [DESKTOP_QUERY]: true, '(min-width: 1200px)': true });
+    installMatchMedia({ [DESKTOP_QUERY]: true, [WIDE_QUERY]: true });
     const gig = addMockGig({ venue: 'Venue X' });
     gig.status = 'CANCELLED';
     renderApp('/gigs?cancelled=1');

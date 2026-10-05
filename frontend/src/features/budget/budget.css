@@ -6,8 +6,8 @@
 .budget-page {
   container: budget-page / inline-size;
   /* Plain money values (variances, totals, headers) end where an input's "€" ends: the inline
-     field reserves its state icon slot (+ gap) to the right of the unit. */
-  --budget-state-slot: calc(var(--icon) + var(--space-1));
+     field keeps its padding, border and state icon slot to the right of the unit (shared token). */
+  --budget-state-slot: var(--inline-num-trail);
 }
 
 .budget-page .budget-hint {

@@ -15,15 +15,18 @@ export interface MiniBarsProps {
   label: string;
   /** Show the x-axis labels under the bars (default true). */
   showLabels?: boolean;
-  /** Bar area height in px (default 48). */
-  height?: number;
+  /** Bar area height: px number or any CSS length, e.g. `'var(--space-6)'` (default 48 px). */
+  height?: number | string;
+  /** Low variant for tiles with a secondary figure: bar area `--space-6` (32 px). `height` wins. */
+  compact?: boolean;
 }
 
 /**
  * Tiny bar chart: bars in --surface-2, the current one in --accent. Visual only;
  * screen readers get a list "label: value" instead.
  */
-export function MiniBars({ bars, label, showLabels = true, height = 48 }: MiniBarsProps) {
+export function MiniBars({ bars, label, showLabels = true, height, compact }: MiniBarsProps) {
+  const plotHeight = height ?? (compact ? 'var(--space-6)' : 48);
   const max = Math.max(0, ...bars.map((b) => b.value));
   return (
     <figure className="mini-bars">
@@ -34,7 +37,7 @@ export function MiniBars({ bars, label, showLabels = true, height = 48 }: MiniBa
           </li>
         ))}
       </ul>
-      <div className="mini-bars-plot" style={{ height }} aria-hidden="true">
+      <div className="mini-bars-plot" style={{ height: plotHeight }} aria-hidden="true">
         {bars.map((bar) => {
           const pct = max > 0 ? (Math.max(0, bar.value) / max) * 100 : 0;
           return (
