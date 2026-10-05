@@ -1,7 +1,7 @@
 # TASK-125: Sidebar navigation, smaller type scale, spacing & layout container
 
 - **owner:** ui
-- **status:** todo
+- **status:** done
 - **spec:** docs/design.md → "Layout v2"
 - **depends on:** none (blocks TASK-126…130)
 
