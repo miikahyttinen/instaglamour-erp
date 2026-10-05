@@ -1,5 +1,5 @@
 import type { FieldCode } from '../../api/enums';
-import type { HourEntry, HourEntryCreate, HoursTotals, Id, Partner } from '../../api/types';
+import type { HourEntry, HourEntryCreate } from '../../api/types';
 import { isValidHours, parseHours } from '../../lib/hours';
 
 // The input helpers moved to lib/hours.ts (shared with InlineHours); re-exported here.
@@ -32,59 +32,65 @@ export function validateHourForm(values: HourFormValues): {
   return { fields, body: { date: values.date, comment, hours } };
 }
 
-export interface MonthGroup {
-  /** 1…12 */
-  month: number;
-  total: number;
-  entries: HourEntry[];
-}
-
-/** Groups entries by month of `date`, newest month first; keeps the entry order within a month. */
-export function groupByMonth(entries: HourEntry[]): MonthGroup[] {
-  const map = new Map<number, MonthGroup>();
-  for (const entry of entries) {
-    const month = Number(entry.date.slice(5, 7));
-    let group = map.get(month);
-    if (!group) {
-      group = { month, total: 0, entries: [] };
-      map.set(month, group);
-    }
-    group.entries.push(entry);
-    group.total += entry.hours;
-  }
-  return [...map.values()].sort((a, b) => b.month - a.month);
-}
-
-export function sumHours(entries: HourEntry[]): number {
+export function sumHours(entries: readonly HourEntry[]): number {
   return entries.reduce((sum, e) => sum + e.hours, 0);
 }
 
-export interface PartnerHoursRow {
-  partnerId: Id;
-  name: string;
-  total: number;
+export type HourSortKey = 'date' | 'partner' | 'comment' | 'hours';
+export type HourSortDirection = 'asc' | 'desc';
+export interface HourSort {
+  key: HourSortKey;
+  dir: HourSortDirection;
+}
+
+/** Default order of the hours tables: oldest first (UC-018, UC-019). */
+export const DEFAULT_HOUR_SORT: HourSort = { key: 'date', dir: 'asc' };
+
+/** One row of an hours table: the entry, its partner's name and its creation rank. */
+export interface HourRow {
+  entry: HourEntry;
+  partnerName: string;
+  /** Creation order within the partner's list (higher = created later). */
+  created: number;
 }
 
 /**
- * Rows of the hours summary (UC-019): every partner of the totals response plus any reference
- * partner it lacks (0 h), sorted by year hours (most first), then by name.
+ * Table rows from one partner's `GET /api/hours` list. The API returns newest first (date, then
+ * creation), so the creation rank is the reversed list position.
  */
-export function partnerHourRows(
-  totals: HoursTotals,
-  partners: readonly Pick<Partner, 'id' | 'name'>[],
-  unknownName: string,
-  locale?: string,
-): PartnerHoursRow[] {
-  const nameOf = new Map(partners.map((p) => [p.id, p.name]));
-  const rows = totals.partners.map((row) => ({
-    partnerId: row.partnerId,
-    name: nameOf.get(row.partnerId) ?? unknownName,
-    total: row.total,
-  }));
-  for (const p of partners) {
-    if (!rows.some((r) => r.partnerId === p.id)) {
-      rows.push({ partnerId: p.id, name: p.name, total: 0 });
+export function toHourRows(entries: readonly HourEntry[], partnerName: string): HourRow[] {
+  return entries.map((entry, i) => ({ entry, partnerName, created: entries.length - i }));
+}
+
+/**
+ * Sorted copy: the chosen column in the chosen direction; ties always by date (oldest first),
+ * then partner name, then creation order.
+ */
+export function sortHourRows(rows: readonly HourRow[], sort: HourSort, locale?: string): HourRow[] {
+  const text = (a: string, b: string) => a.localeCompare(b, locale, { sensitivity: 'base' });
+  const byDate = (a: HourRow, b: HourRow) =>
+    a.entry.date < b.entry.date ? -1 : a.entry.date > b.entry.date ? 1 : 0;
+  const primary = (a: HourRow, b: HourRow): number => {
+    switch (sort.key) {
+      case 'date':
+        return byDate(a, b);
+      case 'partner':
+        return text(a.partnerName, b.partnerName);
+      case 'comment':
+        return text(a.entry.comment, b.entry.comment);
+      case 'hours':
+        return a.entry.hours - b.entry.hours;
     }
-  }
-  return rows.sort((a, b) => b.total - a.total || a.name.localeCompare(b.name, locale));
+  };
+  const dir = sort.dir === 'asc' ? 1 : -1;
+  return [...rows].sort(
+    (a, b) =>
+      dir * primary(a, b) || byDate(a, b) || text(a.partnerName, b.partnerName) || a.created - b.created,
+  );
+}
+
+/** Next sort after clicking a column header: same column flips, another column starts ascending. */
+export function nextHourSort(current: HourSort, key: HourSortKey): HourSort {
+  if (current.key === key) return { key, dir: current.dir === 'asc' ? 'desc' : 'asc' };
+  return { key, dir: 'asc' };
 }

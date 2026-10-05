@@ -1,5 +1,5 @@
 import { Plus } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import type { HourEntry } from '../../api/types';
@@ -10,18 +10,19 @@ import { apiErrorMessage } from '../../i18n/labels';
 import { useLang } from '../../i18n/useLang';
 import { formatHours } from '../../lib/format';
 import { HourEntryForm } from './HourEntryForm';
-import { HourMonthGroups } from './HourMonthGroups';
-import { sumHours } from './hoursLogic';
+import { HoursTable } from './HoursTable';
+import { sumHours, toHourRows } from './hoursLogic';
 import { useHoursOutlet } from './hoursOutlet';
 import { useHourEntries } from './queries';
 
-/** Own hour entries of the selected year by month, with month and year totals (UC-018). */
+/** Own hour entries of the selected year as one flat table with a total row (UC-018). */
 export function MyHoursPage() {
   const { t } = useTranslation();
   const lang = useLang();
   const me = useSignedInPartner();
   const year = useSelectedYear();
   const entries = useHourEntries(year, me.id);
+  const rows = useMemo(() => (entries.data ? toHourRows(entries.data, me.name) : []), [entries.data, me.name]);
   const [adding, setAdding] = useState(false);
   const [savedOtherYear, setSavedOtherYear] = useState<number | null>(null);
   const { actionsSlot } = useHoursOutlet();
@@ -74,11 +75,15 @@ export function MyHoursPage() {
           </Button>
         </div>
       )}
-      {entries.data && entries.data.length === 0 && (
-        <p className="muted empty">{t('hours.empty', { year })}</p>
-      )}
       {entries.data && (
-        <HourMonthGroups entries={entries.data} editable onSaved={noticeIfOtherYear} />
+        <HoursTable
+          rows={rows}
+          caption={t('hours.tableMine', { year })}
+          showPartner={false}
+          ownPartnerId={me.id}
+          empty={<p className="muted">{t('hours.empty', { year })}</p>}
+          onSaved={noticeIfOtherYear}
+        />
       )}
 
       {adding && (

@@ -16,7 +16,7 @@ interface Props {
 
 /**
  * Add an own hour entry (UC-018). Date defaults to today. Existing entries are edited inline in
- * `HourEntryList` (NFR-8), not here.
+ * `HoursTable` (NFR-8), not here.
  */
 export function HourEntryForm({ onClose, onSaved }: Props) {
   const { t } = useTranslation();

@@ -11,7 +11,7 @@ import { renderApp, signInMock } from '../../test/renderApp';
 const YEAR = 2030;
 const NBSP = String.fromCharCode(0xa0);
 /** Normalises Intl's non-breaking spaces for text matching. */
-const text = (el: HTMLElement) => (el.textContent ?? '').split(NBSP).join(' ');
+const text = (el: Element) => (el.textContent ?? '').split(NBSP).join(' ').trim();
 
 function entries(): HourEntry[] {
   const [a, b] = db.partners;
@@ -31,41 +31,81 @@ function signInForYear() {
   return partner;
 }
 
+/** Body rows as cell values (an inline field's input value, else the cell text). */
+const bodyRows = (table: HTMLElement) =>
+  [...table.querySelectorAll('tbody tr')].map((tr) =>
+    [...tr.querySelectorAll('td')]
+      .filter((td) => !td.classList.contains('hours-col-actions'))
+      .map((td) => td.querySelector('input')?.value ?? text(td)),
+  );
+/** One column's values, top to bottom. */
+const column = (table: HTMLElement, index: number) => bodyRows(table).map((r) => r[index]);
+const totalOf = (table: HTMLElement) => text(within(table).getByTestId('hours-table-total'));
+
 beforeEach(() => {
   db.hours = hoursStateWith(entries());
 });
 
 describe('my hours (UC-018)', () => {
-  it('shows own entries of the selected year by month with month and year totals', async () => {
+  const myTable = () => screen.findByRole('table', { name: `Omat tunnit ${YEAR}` });
+
+  it('shows own entries of the year as one flat table, oldest first, with a total row', async () => {
     signInForYear();
     renderApp('/hours');
     expect(await screen.findByRole('heading', { name: `Tunnit ${YEAR}` })).toBeInTheDocument();
-    const march = await screen.findByRole('region', { name: 'Maaliskuu' });
-    const january = screen.getByRole('region', { name: 'Tammikuu' });
-    expect(within(march).getByDisplayValue('Rehearsal')).toBeInTheDocument();
-    expect(text(within(january).getByLabelText('Kuukausi yhteensä Tammikuu'))).toBe('3,5 h');
-    expect(text(within(march).getByLabelText('Kuukausi yhteensä Maaliskuu'))).toBe('0,75 h');
+    const table = await myTable();
+    const headers = within(table)
+      .getAllByRole('columnheader')
+      .map((th) => text(th));
+    expect(headers).toEqual(['Päivä', 'Kommentti', 'Tunnit', 'Toiminnot']);
+    expect(bodyRows(table)).toEqual([
+      [`${YEAR}-01-08`, 'Planning', '2'],
+      [`${YEAR}-01-20`, 'Admin', '1,5'],
+      [`${YEAR}-03-12`, 'Rehearsal', '0,75'],
+    ]);
+    const totalRow = within(table).getByRole('rowheader', { name: 'Yhteensä' }).closest('tr')!;
+    expect(totalRow.closest('tfoot')).not.toBeNull();
+    expect(totalOf(table)).toBe('4,25 h');
     expect(text(screen.getByTestId('hours-year-total'))).toBe('4,25 h');
-    // Newest month first; other year and other partner not shown.
-    // Month groups only (the year total StatTile is a region too).
-    const regions = screen
-      .getAllByRole('region')
-      .filter((r) => r.classList.contains('hours-month'))
-      .map((r) => r.getAttribute('aria-label'));
-    expect(screen.getByRole('region', { name: `Tuntisumma ${YEAR}` })).toBeInTheDocument();
-    expect(regions).toEqual(['Maaliskuu', 'Tammikuu']);
+    expect(screen.getByText('Kirjauksia: 3')).toBeInTheDocument();
+    // Flat: no month groups, no expand/collapse, no charts; other years and partners not shown.
+    expect(screen.queryByRole('region', { name: 'Maaliskuu' })).not.toBeInTheDocument();
+    expect(document.querySelector('.hours-page [aria-expanded]')).toBeNull();
+    expect(document.querySelector('.mini-bars')).toBeNull();
     expect(screen.queryByDisplayValue('Old year')).not.toBeInTheDocument();
     expect(screen.queryByDisplayValue('Sound check')).not.toBeInTheDocument();
-    // Year total tile: figure and entry count, no month chart.
-    expect(screen.getByText('Kirjauksia: 3')).toBeInTheDocument();
-    expect(document.querySelector('.mini-bars')).toBeNull();
+  });
+
+  it('sorts by clicking a column header (aria-sort asc/desc)', async () => {
+    signInForYear();
+    const { user } = renderApp('/hours');
+    const table = await myTable();
+    const dateHeader = within(table).getByRole('columnheader', { name: 'Päivä' });
+    const hoursHeader = within(table).getByRole('columnheader', { name: 'Tunnit' });
+    expect(dateHeader).toHaveAttribute('aria-sort', 'ascending');
+    expect(hoursHeader).toHaveAttribute('aria-sort', 'none');
+
+    await user.click(within(dateHeader).getByRole('button', { name: 'Päivä' }));
+    expect(dateHeader).toHaveAttribute('aria-sort', 'descending');
+    expect(column(table, 1)).toEqual(['Rehearsal', 'Admin', 'Planning']);
+
+    await user.click(within(hoursHeader).getByRole('button', { name: 'Tunnit' }));
+    expect(hoursHeader).toHaveAttribute('aria-sort', 'ascending');
+    expect(dateHeader).toHaveAttribute('aria-sort', 'none');
+    expect(column(table, 2)).toEqual(['0,75', '1,5', '2']);
+    await user.click(within(hoursHeader).getByRole('button', { name: 'Tunnit' }));
+    expect(column(table, 2)).toEqual(['2', '1,5', '0,75']);
+
+    await user.click(within(table).getByRole('button', { name: 'Kommentti' }));
+    expect(column(table, 1)).toEqual(['Admin', 'Planning', 'Rehearsal']);
+    expect(totalOf(table)).toBe('4,25 h');
   });
 
   it('adds an entry with today as default date and 0.25-step hours', async () => {
     vi.useFakeTimers({ toFake: ['Date'], now: new Date(YEAR, 1, 14, 12) });
     signInForYear();
     const { user } = renderApp('/hours');
-    await screen.findByRole('region', { name: 'Maaliskuu' });
+    const table = await myTable();
 
     await user.click(screen.getByRole('button', { name: 'Lisää tunnit' }));
     const dialog = screen.getByRole('dialog', { name: 'Uusi tuntikirjaus' });
@@ -74,10 +114,10 @@ describe('my hours (UC-018)', () => {
     await user.type(within(dialog).getByLabelText('Tunnit'), '1,25');
     await user.click(within(dialog).getByRole('button', { name: 'Tallenna' }));
 
-    const february = await screen.findByRole('region', { name: 'Helmikuu' });
-    expect(within(february).getByDisplayValue('Admin work')).toBeInTheDocument();
+    await waitFor(() => expect(column(table, 1)).toEqual(['Planning', 'Admin', 'Admin work', 'Rehearsal']));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    await waitFor(() => expect(text(screen.getByTestId('hours-year-total'))).toBe('5,5 h'));
+    expect(text(screen.getByTestId('hours-year-total'))).toBe('5,5 h');
+    expect(totalOf(table)).toBe('5,5 h');
     const saved = db.hours.entries.find((e) => e.comment === 'Admin work');
     expect(saved).toMatchObject({ date: `${YEAR}-02-14`, hours: 1.25, partnerId: db.partners[0]!.id });
     vi.useRealTimers();
@@ -86,7 +126,7 @@ describe('my hours (UC-018)', () => {
   it('shows translated REQUIRED and INVALID_HOURS errors and does not save', async () => {
     signInForYear();
     const { user } = renderApp('/hours');
-    await screen.findByRole('region', { name: 'Maaliskuu' });
+    await myTable();
     const before = db.hours.entries.length;
 
     await user.click(screen.getByRole('button', { name: 'Lisää tunnit' }));
@@ -109,7 +149,7 @@ describe('my hours (UC-018)', () => {
     );
     signInForYear().language = 'en';
     const { user } = renderApp('/hours');
-    await screen.findByRole('region', { name: 'March' });
+    await screen.findByRole('table', { name: `My hours ${YEAR}` });
     await user.click(screen.getByRole('button', { name: 'Add hours' }));
     const dialog = screen.getByRole('dialog');
     await user.type(within(dialog).getByLabelText('Comment'), 'Admin');
@@ -124,31 +164,46 @@ describe('my hours (UC-018)', () => {
   it('has no Edit button or edit dialog: own entries are edited in place', async () => {
     signInForYear();
     renderApp('/hours');
-    const march = await screen.findByRole('region', { name: 'Maaliskuu' });
+    const table = await myTable();
     expect(screen.queryByRole('button', { name: /Muokkaa/ })).not.toBeInTheDocument();
-    expect(within(march).getByRole('textbox', { name: /^Kommentti: .* Rehearsal$/ })).toHaveValue('Rehearsal');
-    expect(within(march).getByRole('textbox', { name: /^Tunnit: .* Rehearsal$/ })).toHaveValue('0,75');
-    expect(within(march).getByLabelText(/^Päivämäärä: .* Rehearsal$/)).toHaveValue(`${YEAR}-03-12`);
+    expect(within(table).getByRole('textbox', { name: `Kommentti: 12.3.${YEAR} Rehearsal` })).toHaveValue(
+      'Rehearsal',
+    );
+    expect(within(table).getByRole('textbox', { name: `Tunnit: 12.3.${YEAR} Rehearsal` })).toHaveValue('0,75');
+    expect(within(table).getByLabelText(`Päivämäärä: 12.3.${YEAR} Rehearsal`)).toHaveValue(`${YEAR}-03-12`);
+    expect(within(table).getByRole('button', { name: `Poista: 12.3.${YEAR} Rehearsal` })).toBeInTheDocument();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
-  it('saves hours on blur with one PATCH and updates month and year totals', async () => {
+  it('gives own rows with the same date and comment unique field names', async () => {
+    const [a] = db.partners;
+    db.hours = hoursStateWith([
+      { id: 'd1', partnerId: a!.id, date: `${YEAR}-01-08`, comment: 'Planning', hours: 2 },
+      { id: 'd2', partnerId: a!.id, date: `${YEAR}-01-08`, comment: 'Planning', hours: 1 },
+    ]);
+    signInForYear();
+    renderApp('/hours');
+    const table = await myTable();
+    expect(within(table).getByRole('textbox', { name: `Tunnit: 8.1.${YEAR} Planning (1)` })).toHaveValue('2');
+    expect(within(table).getByRole('textbox', { name: `Tunnit: 8.1.${YEAR} Planning (2)` })).toHaveValue('1');
+    expect(within(table).getByRole('button', { name: `Poista: 8.1.${YEAR} Planning (2)` })).toBeInTheDocument();
+  });
+
+  it('saves hours on blur with one PATCH and updates the total row and year total', async () => {
     const bodies: unknown[] = [];
     server.events.on('request:start', async ({ request }) => {
       if (request.method === 'PATCH') bodies.push(await request.clone().json());
     });
     signInForYear();
     const { user } = renderApp('/hours');
-    const march = await screen.findByRole('region', { name: 'Maaliskuu' });
-    const hours = within(march).getByRole('textbox', { name: /^Tunnit: .* Rehearsal$/ });
+    const table = await myTable();
+    const hours = within(table).getByRole('textbox', { name: /^Tunnit: .* Rehearsal$/ });
     await user.clear(hours);
     await user.type(hours, '2,5');
     expect(bodies).toHaveLength(0);
     await user.click(document.body);
 
-    await waitFor(() =>
-      expect(text(within(march).getByLabelText('Kuukausi yhteensä Maaliskuu'))).toBe('2,5 h'),
-    );
+    await waitFor(() => expect(totalOf(table)).toBe('6 h'));
     expect(text(screen.getByTestId('hours-year-total'))).toBe('6 h');
     expect(db.hours.entries.find((e) => e.id === 'e3')?.hours).toBe(2.5);
     expect(bodies).toEqual([{ hours: 2.5 }]);
@@ -159,13 +214,13 @@ describe('my hours (UC-018)', () => {
   it('Enter saves the comment; Esc restores the saved value without sending', async () => {
     signInForYear();
     const { user } = renderApp('/hours');
-    const january = await screen.findByRole('region', { name: 'Tammikuu' });
-    const comment = within(january).getByRole('textbox', { name: /^Kommentti: .* Planning$/ });
+    const table = await myTable();
+    const comment = within(table).getByRole('textbox', { name: /^Kommentti: .* Planning$/ });
     await user.clear(comment);
     await user.type(comment, 'Planning session{Enter}');
     await waitFor(() => expect(db.hours.entries.find((e) => e.id === 'e1')?.comment).toBe('Planning session'));
 
-    const admin = within(january).getByRole('textbox', { name: /^Kommentti: .* Admin$/ });
+    const admin = within(table).getByRole('textbox', { name: /^Kommentti: .* Admin$/ });
     await user.type(admin, ' changed');
     await user.keyboard('{Escape}');
     expect(admin).toHaveValue('Admin');
@@ -176,21 +231,20 @@ describe('my hours (UC-018)', () => {
   it('shows INVALID_HOURS / REQUIRED under the field and does not send', async () => {
     signInForYear();
     const { user } = renderApp('/hours');
-    const march = await screen.findByRole('region', { name: 'Maaliskuu' });
-    const hours = within(march).getByRole('textbox', { name: /^Tunnit: .* Rehearsal$/ });
+    const table = await myTable();
+    const hours = within(table).getByRole('textbox', { name: /^Tunnit: .* Rehearsal$/ });
     await user.clear(hours);
     await user.type(hours, '1,3');
     await user.click(document.body);
-    expect(within(march).getByText('Tunnit 0,25–24 neljännestunnin tarkkuudella.')).toBeInTheDocument();
+    expect(within(table).getByText('Tunnit 0,25–24 neljännestunnin tarkkuudella.')).toBeInTheDocument();
     expect(hours).toHaveAttribute('aria-invalid', 'true');
     expect(hours).toHaveValue('1,3');
 
-    const comment = within(march).getByRole('textbox', { name: /^Kommentti: .* Rehearsal$/ });
+    const comment = within(table).getByRole('textbox', { name: /^Kommentti: .* Rehearsal$/ });
     await user.clear(comment);
     await user.click(document.body);
-    expect(within(march).getByText('Pakollinen tieto.')).toBeInTheDocument();
-    const saved = db.hours.entries.find((e) => e.id === 'e3');
-    expect(saved).toMatchObject({ hours: 0.75, comment: 'Rehearsal' });
+    expect(within(table).getByText('Pakollinen tieto.')).toBeInTheDocument();
+    expect(db.hours.entries.find((e) => e.id === 'e3')).toMatchObject({ hours: 0.75, comment: 'Rehearsal' });
   });
 
   it('shows a translated server field error under the inline field', async () => {
@@ -201,36 +255,34 @@ describe('my hours (UC-018)', () => {
     );
     signInForYear().language = 'en';
     const { user } = renderApp('/hours');
-    const march = await screen.findByRole('region', { name: 'March' });
-    const hours = within(march).getByRole('textbox', { name: /^Hours: .* Rehearsal$/ });
+    const table = await screen.findByRole('table', { name: `My hours ${YEAR}` });
+    const hours = within(table).getByRole('textbox', { name: /^Hours: .* Rehearsal$/ });
     await user.clear(hours);
     await user.type(hours, '2{Enter}');
-    expect(await within(march).findByText('Hours must be 0.25–24 in quarter-hour steps.')).toBeInTheDocument();
+    expect(await within(table).findByText('Hours must be 0.25–24 in quarter-hour steps.')).toBeInTheDocument();
     expect(screen.queryByText('Server says no')).not.toBeInTheDocument();
     expect(hours).toHaveValue('2');
   });
 
-  it('changing the date moves the entry to its new month', async () => {
+  it('changing the date re-sorts the table', async () => {
     signInForYear();
     const { user } = renderApp('/hours');
-    const march = await screen.findByRole('region', { name: 'Maaliskuu' });
-    const date = within(march).getByLabelText(/^Päivämäärä: .* Rehearsal$/);
+    const table = await myTable();
+    const date = within(table).getByLabelText(/^Päivämäärä: .* Rehearsal$/);
     act(() => date.focus());
-    fireEvent.change(date, { target: { value: `${YEAR}-02-10` } });
+    fireEvent.change(date, { target: { value: `${YEAR}-01-10` } });
     await user.tab();
 
-    const february = await screen.findByRole('region', { name: 'Helmikuu' });
-    expect(within(february).getByDisplayValue('Rehearsal')).toBeInTheDocument();
-    await waitFor(() => expect(screen.queryByRole('region', { name: 'Maaliskuu' })).not.toBeInTheDocument());
-    expect(text(screen.getByTestId('hours-year-total'))).toBe('4,25 h');
-    expect(db.hours.entries.find((e) => e.id === 'e3')?.date).toBe(`${YEAR}-02-10`);
+    await waitFor(() => expect(column(table, 1)).toEqual(['Planning', 'Rehearsal', 'Admin']));
+    expect(totalOf(table)).toBe('4,25 h');
+    expect(db.hours.entries.find((e) => e.id === 'e3')?.date).toBe(`${YEAR}-01-10`);
   });
 
   it('moving an entry to another year shows the notice and removes it from this year', async () => {
     signInForYear();
     const { user } = renderApp('/hours');
-    const march = await screen.findByRole('region', { name: 'Maaliskuu' });
-    const date = within(march).getByLabelText(/^Päivämäärä: .* Rehearsal$/);
+    const table = await myTable();
+    const date = within(table).getByLabelText(/^Päivämäärä: .* Rehearsal$/);
     act(() => date.focus());
     fireEvent.change(date, { target: { value: `${YEAR + 1}-03-12` } });
     await user.tab();
@@ -238,19 +290,20 @@ describe('my hours (UC-018)', () => {
     expect(
       await screen.findByText(`Tallennettu vuodelle ${YEAR + 1}. Vaihda vuotta nähdäksesi kirjauksen.`),
     ).toBeInTheDocument();
-    await waitFor(() => expect(screen.queryByRole('region', { name: 'Maaliskuu' })).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByDisplayValue('Rehearsal')).not.toBeInTheDocument());
     expect(text(screen.getByTestId('hours-year-total'))).toBe('3,5 h');
+    expect(totalOf(table)).toBe('3,5 h');
   });
 
   it('deletes an own entry after confirmation', async () => {
     signInForYear();
     const { user } = renderApp('/hours');
-    await screen.findByRole('region', { name: 'Maaliskuu' });
-    await user.click(screen.getByRole('button', { name: /^Poista: .* Rehearsal$/ }));
+    const table = await myTable();
+    await user.click(within(table).getByRole('button', { name: /^Poista: .* Rehearsal$/ }));
     const dialog = screen.getByRole('dialog', { name: 'Poistetaanko tuntikirjaus?' });
     await user.click(within(dialog).getByRole('button', { name: 'Poista' }));
 
-    await waitFor(() => expect(screen.queryByRole('region', { name: 'Maaliskuu' })).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByDisplayValue('Rehearsal')).not.toBeInTheDocument());
     expect(text(screen.getByTestId('hours-year-total'))).toBe('3,5 h');
     expect(db.hours.entries.some((e) => e.id === 'e3')).toBe(false);
   });
@@ -259,8 +312,8 @@ describe('my hours (UC-018)', () => {
     server.use(http.delete('/api/hours/:id', () => errorResponse(403, 'FORBIDDEN', 'Not own entry')));
     signInForYear();
     const { user } = renderApp('/hours');
-    await screen.findByRole('region', { name: 'Maaliskuu' });
-    await user.click(screen.getByRole('button', { name: /^Poista: .* Rehearsal$/ }));
+    const table = await myTable();
+    await user.click(within(table).getByRole('button', { name: /^Poista: .* Rehearsal$/ }));
     await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Poista' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Sinulla ei ole oikeutta');
     expect(screen.queryByText('Not own entry')).not.toBeInTheDocument();
@@ -272,111 +325,186 @@ describe('my hours (UC-018)', () => {
     renderApp('/hours');
     expect(await screen.findByText(`Ei tuntikirjauksia vuonna ${YEAR}.`)).toBeInTheDocument();
     expect(text(screen.getByTestId('hours-year-total'))).toBe('0 h');
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
   });
 });
 
 describe('hours totals (UC-019)', () => {
-  /** Body rows of the partner list: [name, hours]. */
-  const partnerRows = (table: HTMLElement) =>
-    within(table)
-      .getAllByRole('rowheader')
-      .filter((th) => th.closest('tbody'))
-      .map((th) => [text(th).trim(), text(th.closest('tr')!.querySelector('td')!)]);
+  const allTable = (name = `Tuntikirjaukset ${YEAR}`) => screen.findByRole('table', { name });
 
-  it('shows the year total first, then every partner by hours (most first) with a total row', async () => {
+  it('shows every entry of the year in one flat table, oldest first, with a total row', async () => {
     signInForYear();
     renderApp('/hours/totals');
-    const table = await screen.findByRole('table', { name: 'Osakkaat' });
-    expect(screen.getByRole('region', { name: 'Yhteensä' })).toBeInTheDocument();
-    expect(text(screen.getByTestId('hours-grand-total'))).toBe('9,5 h');
-    expect(within(table).getByRole('columnheader', { name: 'Osakas' })).toBeInTheDocument();
-    expect(within(table).getByRole('columnheader', { name: `Tunnit ${YEAR}` })).toBeInTheDocument();
-    expect(partnerRows(table)).toEqual([
-      ['Partner B', '5,25 h'],
-      ['Partner A', '4,25 h'],
-      ['Partner C', '0 h'],
+    const table = await allTable();
+    await waitFor(() => expect(bodyRows(table)).toHaveLength(5));
+    expect(
+      within(table)
+        .getAllByRole('columnheader')
+        .map((th) => text(th)),
+    ).toEqual(['Päivä', 'Osakas', 'Kommentti', 'Tunnit', 'Toiminnot']);
+    expect(bodyRows(table)).toEqual([
+      [`${YEAR}-01-08`, 'Partner A', 'Planning', '2'],
+      [`${YEAR}-01-20`, 'Partner A', 'Admin', '1,5'],
+      [`01.03.${YEAR}`, 'Partner B', 'Sound check', '4 h'],
+      [`${YEAR}-03-12`, 'Partner A', 'Rehearsal', '0,75'],
+      [`15.03.${YEAR}`, 'Partner B', 'Meeting', '1,25 h'],
     ]);
-    const totalRow = within(table).getByRole('rowheader', { name: 'Yhteensä' }).closest('tr')!;
-    expect(text(within(totalRow).getByTestId('hours-partners-sum'))).toBe('9,5 h');
-    // No charts and no month table any more.
+    expect(within(table).getByRole('rowheader', { name: 'Yhteensä' }).closest('tfoot')).not.toBeNull();
+    expect(totalOf(table)).toBe('9,5 h');
+    // Flat: no expand/collapse, no month groups, no charts, one table.
+    expect(document.querySelector('.hours-page [aria-expanded]')).toBeNull();
+    expect(screen.queryByRole('region', { name: 'Maaliskuu' })).not.toBeInTheDocument();
     expect(document.querySelector('.mini-bars')).toBeNull();
     expect(screen.getAllByRole('table')).toHaveLength(1);
   });
 
-  it("expands a partner's entries by month; other partners' entries are read-only", async () => {
+  it('lists all partners with one GET per partner (parallel), no other endpoint', async () => {
+    const urls: string[] = [];
+    server.events.on('request:start', ({ request }) => {
+      if (new URL(request.url).pathname.startsWith('/api/hours')) urls.push(request.url);
+    });
     signInForYear();
-    const { user } = renderApp('/hours/totals');
-    const toggle = await screen.findByRole('button', { name: 'Partner B' });
-    expect(toggle).toHaveAttribute('aria-expanded', 'false');
-    await user.click(toggle);
-    expect(toggle).toHaveAttribute('aria-expanded', 'true');
-
-    const panel = await screen.findByRole('region', { name: `Partner B: kirjaukset ${YEAR}` });
-    expect(toggle).toHaveAttribute('aria-controls', panel.id);
-    const march = await within(panel).findByRole('region', { name: 'Maaliskuu' });
-    expect(within(march).getByText('Sound check')).toBeInTheDocument();
-    expect(within(march).getByText('Meeting')).toBeInTheDocument();
-    expect(text(within(march).getByLabelText('Kuukausi yhteensä Maaliskuu'))).toBe('5,25 h');
-    expect(within(panel).queryByRole('textbox')).not.toBeInTheDocument();
-    expect(within(panel).queryByRole('button', { name: /Poista/ })).not.toBeInTheDocument();
-    expect(panel.querySelector('input')).toBeNull();
-    expect(within(panel).getByText('Vain omia kirjauksia voi muokata.')).toBeInTheDocument();
-
-    // Tapping the row again closes it.
-    await user.click(toggle);
-    expect(screen.queryByRole('region', { name: `Partner B: kirjaukset ${YEAR}` })).not.toBeInTheDocument();
+    renderApp('/hours/totals');
+    const table = await allTable();
+    await waitFor(() => expect(bodyRows(table)).toHaveLength(5));
+    const lists = urls.map((u) => new URL(u)).filter((u) => u.pathname === '/api/hours');
+    expect(lists.map((u) => u.searchParams.get('partnerId')).sort()).toEqual(db.partners.map((p) => p.id).sort());
+    expect(lists.every((u) => u.searchParams.get('year') === String(YEAR))).toBe(true);
+    expect(urls.some((u) => new URL(u).pathname === '/api/hours/totals')).toBe(false);
+    server.events.removeAllListeners();
   });
 
-  it('tapping anywhere on the row toggles it; one partner open at a time', async () => {
+  it('filters by partner; the total row is that partner’s year hours', async () => {
     signInForYear();
     const { user } = renderApp('/hours/totals');
-    const table = await screen.findByRole('table', { name: 'Osakkaat' });
-    const hoursCell = within(table).getByRole('cell', { name: '5,25 h' });
-    await user.click(hoursCell);
-    expect(await screen.findByRole('region', { name: `Partner B: kirjaukset ${YEAR}` })).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Partner C' }));
-    const panelC = await screen.findByRole('region', { name: `Partner C: kirjaukset ${YEAR}` });
-    expect(await within(panelC).findByText(`Ei tuntikirjauksia vuonna ${YEAR}.`)).toBeInTheDocument();
-    expect(screen.queryByRole('region', { name: `Partner B: kirjaukset ${YEAR}` })).not.toBeInTheDocument();
+    const table = await allTable();
+    await waitFor(() => expect(totalOf(table)).toBe('9,5 h'));
+    const filter = screen.getByRole('combobox', { name: 'Osakas' });
+    expect(filter).toHaveValue('');
+    expect(within(filter).getAllByRole('option').map((o) => o.textContent)).toEqual([
+      'Kaikki',
+      'Partner A',
+      'Partner B',
+      'Partner C',
+    ]);
+
+    await user.selectOptions(filter, 'Partner B');
+    const filtered = await allTable();
+    await waitFor(() => expect(column(filtered, 2)).toEqual(['Sound check', 'Meeting']));
+    expect(totalOf(filtered)).toBe('5,25 h');
+
+    await user.selectOptions(filter, 'Partner A');
+    await waitFor(() => expect(totalOf(screen.getByRole('table'))).toBe('4,25 h'));
+
+    await user.selectOptions(filter, 'Partner C');
+    expect(await screen.findByText(`Partner C: ei tuntikirjauksia vuonna ${YEAR}.`)).toBeInTheDocument();
+
+    await user.selectOptions(filter, 'Kaikki');
+    await waitFor(() => expect(totalOf(screen.getByRole('table'))).toBe('9,5 h'));
   });
 
-  it('own entries are edited inline and the list and totals update', async () => {
+  it('reads the partner filter from the URL (?partner=)', async () => {
+    signInForYear();
+    const b = db.partners[1]!;
+    renderApp(`/hours/totals?partner=${b.id}`);
+    const table = await allTable();
+    expect(screen.getByRole('combobox', { name: 'Osakas' })).toHaveValue(b.id);
+    await waitFor(() => expect(totalOf(table)).toBe('5,25 h'));
+    expect(column(table, 1)).toEqual(['Partner B', 'Partner B']);
+  });
+
+  it('treats an unknown partner id in the URL as all partners', async () => {
+    signInForYear();
+    renderApp('/hours/totals?partner=nope');
+    const table = await allTable();
+    await waitFor(() => expect(totalOf(table)).toBe('9,5 h'));
+    expect(screen.getByRole('combobox', { name: 'Osakas' })).toHaveValue('');
+  });
+
+  it('sorts by date, partner, comment and hours (asc/desc)', async () => {
     signInForYear();
     const { user } = renderApp('/hours/totals');
-    await user.click(await screen.findByRole('button', { name: 'Partner A' }));
-    const panel = await screen.findByRole('region', { name: `Partner A: kirjaukset ${YEAR}` });
-    const january = await within(panel).findByRole('region', { name: 'Tammikuu' });
-    expect(within(panel).queryByRole('region', { name: 'Joulukuu' })).not.toBeInTheDocument();
-    expect(within(panel).getByRole('button', { name: /^Poista: .* Planning$/ })).toBeInTheDocument();
-    expect(within(panel).queryByText('Vain omia kirjauksia voi muokata.')).not.toBeInTheDocument();
+    const table = await allTable();
+    await waitFor(() => expect(bodyRows(table)).toHaveLength(5));
+    const header = (name: string) => within(table).getByRole('columnheader', { name });
 
-    const hours = within(january).getByRole('textbox', { name: /^Tunnit: .* Planning$/ });
+    await user.click(within(header('Osakas')).getByRole('button'));
+    expect(header('Osakas')).toHaveAttribute('aria-sort', 'ascending');
+    expect(header('Päivä')).toHaveAttribute('aria-sort', 'none');
+    expect(column(table, 2)).toEqual(['Planning', 'Admin', 'Rehearsal', 'Sound check', 'Meeting']);
+    await user.click(within(header('Osakas')).getByRole('button'));
+    expect(header('Osakas')).toHaveAttribute('aria-sort', 'descending');
+    expect(column(table, 2)).toEqual(['Sound check', 'Meeting', 'Planning', 'Admin', 'Rehearsal']);
+
+    await user.click(within(header('Kommentti')).getByRole('button'));
+    expect(column(table, 2)).toEqual(['Admin', 'Meeting', 'Planning', 'Rehearsal', 'Sound check']);
+
+    await user.click(within(header('Tunnit')).getByRole('button'));
+    await user.click(within(header('Tunnit')).getByRole('button'));
+    expect(header('Tunnit')).toHaveAttribute('aria-sort', 'descending');
+    expect(column(table, 2)).toEqual(['Sound check', 'Planning', 'Admin', 'Meeting', 'Rehearsal']);
+
+    await user.click(within(header('Päivä')).getByRole('button'));
+    expect(header('Päivä')).toHaveAttribute('aria-sort', 'ascending');
+    expect(column(table, 2)).toEqual(['Planning', 'Admin', 'Sound check', 'Rehearsal', 'Meeting']);
+    expect(totalOf(table)).toBe('9,5 h');
+  });
+
+  it('own rows are edited inline; other partners’ rows are read-only', async () => {
+    signInForYear();
+    const { user } = renderApp('/hours/totals');
+    const table = await allTable();
+    await waitFor(() => expect(bodyRows(table)).toHaveLength(5));
+    expect(screen.getByText('Vain omia kirjauksia voi muokata.')).toBeInTheDocument();
+
+    const others = within(table).getByText('Sound check').closest('tr')!;
+    expect(others.querySelector('input')).toBeNull();
+    expect(within(others).queryByRole('button')).not.toBeInTheDocument();
+    expect(within(table).queryByRole('textbox', { name: /Sound check/ })).not.toBeInTheDocument();
+    expect(within(table).getByRole('button', { name: /^Poista: .* Planning$/ })).toBeInTheDocument();
+
+    const hours = within(table).getByRole('textbox', { name: `Tunnit: 8.1.${YEAR} Planning` });
     await user.clear(hours);
     await user.type(hours, '4{Enter}');
-    const table = screen.getByRole('table', { name: 'Osakkaat' });
-    await waitFor(() => expect(text(screen.getByTestId('hours-grand-total'))).toBe('11,5 h'));
-    expect(text(within(january).getByLabelText('Kuukausi yhteensä Tammikuu'))).toBe('5,5 h');
-    // Partner A now has the most hours, so it moves to the top.
-    expect(partnerRows(table)[0]).toEqual(['Partner A', '6,25 h']);
-    expect(text(screen.getByTestId('hours-partners-sum'))).toBe('11,5 h');
+    await waitFor(() => expect(totalOf(table)).toBe('11,5 h'));
+    expect(db.hours.entries.find((e) => e.id === 'e1')?.hours).toBe(4);
+  });
+
+  it('moving an own entry to another year shows the notice', async () => {
+    signInForYear();
+    const { user } = renderApp('/hours/totals');
+    const table = await allTable();
+    await waitFor(() => expect(bodyRows(table)).toHaveLength(5));
+    const date = within(table).getByLabelText(`Päivämäärä: 12.3.${YEAR} Rehearsal`);
+    act(() => date.focus());
+    fireEvent.change(date, { target: { value: `${YEAR + 1}-03-12` } });
+    await user.tab();
+    expect(
+      await screen.findByText(`Tallennettu vuodelle ${YEAR + 1}. Vaihda vuotta nähdäksesi kirjauksen.`),
+    ).toBeInTheDocument();
+    await waitFor(() => expect(totalOf(table)).toBe('8,75 h'));
   });
 
   it('shows English texts', async () => {
     signInForYear().language = 'en';
     renderApp('/hours/totals');
-    const table = await screen.findByRole('table', { name: 'Partners' });
-    expect(screen.getByRole('region', { name: 'Total' })).toBeInTheDocument();
-    expect(within(table).getByRole('columnheader', { name: `Hours ${YEAR}` })).toBeInTheDocument();
+    const table = await allTable(`Hour entries ${YEAR}`);
+    await waitFor(() => expect(bodyRows(table)).toHaveLength(5));
+    expect(within(table).getByRole('columnheader', { name: 'Date' })).toBeInTheDocument();
+    expect(within(table).getByRole('columnheader', { name: 'Partner' })).toBeInTheDocument();
     expect(within(table).getByRole('rowheader', { name: 'Total' })).toBeInTheDocument();
+    const filter = screen.getByRole('combobox', { name: 'Partner' });
+    expect(within(filter).getByRole('option', { name: 'All' })).toBeInTheDocument();
+    expect(within(table).getByText(`01/03/${YEAR}`)).toBeInTheDocument();
   });
 
   it('switches between my hours and totals with tabs', async () => {
     signInForYear();
     const { user } = renderApp('/hours');
-    await screen.findByRole('region', { name: 'Maaliskuu' });
+    await screen.findByRole('table', { name: `Omat tunnit ${YEAR}` });
     const tabs = screen.getByRole('navigation', { name: 'Tuntinäkymä' });
     await user.click(within(tabs).getByRole('link', { name: 'Yhteenveto' }));
-    expect(await screen.findByTestId('hours-grand-total')).toBeInTheDocument();
+    expect(await allTable()).toBeInTheDocument();
     await user.click(within(tabs).getByRole('link', { name: 'Omat tunnit' }));
     expect(await screen.findByTestId('hours-year-total')).toBeInTheDocument();
   });
@@ -384,7 +512,7 @@ describe('hours totals (UC-019)', () => {
   it('has the add action in the page head only on my hours (no empty actions box on totals)', async () => {
     signInForYear();
     const { user } = renderApp('/hours/totals');
-    await screen.findByTestId('hours-grand-total');
+    await allTable();
     const head = screen.getByRole('heading', { name: `Tunnit ${YEAR}` }).closest('.page-head') as HTMLElement;
     expect(head.querySelector('.page-actions')).toBeNull();
 
