@@ -100,3 +100,8 @@ Line-height body 1.5.
 - Grid: tiles in a 12-column grid (`StatGrid` spans), consistent heights per row; labels top-aligned; values baseline-aligned.
 - Tables: numeric columns right-aligned with tabular figures; header and cell padding identical; first column aligned with the page edge of cards above.
 - Forms/inline fields: labels in one column width per section; inputs aligned; consistent 36 px control height (44 px touch on phone).
+
+### Layout v2.1 — controls in the top bar (owner request 2026-10-05)
+- **Desktop (≥ 900 px):** language, theme toggle and sign out move from the sidebar to the **content top bar, right of the year selector**, as icon buttons (sign out tooltip/accessible description shows "Signed in as <name>"). Order: year selector · language · theme · sign out.
+- **Sidebar bottom:** only the collapse/expand toggle remains, bottom-left; **no divider line** above it.
+- **Phone (< 900 px):** top bar stays ☰ · logo · year (no room for three more icons); language, theme and sign out stay at the bottom of the drawer.
