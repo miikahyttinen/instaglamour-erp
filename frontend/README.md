@@ -65,7 +65,7 @@ VITE_API_PROXY_TARGET=http://localhost:3100 VITE_PORT=5273 npm run dev
 | `src/api/endpoints.ts` | Typed function per endpoint |
 | `src/api/cache.ts` | Shared root query keys and `invalidateYearData()`: call it after every gig, cost line, hours or budget mutation |
 | `src/auth/` | `me` query, auth guard, sign-in page, `useSignedInPartner()` / `useSelectedYear()` |
-| `src/layout/` | App shell (Layout v2): collapsible sidebar, phone drawer, sticky top bar with year selector, `.page-container` |
+| `src/layout/` | App shell (Layout v2.1): collapsible sidebar, phone drawer, sticky top bar with year selector + language / theme / sign out (desktop), `.page-container` |
 | `src/reference/useReference.ts` | Reference data, loaded once per session and cached |
 | `src/i18n/` | `fi.ts` / `en.ts` texts (glossary terms), label helpers for codes and errors |
 | `src/lib/format.ts` | Money (cents), date, hours and percent formatting per language |
@@ -136,12 +136,17 @@ production builds) and its texts are English on purpose.
 
 ### Layout v2: app shell and spacing rules
 
-- **Shell** (`src/layout/AppShell.tsx`). Desktop: `Sidebar` (variant `rail`) on the left with logo,
-  icon nav, language / theme / sign-out and the collapse toggle; a sticky top bar shows the
-  current section (left) and the year selector (right). Phone: a sticky top bar with ☰, the logo
-  and the year; ☰ opens `NavDrawer` with the same `Sidebar` (variant `drawer`). The drawer is a
-  modal dialog: it traps focus, closes on Esc, a backdrop click, navigation or the X, and returns
-  focus to ☰. There is no bottom nav.
+- **Shell** (`src/layout/AppShell.tsx`, Layout v2.1). Desktop: `Sidebar` (variant `rail`) on the
+  left with the logo, icon nav and, bottom-left, only the collapse / expand toggle (no divider
+  line). A sticky top bar shows the current section (left) and, on the right, the year selector
+  followed by `TopbarControls`: language (shows the current code, e.g. `FI`) · theme · sign out,
+  as `IconButton`s whose accessible name is also the tooltip; sign out is additionally described
+  by "Kirjautuneena: <name>" / "Signed in as <name>" (`aria-describedby` + `title`). Phone: a
+  sticky top bar with ☰, the logo and the year only; ☰ opens `NavDrawer` with the same
+  `Sidebar` (variant `drawer`, `account` prop) whose bottom has language, theme, the signed-in
+  name and sign out. The drawer is a modal dialog: it traps focus, closes on Esc, a backdrop
+  click, navigation or the X, and returns focus to ☰. There is no bottom nav. Shared texts for
+  both placements: `useAccountLabels()` (`src/layout/accountLabels.ts`).
 - Collapse state: `localStorage['ig-sidebar']` = `expanded` | `collapsed`
   (`useSidebarCollapsed()`, try/catch). When collapsed, labels are visually hidden (they stay the
   accessible names) and appear as a CSS tooltip from `data-tooltip`.

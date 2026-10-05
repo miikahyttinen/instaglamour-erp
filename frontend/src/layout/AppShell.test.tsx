@@ -208,6 +208,13 @@ describe('app shell', () => {
       expect(within(topbar).getByRole('button', { name: 'Valikko' })).toHaveAttribute('aria-expanded', 'false');
       expect(within(topbar).getByRole('link', { name: 'Instaglamour ERP' })).toBeInTheDocument();
       expect(within(topbar).getByRole('combobox', { name: 'Valittu vuosi' })).toBeInTheDocument();
+      // Language / theme / sign out stay in the drawer on phones (Layout v2.1).
+      expect(within(topbar).getAllByRole('button').map((b) => b.getAttribute('aria-label'))).toEqual([
+        'Valikko',
+        'Edellinen vuosi',
+        'Seuraava vuosi',
+      ]);
+      expect(screen.queryByRole('button', { name: 'Kirjaudu ulos' })).not.toBeInTheDocument();
       expect(screen.queryByRole('navigation')).not.toBeInTheDocument();
       expect(container.querySelector('.nav-bottom')).toBeNull();
     });
@@ -321,34 +328,79 @@ describe('app shell', () => {
       expect(within(mainNav()).getByRole('link', { name: 'Keikat' })).toHaveAttribute('aria-current', 'page');
       expect(within(mainNav()).getByRole('link', { name: 'Vuosi' })).not.toHaveAttribute('aria-current');
       expect(container.querySelector('.topbar-context')).toHaveTextContent('Keikat');
-      expect(screen.getByText(`Kirjautuneena: ${db.partners[0]!.name}`)).toBeInTheDocument();
     });
 
-    it('has language, theme and sign-out in the bottom area', async () => {
+    it('has year · language · theme · sign out in the top bar (Layout v2.1)', async () => {
       desktop();
       signInMock();
       document.documentElement.setAttribute('data-theme', 'dark');
-      const { user } = renderApp('/');
+      const { user, container } = renderApp('/');
       await screen.findByRole('heading', { name: /^Vuosi/ });
+      const topbarEnd = container.querySelector('header.topbar .topbar-end') as HTMLElement;
+      const name = db.partners[0]!.name;
+
+      // Order: year selector, then language, theme, sign out (icon buttons with tooltips).
+      const buttons = within(topbarEnd).getAllByRole('button');
+      expect(buttons.map((b) => b.getAttribute('aria-label'))).toEqual([
+        'Edellinen vuosi',
+        'Seuraava vuosi',
+        'Vaihda kieleksi English',
+        'Vaihda vaaleaan teemaan',
+        'Kirjaudu ulos',
+      ]);
+      const year = within(topbarEnd).getByRole('group', { name: 'Valittu vuosi' });
+      expect(year.compareDocumentPosition(buttons[2]!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      for (const b of buttons.slice(2)) expect(b).toHaveClass('icon-btn');
+      const signOut = within(topbarEnd).getByRole('button', { name: 'Kirjaudu ulos' });
+      expect(signOut).toHaveAccessibleDescription(`Kirjautuneena: ${name}`);
+      expect(signOut).toHaveAttribute('title', `Kirjaudu ulos · Kirjautuneena: ${name}`);
+
+      // None of them are in the sidebar any more.
+      const sidebar = container.querySelector('aside.sidebar') as HTMLElement;
+      expect(within(sidebar).queryByRole('button', { name: /kieleksi|teemaan|Kirjaudu ulos/ })).toBeNull();
 
       // Theme: sun in dark (→ light), moon in light (→ dark).
-      await user.click(screen.getByRole('button', { name: 'Vaihda vaaleaan teemaan' }));
+      await user.click(within(topbarEnd).getByRole('button', { name: 'Vaihda vaaleaan teemaan' }));
       expect(document.documentElement).toHaveAttribute('data-theme', 'light');
       expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe('light');
-      expect(screen.getByRole('button', { name: 'Vaihda tummaan teemaan' })).toBeInTheDocument();
+      expect(within(topbarEnd).getByRole('button', { name: 'Vaihda tummaan teemaan' })).toBeInTheDocument();
 
-      // Language: shows the current code and the other language; switches FI ⇄ EN and saves it.
-      const lang = screen.getByRole('button', { name: 'Vaihda kieleksi English' });
+      // Language: shows the current code; switches FI ⇄ EN and saves it.
+      const lang = within(topbarEnd).getByRole('button', { name: 'Vaihda kieleksi English' });
       expect(lang).toHaveTextContent('FI');
       await user.click(lang);
       expect(await screen.findByRole('heading', { name: /^Year \d{4}$/ })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Switch to dark theme' })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Change language to Suomi' })).toHaveTextContent('EN');
+      expect(within(topbarEnd).getByRole('button', { name: 'Switch to dark theme' })).toBeInTheDocument();
+      expect(within(topbarEnd).getByRole('button', { name: 'Change language to Suomi' })).toHaveTextContent('EN');
+      expect(within(topbarEnd).getByRole('button', { name: 'Sign out' })).toHaveAccessibleDescription(
+        `Signed in as ${name}`,
+      );
       await waitFor(() => expect(db.partners[0]!.language).toBe('en'));
 
-      await user.click(screen.getByRole('button', { name: 'Sign out' }));
+      await user.click(within(topbarEnd).getByRole('button', { name: 'Sign out' }));
       expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeInTheDocument();
       expect(db.sessionPartnerId).toBeNull();
+    });
+
+    it('sidebar bottom has only the collapse toggle, without a divider or name line', async () => {
+      desktop();
+      signInMock();
+      const { user, container } = renderApp('/');
+      await screen.findByRole('heading', { name: /^Vuosi/ });
+      const sidebar = container.querySelector('aside.sidebar') as HTMLElement;
+      for (const state of ['Pienennä valikko', 'Laajenna valikko']) {
+        const foot = sidebar.querySelector('.sidebar-foot') as HTMLElement;
+        expect(foot).toHaveClass('sidebar-foot-rail');
+        expect(within(foot).getAllByRole('button').map((b) => b.textContent)).toEqual([state]);
+        expect(foot.querySelector('.sidebar-user')).toBeNull();
+        // Outside the nav, the toggle is the only control in the sidebar.
+        const outsideNav = within(sidebar)
+          .getAllByRole('button')
+          .filter((b) => !b.closest('nav'));
+        expect(outsideNav).toEqual([within(foot).getByRole('button')]);
+        expect(screen.queryByText(`Kirjautuneena: ${db.partners[0]!.name}`, { selector: 'p' })).toBeNull();
+        await user.click(within(foot).getByRole('button', { name: state }));
+      }
     });
 
     it('collapses to icons (labels stay accessible, tooltips on) and remembers it', async () => {
@@ -364,11 +416,14 @@ describe('app shell', () => {
       expect(window.localStorage.getItem(SIDEBAR_STORAGE_KEY)).toBe('collapsed');
       const gigs = within(mainNav()).getByRole('link', { name: 'Keikat' });
       expect(gigs).toHaveAttribute('data-tooltip', 'Keikat');
-      expect(screen.getByRole('button', { name: 'Kirjaudu ulos' })).toHaveAttribute(
+      expect(screen.getByRole('button', { name: 'Laajenna valikko' })).toHaveAttribute(
         'data-tooltip',
-        `Kirjaudu ulos · Kirjautuneena: ${db.partners[0]!.name}`,
+        'Laajenna valikko',
       );
-      expect(screen.queryByText(`Kirjautuneena: ${db.partners[0]!.name}`)).not.toBeInTheDocument();
+      // The top bar controls are unaffected by the collapse.
+      expect(screen.getByRole('button', { name: 'Kirjaudu ulos' })).toHaveAccessibleDescription(
+        `Kirjautuneena: ${db.partners[0]!.name}`,
+      );
 
       // Still collapsed after a reload.
       unmount();

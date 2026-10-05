@@ -15,11 +15,14 @@ import { NavDrawer } from './NavDrawer';
 import { activeNavItem } from './navItems';
 import { Sidebar } from './Sidebar';
 import { useSidebarCollapsed } from './sidebarState';
+import { TopbarControls } from './TopbarControls';
 import { YearSelector } from './YearSelector';
 
 /**
- * Layout v2. Desktop (≥ 900 px): collapsible left sidebar + sticky top bar (section, year).
- * Phone: sticky top bar (☰, logo, year); ☰ opens the sidebar as a drawer. Every route renders
+ * Layout v2.1. Desktop (≥ 900 px): collapsible left sidebar (nav + collapse toggle) + sticky
+ * top bar (section · year · language · theme · sign out).
+ * Phone: sticky top bar (☰, logo, year); ☰ opens the sidebar as a drawer, with language /
+ * theme / sign out at its bottom. Every route renders
  * inside `.page-container` (one left edge, max width, page padding).
  */
 export function AppShell() {
@@ -59,7 +62,7 @@ export function AppShell() {
     },
   });
 
-  const sidebarProps = {
+  const account = {
     name: me.name,
     language: me.language,
     onLanguageChange: (language: Language) => updateMe.mutate({ language }),
@@ -73,7 +76,6 @@ export function AppShell() {
       {isDesktop && (
         <aside className="sidebar">
           <Sidebar
-            {...sidebarProps}
             id={sidebarId}
             variant="rail"
             collapsed={collapsed}
@@ -116,6 +118,7 @@ export function AppShell() {
                 year={me.selectedYear}
                 onChange={(selectedYear) => updateMe.mutate({ selectedYear })}
               />
+              {isDesktop && <TopbarControls {...account} />}
             </div>
           </div>
           {updateMe.isError && (
@@ -135,7 +138,7 @@ export function AppShell() {
       {drawerOpen && (
         <NavDrawer id={drawerId} onClose={closeDrawer} initialFocus={closeRef}>
           <Sidebar
-            {...sidebarProps}
+            account={account}
             variant="drawer"
             onClose={closeDrawer}
             closeRef={closeRef}
