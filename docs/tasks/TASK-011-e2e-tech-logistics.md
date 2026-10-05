@@ -1,7 +1,7 @@
 # TASK-011: Update e2e suite for technical setup / logistics / house technician
 
 - **owner:** backend (integration; edits `e2e/` only)
-- **status:** todo
+- **status:** done
 - **depends on:** TASK-010, TASK-133 (merged)
 
 ## Goal
