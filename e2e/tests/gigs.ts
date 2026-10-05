@@ -17,11 +17,29 @@ export async function personByName(page: Page, name: string): Promise<{ id: stri
   return person;
 }
 
+export type TechnicalSetup = 'HOUSE_TECH' | 'SET_A' | 'SET_B' | 'SET_C';
+export type Logistics = 'OWN_VAN' | 'RENTAL_VAN' | 'TAXI' | 'OTHER';
+
 /** Creates a Template B gig through the API (setup for flows that are not about creating). */
 export async function createGigViaApi(
   page: Page,
-  opts: { startDate: string; venue: string; priceCents?: number },
-): Promise<{ id: string; lineupName: string; venue: string; costLines: { id: string; type: string }[] }> {
+  opts: {
+    startDate: string;
+    venue: string;
+    priceCents?: number;
+    technicalSetup?: TechnicalSetup | null;
+    logistics?: Logistics | null;
+    houseTechnician?: boolean;
+  },
+): Promise<{
+  id: string;
+  lineupName: string;
+  venue: string;
+  technicalSetup: TechnicalSetup | null;
+  logistics: Logistics | null;
+  houseTechnician: boolean;
+  costLines: { id: string; type: string }[];
+}> {
   const ref = await reference(page);
   const me = (await api(page).get('/me')) as { id: string };
   const template = ref.lineupTemplates.find((t) => t.name === SEED.templateB.name);
@@ -32,7 +50,10 @@ export async function createGigViaApi(
     lineupTemplateId: template.id,
     lineupName: null,
     venue: opts.venue,
-    technicalSetup: [],
+    // Contract 2026-10-05: one code or null (no longer an array).
+    technicalSetup: opts.technicalSetup ?? null,
+    logistics: opts.logistics ?? null,
+    houseTechnician: opts.houseTechnician ?? false,
     sellerId: me.id,
     producerId: me.id,
     priceCents: opts.priceCents ?? 100000,

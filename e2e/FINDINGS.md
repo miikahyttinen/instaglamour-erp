@@ -28,6 +28,13 @@ merged yet), see [TASK-009](#task-009--suite-update-for-layout-v2): **102 passed
 (economics toggle, gig table ≥ 1200 px), 27 viewport-only (15 desktop-sidebar tests at 375 px,
 12 phone-drawer tests at 1280 px).
 
+Run of 2026-10-05 against `main` at `c7535d5` (technical setup / logistics / house technician,
+TASK-010, TASK-133), see TASK-011: the API helper `createGigViaApi()` still sent the old
+`technicalSetup: []` array, so `POST /gigs` answered 400 `technicalSetup: INVALID_VALUE` and 17
+tests failed in their setup — a suite problem, not an app bug. After fixing the helper and adding
+`tests/13-tech-logistics.spec.ts`: **106 passed, 0 failed, 30 skipped** (same 30 as above) at
+375 px and 1280 px from a fresh database. No new findings.
+
 | Id | Severity | Side to fix | Summary |
 |---|---|---|---|
 | F-001 | minor | frontend | `/api` proxy target and dev port are hard-coded in `vite.config.ts` |
