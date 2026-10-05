@@ -51,6 +51,20 @@ describe('tasks page', () => {
     expect(titles()).not.toContain('Task 4');
   });
 
+  it('keeps the column header row decorative: each field is still named by its own label', async () => {
+    await openPage();
+    const head = document.querySelector('.tasks-head')!;
+    expect(head).toHaveAttribute('aria-hidden', 'true');
+    expect(head).toHaveTextContent('OtsikkoVastuuhenkilöEräpäivä');
+    // Exactly one control per name per row: the header adds no labels.
+    for (const li of items()) {
+      for (const name of ['Otsikko', 'Vastuuhenkilö', 'Eräpäivä']) {
+        expect(within(li).getAllByLabelText(name, { exact: true })).toHaveLength(1);
+      }
+    }
+    expect(screen.getAllByLabelText('Vastuuhenkilö', { exact: true })).toHaveLength(items().length);
+  });
+
   it('has no Edit buttons or edit dialog for existing tasks', async () => {
     await openPage();
     expect(screen.queryByRole('button', { name: /Muokkaa/ })).not.toBeInTheDocument();
