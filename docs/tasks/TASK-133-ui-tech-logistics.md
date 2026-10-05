@@ -1,7 +1,7 @@
 # TASK-133: Technical setup dropdown, logistics dropdown, house technician switch — UI
 
 - **owner:** ui
-- **status:** todo
+- **status:** done
 - **spec:** api-contract.md (GigSummary, GigCreate, GigUpdate, Reference), glossary.md
 - **depends on:** none (backend TASK-010 runs in parallel)
 

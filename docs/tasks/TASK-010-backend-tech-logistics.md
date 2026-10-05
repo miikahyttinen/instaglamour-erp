@@ -1,7 +1,7 @@
 # TASK-010: Technical setup (single), logistics, house technician — backend
 
 - **owner:** backend
-- **status:** todo
+- **status:** done
 - **spec:** domain-model.md (Gig, TechnicalSetup, Logistics), api-contract.md (GigSummary, GigCreate, GigUpdate, Reference)
 - **depends on:** none (UI TASK-133 runs in parallel against the contract)
 
