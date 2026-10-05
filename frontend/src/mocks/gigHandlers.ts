@@ -1,8 +1,8 @@
 // Mock handlers for docs/api-contract.md: Gigs, Cost lines, Attachments (People: peopleHandlers.ts).
 // Business logic lives in gigStore.ts.
 import { http, HttpResponse } from 'msw';
-import type { CostType, FieldCode, TechnicalSetup } from '../api/enums';
-import { COST_TYPES, isMusicianRole, TECHNICAL_SETUPS } from '../api/enums';
+import type { CostType, FieldCode, Logistics, TechnicalSetup } from '../api/enums';
+import { COST_TYPES, isMusicianRole, LOGISTICS, TECHNICAL_SETUPS } from '../api/enums';
 import type {
   CostLine,
   CostLineCreate,
@@ -88,13 +88,19 @@ function checkPartner(fields: Fields, key: string, value: unknown, required: boo
   if (!db.partners.some((p) => p.id === value)) fields[key] = 'UNKNOWN_REFERENCE';
 }
 
-function checkTechnicalSetup(fields: Fields, value: unknown): void {
-  if (value === undefined) return;
-  if (
-    !Array.isArray(value) ||
-    value.some((v) => !(TECHNICAL_SETUPS as readonly unknown[]).includes(v))
-  ) {
-    fields.technicalSetup = 'INVALID_VALUE';
+/** technicalSetup / logistics: one code of the list or null; houseTechnician: boolean. */
+function checkGigOptions(
+  fields: Fields,
+  body: Pick<GigUpdate, 'technicalSetup' | 'logistics' | 'houseTechnician'>,
+): void {
+  const checkCode = (key: 'technicalSetup' | 'logistics', codes: readonly unknown[]) => {
+    const value = body[key];
+    if (value !== undefined && value !== null && !codes.includes(value)) fields[key] = 'INVALID_VALUE';
+  };
+  checkCode('technicalSetup', TECHNICAL_SETUPS);
+  checkCode('logistics', LOGISTICS);
+  if (body.houseTechnician !== undefined && typeof body.houseTechnician !== 'boolean') {
+    fields.houseTechnician = 'INVALID_VALUE';
   }
 }
 
@@ -203,7 +209,7 @@ export const gigHandlers = [
       checkString(fields, 'lineupName', body.lineupName, true);
     }
     checkString(fields, 'venue', body.venue, true);
-    checkTechnicalSetup(fields, body.technicalSetup);
+    checkGigOptions(fields, body);
     checkPartner(fields, 'sellerId', body.sellerId, true);
     checkPartner(fields, 'producerId', body.producerId, true);
     checkMoney(fields, 'priceCents', body.priceCents, true);
@@ -220,7 +226,9 @@ export const gigHandlers = [
         lineupTemplateId: body.lineupTemplateId ?? null,
         lineupName: blankToNull(body.lineupName),
         venue: body.venue!.trim(),
-        technicalSetup: (body.technicalSetup ?? []) as TechnicalSetup[],
+        technicalSetup: (body.technicalSetup ?? null) as TechnicalSetup | null,
+        logistics: (body.logistics ?? null) as Logistics | null,
+        houseTechnician: body.houseTechnician ?? false,
         sellerId: body.sellerId!,
         producerId: body.producerId!,
         priceCents: body.priceCents!,
@@ -252,7 +260,7 @@ export const gigHandlers = [
     if (body.endDate !== undefined) fields.endDate = 'NOT_EDITABLE';
     if (body.lineupName !== undefined) checkString(fields, 'lineupName', body.lineupName, true);
     if (body.venue !== undefined) checkString(fields, 'venue', body.venue, true);
-    checkTechnicalSetup(fields, body.technicalSetup);
+    checkGigOptions(fields, body);
     if (body.sellerId !== undefined) checkPartner(fields, 'sellerId', body.sellerId, true);
     if (body.producerId !== undefined) checkPartner(fields, 'producerId', body.producerId, true);
     if (body.priceCents !== undefined) checkMoney(fields, 'priceCents', body.priceCents, true);

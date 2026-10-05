@@ -9,6 +9,7 @@ import type {
   SignInErrorCode,
   TaskStatus,
   TechnicalSetup,
+  Logistics,
 } from '../api/enums';
 import type { BudgetCategory, GigSummary, Warning } from '../api/types';
 import { formatDate } from '../lib/format';
@@ -19,6 +20,7 @@ import { formatDate } from '../lib/format';
 export const costTypeLabel = (t: TFunction, code: CostType) => t(`costType.${code}`);
 export const technicalSetupLabel = (t: TFunction, code: TechnicalSetup) =>
   t(`technicalSetup.${code}`);
+export const logisticsLabel = (t: TFunction, code: Logistics) => t(`logistics.${code}`);
 export const gigStatusLabel = (t: TFunction, code: GigDisplayStatus) => t(`gigStatus.${code}`);
 export const taskStatusLabel = (t: TFunction, code: TaskStatus) => t(`taskStatus.${code}`);
 export const gigEventTypeLabel = (t: TFunction, code: GigEventType) => t(`gigEventType.${code}`);

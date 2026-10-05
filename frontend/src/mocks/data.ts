@@ -2,6 +2,7 @@
 import {
   EXPENSE_CATEGORIES,
   INTERNAL_ROLES,
+  LOGISTICS,
   MUSICIAN_ROLES,
   TECHNICAL_SETUPS,
 } from '../api/enums';
@@ -90,6 +91,7 @@ function initialReference(): MockDb['reference'] {
       expenseCategories: [...EXPENSE_CATEGORIES],
     },
     technicalSetups: [...TECHNICAL_SETUPS],
+    logistics: [...LOGISTICS],
     budgetCategories: [
       { id: '00000000-0000-4000-8000-000000000201', code: 'CATEGORY_A', nameFi: 'Kategoria A', nameEn: 'Category A', budgeted: true },
       { id: '00000000-0000-4000-8000-000000000202', code: 'CATEGORY_B', nameFi: 'Kategoria B', nameEn: 'Category B', budgeted: true },

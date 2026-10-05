@@ -1,21 +1,32 @@
 import { useTranslation } from 'react-i18next';
-import { TECHNICAL_SETUPS } from '../../api/enums';
+import type { Logistics, TechnicalSetup } from '../../api/enums';
 import { gigsApi } from '../../api/endpoints';
 import type { GigDetail, GigUpdate, GigUpdateResponse, Id } from '../../api/types';
 import {
-  InlineCheckboxGroup,
   InlineMoney,
   InlineSelect,
+  InlineSwitch,
   InlineText,
   InlineTextarea,
+  type InlineSelectOption,
 } from '../../components/inline';
 import { Card } from '../../components/Card';
 import { FieldList } from '../../components/FieldList';
-import { technicalSetupLabel } from '../../i18n/labels';
 import { useLang } from '../../i18n/useLang';
 import { formatMoney } from '../../lib/format';
 import { useReference } from '../../reference/useReference';
+import { NONE_LABEL, useLogisticsOptions, useTechnicalSetupOptions } from './gigOptions';
 import { useApplyGig } from './queries';
+
+/** InlineSelect needs the current value among its options; an unknown code is shown as-is. */
+function withCurrent<V extends string | null>(
+  options: InlineSelectOption<V>[],
+  current: V,
+): InlineSelectOption<V>[] {
+  return options.some((o) => o.value === current)
+    ? options
+    : [...options, { value: current, label: String(current) }];
+}
 
 interface Props {
   gig: GigDetail;
@@ -45,6 +56,8 @@ export function GigBasicFields({
   const { t } = useTranslation();
   const { data: reference } = useReference();
   const patch = useGigPatch(gig);
+  const technicalSetupOptions = useTechnicalSetupOptions(reference);
+  const logisticsOptions = useLogisticsOptions(reference);
 
   const partnerOptions = (current: Id) => {
     const partners = reference?.partners ?? [];
@@ -75,16 +88,28 @@ export function GigBasicFields({
           disabled={readOnly}
           onSave={(venue) => patch({ venue })}
         />
-        <InlineCheckboxGroup
+        <InlineSelect<TechnicalSetup | null>
           label={t('gigForm.technicalSetup')}
           value={gig.technicalSetup}
           field="technicalSetup"
           disabled={readOnly}
-          options={(reference?.technicalSetups ?? TECHNICAL_SETUPS).map((code) => ({
-            value: code,
-            label: technicalSetupLabel(t, code),
-          }))}
+          options={withCurrent([{ value: null, label: NONE_LABEL }, ...technicalSetupOptions], gig.technicalSetup)}
           onSave={(technicalSetup) => patch({ technicalSetup })}
+        />
+        <InlineSelect<Logistics | null>
+          label={t('gigForm.logistics')}
+          value={gig.logistics}
+          field="logistics"
+          disabled={readOnly}
+          options={withCurrent([{ value: null, label: NONE_LABEL }, ...logisticsOptions], gig.logistics)}
+          onSave={(logistics) => patch({ logistics })}
+        />
+        <InlineSwitch
+          label={t('gigForm.houseTechnician')}
+          value={gig.houseTechnician}
+          field="houseTechnician"
+          disabled={readOnly}
+          onSave={(houseTechnician) => patch({ houseTechnician })}
         />
         <InlineSelect
           label={t('gigForm.seller')}

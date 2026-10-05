@@ -42,7 +42,9 @@ export function seedGigState(
     lineupTemplateId: templateA?.id ?? null,
     lineupName: null,
     venue: 'Venue X',
-    technicalSetup: [],
+    technicalSetup: null,
+    logistics: null,
+    houseTechnician: false,
     sellerId: a.id,
     producerId: a.id,
     priceCents: 100000,
@@ -60,7 +62,7 @@ export function seedGigState(
   // 1. Fully staffed, everything paid.
   const g1 = createGig(
     state,
-    { ...base, startDate: `${year}-02-14`, priceCents: 200000, technicalSetup: ['HOUSE_TECH'] },
+    { ...base, startDate: `${year}-02-14`, priceCents: 200000, technicalSetup: 'HOUSE_TECH', houseTechnician: true },
     a.id,
     ctx,
   );
@@ -77,7 +79,8 @@ export function seedGigState(
       lineupTemplateId: templateB?.id ?? null,
       venue: 'Venue Y',
       sellerId: b.id,
-      technicalSetup: ['OWN_PA', 'VAN'],
+      technicalSetup: 'SET_A',
+      logistics: 'OWN_VAN',
       additionalSalesCents: 10000,
       additionalSalesDescription: 'Additional set',
     },

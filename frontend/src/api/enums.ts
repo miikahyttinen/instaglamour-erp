@@ -46,16 +46,12 @@ export type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number];
 export const COST_TYPES = [...MUSICIAN_ROLES, ...INTERNAL_ROLES, ...EXPENSE_CATEGORIES] as const;
 export type CostType = MusicianRole | InternalRole | ExpenseCategory;
 
-export const TECHNICAL_SETUPS = [
-  'HOUSE_TECH',
-  'HOUSE_TECHNICIAN',
-  'SET_A',
-  'SET_B',
-  'SET_C',
-  'OWN_PA',
-  'VAN',
-] as const;
+/** One choice per gig: house tech or one of the own PA sets A–C. */
+export const TECHNICAL_SETUPS = ['HOUSE_TECH', 'SET_A', 'SET_B', 'SET_C'] as const;
 export type TechnicalSetup = (typeof TECHNICAL_SETUPS)[number];
+
+export const LOGISTICS = ['OWN_VAN', 'RENTAL_VAN', 'TAXI', 'OTHER'] as const;
+export type Logistics = (typeof LOGISTICS)[number];
 
 export const GIG_STATUSES = ['SOLD', 'CANCELLED'] as const;
 export type GigStatus = (typeof GIG_STATUSES)[number];

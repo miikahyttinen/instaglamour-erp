@@ -13,6 +13,7 @@ import type {
   ExpenseCategory,
   TaskStatus,
   TechnicalSetup,
+  Logistics,
 } from './enums';
 
 export type Id = string;
@@ -74,7 +75,9 @@ export interface GigSummary {
   lineupTemplateId: Id | null;
   lineupName: string;
   venue: string;
-  technicalSetup: TechnicalSetup[];
+  technicalSetup: TechnicalSetup | null;
+  logistics: Logistics | null;
+  houseTechnician: boolean;
   sellerId: Id;
   producerId: Id;
   priceCents: Cents;
@@ -246,6 +249,7 @@ export interface ReferenceData {
     expenseCategories: ExpenseCategory[];
   };
   technicalSetups: TechnicalSetup[];
+  logistics: Logistics[];
   budgetCategories: BudgetCategory[];
 }
 
@@ -294,7 +298,9 @@ export interface GigCreate {
   lineupTemplateId?: Id | null;
   lineupName?: string | null;
   venue: string;
-  technicalSetup?: TechnicalSetup[];
+  technicalSetup?: TechnicalSetup | null;
+  logistics?: Logistics | null;
+  houseTechnician?: boolean;
   sellerId: Id;
   producerId: Id;
   priceCents: Cents;
@@ -306,7 +312,9 @@ export interface GigCreate {
 export interface GigUpdate {
   lineupName?: string;
   venue?: string;
-  technicalSetup?: TechnicalSetup[];
+  technicalSetup?: TechnicalSetup | null;
+  logistics?: Logistics | null;
+  houseTechnician?: boolean;
   sellerId?: Id;
   producerId?: Id;
   priceCents?: Cents;

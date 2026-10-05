@@ -15,7 +15,13 @@ describe('gig page (UC-004, UC-007)', () => {
   });
 
   it('shows all sections, economics and collapsible sections', async () => {
-    const gig = addMockGig({ additionalSalesCents: 10000, technicalSetup: ['OWN_PA'], notes: 'Stage left' });
+    const gig = addMockGig({
+      additionalSalesCents: 10000,
+      technicalSetup: 'SET_B',
+      logistics: 'TAXI',
+      houseTechnician: true,
+      notes: 'Stage left',
+    });
     const { user } = renderApp(`/gigs/${gig.id}`);
     expect(await screen.findByRole('heading', { name: 'Template A · Venue X', level: 1 })).toBeInTheDocument();
     expect(screen.getByText('1.6.2030')).toBeInTheDocument();
@@ -23,7 +29,10 @@ describe('gig page (UC-004, UC-007)', () => {
     for (const name of ['Perustiedot', 'Hinta ja lisämyynti', 'Talous', 'Kulut ja miehitys', 'Liitteet', 'Muutoshistoria']) {
       expect(section(name)).toHaveAttribute('open');
     }
-    expect(within(section('Perustiedot')).getByText('Oma PA')).toBeInTheDocument();
+    const basicInfo = within(section('Perustiedot'));
+    expect(basicInfo.getByRole('combobox', { name: 'Tekniikka' })).toHaveDisplayValue('Setti B');
+    expect(basicInfo.getByRole('combobox', { name: 'Logistiikka' })).toHaveDisplayValue('Taksi');
+    expect(basicInfo.getByRole('switch', { name: 'Talon teknikko' })).toBeChecked();
     expect(within(section('Perustiedot')).getByText('Stage left')).toBeInTheDocument();
     const tile = (name: string) => within(section('Talous')).getByRole('region', { name });
     // Total 1 100 €, budgeted costs 4 × 100 € + 3 × 10 € = 430 €, margin 670 € (BR-001…006).
@@ -50,7 +59,10 @@ describe('gig page (UC-004, UC-007)', () => {
     expect(screen.queryByRole('button', { name: 'Muokkaa hintaa ja lisämyyntiä' })).not.toBeInTheDocument();
     expect(within(basic).getByRole('textbox', { name: 'Kokoonpanon nimi' })).toHaveValue('Template A');
     expect(within(basic).getByRole('textbox', { name: 'Paikka' })).toHaveValue('Venue X');
-    expect(within(basic).getByRole('group', { name: 'Tekniikka' })).toBeInTheDocument();
+    expect(within(basic).getByRole('combobox', { name: 'Tekniikka' })).toHaveDisplayValue('–');
+    expect(within(basic).getByRole('combobox', { name: 'Logistiikka' })).toHaveDisplayValue('–');
+    expect(within(basic).getByRole('switch', { name: 'Talon teknikko' })).not.toBeChecked();
+    expect(within(basic).queryByRole('group', { name: 'Tekniikka' })).not.toBeInTheDocument();
     expect(within(basic).getByRole('textbox', { name: 'Muistiinpanot' })).toBeInTheDocument();
     expect(within(price).getByRole('textbox', { name: 'Hinta (alv 0 %)' })).toHaveValue('1000,00');
     expect(within(price).getByRole('textbox', { name: 'Lisämyynti' })).toHaveValue('0,00');
@@ -77,9 +89,24 @@ describe('gig page (UC-004, UC-007)', () => {
     await user.type(within(basic).getByRole('textbox', { name: 'Kokoonpanon nimi' }), ' 2{Enter}');
     await waitFor(() => expect(gig.lineupName).toBe('Template A 2'));
 
-    // Technical setup saves on each change.
-    await user.click(within(basic).getByRole('checkbox', { name: 'Oma PA' }));
-    await waitFor(() => expect(gig.technicalSetup).toEqual(['OWN_PA']));
+    // Technical setup and logistics: one choice, saved on change; '–' clears.
+    const setup = within(basic).getByRole('combobox', { name: 'Tekniikka' });
+    expect(within(setup).getAllByRole('option').map((o) => o.textContent)).toEqual([
+      '–', 'Talon tekniikka', 'Setti A', 'Setti B', 'Setti C',
+    ]);
+    await user.selectOptions(setup, 'Setti A');
+    await waitFor(() => expect(gig.technicalSetup).toBe('SET_A'));
+    await user.selectOptions(setup, '–');
+    await waitFor(() => expect(gig.technicalSetup).toBeNull());
+    const logistics = within(basic).getByRole('combobox', { name: 'Logistiikka' });
+    expect(within(logistics).getAllByRole('option').map((o) => o.textContent)).toEqual([
+      '–', 'Oma paku', 'Vuokrapaku', 'Taksi', 'Muu',
+    ]);
+    await user.selectOptions(logistics, 'Vuokrapaku');
+    await waitFor(() => expect(gig.logistics).toBe('RENTAL_VAN'));
+    // House technician: the switch saves on change.
+    await user.click(within(basic).getByRole('switch', { name: 'Talon teknikko' }));
+    await waitFor(() => expect(gig.houseTechnician).toBe(true));
 
     // Notes: textarea, blur saves.
     await user.type(within(basic).getByRole('textbox', { name: 'Muistiinpanot' }), 'Stage left');
@@ -97,6 +124,11 @@ describe('gig page (UC-004, UC-007)', () => {
     await waitFor(() => expect(historyItems()[0]).toHaveTextContent('Myyjä: Partner A → Partner C'));
     expect(historyItems()[0]).toHaveTextContent('Siirrettyjä Myynti- / Tuotanto-rivejä: 1');
     expect(historyItems().some((li) => /Paikka: Venue X → Venue Y/.test(li.textContent ?? ''))).toBe(true);
+    const historyText = historyItems().map((li) => li.textContent ?? '');
+    expect(historyText.some((text) => text.includes('Tekniikka: – → Setti A'))).toBe(true);
+    expect(historyText.some((text) => text.includes('Tekniikka: Setti A → –'))).toBe(true);
+    expect(historyText.some((text) => text.includes('Logistiikka: – → Vuokrapaku'))).toBe(true);
+    expect(historyText.some((text) => text.includes('Talon teknikko: ei → kyllä'))).toBe(true);
   });
 
   it('edits price and additional sales in place; total, economics and history update (UC-007)', async () => {
@@ -223,7 +255,9 @@ describe('gig page (UC-004, UC-007)', () => {
     expect(last('textbox', 'Paikka')).toBeDisabled();
     expect(last('textbox', 'Hinta (alv 0 %)')).toBeDisabled();
     expect(last('combobox', 'Myyjä')).toBeDisabled();
-    expect(last('checkbox', 'Oma PA')).toBeDisabled();
+    expect(last('combobox', 'Tekniikka')).toBeDisabled();
+    expect(last('combobox', 'Logistiikka')).toBeDisabled();
+    expect(last('switch', 'Talon teknikko')).toBeDisabled();
     expect(screen.queryAllByRole('button', { name: 'Merkitse maksetuksi' })).toHaveLength(0);
     const restore = screen.getAllByRole('button', { name: 'Palauta keikka' }).at(-1)!;
     await user.click(restore);

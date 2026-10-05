@@ -57,6 +57,36 @@ describe('gig mocks', () => {
     expect(history.map((e) => e.type)).toEqual(['CREATED']);
   });
 
+  it('technical setup and logistics are one code or null; house technician is a boolean', async () => {
+    const gig = await gigsApi.create(gigInput());
+    expect(gig).toMatchObject({ technicalSetup: null, logistics: null, houseTechnician: false });
+    const { gig: updated } = await gigsApi.update(gig.id, {
+      technicalSetup: 'SET_B',
+      logistics: 'TAXI',
+      houseTechnician: true,
+    });
+    expect(updated).toMatchObject({ technicalSetup: 'SET_B', logistics: 'TAXI', houseTechnician: true });
+    const cleared = await gigsApi.update(gig.id, { technicalSetup: null });
+    expect(cleared.gig.technicalSetup).toBeNull();
+    const bad = await expectError(
+      gigsApi.create(
+        gigInput({
+          technicalSetup: ['SET_A'] as never,
+          logistics: 'VAN' as never,
+          houseTechnician: 'yes' as never,
+        }),
+      ),
+    );
+    expect(bad.fields).toEqual({
+      technicalSetup: 'INVALID_VALUE',
+      logistics: 'INVALID_VALUE',
+      houseTechnician: 'INVALID_VALUE',
+    });
+    const ref = db.reference;
+    expect(ref.technicalSetups).toEqual(['HOUSE_TECH', 'SET_A', 'SET_B', 'SET_C']);
+    expect(ref.logistics).toEqual(['OWN_VAN', 'RENTAL_VAN', 'TAXI', 'OTHER']);
+  });
+
   it('validates input with field codes', async () => {
     const error = await expectError(
       gigsApi.create(
