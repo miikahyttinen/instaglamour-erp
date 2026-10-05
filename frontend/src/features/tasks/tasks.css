@@ -83,56 +83,51 @@
 .tasks-page .task-body {
   flex: 1 1 auto;
   min-width: 0;
-  /* Align the first text line with the centre of the 44 px check button. */
-  padding-top: calc((var(--tap) - var(--fs-body) * var(--lh-body)) / 2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
 }
-.tasks-page .task-title {
-  margin: 0;
+
+/* Inline fields (NFR-8): the title reads as the row heading, the description as secondary text. */
+.tasks-page .task-title .inline-input {
   font-size: var(--fs-body);
   font-weight: var(--fw-medium);
-  line-height: var(--lh-body);
+}
+.tasks-page .task-desc .inline-input {
+  font-size: var(--fs-small);
+  color: var(--text-muted);
   overflow-wrap: anywhere;
 }
-.tasks-page .task-desc {
-  margin: var(--space-1) 0 0;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
+.tasks-page .task-done .task-title .inline-input {
+  text-decoration: line-through;
+  color: var(--text-muted);
 }
+
+/* Owner + due date: side by side, wrapping on narrow screens. */
 .tasks-page .task-meta {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
   gap: var(--space-1) var(--space-3);
-  margin: var(--space-2) 0 0;
-  font-family: var(--font-mono);
-  font-size: var(--fs-meta);
-  letter-spacing: var(--ls-label);
-  text-transform: uppercase;
-  line-height: 1.6;
-  color: var(--label);
-  font-variant-numeric: tabular-nums;
 }
-.tasks-page .task-owner {
-  color: var(--text-muted);
+.tasks-page .task-meta > .inline-field {
+  flex: 1 1 9rem;
+  max-width: 14rem;
 }
-.tasks-page .task-overdue .task-due {
+.tasks-page .task-overdue .task-due .inline-input {
   color: var(--warn-fg);
 }
-.tasks-page .task-edit {
-  flex: 0 0 auto;
+.tasks-page .task-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+  margin: 0;
 }
-
-/* Delete sits on the far side of the form actions. */
-.tasks-page .tasks-delete {
-  margin-left: auto;
+.tasks-page .task-delete {
+  flex: 0 0 auto;
 }
 
 @media (min-width: 900px) {
   .tasks-page .task-item {
-    align-items: center;
     padding: var(--space-3) var(--space-4) var(--space-3) var(--space-2);
-  }
-  .tasks-page .task-body {
-    padding-top: 0;
   }
 }

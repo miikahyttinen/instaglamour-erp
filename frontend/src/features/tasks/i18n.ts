@@ -5,7 +5,6 @@ export const fi = {
   tasks: {
     add: 'Lisää tehtävä',
     newTask: 'Uusi tehtävä',
-    editTask: 'Muokkaa tehtävää',
     filterLabel: 'Näytä tehtävät',
     filter: {
       OPEN: 'Avoimet',
@@ -17,13 +16,12 @@ export const fi = {
     overdue: 'Myöhässä',
     shown: '{{filter}}: {{count}}',
     overdueCount: 'Myöhässä: {{count}}',
-    noDueDate: 'Ei eräpäivää',
-    due: 'Eräpäivä {{date}}',
     completed: 'Tehty {{date}}',
-    owner: 'Vastuuhenkilö',
     markDone: 'Merkitse tehdyksi: {{title}}',
     reopen: 'Avaa uudelleen: {{title}}',
-    editAria: 'Muokkaa: {{title}}',
+    deleteAria: 'Poista: {{title}}',
+    deleteTitle: 'Poista tehtävä',
+    descriptionPlaceholder: 'Lisää kuvaus',
     field: {
       title: 'Otsikko',
       owner: 'Vastuuhenkilö',
@@ -39,7 +37,6 @@ export const en: typeof fi = {
   tasks: {
     add: 'Add task',
     newTask: 'New task',
-    editTask: 'Edit task',
     filterLabel: 'Show tasks',
     filter: {
       OPEN: 'Open',
@@ -51,13 +48,12 @@ export const en: typeof fi = {
     overdue: 'Overdue',
     shown: '{{filter}}: {{count}}',
     overdueCount: 'Overdue: {{count}}',
-    noDueDate: 'No due date',
-    due: 'Due {{date}}',
     completed: 'Done {{date}}',
-    owner: 'Owner',
     markDone: 'Mark done: {{title}}',
     reopen: 'Reopen: {{title}}',
-    editAria: 'Edit: {{title}}',
+    deleteAria: 'Delete: {{title}}',
+    deleteTitle: 'Delete task',
+    descriptionPlaceholder: 'Add description',
     field: {
       title: 'Title',
       owner: 'Owner',
