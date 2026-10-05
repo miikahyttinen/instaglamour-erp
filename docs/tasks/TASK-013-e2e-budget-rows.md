@@ -1,7 +1,7 @@
 # TASK-013: e2e for partner-managed budget rows
 
 - **owner:** backend (integration; edits `e2e/` only)
-- **status:** todo
+- **status:** done
 - **depends on:** TASK-012, TASK-134 (merged)
 
 ## Goal
