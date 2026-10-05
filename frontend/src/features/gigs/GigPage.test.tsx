@@ -229,7 +229,8 @@ describe('gig page (UC-004, UC-007)', () => {
     await user.click(restore);
     expect(await screen.findByText('Keikka palautettu poistosta.')).toBeInTheDocument();
     // All data is back, including the payment (AC-3).
-    expect(screen.getAllByText(/Maksettu 100,00\s€/).length).toBeGreaterThan(0);
+    const paidAmounts = await screen.findAllByRole('textbox', { name: /^Maksettu summa: / });
+    expect(paidAmounts.map((el) => (el as HTMLInputElement).value)).toContain('100,00');
   });
 
   it('shows not found for an unknown gig', async () => {

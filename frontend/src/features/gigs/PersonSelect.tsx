@@ -3,12 +3,81 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { peopleApi } from '../../api/endpoints';
 import { Button } from '../../components/Button';
+import { InlineFieldFrame, useInlineSave } from '../../components/inline';
 import type { Id, Person } from '../../api/types';
 import { apiErrorMessage, apiFieldErrors } from '../../i18n/labels';
 import { peopleKeys } from '../people/queries';
 import { peopleKey } from './queries';
 
 const NEW = '__new__';
+
+/** Active people, plus the current person even if inactive. */
+const selectablePeople = (people: Person[] | undefined, value: Id | null) =>
+  (people ?? []).filter((p) => p.active || p.id === value);
+
+function PersonOptions({ people, value }: { people: Person[] | undefined; value: Id | null }) {
+  const { t } = useTranslation();
+  return (
+    <>
+      <option value="">{t('costs.noPerson')}</option>
+      {selectablePeople(people, value).map((p) => (
+        <option key={p.id} value={p.id}>
+          {p.name}
+        </option>
+      ))}
+      <option value={NEW}>{t('costs.newPerson')}</option>
+    </>
+  );
+}
+
+/** "New person…": name input that creates the person (UC-005 A8) and hands back their id. */
+function NewPersonForm({ onCreated, onCancel }: { onCreated: (id: Id) => void; onCancel: () => void }) {
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const [name, setName] = useState('');
+  const create = useMutation({
+    mutationFn: () => peopleApi.create({ name: name.trim() }),
+    onSuccess: ({ person }) => {
+      queryClient.setQueryData<Person[]>(peopleKey, (prev) =>
+        [...(prev ?? []), person].sort((a, b) => a.name.localeCompare(b.name)),
+      );
+      void queryClient.invalidateQueries({ queryKey: peopleKeys.all });
+      onCreated(person.id);
+    },
+  });
+  const nameError = create.isError ? apiFieldErrors(t, create.error).name : undefined;
+  return (
+    <div className="person-create">
+      <input
+        type="text"
+        aria-label={t('costs.newPersonName')}
+        placeholder={t('costs.newPersonName')}
+        value={name}
+        autoFocus
+        onChange={(e) => setName(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            if (name.trim()) create.mutate();
+          }
+        }}
+      />
+      <div className="inline-actions">
+        <Button size="sm" variant="primary" disabled={!name.trim() || create.isPending} onClick={() => create.mutate()}>
+          {t('costs.createPerson')}
+        </Button>
+        <Button size="sm" onClick={onCancel}>
+          {t('common.cancel')}
+        </Button>
+      </div>
+      {create.isError && (
+        <p className="field-error" role="alert">
+          {nameError ?? apiErrorMessage(t, create.error)}
+        </p>
+      )}
+    </div>
+  );
+}
 
 interface Props {
   id?: string;
@@ -20,66 +89,21 @@ interface Props {
 }
 
 /**
- * Person picker: active people, plus the current person even if inactive. "New person…" adds a
- * person inline by name (UC-005 A8) and selects them.
+ * Person picker for forms (new cost line): active people, plus the current person even if
+ * inactive. "New person…" adds a person inline by name (UC-005 A8) and selects them.
  */
 export function PersonSelect({ id, label, value, people, onChange, disabled }: Props) {
-  const { t } = useTranslation();
-  const queryClient = useQueryClient();
   const [creating, setCreating] = useState(false);
-  const [name, setName] = useState('');
-  const options = (people ?? []).filter((p) => p.active || p.id === value);
-
-  const create = useMutation({
-    mutationFn: () => peopleApi.create({ name: name.trim() }),
-    onSuccess: ({ person }) => {
-      queryClient.setQueryData<Person[]>(peopleKey, (prev) =>
-        [...(prev ?? []), person].sort((a, b) => a.name.localeCompare(b.name)),
-      );
-      void queryClient.invalidateQueries({ queryKey: peopleKeys.all });
-      setCreating(false);
-      setName('');
-      onChange(person.id);
-    },
-  });
 
   if (creating) {
-    const nameError = create.isError ? apiFieldErrors(t, create.error).name : undefined;
     return (
-      <div className="person-create">
-        <input
-          type="text"
-          aria-label={t('costs.newPersonName')}
-          placeholder={t('costs.newPersonName')}
-          value={name}
-          autoFocus
-          onChange={(e) => setName(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              if (name.trim()) create.mutate();
-            }
-          }}
-        />
-        <div className="inline-actions">
-          <Button
-            size="sm"
-            variant="primary"
-            disabled={!name.trim() || create.isPending}
-            onClick={() => create.mutate()}
-          >
-            {t('costs.createPerson')}
-          </Button>
-          <Button size="sm" onClick={() => setCreating(false)}>
-            {t('common.cancel')}
-          </Button>
-        </div>
-        {create.isError && (
-          <p className="field-error" role="alert">
-            {nameError ?? apiErrorMessage(t, create.error)}
-          </p>
-        )}
-      </div>
+      <NewPersonForm
+        onCreated={(personId) => {
+          setCreating(false);
+          onChange(personId);
+        }}
+        onCancel={() => setCreating(false)}
+      />
     );
   }
 
@@ -94,13 +118,60 @@ export function PersonSelect({ id, label, value, people, onChange, disabled }: P
         else onChange(e.target.value || null);
       }}
     >
-      <option value="">{t('costs.noPerson')}</option>
-      {options.map((p) => (
-        <option key={p.id} value={p.id}>
-          {p.name}
-        </option>
-      ))}
-      <option value={NEW}>{t('costs.newPerson')}</option>
+      <PersonOptions people={people} value={value} />
     </select>
+  );
+}
+
+interface InlineProps {
+  /** Accessible name (visually hidden: the column header / card label shows it). */
+  label: string;
+  /** Saved person of the line. */
+  value: Id | null;
+  people: Person[] | undefined;
+  /** Saves the person (PATCH personId); reject = error state on the field. */
+  onSave: (personId: Id | null) => Promise<unknown>;
+  disabled?: boolean;
+}
+
+/**
+ * Inline person picker for an existing cost line (NFR-8): saves on change. Built on
+ * `useInlineSave` + `InlineFieldFrame` because `InlineSelect` has no "action" option for
+ * "New person…": that one opens the name input and the created person is then saved.
+ */
+export function InlinePersonSelect({ label, value, people, onSave, disabled }: InlineProps) {
+  const [creating, setCreating] = useState(false);
+  const state = useInlineSave<Id | null>({ value, save: onSave, field: 'personId', disabled });
+
+  return (
+    <>
+      <InlineFieldFrame label={label} hideLabel status={state.status} error={state.error} disabled={disabled}>
+        {(control) => (
+          <select
+            {...control}
+            value={state.draft ?? ''}
+            disabled={disabled || creating}
+            onChange={(e) => {
+              if (e.target.value === NEW) setCreating(true);
+              else void state.commit(e.target.value || null);
+            }}
+            onBlur={() => {
+              if (state.status === 'error') void state.commit();
+            }}
+          >
+            <PersonOptions people={people} value={state.draft} />
+          </select>
+        )}
+      </InlineFieldFrame>
+      {creating && (
+        <NewPersonForm
+          onCreated={(personId) => {
+            setCreating(false);
+            void state.commit(personId);
+          }}
+          onCancel={() => setCreating(false)}
+        />
+      )}
+    </>
   );
 }

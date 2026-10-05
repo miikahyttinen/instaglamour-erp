@@ -1,14 +1,15 @@
 import { useMutation } from '@tanstack/react-query';
-import { CircleCheck, Pencil, Trash2 } from 'lucide-react';
+import { CircleCheck, Trash2 } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { CostType } from '../../api/enums';
 import { isMusicianRole } from '../../api/enums';
 import { costLinesApi } from '../../api/endpoints';
-import type { CostLine, GigDetail, GigWithWarnings, Person, Warning } from '../../api/types';
+import type { CostLine, CostLineUpdate, GigDetail, GigWithWarnings, Person, Warning } from '../../api/types';
 import { Button, IconButton } from '../../components/Button';
 import { Dialog } from '../../components/Dialog';
 import { Field, MoneyInput } from '../../components/fields';
+import { InlineMoney, InlineSwitch, InlineText } from '../../components/inline';
 import { Notice } from '../../components/Notice';
 import { StatusTag } from '../../components/StatusTag';
 import { apiErrorMessage, apiFieldErrors, costTypeLabel } from '../../i18n/labels';
@@ -16,7 +17,7 @@ import { useLang } from '../../i18n/useLang';
 import { centsToInput, formatDateTime, formatMoney } from '../../lib/format';
 import { parseMoneyField } from '../../lib/moneyField';
 import { usePartner, useReference } from '../../reference/useReference';
-import { PersonSelect } from './PersonSelect';
+import { InlinePersonSelect, PersonSelect } from './PersonSelect';
 import { personName, useApplyGig } from './queries';
 
 interface Props {
@@ -27,6 +28,8 @@ interface Props {
 }
 
 const needsDescription = (type: CostType) => type === 'OTHER' || type === 'OTHER_ROLE';
+/** Contract: description strings up to 5000 chars (TOO_LONG). */
+const DESCRIPTION_MAX = 5000;
 
 /** One list of fees and expenses with staffing, load-in switch and payments (UC-005). */
 export function CostList({ gig, people, readOnly, onWarnings }: Props) {
@@ -51,7 +54,7 @@ export function CostList({ gig, people, readOnly, onWarnings }: Props) {
         <p className="table-empty">{t('costs.empty')}</p>
       ) : (
         // Hand-written .data-table (not <DataTable>): each line is its own named <tbody>, so the
-        // inline pay / edit forms can open in a full-width row right under their line.
+        // pay form can open in a full-width row right under their line.
         <div className="table-wrap">
           <table className="data-table data-table-cards cost-table">
             <caption className="visually-hidden">{t('gig.sections.costs')}</caption>
@@ -126,12 +129,13 @@ function CostLineItem({ line, people, readOnly, columnCount, onResult }: LinePro
   const { t } = useTranslation();
   const lang = useLang();
   const paidBy = usePartner(line.paidBy);
-  const [mode, setMode] = useState<'view' | 'edit' | 'pay' | 'remove'>('view');
+  const [mode, setMode] = useState<'view' | 'pay' | 'remove'>('view');
   const typeLabel = costTypeLabel(t, line.type);
   const label = line.description ? `${typeLabel} (${line.description})` : typeLabel;
   const paid = line.paidAt !== null;
   const musician = isMusicianRole(line.type);
 
+  // Pay / unpay / remove are actions; the fields below save themselves (NFR-8).
   const mutation = useMutation({
     mutationFn: (action: () => Promise<GigWithWarnings>) => action(),
     onSuccess: (result) => {
@@ -140,54 +144,94 @@ function CostLineItem({ line, people, readOnly, columnCount, onResult }: LinePro
     },
   });
   const run = (action: () => Promise<GigWithWarnings>) => mutation.mutate(action);
-  const hasExtraRow = mutation.isError || mode === 'pay' || mode === 'edit';
+  const update = async (body: CostLineUpdate) => onResult(await costLinesApi.update(line.id, body));
+  const hasExtraRow = (mutation.isError && mode !== 'remove') || mode === 'pay';
 
   return (
     <tbody className={paid ? 'cost-group is-paid' : 'cost-group'} aria-label={label}>
       <tr>
         <td className="cell-primary cost-type">
           <span className="cost-type-name">{typeLabel}</span>
-          {line.description && <span className="cost-type-description"> · {line.description}</span>}
+          {readOnly ? (
+            line.description && <span className="cost-type-description"> · {line.description}</span>
+          ) : (
+            <InlineText
+              label={`${t('costs.description')}: ${label}`}
+              hideLabel
+              className="cost-description"
+              value={line.description}
+              placeholder={t('costs.description')}
+              maxLength={DESCRIPTION_MAX}
+              field="description"
+              validate={(description) =>
+                needsDescription(line.type) && description === null ? 'DESCRIPTION_REQUIRED' : null
+              }
+              onSave={(description) => update({ description })}
+            />
+          )}
         </td>
 
         <td className="cost-person" data-label={t('costs.person')}>
           {readOnly ? (
             <span>{personName(people, line.personId) ?? t('costs.noPersonShort')}</span>
           ) : (
-            <PersonSelect
+            <InlinePersonSelect
               label={`${t('costs.person')}: ${label}`}
               value={line.personId}
               people={people}
-              disabled={mutation.isPending}
-              onChange={(personId) => run(() => costLinesApi.update(line.id, { personId }))}
+              onSave={(personId) => update({ personId })}
             />
           )}
         </td>
 
         <td className={musician ? 'cost-loadin' : 'cost-loadin is-empty'}>
           {musician && (
-            <label className="switch cost-switch">
-              <input
-                type="checkbox"
-                role="switch"
-                checked={line.joinsLoadIn === true}
-                disabled={readOnly || mutation.isPending}
-                onChange={(e) => {
-                  const joinsLoadIn = e.target.checked;
-                  run(() => costLinesApi.update(line.id, { joinsLoadIn }));
-                }}
-              />
-              <span className="cost-switch-text">{t('costs.loadIn')}</span>
-            </label>
+            <InlineSwitch
+              label={t('costs.loadIn')}
+              className="cost-loadin-switch"
+              value={line.joinsLoadIn === true}
+              disabled={readOnly}
+              field="joinsLoadIn"
+              onSave={(joinsLoadIn) => update({ joinsLoadIn })}
+            />
           )}
         </td>
 
         <td className="num cost-budget" data-label={t('costs.budgeted')}>
-          {formatMoney(line.budgetedCents, lang)}
+          {readOnly ? (
+            formatMoney(line.budgetedCents, lang)
+          ) : (
+            <InlineMoney
+              label={`${t('costs.budgeted')}: ${label}`}
+              hideLabel
+              required
+              value={line.budgetedCents}
+              field="budgetedCents"
+              onSave={(budgetedCents) => update({ budgetedCents })}
+            />
+          )}
         </td>
 
         <td className="cost-paid" data-label={t('gig.actual')}>
-          {paid ? (
+          {paid && !readOnly ? (
+            // Paid: the amount stays editable (POST pay on a paid line updates the amount only).
+            <div className="cost-paid-edit">
+              <InlineMoney
+                label={`${t('costs.paidAmount')}: ${label}`}
+                hideLabel
+                required
+                value={line.actualCents ?? 0}
+                field="actualCents"
+                onSave={async (actualCents) => onResult(await costLinesApi.pay(line.id, { actualCents }))}
+              />
+              <span className="paid-info">
+                <CircleCheck className="paid-icon" />
+                <span>
+                  {formatDateTime(line.paidAt, lang)} · {paidBy?.name ?? '–'}
+                </span>
+              </span>
+            </div>
+          ) : paid ? (
             <span className="paid-info">
               <CircleCheck className="paid-icon" />
               <span>
@@ -207,7 +251,7 @@ function CostLineItem({ line, people, readOnly, columnCount, onResult }: LinePro
 
         {!readOnly && (
           <td className="cost-actions">
-            {mode === 'view' && (
+            {mode !== 'pay' && (
               <div className="cost-actions-inner">
                 {paid ? (
                   <Button
@@ -224,12 +268,6 @@ function CostLineItem({ line, people, readOnly, columnCount, onResult }: LinePro
                     </Button>
                   )
                 )}
-                <IconButton
-                  variant="ghost"
-                  icon={Pencil}
-                  label={t('common.edit')}
-                  onClick={() => setMode('edit')}
-                />
                 <IconButton
                   variant="ghost"
                   icon={Trash2}
@@ -285,14 +323,6 @@ function CostLineItem({ line, people, readOnly, columnCount, onResult }: LinePro
                 onCancel={() => setMode('view')}
               />
             )}
-            {mode === 'edit' && (
-              <EditLineForm
-                line={line}
-                pending={mutation.isPending}
-                onSubmit={(body) => run(() => costLinesApi.update(line.id, body))}
-                onCancel={() => setMode('view')}
-              />
-            )}
           </td>
         </tr>
       )}
@@ -329,59 +359,6 @@ function PayForm({
       <div className="inline-actions">
         <Button type="submit" size="sm" variant="primary" disabled={pending}>
           {t('costs.confirmPaid')}
-        </Button>
-        <Button size="sm" onClick={onCancel}>
-          {t('common.cancel')}
-        </Button>
-      </div>
-    </form>
-  );
-}
-
-function EditLineForm({
-  line,
-  pending,
-  onSubmit,
-  onCancel,
-}: {
-  line: CostLine;
-  pending: boolean;
-  onSubmit: (body: { description: string | null; budgetedCents: number }) => void;
-  onCancel: () => void;
-}) {
-  const { t } = useTranslation();
-  const lang = useLang();
-  const [description, setDescription] = useState(line.description ?? '');
-  const [budget, setBudget] = useState(centsToInput(line.budgetedCents, lang));
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const submit = (e: FormEvent) => {
-    e.preventDefault();
-    const parsed = parseMoneyField(budget, lang, true);
-    const next: Record<string, string> = {};
-    if (parsed.error) next.budget = t(`fields.${parsed.error}`);
-    if (needsDescription(line.type) && !description.trim()) {
-      next.description = t('fields.DESCRIPTION_REQUIRED');
-    }
-    setErrors(next);
-    if (Object.keys(next).length === 0) {
-      onSubmit({ description: description.trim() || null, budgetedCents: parsed.cents ?? 0 });
-    }
-  };
-  return (
-    <form className="cost-inline-form" onSubmit={submit} noValidate>
-      <div className="form-row">
-        <Field label={t('costs.budgeted')} error={errors.budget}>
-          {(p) => <MoneyInput {...p} value={budget} onChange={setBudget} />}
-        </Field>
-        <Field label={t('costs.description')} error={errors.description}>
-          {(p) => (
-            <input {...p} type="text" value={description} onChange={(e) => setDescription(e.target.value)} />
-          )}
-        </Field>
-      </div>
-      <div className="inline-actions">
-        <Button type="submit" size="sm" variant="primary" disabled={pending}>
-          {t('common.save')}
         </Button>
         <Button size="sm" onClick={onCancel}>
           {t('common.cancel')}
