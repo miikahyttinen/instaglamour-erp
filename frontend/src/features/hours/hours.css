@@ -30,7 +30,7 @@
 }
 
 /* ---------- Year / grand total tile ---------- */
-/* One tile with 12 month bars: it spans the whole row at every width. */
+/* One tile (no chart): it spans the whole row at every width. */
 .hours-page .hours-stats > * {
   --span: 12;
 }
@@ -164,100 +164,66 @@
   color: var(--danger-fg);
 }
 
-/* ---------- Totals: partner cards with month bars + month buttons ---------- */
-.hours-page .hours-partners {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--grid-gap);
+/* ---------- Totals: partner list (hand-written .data-table, 2 columns at every width) ---------- */
+.hours-page .hours-summary > .section-label {
+  margin-top: var(--section-gap);
 }
-.hours-page .hours-partner-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-2);
-  margin-bottom: var(--space-4);
+.hours-page .hours-summary-table tbody th {
+  font-weight: var(--fw-medium);
 }
-.hours-page .hours-partner-name {
-  min-width: 0;
-  overflow-wrap: anywhere;
+/* Row headers: like the shared last-row rule for cells, so the total row's strong top line is
+   not split by the last partner's hairline. */
+.hours-page .hours-summary-table tbody tr:last-child th {
+  border-bottom: 0;
 }
-.hours-page .hours-partner-total {
-  font-size: var(--fs-figure);
-  font-weight: var(--fw-bold);
-  line-height: var(--lh-tight);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.hours-page .hours-month-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--space-1);
-  margin-top: var(--space-3);
-}
-.hours-page .hours-month-cell {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0;
-  min-height: var(--tap);
-  min-width: 0;
-  padding: var(--space-1);
-  border: var(--hairline) solid var(--border);
-  border-radius: var(--radius);
-  background: transparent;
-  color: var(--text);
-  font: inherit;
+.hours-page .hours-summary-row {
   cursor: pointer;
 }
-.hours-page .hours-month-cell:hover:not([aria-pressed='true']) {
+.hours-page .hours-summary-row.is-open th,
+.hours-page .hours-summary-row.is-open td {
   background: var(--surface-2);
-  border-color: var(--border-strong);
 }
-.hours-page .hours-month-cell-label {
-  font-family: var(--font-mono);
-  font-size: var(--fs-meta);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--label);
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.hours-page .hours-month-cell-value {
-  font-size: var(--fs-small);
-  font-weight: var(--fw-medium);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-.hours-page .hours-month-cell[aria-pressed='true'] {
-  border-color: var(--accent);
-  background: var(--accent);
-  color: var(--accent-contrast);
-}
-.hours-page .hours-month-cell[aria-pressed='true'] .hours-month-cell-label {
-  color: var(--accent-contrast);
-}
-
-/* Month entries opened inside a partner card: flush rows, so dates and comments share the
-   card's content edge (the inline fields' hover outline uses the card padding). */
-.hours-page .hours-month-detail {
-  margin-top: var(--card-pad);
-  padding-top: var(--card-pad);
-  border-top: var(--hairline) solid var(--border);
-}
-.hours-page .hours-month-detail .section-label {
-  margin: 0 0 var(--space-2);
-}
-.hours-page .hours-month-detail .hour-entries {
-  background: transparent;
+/* The toggle fills the name cell, so the tap target is the whole cell (≥ --tap high). */
+.hours-page .hours-summary-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--tap);
+  margin: calc(var(--cell-pad-y) * -1) 0;
+  padding: 0;
   border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  overflow-wrap: anywhere;
+  cursor: pointer;
 }
-.hours-page .hours-month-detail .hour-entry {
-  padding-left: 0;
-  padding-right: 0;
+.hours-page .hours-summary-icon {
+  flex: none;
+  width: var(--icon);
+  height: var(--icon);
+  stroke-width: var(--icon-stroke);
+  color: var(--label);
+}
+.hours-page .hours-summary-hours,
+.hours-page .hours-summary-table tfoot td {
+  font-weight: var(--fw-bold);
+}
+/* Expanded partner: the entries by month span both columns; no row hover inside. */
+.hours-page .hours-summary-table tbody tr.hours-summary-detail:hover td {
+  background: transparent;
+}
+.hours-page .hours-summary-detail > td {
+  height: auto;
+  padding-top: var(--space-4);
+  padding-bottom: var(--card-pad);
+}
+.hours-page .hours-partner-entries .hours-month + .hours-month {
+  margin-top: var(--space-5);
+}
+.hours-page .hours-partner-entries .hours-read-only {
+  margin: 0 0 var(--space-4);
 }
 .hours-page .hours-read-only {
   margin: var(--space-2) 0 0;
@@ -271,20 +237,6 @@
 
 .hours-page .hours-input {
   max-width: var(--label-w);
-}
-
-/* Phones: 12 month labels don't fit under the tile bars (they truncate to "TA…"). The bars stay;
-   the screen-reader list inside MiniBars still names every month. */
-@media (max-width: 599.98px) {
-  .hours-page .stat-tile .mini-bars-labels {
-    display: none;
-  }
-}
-
-@media (min-width: 600px) {
-  .hours-page .hours-month-grid {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-  }
 }
 
 @media (min-width: 900px) {
@@ -304,13 +256,5 @@
       var(--hairline) + var(--card-pad) + var(--hours-col-actions) + var(--hours-col-gap) +
         var(--hours-state-slot)
     );
-  }
-}
-
-@media (min-width: 1200px) {
-  /* 12 month buttons in one row only when the labels fit (the sidebar takes 232 px); with the
-     same gap as the mini bars, so each button sits under its bar. */
-  .hours-page .hours-month-grid {
-    grid-template-columns: repeat(12, minmax(0, 1fr));
   }
 }

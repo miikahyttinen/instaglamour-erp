@@ -56,6 +56,9 @@ describe('my hours (UC-018)', () => {
     expect(regions).toEqual(['Maaliskuu', 'Tammikuu']);
     expect(screen.queryByDisplayValue('Old year')).not.toBeInTheDocument();
     expect(screen.queryByDisplayValue('Sound check')).not.toBeInTheDocument();
+    // Year total tile: figure and entry count, no month chart.
+    expect(screen.getByText('Kirjauksia: 3')).toBeInTheDocument();
+    expect(document.querySelector('.mini-bars')).toBeNull();
   });
 
   it('adds an entry with today as default date and 0.25-step hours', async () => {
@@ -273,59 +276,98 @@ describe('my hours (UC-018)', () => {
 });
 
 describe('hours totals (UC-019)', () => {
-  it('shows every partner with year total, 12 monthly totals and the grand total', async () => {
+  /** Body rows of the partner list: [name, hours]. */
+  const partnerRows = (table: HTMLElement) =>
+    within(table)
+      .getAllByRole('rowheader')
+      .filter((th) => th.closest('tbody'))
+      .map((th) => [text(th).trim(), text(th.closest('tr')!.querySelector('td')!)]);
+
+  it('shows the year total first, then every partner by hours (most first) with a total row', async () => {
     signInForYear();
     renderApp('/hours/totals');
-    const partnerA = await screen.findByRole('region', { name: 'Partner A' });
-    const partnerB = screen.getByRole('region', { name: 'Partner B' });
-    const partnerC = screen.getByRole('region', { name: 'Partner C' });
-
-    expect(text(within(partnerA).getByLabelText('Yhteensä Partner A'))).toBe('4,25 h');
-    expect(text(within(partnerB).getByLabelText('Yhteensä Partner B'))).toBe('5,25 h');
-    expect(text(within(partnerC).getByLabelText('Yhteensä Partner C'))).toBe('0 h');
-    expect(within(partnerA).getAllByRole('button')).toHaveLength(12);
-    expect(within(partnerA).getByRole('button', { name: 'Partner A, Tammikuu: 3,5 h' })).toBeInTheDocument();
-    expect(within(partnerA).getByRole('button', { name: 'Partner A, Helmikuu: 0 h' })).toBeInTheDocument();
-    expect(within(partnerB).getByRole('button', { name: 'Partner B, Maaliskuu: 5,25 h' })).toBeInTheDocument();
+    const table = await screen.findByRole('table', { name: 'Osakkaat' });
+    expect(screen.getByRole('region', { name: 'Yhteensä' })).toBeInTheDocument();
     expect(text(screen.getByTestId('hours-grand-total'))).toBe('9,5 h');
+    expect(within(table).getByRole('columnheader', { name: 'Osakas' })).toBeInTheDocument();
+    expect(within(table).getByRole('columnheader', { name: `Tunnit ${YEAR}` })).toBeInTheDocument();
+    expect(partnerRows(table)).toEqual([
+      ['Partner B', '5,25 h'],
+      ['Partner A', '4,25 h'],
+      ['Partner C', '0 h'],
+    ]);
+    const totalRow = within(table).getByRole('rowheader', { name: 'Yhteensä' }).closest('tr')!;
+    expect(text(within(totalRow).getByTestId('hours-partners-sum'))).toBe('9,5 h');
+    // No charts and no month table any more.
+    expect(document.querySelector('.mini-bars')).toBeNull();
+    expect(screen.getAllByRole('table')).toHaveLength(1);
   });
 
-  it("tapping a month shows the entries; other partners' entries are read-only", async () => {
+  it("expands a partner's entries by month; other partners' entries are read-only", async () => {
     signInForYear();
     const { user } = renderApp('/hours/totals');
-    const partnerB = await screen.findByRole('region', { name: 'Partner B' });
-    await user.click(within(partnerB).getByRole('button', { name: /^Partner B, Maaliskuu/ }));
+    const toggle = await screen.findByRole('button', { name: 'Partner B' });
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
 
-    const detail = await screen.findByRole('region', { name: `Partner B: Maaliskuu ${YEAR}` });
-    expect(await within(detail).findByText('Sound check')).toBeInTheDocument();
-    expect(within(detail).getByText('Meeting')).toBeInTheDocument();
-    expect(within(detail).queryByRole('button', { name: /Muokkaa|Poista/ })).not.toBeInTheDocument();
-    expect(within(detail).queryByRole('textbox')).not.toBeInTheDocument();
-    expect(detail.querySelector('input')).toBeNull();
-    expect(within(detail).getByText('Vain omia kirjauksia voi muokata.')).toBeInTheDocument();
+    const panel = await screen.findByRole('region', { name: `Partner B: kirjaukset ${YEAR}` });
+    expect(toggle).toHaveAttribute('aria-controls', panel.id);
+    const march = await within(panel).findByRole('region', { name: 'Maaliskuu' });
+    expect(within(march).getByText('Sound check')).toBeInTheDocument();
+    expect(within(march).getByText('Meeting')).toBeInTheDocument();
+    expect(text(within(march).getByLabelText('Kuukausi yhteensä Maaliskuu'))).toBe('5,25 h');
+    expect(within(panel).queryByRole('textbox')).not.toBeInTheDocument();
+    expect(within(panel).queryByRole('button', { name: /Poista/ })).not.toBeInTheDocument();
+    expect(panel.querySelector('input')).toBeNull();
+    expect(within(panel).getByText('Vain omia kirjauksia voi muokata.')).toBeInTheDocument();
 
-    // Tapping the same month again closes it.
-    await user.click(within(partnerB).getByRole('button', { name: /^Partner B, Maaliskuu/ }));
-    expect(screen.queryByRole('region', { name: `Partner B: Maaliskuu ${YEAR}` })).not.toBeInTheDocument();
+    // Tapping the row again closes it.
+    await user.click(toggle);
+    expect(screen.queryByRole('region', { name: `Partner B: kirjaukset ${YEAR}` })).not.toBeInTheDocument();
   });
 
-  it('own entries in the month view are edited inline and the totals update', async () => {
+  it('tapping anywhere on the row toggles it; one partner open at a time', async () => {
     signInForYear();
     const { user } = renderApp('/hours/totals');
-    const partnerA = await screen.findByRole('region', { name: 'Partner A' });
-    await user.click(within(partnerA).getByRole('button', { name: /^Partner A, Tammikuu/ }));
-    const detail = await screen.findByRole('region', { name: `Partner A: Tammikuu ${YEAR}` });
-    expect(await within(detail).findByDisplayValue('Planning')).toBeInTheDocument();
-    expect(within(detail).queryByDisplayValue('Rehearsal')).not.toBeInTheDocument();
-    expect(within(detail).queryByRole('button', { name: /Muokkaa/ })).not.toBeInTheDocument();
-    expect(within(detail).getByRole('button', { name: /^Poista: .* Planning$/ })).toBeInTheDocument();
+    const table = await screen.findByRole('table', { name: 'Osakkaat' });
+    const hoursCell = within(table).getByRole('cell', { name: '5,25 h' });
+    await user.click(hoursCell);
+    expect(await screen.findByRole('region', { name: `Partner B: kirjaukset ${YEAR}` })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Partner C' }));
+    const panelC = await screen.findByRole('region', { name: `Partner C: kirjaukset ${YEAR}` });
+    expect(await within(panelC).findByText(`Ei tuntikirjauksia vuonna ${YEAR}.`)).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: `Partner B: kirjaukset ${YEAR}` })).not.toBeInTheDocument();
+  });
 
-    const hours = within(detail).getByRole('textbox', { name: /^Tunnit: .* Planning$/ });
+  it('own entries are edited inline and the list and totals update', async () => {
+    signInForYear();
+    const { user } = renderApp('/hours/totals');
+    await user.click(await screen.findByRole('button', { name: 'Partner A' }));
+    const panel = await screen.findByRole('region', { name: `Partner A: kirjaukset ${YEAR}` });
+    const january = await within(panel).findByRole('region', { name: 'Tammikuu' });
+    expect(within(panel).queryByRole('region', { name: 'Joulukuu' })).not.toBeInTheDocument();
+    expect(within(panel).getByRole('button', { name: /^Poista: .* Planning$/ })).toBeInTheDocument();
+    expect(within(panel).queryByText('Vain omia kirjauksia voi muokata.')).not.toBeInTheDocument();
+
+    const hours = within(january).getByRole('textbox', { name: /^Tunnit: .* Planning$/ });
     await user.clear(hours);
-    await user.type(hours, '3{Enter}');
-    await waitFor(() => expect(text(within(partnerA).getByLabelText('Yhteensä Partner A'))).toBe('5,25 h'));
-    expect(within(partnerA).getByRole('button', { name: 'Partner A, Tammikuu: 4,5 h' })).toBeInTheDocument();
-    expect(text(screen.getByTestId('hours-grand-total'))).toBe('10,5 h');
+    await user.type(hours, '4{Enter}');
+    const table = screen.getByRole('table', { name: 'Osakkaat' });
+    await waitFor(() => expect(text(screen.getByTestId('hours-grand-total'))).toBe('11,5 h'));
+    expect(text(within(january).getByLabelText('Kuukausi yhteensä Tammikuu'))).toBe('5,5 h');
+    // Partner A now has the most hours, so it moves to the top.
+    expect(partnerRows(table)[0]).toEqual(['Partner A', '6,25 h']);
+    expect(text(screen.getByTestId('hours-partners-sum'))).toBe('11,5 h');
+  });
+
+  it('shows English texts', async () => {
+    signInForYear().language = 'en';
+    renderApp('/hours/totals');
+    const table = await screen.findByRole('table', { name: 'Partners' });
+    expect(screen.getByRole('region', { name: 'Total' })).toBeInTheDocument();
+    expect(within(table).getByRole('columnheader', { name: `Hours ${YEAR}` })).toBeInTheDocument();
+    expect(within(table).getByRole('rowheader', { name: 'Total' })).toBeInTheDocument();
   });
 
   it('switches between my hours and totals with tabs', async () => {

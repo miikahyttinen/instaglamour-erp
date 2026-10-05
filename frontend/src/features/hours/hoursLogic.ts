@@ -1,5 +1,5 @@
 import type { FieldCode } from '../../api/enums';
-import type { HourEntry, HourEntryCreate } from '../../api/types';
+import type { HourEntry, HourEntryCreate, HoursTotals, Id, Partner } from '../../api/types';
 import { isValidHours, parseHours } from '../../lib/hours';
 
 // The input helpers moved to lib/hours.ts (shared with InlineHours); re-exported here.
@@ -59,12 +59,32 @@ export function sumHours(entries: HourEntry[]): number {
   return entries.reduce((sum, e) => sum + e.hours, 0);
 }
 
-/** Hours per month (index 0 = January) of the given entries, for the month bar chart. */
-export function monthTotals(entries: HourEntry[]): number[] {
-  const totals = Array.from({ length: 12 }, () => 0);
-  for (const entry of entries) {
-    const month = Number(entry.date.slice(5, 7));
-    if (month >= 1 && month <= 12) totals[month - 1] = (totals[month - 1] ?? 0) + entry.hours;
+export interface PartnerHoursRow {
+  partnerId: Id;
+  name: string;
+  total: number;
+}
+
+/**
+ * Rows of the hours summary (UC-019): every partner of the totals response plus any reference
+ * partner it lacks (0 h), sorted by year hours (most first), then by name.
+ */
+export function partnerHourRows(
+  totals: HoursTotals,
+  partners: readonly Pick<Partner, 'id' | 'name'>[],
+  unknownName: string,
+  locale?: string,
+): PartnerHoursRow[] {
+  const nameOf = new Map(partners.map((p) => [p.id, p.name]));
+  const rows = totals.partners.map((row) => ({
+    partnerId: row.partnerId,
+    name: nameOf.get(row.partnerId) ?? unknownName,
+    total: row.total,
+  }));
+  for (const p of partners) {
+    if (!rows.some((r) => r.partnerId === p.id)) {
+      rows.push({ partnerId: p.id, name: p.name, total: 0 });
+    }
   }
-  return totals;
+  return rows.sort((a, b) => b.total - a.total || a.name.localeCompare(b.name, locale));
 }
