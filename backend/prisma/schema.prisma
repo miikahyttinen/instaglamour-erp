@@ -219,6 +219,8 @@ model Gig {
   additionalSalesCents       Int              @default(0) @map("additional_sales_cents")
   additionalSalesDescription String?          @map("additional_sales_description")
   notes                      String?
+  /// Optional client (BR-100); a linked client can't be deleted (BR-101).
+  clientId                   String?          @map("client_id") @db.Uuid
   deletedAt                  DateTime?        @map("deleted_at")
   deletedById                String?          @map("deleted_by") @db.Uuid
   createdAt                  DateTime         @default(now()) @map("created_at")
@@ -228,6 +230,7 @@ model Gig {
   seller         Partner         @relation("GigSeller", fields: [sellerId], references: [id])
   producer       Partner         @relation("GigProducer", fields: [producerId], references: [id])
   deletedBy      Partner?        @relation("GigDeletedBy", fields: [deletedById], references: [id])
+  client         Client?         @relation(fields: [clientId], references: [id], onDelete: Restrict)
   costLines      CostLine[]
   attachments    Attachment[]
   events         GigEvent[]
@@ -235,7 +238,28 @@ model Gig {
   technicalSetupLegacy GigTechnicalSetupLegacy?
 
   @@index([startDate])
+  @@index([clientId])
   @@map("gig")
+}
+
+// ---------------------------------------------------------------------------
+// Clients (UC-027, BR-100, BR-101)
+// ---------------------------------------------------------------------------
+
+/// A client: name + notes only (BR-007). Names are unique case-insensitively and trimmed among
+/// non-deleted clients (partial unique index "client_active_name_key" on lower(btrim(name))
+/// WHERE deleted_at IS NULL, created in migration 20261007120000_clients). Soft delete only.
+model Client {
+  id        String    @id @default(uuid()) @db.Uuid
+  name      String
+  notes     String?
+  deletedAt DateTime? @map("deleted_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  gigs Gig[]
+
+  @@map("client")
 }
 
 /// Original multi-select technical_setup array of gigs that existed before TASK-010 (migration

@@ -19,6 +19,7 @@ async function snapshot() {
     templateRole: await db.templateRole.count(),
     setting: await db.setting.count(),
     category: await db.budgetCategory.count(),
+    client: await db.client.count(),
     gig: await db.gig.count(),
     costLine: await db.costLine.count(),
     gigEvent: await db.gigEvent.count(),
@@ -209,6 +210,90 @@ describe('loadSeed: budget categories (TASK-012)', () => {
     ]);
     expect(await testDb().budgetYear.findFirstOrThrow({ where: { categoryId: all[2]!.id } })).toMatchObject({ actualExpenseCents: 10000 });
     expect(await testDb().budgetYear.findFirstOrThrow({ where: { categoryId: all[0]!.id } })).toMatchObject({ budgetIncomeCents: 1000 });
+  });
+});
+
+describe('validateSeed: clients (TASK-015)', () => {
+  it('clients and gig client are optional (older seed files still validate)', () => {
+    const old = example();
+    delete old.clients;
+    for (const g of old.gigs) delete g.client;
+    const result = validateSeed(old);
+    expect(result.ok ? [] : result.errors).toEqual([]);
+  });
+
+  it('rejects duplicate client names (case-insensitive), unknown gig clients and unknown keys', () => {
+    const data = example();
+    data.clients = [{ name: 'Client A Oy' }, { name: ' client a oy' }, { name: 'Client B ry', phone: '1' }];
+    data.gigs[0]!.client = 'Client Q Oy';
+    const result = validateSeed(data);
+    expect(result.ok).toBe(false);
+    const errors = result.ok ? [] : result.errors;
+    expect(errors.some((e) => e.startsWith('clients.2'))).toBe(true);
+    // Structural errors stop before cross-reference checks; fix them and check again.
+    data.clients = [{ name: 'Client A Oy' }, { name: ' client a oy' }];
+    const second = validateSeed(data);
+    const errors2 = second.ok ? [] : second.errors;
+    expect(errors2).toContain('clients: duplicate name "client a oy" (names are compared case-insensitively)');
+    expect(errors2).toContain('gigs.0.client: unknown client "Client Q Oy" (list it in clients)');
+  });
+});
+
+describe('loadSeed: clients (TASK-015)', () => {
+  it('loads the example clients and links most example gigs to them', async () => {
+    const summary = await loadSeed(testDb(), example());
+    expect(summary).toMatchObject({ clients: 5, clientsCreated: 5 });
+    const clients = await testDb().client.findMany({ orderBy: { name: 'asc' }, include: { _count: { select: { gigs: true } } } });
+    expect(clients.map((c) => c.name)).toEqual(['Client A Oy', 'Client B ry', 'Client C Ltd', 'Client D Oy', 'Client E Oy']);
+    expect(clients[0]).toMatchObject({ notes: 'Synthetic demo client.', deletedAt: null });
+    const linked = await testDb().gig.count({ where: { clientId: { not: null } } });
+    expect(linked).toBeGreaterThan((await testDb().gig.count()) / 2);
+    const gig = await testDb().gig.findFirstOrThrow({ where: { venue: 'Venue V' }, include: { client: true } });
+    expect(gig.client?.name).toBe('Client D Oy');
+  });
+
+  it('is insert-only: a re-run never changes notes, revives deleted clients or relinks gigs', async () => {
+    await loadSeed(testDb(), example());
+    const db = testDb();
+    const a = await db.client.findFirstOrThrow({ where: { name: 'Client A Oy' } });
+    await db.client.update({ where: { id: a.id }, data: { notes: 'Edited in the app' } });
+    const e = await db.client.findFirstOrThrow({ where: { name: 'Client E Oy' } });
+    await db.client.update({ where: { id: e.id }, data: { deletedAt: new Date() } });
+    await db.gig.updateMany({ where: { venue: 'Venue V' }, data: { clientId: null } });
+
+    const changed = example();
+    (changed.clients as { name: string; notes?: string }[])[0]!.notes = 'Changed in the file';
+    const summary = await loadSeed(db, changed);
+
+    expect((await db.client.findUniqueOrThrow({ where: { id: a.id } })).notes).toBe('Edited in the app');
+    expect((await db.gig.findFirstOrThrow({ where: { venue: 'Venue V' } })).clientId).toBeNull();
+    // A deleted client's name is free again, so the seed creates a new active client for it.
+    expect(summary).toMatchObject({ clients: 5, clientsCreated: 1 });
+    expect(await db.client.count({ where: { name: 'Client E Oy', deletedAt: null } })).toBe(1);
+  });
+
+  it('matches existing clients case-insensitively', async () => {
+    const existing = await testDb().client.create({ data: { name: 'CLIENT A OY' } });
+    const summary = await loadSeed(testDb(), example());
+    expect(summary.clientsCreated).toBe(4);
+    const gig = await testDb().gig.findFirstOrThrow({ where: { startDate: new Date('2026-02-14') } });
+    expect(gig.clientId).toBe(existing.id);
+  });
+
+  it('a seed without clients loads gigs without a client', async () => {
+    const old = example();
+    delete old.clients;
+    for (const g of old.gigs) delete g.client;
+    await loadSeed(testDb(), old);
+    expect(await testDb().client.count()).toBe(0);
+    expect(await testDb().gig.count({ where: { clientId: { not: null } } })).toBe(0);
+  });
+
+  it('--reset also removes clients', async () => {
+    await loadSeed(testDb(), example());
+    await testDb().client.create({ data: { name: 'Client Extra Oy' } });
+    await loadSeed(testDb(), example(), { reset: true });
+    expect(await testDb().client.count()).toBe(5);
   });
 });
 

@@ -62,7 +62,8 @@ export function compareCostLines(a: CostLine, b: CostLine): number {
   return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
 }
 
-export type GigWithLines = Gig & { costLines: CostLine[] };
+/** A gig as the serializers need it: its cost lines and the name of its client (BR-100). */
+export type GigWithLines = Gig & { costLines: CostLine[]; client: { name: string } | null };
 export type GigWithDetail = GigWithLines & { attachments: Attachment[] };
 
 export function toGigSummaryDto(gig: GigWithLines, today: string) {
@@ -86,6 +87,8 @@ export function toGigSummaryDto(gig: GigWithLines, today: string) {
     additionalSalesCents: gig.additionalSalesCents,
     additionalSalesDescription: gig.additionalSalesDescription,
     notes: gig.notes,
+    clientId: gig.clientId,
+    clientName: gig.client?.name ?? null,
     ...gigEconomics(gig),
     notFullyStaffed: isNotFullyStaffed(gig.costLines),
     deletedAt: gig.deletedAt?.toISOString() ?? null,

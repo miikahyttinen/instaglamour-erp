@@ -15,8 +15,14 @@ export function isUuid(value: unknown): value is string {
   return typeof value === 'string' && UUID.test(value);
 }
 
-export const gigDetailInclude = {
+/** What GigSummary needs: cost lines (economics) and the client name. */
+export const gigSummaryInclude = {
   costLines: true,
+  client: { select: { name: true } },
+} as const satisfies Prisma.GigInclude;
+
+export const gigDetailInclude = {
+  ...gigSummaryInclude,
   attachments: { where: { deletedAt: null } },
 } as const satisfies Prisma.GigInclude;
 
@@ -140,7 +146,7 @@ export function yearDateRange(year: number): { gte: Date; lte: Date } {
 export function loadYearGigs(db: Tx, year: number, options: { includeDeleted: boolean }): Promise<GigWithLines[]> {
   return db.gig.findMany({
     where: { startDate: yearDateRange(year), ...(options.includeDeleted ? {} : { deletedAt: null }) },
-    include: { costLines: true },
+    include: gigSummaryInclude,
     orderBy: [{ startDate: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
   });
 }

@@ -71,11 +71,19 @@
     { "name": "Category H" },
     { "name": "Category I" }
   ],
+  "clients": [
+    { "name": "Client A Oy", "notes": "Synthetic demo client." },
+    { "name": "Client B ry", "notes": "Synthetic demo association." },
+    { "name": "Client C Ltd" },
+    { "name": "Client D Oy", "notes": "Synthetic demo client; prefers email." },
+    { "name": "Client E Oy", "notes": "Synthetic demo client without gigs yet." }
+  ],
   "gigs": [
     {
       "startDate": "2026-02-14",
       "lineupTemplate": "Template A",
       "venue": "Venue X",
+      "client": "Client A Oy",
       "technicalSetup": "HOUSE_TECH",
       "seller": "partner.a@example.com",
       "producer": "partner.b@example.com",
@@ -98,6 +106,7 @@
       "endDate": "2026-05-01",
       "lineupTemplate": "Template C",
       "venue": "Venue Y",
+      "client": "Client B ry",
       "logistics": "OWN_VAN",
       "seller": "partner.c@example.com",
       "producer": "partner.c@example.com",
@@ -110,6 +119,7 @@
       "startDate": "2026-06-20",
       "lineupTemplate": "Template B",
       "venue": "Venue Z",
+      "client": "Client C Ltd",
       "seller": "partner.d@example.com",
       "producer": "partner.a@example.com",
       "priceCents": 150000,
@@ -121,6 +131,7 @@
       "startDate": "2026-10-17",
       "lineupTemplate": "Template A",
       "venue": "Venue X",
+      "client": "Client A Oy",
       "technicalSetup": "SET_A",
       "logistics": "RENTAL_VAN",
       "seller": "partner.b@example.com",
@@ -163,6 +174,7 @@
       "startDate": "2026-12-31",
       "lineupTemplate": "Template C",
       "venue": "Venue V",
+      "client": "Client D Oy",
       "seller": "partner.a@example.com",
       "producer": "partner.c@example.com",
       "priceCents": 1000000
@@ -171,6 +183,7 @@
       "startDate": "2025-12-12",
       "lineupTemplate": "Template B",
       "venue": "Venue X",
+      "client": "Client B ry",
       "seller": "partner.a@example.com",
       "producer": "partner.a@example.com",
       "priceCents": 120000

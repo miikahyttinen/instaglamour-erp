@@ -11,7 +11,7 @@ import { dateFromIso, todayIso } from '../domain/dates.js';
 import { parseInput } from '../http/errors.js';
 import { yearString } from '../gigs/schemas.js';
 import { toGigSummaryDto } from '../gigs/serialize.js';
-import { loadYearGigSummary } from '../gigs/store.js';
+import { gigSummaryInclude, loadYearGigSummary } from '../gigs/store.js';
 import { loadHoursTotals } from '../hours/store.js';
 
 export const UPCOMING_GIG_COUNT = 5;
@@ -32,7 +32,7 @@ export function yearRoutes(app: FastifyInstance, deps: AppDeps): void {
       // Upcoming always relates to today, whatever the selected year (UC-022 A1).
       db.gig.findMany({
         where: { status: 'SOLD', deletedAt: null, startDate: { gte: dateFromIso(today) } },
-        include: { costLines: true },
+        include: gigSummaryInclude,
         orderBy: [{ startDate: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
         take: UPCOMING_GIG_COUNT,
       }),

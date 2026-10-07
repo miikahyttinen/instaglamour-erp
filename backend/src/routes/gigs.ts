@@ -29,6 +29,7 @@ import {
   logEvent,
   requireGigDetail,
 } from '../gigs/store.js';
+import { findActiveClient } from '../clients/store.js';
 import { loadFeeSettings } from './reference.js';
 
 type IdParams = { Params: { id: string } };
@@ -59,6 +60,7 @@ const gigCreateBody = z.object({
   additionalSalesCents: money.optional(),
   additionalSalesDescription: optionalText(),
   notes: optionalText(LONG_TEXT_MAX),
+  clientId: z.string().nullable().optional(),
 });
 
 const gigUpdateBody = z.object({
@@ -73,6 +75,7 @@ const gigUpdateBody = z.object({
   additionalSalesCents: money.optional(),
   additionalSalesDescription: optionalText(),
   notes: optionalText(LONG_TEXT_MAX),
+  clientId: z.string().nullable().optional(),
 });
 
 /** Fields of GigUpdate in the order they are logged. */
@@ -88,6 +91,7 @@ const UPDATE_FIELDS = [
   'additionalSalesCents',
   'additionalSalesDescription',
   'notes',
+  'clientId',
 ] as const;
 
 const moveBody = z.object({
@@ -133,7 +137,8 @@ export function gigRoutes(app: FastifyInstance, deps: AppDeps): void {
       if (query.sellerId && g.sellerId !== query.sellerId) return false;
       if (query.producerId && g.producerId !== query.producerId) return false;
       if (query.notFullyStaffed === 'true' && !isNotFullyStaffed(g.costLines)) return false;
-      if (q && ![g.venue, g.lineupName, g.notes ?? ''].some((s) => s.toLowerCase().includes(q))) return false;
+      if (q && ![g.venue, g.lineupName, g.notes ?? '', g.client?.name ?? ''].some((s) => s.toLowerCase().includes(q)))
+        return false;
       return true;
     });
 
@@ -166,6 +171,7 @@ export function gigRoutes(app: FastifyInstance, deps: AppDeps): void {
     const producer = partners.get(body.producerId);
     if (!seller) fields.sellerId = 'UNKNOWN_REFERENCE';
     if (!producer) fields.producerId = 'UNKNOWN_REFERENCE';
+    if (body.clientId && !(await findActiveClient(db, body.clientId))) fields.clientId = 'UNKNOWN_REFERENCE';
     throwIfAny(fields);
 
     const fees = await loadFeeSettings(db);
@@ -194,6 +200,7 @@ export function gigRoutes(app: FastifyInstance, deps: AppDeps): void {
           additionalSalesCents: body.additionalSalesCents ?? 0,
           additionalSalesDescription: body.additionalSalesDescription ?? null,
           notes: body.notes ?? null,
+          clientId: body.clientId ?? null,
           // Explicit, increasing creation times keep the lines in creation order (contract).
           costLines: { createMany: { data: lines.map((l, i) => ({ ...l, createdAt: new Date(createdBase + i) })) } },
         },
@@ -234,6 +241,9 @@ export function gigRoutes(app: FastifyInstance, deps: AppDeps): void {
     );
     if (body.sellerId !== undefined && !partners.has(body.sellerId)) fields.sellerId = 'UNKNOWN_REFERENCE';
     if (body.producerId !== undefined && !partners.has(body.producerId)) fields.producerId = 'UNKNOWN_REFERENCE';
+    if (body.clientId && body.clientId !== gig.clientId && !(await findActiveClient(db, body.clientId))) {
+      fields.clientId = 'UNKNOWN_REFERENCE';
+    }
     throwIfAny(fields);
 
     const changes: { field: string; from: unknown; to: unknown }[] = [];

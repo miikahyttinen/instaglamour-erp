@@ -10,6 +10,7 @@ import { attachmentRoutes } from './routes/attachments.js';
 import { authRoutes } from './routes/auth.js';
 import { budgetRoutes } from './routes/budget.js';
 import { budgetCategoryRoutes } from './routes/budgetCategories.js';
+import { clientRoutes } from './routes/clients.js';
 import { costLineRoutes } from './routes/costLines.js';
 import { gigRoutes } from './routes/gigs.js';
 import { hourRoutes } from './routes/hours.js';
@@ -86,6 +87,7 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
   hourRoutes(app, deps);
   budgetRoutes(app, deps);
   budgetCategoryRoutes(app, deps);
+  clientRoutes(app, deps);
 
   return app;
 }
