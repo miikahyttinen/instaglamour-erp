@@ -330,7 +330,7 @@ Duplicate = case-insensitive exact name match with another person.
 
 ## Offers (UC-028, UC-029, UC-031)
 `OfferSummary = { id, clientId, clientName, eventName, eventDate, venue, city, priceCents|null, sellerId, source|null, eventType|null, disposition, status: OPEN|ACCEPTED|REJECTED, expired: bool, gigId|null, createdAt, updatedAt, deletedAt|null }`
-`OfferDetail = OfferSummary + { lineup: string[], includesText, spotifyUrl, showReferences, sharePath: "/o/<token>" }`
+`OfferDetail = OfferSummary + { lineup: string[], includesText, spotifyUrl, showReferences, sharePath: "/o/<token>", preview: PublicOffer }` — `preview` is exactly what `GET /api/public/offers/{token}` returns for this offer (incl. references text and seller phone), so the internal page shows the same view as the customer.
 
 | Method & path | Request | Response |
 |---|---|---|
@@ -344,9 +344,10 @@ Duplicate = case-insensitive exact name match with another person.
 | `GET /api/offers/{id}/history` | — | 200 `[OfferEvent]` newest first |
 
 ## Public offer (UC-030) — no authentication
-`GET /api/public/offers/{token}` → 200 `{ eventName, clientName, eventDate, venue, city, lineup, includesText, spotifyUrl, references: { fi, en } | null, seller: { name, email, phone|null } }` — nothing else. Unknown/regenerated/deleted → 404 `NOT_FOUND`. Response header `X-Robots-Tag: noindex`. This is the only `/api` route besides `/api/auth/*` reachable without a session.
+`GET /api/public/offers/{token}` → 200 `PublicOffer = { eventName, clientName, eventDate, venue, city|null, lineup: string[], includesText|null, spotifyUrl|null, references: { fi: string, en: string } | null (plain text, line breaks kept), seller: { name, email, phone|null } }` — nothing else. Unknown/regenerated/deleted → 404 `NOT_FOUND`. Response header `X-Robots-Tag: noindex`. This is the only `/api` route besides `/api/auth/*` reachable without a session.
 
 ## Change log
+- 2026-10-07 – OfferDetail.preview (= PublicOffer); PublicOffer nullability and references as plain text (PM)
 - 2026-10-07 – Clients, Offers, public offer endpoint; gig clientId/offerId (owner request) (PM)
 - 2026-10-05 – Budget rows managed via /api/budget-categories; reference budgetCategories = {id, name}; no `budgeted` flag (owner request, breaking) (PM)
 - 2026-10-05 – technicalSetup is a single value or null; new `logistics` and `houseTechnician`; reference adds `logistics` (owner request, breaking change for technicalSetup) (PM)
