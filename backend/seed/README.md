@@ -24,13 +24,14 @@ The whole file is validated first. If anything is wrong, every problem is printe
 
 | Data | Natural key | On re-run |
 |---|---|---|
-| Partner | `email` (case-insensitive) | Person name updated; `language` only set when created (it is a user preference) |
+| Partner | `email` (case-insensitive) | Person name updated; `phone` updated when given; `language` only set when created (it is a user preference) |
 | Person | `name` | `active` updated |
 | Lineup template | `name` | Roles replaced by the file's roles |
 | Setting | key | Value updated |
 | Budget category (row) | `code` if given, else `name` (case-insensitive; removed rows count too) | Inserted only if missing — partners manage the rows in the app, so a re-run never renames, reorders or brings back a row they removed |
 | Client | `name` (case-insensitive, trimmed; non-deleted clients) | Inserted only if missing — partners manage clients in the app, so a re-run never changes notes or brings back a deleted client (a deleted client's name creates a new client) |
 | Gig | `startDate` + `venue` + `lineupName` | Inserted only if missing (never overwrites app edits — so adding `client` to an already-loaded gig does not link it; set the client in the app) |
+| Offer | `client` + `eventName` + `eventDate` (deleted offers count too) | Inserted only if missing, with a new random share link. `converted: true` also creates the gig per BR-105 (disposition WON) |
 | Task | `title` + owner | Inserted only if missing |
 | Hour entry | partner + `date` + `comment` | Inserted only if missing |
 | Budget row | `category` + `year` | Inserted only if missing |
@@ -42,11 +43,13 @@ Nothing is ever deleted except with `--reset`.
 All money is **integer cents** (EUR, excl. VAT): `30000` = 300.00 €. Dates are `YYYY-MM-DD`.
 Partners, templates, people, clients and budget categories are referenced by email / name (budget categories: name or `code`).
 `clients` is optional: older seed files without it (and gigs without `client`) still load.
+`offers`, partner `phone` and the `offers.*` settings are optional too (TASK-016).
 
 ```jsonc
 {
   "partners": [                       // required, ≥ 1. Partners are also people.
-    { "name": "Partner A", "email": "partner.a@example.com", "language": "fi" }  // language: fi|en, default fi
+    { "name": "Partner A", "email": "partner.a@example.com", "language": "fi",   // language: fi|en, default fi
+      "phone": "+358 40 000 0001" }                                              // optional; shown on public offers
   ],
   "people": [                         // non-partner people; don't repeat partner names here
     { "name": "Person 1", "active": true }                                     // active default true
@@ -54,11 +57,15 @@ Partners, templates, people, clients and budget categories are referenced by ema
   "lineupTemplates": [
     { "name": "Template A", "roles": [ { "role": "VOC", "defaultFeeCents": 30000 } ] }  // roles in display order
   ],
-  "settings": {                       // all four keys required
+  "settings": {                       // the four fees.* keys are required (cents)
     "fees.office_default": 10000,
     "fees.sales_default": 10000,
     "fees.production_default": 10000,
-    "fees.load_in_deduction": 1000
+    "fees.load_in_deduction": 1000,
+    "offers.default_includes": "…",   // optional texts (line breaks with \n): default "what's included" of a new offer,
+    "offers.default_spotify_url": "https://…",  // default Spotify link,
+    "offers.references_fi": "…",      // references block on the public offer (FI / EN)
+    "offers.references_en": "…"
   },
   "budgetCategories": [               // the yearly budget rows; new rows are added after existing ones, in listed order
     { "name": "Category A" },                                   // one name (both languages); unique, case-insensitive
@@ -92,6 +99,22 @@ Partners, templates, people, clients and budget categories are referenced by ema
           "actualCents": 30000, "paidBy": "partner.b@example.com"  // both or neither; never for FUEL
         }
       ]
+    }
+  ],
+  "offers": [                         // optional (UC-028…UC-031)
+    {
+      "client": "Client A Oy",                              // required; a name from clients
+      "eventName": "Event 1", "eventDate": "2026-11-14", "venue": "Venue X",  // required
+      "city": "City A",                                     // optional
+      "lineup": ["Vocals", "Guitar"],                       // optional, one item per line
+      "includesText": "…", "spotifyUrl": "https://…",       // optional; default from the offers.* settings
+      "showReferences": true,                               // optional, default false
+      "priceCents": 300000,                                 // optional, internal only
+      "seller": "partner.a@example.com",                    // required
+      "source": "EMAIL",                                    // optional: EMAIL | WEBSITE | INSTAGRAM | OTHER
+      "eventType": "CORPORATE",                             // optional: PRIVATE | WEDDING | CORPORATE
+      "disposition": "PENDING",                             // optional, default PENDING (see domain-model.md)
+      "converted": false                                    // optional; true = also create its gig (BR-105), disposition WON
     }
   ],
   "tasks": [
