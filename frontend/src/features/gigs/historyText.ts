@@ -1,12 +1,14 @@
 import type { TFunction } from 'i18next';
 import type { CostType, GigEventType, Language } from '../../api/enums';
-import type { DateRange, FieldChange, GigEvent, Partner, Person } from '../../api/types';
+import type { ClientListItem, DateRange, FieldChange, GigEvent, Partner, Person } from '../../api/types';
 import { costTypeLabel, gigEventTypeLabel } from '../../i18n/labels';
 import { formatDateRange, formatMoney } from '../../lib/format';
 
 export interface HistoryContext {
   partners: Partner[] | undefined;
   people: Person[] | undefined;
+  /** Active clients (a deleted client shows as –). */
+  clients?: ClientListItem[] | undefined;
 }
 
 export type HistoryFilter = 'all' | 'status' | 'details' | 'costs' | 'attachments';
@@ -49,6 +51,9 @@ export function formatValue(
   if (MONEY_FIELDS.has(field) && typeof value === 'number') return formatMoney(value, lang);
   if (PARTNER_FIELDS.has(field) && typeof value === 'string') {
     return ctx.partners?.find((p) => p.id === value)?.name ?? '–';
+  }
+  if (field === 'clientId' && typeof value === 'string') {
+    return ctx.clients?.find((c) => c.id === value)?.name ?? '–';
   }
   if (field === 'personId' && typeof value === 'string') {
     return ctx.people?.find((p) => p.id === value)?.name ?? '–';

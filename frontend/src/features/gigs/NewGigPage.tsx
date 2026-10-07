@@ -18,6 +18,7 @@ import { useLang } from '../../i18n/useLang';
 import { formatMoney } from '../../lib/format';
 import { parseMoneyField } from '../../lib/moneyField';
 import { useReference } from '../../reference/useReference';
+import { ClientSelect } from '../clients/ClientSelect';
 import { PartnerOptions } from './formParts';
 import { NONE_LABEL, useLogisticsOptions, useTechnicalSetupOptions } from './gigOptions';
 import { useApplyGig } from './queries';
@@ -31,6 +32,7 @@ interface FormState {
   lineup: string; // template id or CUSTOM
   lineupName: string;
   venue: string;
+  clientId: string | null;
   technicalSetup: TechnicalSetup | '';
   logistics: Logistics | '';
   houseTechnician: boolean;
@@ -49,6 +51,7 @@ const FIELD_TO_CONTROL: Record<string, keyof FormState> = {
   lineupTemplateId: 'lineup',
   lineupName: 'lineupName',
   venue: 'venue',
+  clientId: 'clientId',
   technicalSetup: 'technicalSetup',
   logistics: 'logistics',
   houseTechnician: 'houseTechnician',
@@ -74,6 +77,7 @@ export function NewGigPage() {
     lineup: '',
     lineupName: '',
     venue: '',
+    clientId: null,
     technicalSetup: '',
     logistics: '',
     houseTechnician: false,
@@ -139,6 +143,7 @@ export function NewGigPage() {
       lineupTemplateId: form.lineup === CUSTOM ? null : form.lineup,
       lineupName: form.lineup === CUSTOM ? form.lineupName.trim() : null,
       venue: form.venue.trim(),
+      clientId: form.clientId,
       technicalSetup: form.technicalSetup || null,
       logistics: form.logistics || null,
       houseTechnician: form.houseTechnician,
@@ -228,6 +233,10 @@ export function NewGigPage() {
             {(p) => (
               <input {...p} type="text" value={form.venue} onChange={(e) => set('venue', e.target.value)} />
             )}
+          </Field>
+
+          <Field label={t('clients.select.label')} error={errors.clientId}>
+            {(p) => <ClientSelect {...p} value={form.clientId} onChange={(id) => set('clientId', id)} />}
           </Field>
 
           <div className="form-row">

@@ -157,7 +157,7 @@ describe('gig list (UC-003)', () => {
     const table = await screen.findByRole('table', { name: 'Keikkalista' });
     const headers = within(table).getAllByRole('columnheader').map((th) => th.textContent);
     expect(headers).toEqual([
-      'Päivä', 'Keikka', 'Myyjä / tuottaja', 'Kokonaishinta', 'Kulut, budjetti', 'Kulut, toteuma', 'Kate-%',
+      'Päivä', 'Keikka', 'Asiakas', 'Myyjä / tuottaja', 'Kokonaishinta', 'Kulut, budjetti', 'Kulut, toteuma', 'Kate-%',
     ]);
     const [row] = await waitFor(() => {
       const bodyRows = within(table).getAllByRole('row').slice(1);

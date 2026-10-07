@@ -70,8 +70,9 @@ VITE_API_PROXY_TARGET=http://localhost:3100 VITE_PORT=5273 npm run dev
 | `src/i18n/` | `fi.ts` / `en.ts` texts (glossary terms), label helpers for codes and errors |
 | `src/lib/format.ts` | Money (cents), date, hours and percent formatting per language |
 | `src/mocks/` | MSW handlers and synthetic data (browser worker + Node server for tests). All state is in `db` (`data.ts`); `resetMockDb()` resets every store. Gig rules live in `gigStore.ts`, demo gigs in `gigSeed.ts`; tasks, hours and budget in `tasksStore.ts`, `hoursStore.ts`, `budgetStore.ts`. Budget rows (`/api/budget-categories`, `budgetCategoryHandlers` in `budgetHandlers.ts`) live in `db.reference.budgetCategories` (active rows only; removing drops the row there and keeps its amounts in `db.budget`). The year mock is computed from these stores |
-| `src/features/<feature>/` | One folder per feature: `year`, `gigs`, `people`, `tasks`, `hours`, `budget`; pages, query hooks and the feature texts in `i18n.ts` (gig texts are still in `src/i18n/fi.ts` / `en.ts`) |
+| `src/features/<feature>/` | One folder per feature: `year`, `gigs`, `clients`, `people`, `tasks`, `hours`, `budget`; pages, query hooks and the feature texts in `i18n.ts` (gig texts are still in `src/i18n/fi.ts` / `en.ts`) |
 | `src/features/gigs/` | Gig list, new gig, gig page (costs, attachments, history, move/cancel/delete dialogs) |
+| `src/features/clients/` | Client register (UC-027): list + search + add, client page (inline name/notes, gigs, offers, delete), `ClientSelect` / `InlineClientSelect` ("–", clients, "New client…") used by the new gig form and the gig page. Mock: `mocks/clientHandlers.ts`; clients and a minimal `offers` list live in `db.gigs` (seed: Client A–C in `gigSeed.ts`) |
 | `src/components/` | Shared UI: `Button`/`IconButton`, `Card`, `StatTile`/`StatGrid`, `MiniBars`, `PageHead`, `SectionLabel`, `StatusTag`, `Notice`, `DataTable`, `Dialog`, `Field`, `MoneyInput`, `Logo` (see "Design system") |
 | `src/components/inline/` | Inline (save-on-blur) fields and `useInlineSave` (see "Inline editing") |
 | `src/lib/hours.ts` | Hours input parsing / validation / formatting (shared by the hours feature and `InlineHours`) |
@@ -81,7 +82,7 @@ VITE_API_PROXY_TARGET=http://localhost:3100 VITE_PORT=5273 npm run dev
 | `src/styleguide/` | Dev-only `/styleguide` page |
 | `src/assets/brand/` | Processed logos (generated, see "Logos") |
 | `src/pages/` | Not-found page |
-| `src/test/` | Test setup, `renderApp`, `gigFixtures` (synthetic gigs), `testFile` for uploads |
+| `src/test/` | Test setup, `renderApp`, `gigFixtures` (synthetic gigs, `addMockClient`), `offerFixtures` (`mockOffer`), `testFile` for uploads |
 
 ## Conventions
 

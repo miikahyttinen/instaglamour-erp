@@ -1,5 +1,6 @@
 // English UI texts. Must have exactly the same keys as fi.ts (checked by i18n.test.ts).
 import { en as budgetEn } from '../features/budget/i18n';
+import { en as clientsEn } from '../features/clients/i18n';
 import { en as hoursEn } from '../features/hours/i18n';
 import { en as peopleEn } from '../features/people/i18n';
 import { en as tasksEn } from '../features/tasks/i18n';
@@ -17,6 +18,7 @@ const en: Resources = {
     label: 'Main menu',
     year: 'Year',
     gigs: 'Gigs',
+    clients: 'Clients',
     people: 'People',
     tasks: 'Tasks',
     hours: 'Hours',
@@ -64,6 +66,7 @@ const en: Resources = {
   pages: {
     year: 'Year {{year}}',
     gigs: 'Gigs {{year}}',
+    clients: 'Clients',
     people: 'People',
     tasks: 'Tasks',
     hours: 'Hours {{year}}',
@@ -80,6 +83,7 @@ const en: Resources = {
     GIG_DELETED: 'The gig is deleted. Restore it first.',
     COST_NOT_PAYABLE: 'Fuel is an estimate and cannot be marked paid.',
     BUDGET_NOT_EMPTY: 'The year already has budget numbers.',
+    CLIENT_IN_USE: 'The client is in use: gigs or offers are linked to it.',
     FILE_TOO_LARGE: 'The file is too large (max 20 MB).',
     UNSUPPORTED_FILE_TYPE: 'Allowed file types: PDF, DOCX, PNG and JPG.',
     NETWORK_ERROR: 'Could not reach the server.',
@@ -155,6 +159,21 @@ const en: Resources = {
     OPEN: 'Open',
     DONE: 'Done',
   },
+  offerStatus: {
+    OPEN: 'Open',
+    ACCEPTED: 'Accepted',
+    REJECTED: 'Rejected',
+  },
+  offerDisposition: {
+    PENDING: 'Pending',
+    WON: 'Won',
+    CANCELLED: 'Cancelled',
+    NO_RESPONSE: 'No response',
+    LOST_PRICE: 'Lost: price',
+    LOST_COMPETITOR: 'Lost: competitor',
+    LOST_OTHER: 'Lost: other reason',
+    NO_CAPACITY: 'No capacity',
+  },
   gigEventType: {
     CREATED: 'Gig created',
     UPDATED: 'Details changed',
@@ -202,7 +221,7 @@ const en: Resources = {
       deleted: 'Deleted',
     },
     search: 'Search',
-    searchPlaceholder: 'Venue, lineup or notes',
+    searchPlaceholder: 'Venue, lineup, client or notes',
     whenLabel: 'When',
     when: {
       all: 'All',
@@ -253,7 +272,7 @@ const en: Resources = {
     additionalSalesDescription: 'Additional sales description',
     totalPrice: 'Total price',
     notes: 'Notes',
-    noCustomerData: 'Customer and invoicing details belong in the contract attachment.',
+    noCustomerData: 'Invoicing details belong in the contract attachment.',
     create: 'Create gig',
     creating: 'Creating…',
   },
@@ -391,6 +410,7 @@ const en: Resources = {
     houseTechnician: 'House technician',
     sellerId: 'Seller',
     producerId: 'Producer',
+    clientId: 'Client',
     priceCents: 'Price',
     additionalSalesCents: 'Additional sales',
     additionalSalesDescription: 'Additional sales description',
@@ -402,6 +422,7 @@ const en: Resources = {
     actualCents: 'Actual',
   },
   year: yearEn,
+  ...clientsEn,
   ...peopleEn,
   ...tasksEn,
   ...hoursEn,

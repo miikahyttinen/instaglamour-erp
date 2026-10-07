@@ -1,6 +1,7 @@
 import {
   CalendarDays,
   Clock,
+  Contact,
   ListChecks,
   Music,
   Users,
@@ -10,7 +11,7 @@ import {
 
 export interface NavItem {
   to: string;
-  labelKey: `nav.${'year' | 'gigs' | 'people' | 'tasks' | 'hours' | 'budget'}`;
+  labelKey: `nav.${'year' | 'gigs' | 'clients' | 'people' | 'tasks' | 'hours' | 'budget'}`;
   icon: LucideIcon;
   end?: boolean;
 }
@@ -18,6 +19,7 @@ export interface NavItem {
 export const NAV_ITEMS: NavItem[] = [
   { to: '/', labelKey: 'nav.year', icon: CalendarDays, end: true },
   { to: '/gigs', labelKey: 'nav.gigs', icon: Music },
+  { to: '/clients', labelKey: 'nav.clients', icon: Contact },
   { to: '/people', labelKey: 'nav.people', icon: Users },
   { to: '/tasks', labelKey: 'nav.tasks', icon: ListChecks },
   { to: '/hours', labelKey: 'nav.hours', icon: Clock },

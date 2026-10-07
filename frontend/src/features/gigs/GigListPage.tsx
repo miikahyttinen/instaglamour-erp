@@ -366,6 +366,19 @@ function GigTable({ gigs, partners, lang, firstUpcomingId }: GigRowsProps & { fi
       ),
     },
     {
+      key: 'client',
+      label: t('clients.gigColumn'),
+      className: 'gig-col-client',
+      cell: (gig) =>
+        gig.clientId ? (
+          <Link to={`/clients/${gig.clientId}`} className="gig-client-link">
+            {gig.clientName ?? '–'}
+          </Link>
+        ) : (
+          '–'
+        ),
+    },
+    {
       key: 'people',
       label: t('gigs.columns.people'),
       className: 'gig-col-people',
@@ -460,6 +473,11 @@ function GigCards({ gigs, partners, lang, firstUpcomingId }: GigRowsProps & { fi
               </Link>
               <GigFlags gig={gig} status={status} />
             </span>
+            {gig.clientName && (
+              <span className="gig-client">
+                {t('clients.gigColumn')}: {gig.clientName}
+              </span>
+            )}
             <span className="gig-people">
               {t('gigs.seller')}: {partnerName(partners, gig.sellerId)} · {t('gigs.producer')}:{' '}
               {partnerName(partners, gig.producerId)}
