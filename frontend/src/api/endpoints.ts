@@ -7,6 +7,11 @@ import type {
   BudgetResponse,
   BudgetRow,
   BudgetRowUpdate,
+  Client,
+  ClientCreate,
+  ClientDetailResponse,
+  ClientListItem,
+  ClientUpdate,
   CostLineCreate,
   CostLinePayRequest,
   CostLineUpdate,
@@ -131,6 +136,17 @@ export const peopleApi = {
     apiRequest<PersonWithWarnings>(`/people/${id}`, { method: 'PATCH', body }),
   costLines: (id: Id, year: number) =>
     apiRequest<PersonCostLinesResponse>(`/people/${id}/cost-lines`, { query: { year } }),
+};
+
+// ---------- Clients ----------
+
+export const clientsApi = {
+  list: (q?: string) => apiRequest<ClientListItem[]>('/clients', { query: { q: q || undefined } }),
+  create: (body: ClientCreate) => apiRequest<Client>('/clients', { method: 'POST', body }),
+  get: (id: Id) => apiRequest<ClientDetailResponse>(`/clients/${id}`),
+  update: (id: Id, body: ClientUpdate) =>
+    apiRequest<Client>(`/clients/${id}`, { method: 'PATCH', body }),
+  remove: (id: Id) => apiRequest<void>(`/clients/${id}`, { method: 'DELETE' }),
 };
 
 // ---------- Tasks ----------

@@ -1,6 +1,6 @@
 // Synthetic gigs for UI tests (BR-090), written straight into the mock backend.
 import { db } from '../mocks/data';
-import { createGig, linesOf, type MockGig, type NewGigInput } from '../mocks/gigStore';
+import { createGig, linesOf, mockId, type MockClient, type MockGig, type NewGigInput } from '../mocks/gigStore';
 
 export const TEST_YEAR = 2030;
 
@@ -45,4 +45,11 @@ export function staffMockGig(gig: MockGig, names: string[]): void {
 
 export function mockLine(gig: MockGig, type: string) {
   return linesOf(db.gigs, gig.id).find((l) => l.type === type)!;
+}
+
+/** Synthetic client (UC-027) straight into the mock backend. */
+export function addMockClient(name: string, notes: string | null = null): MockClient {
+  const client: MockClient = { id: mockId(), name, notes, deletedAt: null };
+  db.gigs.clients.push(client);
+  return client;
 }

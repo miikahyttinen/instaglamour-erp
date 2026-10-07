@@ -104,6 +104,14 @@ function checkGigOptions(
   }
 }
 
+/** clientId: an active client or null (UC-027); anything else → UNKNOWN_REFERENCE. */
+function checkClient(fields: Fields, value: unknown): void {
+  if (value === undefined || value === null) return;
+  if (!db.gigs.clients.some((c) => c.id === value && c.deletedAt === null)) {
+    fields.clientId = 'UNKNOWN_REFERENCE';
+  }
+}
+
 function checkPerson(fields: Fields, value: unknown): void {
   if (value === undefined || value === null) return;
   if (!db.gigs.people.some((p) => p.id === value)) fields.personId = 'UNKNOWN_REFERENCE';
@@ -173,11 +181,13 @@ export const gigHandlers = [
       .filter((g) => when === 'all' || (when === 'upcoming' ? g.startDate >= today : g.startDate < today))
       .filter((g) => !sellerId || g.sellerId === sellerId)
       .filter((g) => !producerId || g.producerId === producerId)
-      .filter(
-        (g) =>
-          !q ||
-          [g.venue, g.lineupName, g.notes ?? ''].some((text) => text.toLowerCase().includes(q)),
-      )
+      .filter((g) => {
+        if (!q) return true;
+        const clientName = db.gigs.clients.find((c) => c.id === g.clientId)?.name ?? '';
+        return [g.venue, g.lineupName, g.notes ?? '', clientName].some((text) =>
+          text.toLowerCase().includes(q),
+        );
+      })
       .map((g) => toSummary(db.gigs, g, today))
       .filter((g) => !notFullyStaffed || g.notFullyStaffed)
       .sort((a, b) => a.startDate.localeCompare(b.startDate));
@@ -216,6 +226,7 @@ export const gigHandlers = [
     checkMoney(fields, 'additionalSalesCents', body.additionalSalesCents, false);
     checkString(fields, 'additionalSalesDescription', body.additionalSalesDescription, false);
     checkString(fields, 'notes', body.notes, false, MAX_TEXT);
+    checkClient(fields, body.clientId);
     if (Object.keys(fields).length > 0) return validationError(fields);
 
     const gig = createGig(
@@ -235,6 +246,7 @@ export const gigHandlers = [
         additionalSalesCents: body.additionalSalesCents ?? 0,
         additionalSalesDescription: blankToNull(body.additionalSalesDescription),
         notes: blankToNull(body.notes),
+        clientId: body.clientId ?? null,
       },
       me.id,
       ctx(),
@@ -269,6 +281,7 @@ export const gigHandlers = [
     }
     checkString(fields, 'additionalSalesDescription', body.additionalSalesDescription, false);
     checkString(fields, 'notes', body.notes, false, MAX_TEXT);
+    checkClient(fields, body.clientId);
     if (Object.keys(fields).length > 0) return validationError(fields);
 
     const patch: Record<string, unknown> = {};

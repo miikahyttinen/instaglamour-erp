@@ -12,6 +12,8 @@ export const rootKeys = {
   gigLists: ['gigs', 'list'],
   /** Cost lines on the person page: ['people', 'cost-lines', id, year]. */
   personCostLines: ['people', 'cost-lines'],
+  /** Client list and client pages: ['clients', …] (gig counts and linked gigs, UC-027). */
+  clients: ['clients'],
   /** Hour entries and totals: ['hours', …]. */
   hours: ['hours'],
   /** Budget: ['budget', year]. */
@@ -22,8 +24,8 @@ export const rootKeys = {
 export type YearDataChange = 'gigs' | 'hours' | 'budget';
 
 const affectedLists: Record<YearDataChange, readonly QueryKey[]> = {
-  // Gig and cost line changes: gig lists and person cost lines.
-  gigs: [rootKeys.gigLists, rootKeys.personCostLines],
+  // Gig and cost line changes: gig lists, person cost lines and clients (their gig lists).
+  gigs: [rootKeys.gigLists, rootKeys.personCostLines, rootKeys.clients],
   hours: [rootKeys.hours],
   budget: [rootKeys.budget],
 };
