@@ -7,7 +7,8 @@
  * - Business data is only inserted when its natural key is not in the database yet, so data
  *   partners have since edited in the app is never overwritten:
  *   budget category (code if given, else name, case-insensitive; removed rows count too — partners
- *   manage the rows in the app), gig (startDate + venue + lineupName), task (title + owner),
+ *   manage the rows in the app), client (name, case-insensitive, among non-deleted clients),
+ *   gig (startDate + venue + lineupName; an existing gig's client is never changed), task (title + owner),
  *   hour entry (partner + date + comment), budget row (category + year).
  */
 import { existsSync, readFileSync } from 'node:fs';
@@ -17,7 +18,7 @@ import { dateFromIso } from '../src/domain/dates.js';
 import { defaultCostLines } from '../src/domain/costLines.js';
 import { isMusicianRole, SETTING_KEYS } from '../src/domain/enums.js';
 import type { Prisma } from '../src/generated/prisma/client.js';
-import { findSeedCategory, validateSeed, type SeedData } from './schema.js';
+import { clientNameKey, findSeedCategory, validateSeed, type SeedData } from './schema.js';
 
 type Tx = Prisma.TransactionClient;
 
@@ -37,6 +38,8 @@ export interface SeedSummary {
   settings: number;
   budgetCategories: number;
   budgetCategoriesCreated: number;
+  clients: number;
+  clientsCreated: number;
   gigsCreated: number;
   tasksCreated: number;
   hoursCreated: number;
@@ -72,6 +75,7 @@ export async function emptyDatabase(tx: Tx): Promise<void> {
   await tx.costLine.deleteMany();
   await tx.gigTechnicalSetupLegacy.deleteMany();
   await tx.gig.deleteMany();
+  await tx.client.deleteMany();
   await tx.task.deleteMany();
   await tx.hourEntry.deleteMany();
   await tx.budgetYear.deleteMany();
@@ -133,6 +137,8 @@ async function applySeed(tx: Tx, data: SeedData): Promise<SeedSummary> {
     settings: 0,
     budgetCategories: 0,
     budgetCategoriesCreated: 0,
+    clients: 0,
+    clientsCreated: 0,
     gigsCreated: 0,
     tasksCreated: 0,
     hoursCreated: 0,
@@ -203,6 +209,21 @@ async function applySeed(tx: Tx, data: SeedData): Promise<SeedSummary> {
     summary.budgetCategories++;
   }
 
+  // Clients (insert only: partners manage them in the app)
+  const clientIdByKey = new Map<string, string>();
+  for (const c of data.clients) {
+    const name = c.name.trim();
+    const rows = await tx.$queryRaw<{ id: string }[]>`
+      SELECT "id"::text FROM "client" WHERE "deleted_at" IS NULL AND lower(btrim("name")) = lower(btrim(${name})) LIMIT 1`;
+    let id = rows[0]?.id;
+    if (!id) {
+      id = (await tx.client.create({ data: { name, notes: c.notes?.trim() || null } })).id;
+      summary.clientsCreated++;
+    }
+    clientIdByKey.set(clientNameKey(name), id);
+    summary.clients++;
+  }
+
   const partnerId = (email: string) => partnerByEmail.get(email)!.id;
   const partnerPersonId = (email: string) => partnerByEmail.get(email)!.personId;
 
@@ -250,6 +271,7 @@ async function applySeed(tx: Tx, data: SeedData): Promise<SeedSummary> {
         additionalSalesCents: g.additionalSalesCents,
         additionalSalesDescription: g.additionalSalesDescription ?? null,
         notes: g.notes ?? null,
+        clientId: g.client ? clientIdByKey.get(clientNameKey(g.client))! : null,
         // Cost lines are shown in creation order: give them strictly increasing timestamps.
         costLines: { createMany: { data: lines.map((l, i) => ({ ...l, createdAt: new Date(createdBase + i)})) } },
       },

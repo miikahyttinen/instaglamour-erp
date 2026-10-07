@@ -47,6 +47,7 @@ const gig = z.strictObject({
   additionalSalesCents: cents.default(0),
   additionalSalesDescription: z.string().max(500).optional(),
   notes: z.string().max(5000).optional(),
+  client: name.optional(),
   costLines: z.array(costLine).optional(),
 });
 
@@ -71,6 +72,9 @@ const budgetCategory = z.strictObject(
 /** Budget category names compare case-insensitively (like the app's DUPLICATE rule). */
 export const categoryNameKey = (n: string) => n.trim().toLowerCase();
 
+/** Client names compare case-insensitively and trimmed (like the app's DUPLICATE rule, BR-100). */
+export const clientNameKey = (n: string) => n.trim().toLowerCase();
+
 /**
  * The seed entry a budget row's `category` refers to: by `code` if an entry has that code, else by
  * name (case-insensitive).
@@ -94,6 +98,7 @@ export const seedSchema = z.strictObject({
     .default([]),
   settings: z.record(z.string(), cents),
   budgetCategories: z.array(budgetCategory).default([]),
+  clients: z.array(z.strictObject({ name, notes: z.string().max(5000).optional() })).default([]),
   gigs: z.array(gig).default([]),
   tasks: z
     .array(
@@ -169,6 +174,10 @@ export function validateSeed(input: unknown): ValidationResult {
   for (const d of duplicates(data.budgetCategories.map((c) => categoryNameKey(c.name))))
     errors.push(`budgetCategories: duplicate name "${d}" (names are compared case-insensitively)`);
 
+  for (const d of duplicates(data.clients.map((c) => clientNameKey(c.name))))
+    errors.push(`clients: duplicate name "${d}" (names are compared case-insensitively)`);
+  const clientKeys = new Set(data.clients.map((c) => clientNameKey(c.name)));
+
   for (const key of ALL_SETTING_KEYS) if (!(key in data.settings)) errors.push(`settings: missing ${key}`);
   for (const key of Object.keys(data.settings))
     if (!ALL_SETTING_KEYS.includes(key as (typeof ALL_SETTING_KEYS)[number])) errors.push(`settings: unknown key ${key}`);
@@ -181,6 +190,8 @@ export function validateSeed(input: unknown): ValidationResult {
     if (g.lineupTemplate && !templates.has(g.lineupTemplate))
       errors.push(`${at}.lineupTemplate: unknown template "${g.lineupTemplate}"`);
     if (!g.lineupTemplate && !g.lineupName) errors.push(`${at}: lineupTemplate or lineupName is required`);
+    if (g.client && !clientKeys.has(clientNameKey(g.client)))
+      errors.push(`${at}.client: unknown client "${g.client}" (list it in clients)`);
     g.costLines?.forEach((c, j) => {
       const lat = `${at}.costLines.${j}`;
       if (c.person && !personNames.has(c.person)) errors.push(`${lat}.person: unknown person "${c.person}"`);
