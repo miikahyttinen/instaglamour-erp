@@ -35,15 +35,16 @@ The whole file is validated first. If anything is wrong, every problem is printe
 | Task | `title` + owner | Inserted only if missing |
 | Hour entry | partner + `date` + `comment` | Inserted only if missing |
 | Budget row | `category` + `year` | Inserted only if missing |
+| Reference | `quoteFi` + `author` (trimmed) | Inserted only if missing, after the existing references in listed order; its photo is copied into `UPLOAD_DIR`. Partners manage references in the app, so a re-run never changes or re-adds one |
 
-Nothing is ever deleted except with `--reset`.
+Nothing is ever deleted except with `--reset` (which empties the database but leaves photo files in `UPLOAD_DIR`).
 
 ## Format
 
 All money is **integer cents** (EUR, excl. VAT): `30000` = 300.00 €. Dates are `YYYY-MM-DD`.
 Partners, templates, people, clients and budget categories are referenced by email / name (budget categories: name or `code`).
 `clients` is optional: older seed files without it (and gigs without `client`) still load.
-`offers`, partner `phone` and the `offers.*` settings are optional too (TASK-016).
+`offers`, partner `phone` and the `offers.*` settings are optional too (TASK-016), and so is `references` (TASK-018).
 
 ```jsonc
 {
@@ -63,9 +64,7 @@ Partners, templates, people, clients and budget categories are referenced by ema
     "fees.production_default": 10000,
     "fees.load_in_deduction": 1000,
     "offers.default_includes": "…",   // optional texts (line breaks with \n): default "what's included" of a new offer,
-    "offers.default_spotify_url": "https://…",  // default Spotify link,
-    "offers.references_fi": "…",      // references block on the public offer (FI / EN)
-    "offers.references_en": "…"
+    "offers.default_spotify_url": "https://…"   // default Spotify link
   },
   "budgetCategories": [               // the yearly budget rows; new rows are added after existing ones, in listed order
     { "name": "Category A" },                                   // one name (both languages); unique, case-insensitive
@@ -117,6 +116,13 @@ Partners, templates, people, clients and budget categories are referenced by ema
       "converted": false                                    // optional; true = also create its gig (BR-105), disposition WON
     }
   ],
+  "references": [                     // optional (BR-108): testimonials on offers with showReferences; real ones only in seed.local.json
+    { "quoteFi": "…",                                       // required, ≤ 5000 chars (line breaks with \n)
+      "quoteEn": "…",                                       // optional; the EN page falls back to quoteFi
+      "author": "— Name, Company",                          // required, ≤ 200 chars
+      "active": true,                                       // optional, default true (inactive = not shown on offers)
+      "image": "photos/person1.jpg" }                       // optional; PNG/JPG/WebP ≤ 10 MB, path relative to the seed file
+  ],
   "tasks": [
     { "title": "…", "owner": "partner.a@example.com", "dueDate": "2026-06-01", "description": "…", "status": "OPEN" }
   ],
@@ -163,6 +169,20 @@ Convert it the same way the database migration `20261005200000_budget_category_n
 | `"budgeted": true` | drop the key |
 
 `budget[].category` may stay a code if the category keeps its `code`, or use the name.
+
+### References format change (TASK-018)
+
+The references block used to be two free-text settings, `offers.references_fi` and `offers.references_en`.
+It is now a list of references (`references`, above), each with its own quote, author and optional photo.
+Older files with the two settings **still load**: the keys are accepted and ignored (not stored). Move the
+content into `references` entries, one per testimonial (the text can't be split automatically).
+In an existing database the migration `20261007160000_references` leaves the old setting rows in place
+(unused, harmless); re-enter the references in the app or through `references` in your local seed.
+
+Photos: keep them outside git like the local seed (e.g. next to `seed.local.json` in a gitignored folder —
+check `git status`) and give the path relative to the seed file. Every photo is checked before anything is
+loaded (exists, ≤ 10 MB, PNG/JPG/WebP by content); the seed command copies them into `UPLOAD_DIR`
+(`.env`, default `../../instaglamour-uploads`).
 
 ## Making your local seed
 

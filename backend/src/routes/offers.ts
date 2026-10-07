@@ -28,6 +28,7 @@ import {
   toOfferEventDto,
   toOfferSummaryDto,
 } from '../offers/store.js';
+import { loadActiveReferences } from '../references/store.js';
 import { isUniqueViolation } from './budgetCategories.js';
 import { loadFeeSettings } from './reference.js';
 
@@ -151,7 +152,7 @@ export function offerRoutes(app: FastifyInstance, deps: AppDeps): void {
     isUuid(id) && (await db.partner.count({ where: { id } })) > 0;
 
   const detail = async (id: string) =>
-    toOfferDetailDto(await requireOffer(db, id), todayIso(), await loadOfferSettings(db));
+    toOfferDetailDto(await requireOffer(db, id), todayIso(), await loadActiveReferences(db));
 
   // ---------------------------------------------------------------- list (+ BR-106 summary)
   app.get('/api/offers', async (request) => {
@@ -333,7 +334,7 @@ export function offerRoutes(app: FastifyInstance, deps: AppDeps): void {
     }
     const today = todayIso();
     return reply.status(201).send({
-      offer: toOfferDetailDto(await requireOffer(db, offer.id), today, await loadOfferSettings(db)),
+      offer: toOfferDetailDto(await requireOffer(db, offer.id), today, await loadActiveReferences(db)),
       gig: toGigDetailDto(await requireGigDetail(db, gigId), today),
     });
   });

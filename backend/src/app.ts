@@ -17,8 +17,9 @@ import { hourRoutes } from './routes/hours.js';
 import { meRoutes } from './routes/me.js';
 import { offerRoutes } from './routes/offers.js';
 import { peopleRoutes } from './routes/people.js';
-import { PUBLIC_OFFER_ROUTE, publicOfferRoutes } from './routes/publicOffers.js';
+import { PUBLIC_ROUTES, publicOfferRoutes } from './routes/publicOffers.js';
 import { referenceRoutes } from './routes/reference.js';
+import { referencesRoutes } from './routes/references.js';
 import { taskRoutes } from './routes/tasks.js';
 import { yearRoutes } from './routes/years.js';
 
@@ -69,8 +70,9 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
   // Global auth gate: every /api route except /api/auth/* and the public offer route needs a
   // session — including unknown routes, so the API surface isn't discoverable without signing in.
   app.addHook('onRequest', async (request, reply) => {
-    // Public offer (UC-030): only the exact matched route pattern; other /api/public/* paths need a session.
-    if (request.routeOptions.url === PUBLIC_OFFER_ROUTE) return;
+    // Public offer (UC-030) and its token-scoped reference photos (BR-108): only these exact matched
+    // route patterns; other /api/public/* paths need a session.
+    if (request.routeOptions.url !== undefined && PUBLIC_ROUTES.has(request.routeOptions.url)) return;
     // Decide by the matched route pattern when there is one (not the raw URL), else by the path.
     const path = request.routeOptions.url ?? request.url.split('?', 1)[0] ?? '';
     if (path.startsWith(PUBLIC_PREFIX) || !(path === '/api' || path.startsWith('/api/'))) return;
@@ -93,6 +95,7 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
   budgetCategoryRoutes(app, deps);
   clientRoutes(app, deps);
   offerRoutes(app, deps);
+  referencesRoutes(app, deps);
   publicOfferRoutes(app, deps);
 
   return app;

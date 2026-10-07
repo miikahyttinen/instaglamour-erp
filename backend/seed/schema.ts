@@ -13,6 +13,7 @@ import {
   EVENT_TYPES,
   isMusicianRole,
   LANGUAGES,
+  LEGACY_OFFER_SETTING_KEYS,
   LOGISTICS,
   OFFER_DISPOSITIONS,
   OFFER_SOURCES,
@@ -87,6 +88,18 @@ const offer = z.strictObject({
   converted: z.boolean().default(false),
 });
 
+/** A reference / testimonial (BR-108). `image` is a file path relative to the seed file. */
+const reference = z.strictObject({
+  quoteFi: z.string().trim().min(1).max(5000),
+  quoteEn: z.string().trim().min(1).max(5000).optional(),
+  author: z.string().trim().min(1).max(200),
+  active: z.boolean().default(true),
+  image: z.string().trim().min(1).max(1000).optional(),
+});
+
+/** References compare by FI quote + author (trimmed) for idempotent re-runs. */
+export const referenceKey = (r: { quoteFi: string; author: string }) => `${r.quoteFi.trim()}\u0000${r.author.trim()}`;
+
 /** Keys of the pre-TASK-012 budget category format; rejected with a conversion hint. */
 const LEGACY_CATEGORY_KEYS = ['nameFi', 'nameEn', 'budgeted'];
 export const LEGACY_CATEGORY_HINT =
@@ -140,6 +153,7 @@ export const seedSchema = z.strictObject({
   clients: z.array(z.strictObject({ name, notes: z.string().max(5000).optional() })).default([]),
   gigs: z.array(gig).default([]),
   offers: z.array(offer).default([]),
+  references: z.array(reference).default([]),
   tasks: z
     .array(
       z.strictObject({
@@ -224,6 +238,8 @@ export function validateSeed(input: unknown): ValidationResult {
       if (typeof value !== 'number') errors.push(`settings.${key}: must be an amount in cents`);
     } else if (ALL_OFFER_SETTING_KEYS.includes(key as (typeof ALL_OFFER_SETTING_KEYS)[number])) {
       if (typeof value !== 'string') errors.push(`settings.${key}: must be a text`);
+    } else if (LEGACY_OFFER_SETTING_KEYS.includes(key as (typeof LEGACY_OFFER_SETTING_KEYS)[number])) {
+      // Replaced by `references` (TASK-018); accepted so older files still load, but ignored.
     } else {
       errors.push(`settings: unknown key ${key}`);
     }
@@ -262,6 +278,9 @@ export function validateSeed(input: unknown): ValidationResult {
   });
   for (const d of duplicates(data.offers.map((o) => `${clientNameKey(o.client)}/${o.eventName}/${o.eventDate}`)))
     errors.push(`offers: duplicate offer ${d} (client + eventName + eventDate)`);
+
+  for (const d of duplicates(data.references.map(referenceKey)))
+    errors.push(`references: duplicate reference "${d.split('\u0000')[1]}" with the same quoteFi (quoteFi + author)`);
 
   data.tasks.forEach((t, i) => {
     if (!partnerEmails.has(t.owner)) errors.push(`tasks.${i}.owner: unknown partner ${t.owner}`);

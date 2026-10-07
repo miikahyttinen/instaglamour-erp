@@ -547,3 +547,30 @@ model BudgetYear {
   @@index([year])
   @@map("budget_year")
 }
+
+// ---------------------------------------------------------------------------
+// References / testimonials (BR-108)
+// ---------------------------------------------------------------------------
+
+/// A testimonial shown on offers with show_references (BR-108). Replaces the old text settings
+/// offers.references_fi / offers.references_en (those rows are left in place but no longer read).
+/// The optional photo is a file in UPLOAD_DIR, stored like attachments: either all three image_*
+/// columns are set or none (check constraint "reference_image_all_or_none").
+model Reference {
+  id               String   @id @default(uuid()) @db.Uuid
+  quoteFi          String   @map("quote_fi")
+  quoteEn          String?  @map("quote_en")
+  author           String
+  sortOrder        Int      @map("sort_order")
+  active           Boolean  @default(true)
+  /// File name inside UPLOAD_DIR (random UUID); null = no photo.
+  imageStorageKey  String?  @unique @map("image_storage_key")
+  /// Sniffed from the file content: image/png, image/jpeg or image/webp.
+  imageContentType String?  @map("image_content_type")
+  imageSizeBytes   Int?     @map("image_size_bytes")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  @@index([sortOrder])
+  @@map("reference")
+}

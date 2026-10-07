@@ -8,6 +8,7 @@ import { OFFER_SETTING_KEYS } from '../domain/enums.js';
 import type { Offer, OfferDisposition, OfferEvent, OfferEventType, Prisma } from '../generated/prisma/client.js';
 import { isUuid, logEvent, type Tx } from '../gigs/store.js';
 import { AppError, notFound } from '../http/errors.js';
+import { publicReferenceImageUrl, type PublicReferenceSource } from '../references/store.js';
 import type { FeeSettings } from '../routes/reference.js';
 import { sharePath } from './shareToken.js';
 
@@ -77,11 +78,23 @@ export interface PublicOfferDto {
   lineup: string[];
   includesText: string | null;
   spotifyUrl: string | null;
-  references: { fi: string; en: string } | null;
+  references: PublicReferenceDto[] | null;
   seller: { name: string; email: string; phone: string | null };
 }
 
-export function toPublicOfferDto(offer: OfferWithRefs, settings: Pick<OfferSettings, 'referencesFi' | 'referencesEn'>): PublicOfferDto {
+/** One reference on the public offer (BR-108); both quotes are sent, the page falls back EN → FI. */
+export interface PublicReferenceDto {
+  id: string;
+  quote: { fi: string; en: string | null };
+  author: string;
+  imageUrl: string | null;
+}
+
+/**
+ * `references` = the active references in order (loadActiveReferences) — shown only when the offer
+ * has showReferences. Photo URLs are scoped to this offer's token (BR-108).
+ */
+export function toPublicOfferDto(offer: OfferWithRefs, references: readonly PublicReferenceSource[]): PublicOfferDto {
   return {
     eventName: offer.eventName,
     clientName: offer.client.name,
@@ -91,12 +104,19 @@ export function toPublicOfferDto(offer: OfferWithRefs, settings: Pick<OfferSetti
     lineup: [...offer.lineup],
     includesText: offer.includesText,
     spotifyUrl: offer.spotifyUrl,
-    references: offer.showReferences ? { fi: settings.referencesFi ?? '', en: settings.referencesEn ?? '' } : null,
+    references: offer.showReferences
+      ? references.map((r) => ({
+          id: r.id,
+          quote: { fi: r.quoteFi, en: r.quoteEn },
+          author: r.author,
+          imageUrl: r.imageStorageKey ? publicReferenceImageUrl(offer.shareToken, r.id) : null,
+        }))
+      : null,
     seller: { name: offer.seller.person.name, email: offer.seller.email, phone: offer.seller.phone },
   };
 }
 
-export function toOfferDetailDto(offer: OfferWithRefs, today: string, settings: OfferSettings) {
+export function toOfferDetailDto(offer: OfferWithRefs, today: string, references: readonly PublicReferenceSource[]) {
   return {
     ...toOfferSummaryDto(offer, today),
     lineup: [...offer.lineup],
@@ -104,7 +124,7 @@ export function toOfferDetailDto(offer: OfferWithRefs, today: string, settings: 
     spotifyUrl: offer.spotifyUrl,
     showReferences: offer.showReferences,
     sharePath: sharePath(offer.shareToken),
-    preview: toPublicOfferDto(offer, settings),
+    preview: toPublicOfferDto(offer, references),
   };
 }
 
@@ -157,8 +177,6 @@ export async function logOfferEvent(
 export interface OfferSettings {
   defaultIncludes: string | null;
   defaultSpotifyUrl: string | null;
-  referencesFi: string | null;
-  referencesEn: string | null;
 }
 
 /** Current offer text settings; a missing or blank key is null. */
@@ -172,8 +190,6 @@ export async function loadOfferSettings(db: Tx): Promise<OfferSettings> {
   return {
     defaultIncludes: value(OFFER_SETTING_KEYS.defaultIncludes),
     defaultSpotifyUrl: value(OFFER_SETTING_KEYS.defaultSpotifyUrl),
-    referencesFi: value(OFFER_SETTING_KEYS.referencesFi),
-    referencesEn: value(OFFER_SETTING_KEYS.referencesEn),
   };
 }
 

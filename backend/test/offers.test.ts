@@ -270,12 +270,18 @@ describe('GET /api/offers/{id}', () => {
     }
   });
 
-  it('preview includes references (line breaks kept) and the seller phone when enabled', async () => {
-    await setTextSetting(OFFER_SETTING_KEYS.referencesFi, 'Viite 1\nViite 2');
-    await setTextSetting(OFFER_SETTING_KEYS.referencesEn, 'Reference 1\nReference 2');
+  it('preview includes the active references in order (line breaks kept) and the seller phone when enabled', async () => {
+    const second = await testDb().reference.create({ data: { quoteFi: 'Viite 2', author: '— Person 2', sortOrder: 1 } });
+    const first = await testDb().reference.create({
+      data: { quoteFi: 'Viite 1\nRivi 2', quoteEn: 'Reference 1\nLine 2', author: '— Person 1', sortOrder: 0 },
+    });
+    await testDb().reference.create({ data: { quoteFi: 'Piilotettu', author: '— Person 3', sortOrder: 2, active: false } });
     await testDb().partner.update({ where: { id: s.world.a.id }, data: { phone: '+358 40 000 0001' } });
     const offer = await createOffer({ showReferences: true });
-    expect(offer.preview.references).toEqual({ fi: 'Viite 1\nViite 2', en: 'Reference 1\nReference 2' });
+    expect(offer.preview.references).toEqual([
+      { id: first.id, quote: { fi: 'Viite 1\nRivi 2', en: 'Reference 1\nLine 2' }, author: '— Person 1', imageUrl: null },
+      { id: second.id, quote: { fi: 'Viite 2', en: null }, author: '— Person 2', imageUrl: null },
+    ]);
     expect(offer.preview.seller).toEqual({ name: 'Partner A', email: 'partner.a@example.com', phone: '+358 40 000 0001' });
   });
 });

@@ -1,7 +1,7 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { EXAMPLE_SEED_FILE, LOCAL_SEED_FILE, loadSeed, readSeedFile, resolveSeedFile, SeedValidationError } from '../seed/load.js';
 import { validateSeed } from '../seed/schema.js';
 import { closeTestDb, resetDb, testDb } from './helpers.js';
@@ -28,6 +28,7 @@ async function snapshot() {
     task: await db.task.count(),
     hour: await db.hourEntry.count(),
     budget: await db.budgetYear.count(),
+    reference: await db.reference.count(),
   };
 }
 
@@ -510,5 +511,167 @@ describe('loadSeed: offers (TASK-016)', () => {
     const first = await snapshot();
     await loadSeed(testDb(), example(), { reset: true });
     expect(await snapshot()).toEqual(first);
+  });
+});
+
+describe('seed: references (TASK-018)', () => {
+  const PNG = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.from('synthetic')]);
+  const refs = () => testDb().reference.findMany({ orderBy: { sortOrder: 'asc' } });
+  /** Plays the seed file's directory; photos are written here. */
+  let dir: string;
+  let uploadDir: string;
+
+  beforeEach(() => {
+    dir = mkdtempSync(path.join(tmpdir(), 'instaglamour-test-seed-refs-'));
+    uploadDir = path.join(dir, 'uploads');
+  });
+  afterEach(() => rmSync(dir, { recursive: true, force: true }));
+
+  const writeFiles = (contents: Record<string, Buffer>) => {
+    for (const [name, content] of Object.entries(contents)) writeFileSync(path.join(dir, name), content);
+  };
+  const uploaded = () => (existsSync(uploadDir) ? readdirSync(uploadDir) : []);
+
+  it('the example seed loads 3 synthetic references without photos, in order, idempotently', async () => {
+    const summary = await loadSeed(testDb(), example());
+    expect(summary.referencesCreated).toBe(3);
+    const all = await refs();
+    expect(all.map((r) => [r.author, r.active, r.sortOrder, r.imageStorageKey])).toEqual([
+      ['— Person 1, Client A Oy', true, 0, null],
+      ['— Person 2, Client B Oy', true, 1, null],
+      ['— Person 3', false, 2, null],
+    ]);
+    expect(all[1]!.quoteEn).toBeNull();
+    expect(all[1]!.quoteFi).toContain('\n');
+
+    // Re-run: nothing new, edits made in the app are kept.
+    await testDb().reference.update({ where: { id: all[0]!.id }, data: { active: false } });
+    expect((await loadSeed(testDb(), example())).referencesCreated).toBe(0);
+    expect((await refs())[0]!.active).toBe(false);
+  });
+
+  it('new references go after existing ones; matched by quoteFi + author', async () => {
+    await testDb().reference.create({ data: { quoteFi: 'App quote', author: '— Person 9', sortOrder: 4 } });
+    const data = {
+      ...example(),
+      references: [
+        { quoteFi: 'App quote', author: '— Person 9' },
+        { quoteFi: 'New', author: '— Person 8' },
+      ],
+    };
+    expect((await loadSeed(testDb(), data)).referencesCreated).toBe(1);
+    expect((await refs()).map((r) => [r.quoteFi, r.sortOrder])).toEqual([
+      ['App quote', 4],
+      ['New', 5],
+    ]);
+  });
+
+  it('older seed files load: no references section; old reference text settings accepted but not stored', async () => {
+    const old = example();
+    delete old.references;
+    old.settings = { ...(old.settings as object), 'offers.references_fi': 'Vanha teksti', 'offers.references_en': 'Old text' };
+    expect(validateSeed(old).ok).toBe(true);
+    const summary = await loadSeed(testDb(), old);
+    expect(summary.referencesCreated).toBe(0);
+    expect(await testDb().setting.count({ where: { key: { startsWith: 'offers.references' } } })).toBe(0);
+  });
+
+  it('copies photos (path relative to the seed file) into UPLOAD_DIR with the sniffed type', async () => {
+    writeFiles({ 'a.png': PNG });
+    const data = {
+      ...example(),
+      references: [
+        { quoteFi: 'Q1', author: 'A1', image: 'a.png' },
+        { quoteFi: 'Q2', author: 'A2' },
+      ],
+    };
+    await loadSeed(testDb(), data, { seedDir: dir, uploadDir });
+    const [withImage, without] = await refs();
+    expect(withImage).toMatchObject({ imageContentType: 'image/png', imageSizeBytes: PNG.length });
+    expect(uploaded()).toEqual([withImage!.imageStorageKey]);
+    expect(readFileSync(path.join(uploadDir, withImage!.imageStorageKey!))).toEqual(PNG);
+    expect(without!.imageStorageKey).toBeNull();
+    // A re-run copies nothing.
+    await loadSeed(testDb(), data, { seedDir: dir, uploadDir });
+    expect(uploaded()).toHaveLength(1);
+  });
+
+  it('checks every photo before loading anything', async () => {
+    writeFiles({ 'doc.pdf': Buffer.from('%PDF-1.4 synthetic'), 'big.png': Buffer.concat([PNG, Buffer.alloc(10 * 1024 * 1024)]) });
+    const data = {
+      ...example(),
+      references: [
+        { quoteFi: 'Q1', author: 'A1', image: 'missing.png' },
+        { quoteFi: 'Q2', author: 'A2', image: 'doc.pdf' },
+        { quoteFi: 'Q3', author: 'A3', image: 'big.png' },
+      ],
+    };
+    const err = await loadSeed(testDb(), data, { seedDir: dir, uploadDir }).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(SeedValidationError);
+    expect((err as SeedValidationError).errors).toEqual([
+      'references.0.image: file not found: missing.png (paths are relative to the seed file)',
+      'references.1.image: doc.pdf is not a PNG, JPG or WebP image',
+      'references.2.image: big.png is larger than 10 MB',
+    ]);
+    expect(await snapshot()).toMatchObject({ partner: 0, reference: 0 });
+    expect(uploaded()).toEqual([]);
+
+    // Without the seed file's location photos can't be resolved.
+    writeFiles({ 'a.png': PNG });
+    const noDir = await loadSeed(testDb(), { ...example(), references: [{ quoteFi: 'Q', author: 'A', image: 'a.png' }] }).catch(
+      (e: unknown) => e,
+    );
+    expect((noDir as SeedValidationError).errors[0]).toMatch(/^references\.0\.image: photos need/);
+  });
+
+  it('removes copied photos again when the load fails (nothing is loaded)', async () => {
+    writeFiles({ 'a.png': PNG });
+    const data = { ...example(), references: [{ quoteFi: 'Q1', author: 'A1', image: 'a.png' }] };
+    // A database whose transaction fails after the whole seed was applied.
+    const db = testDb();
+    const failing = new Proxy(db, {
+      get(target, prop, receiver) {
+        if (prop !== '$transaction') return Reflect.get(target, prop, receiver) as unknown;
+        return (fn: (tx: unknown) => Promise<unknown>, options: unknown) =>
+          db.$transaction(async (tx) => {
+            await fn(tx);
+            throw new Error('synthetic failure after applying the seed');
+          }, options as { timeout: number });
+      },
+    });
+    await expect(loadSeed(failing, data, { seedDir: dir, uploadDir })).rejects.toThrow('synthetic failure');
+    expect(uploaded()).toEqual([]);
+    expect(await snapshot()).toMatchObject({ partner: 0, reference: 0 });
+  });
+
+  it('validates reference entries and rejects duplicates (quoteFi + author, trimmed)', () => {
+    const bad = validateSeed({
+      ...example(),
+      references: [
+        { quoteFi: '', author: 'A' },
+        { quoteFi: 'Q', author: 'x'.repeat(201) },
+        { quoteFi: 'Q', author: 'A', extra: 1 },
+      ],
+    });
+    const errors = bad.ok ? [] : bad.errors;
+    expect(errors.some((e) => e.startsWith('references.0.quoteFi'))).toBe(true);
+    expect(errors.some((e) => e.startsWith('references.1.author'))).toBe(true);
+    expect(errors.some((e) => e.startsWith('references.2'))).toBe(true);
+
+    const dup = validateSeed({
+      ...example(),
+      references: [
+        { quoteFi: 'Dup', author: 'A' },
+        { quoteFi: ' Dup ', author: 'A ' },
+      ],
+    });
+    expect(dup.ok ? [] : dup.errors).toEqual(['references: duplicate reference "A" with the same quoteFi (quoteFi + author)']);
+  });
+
+  it('--reset removes references', async () => {
+    await loadSeed(testDb(), example());
+    await testDb().reference.create({ data: { quoteFi: 'Extra', author: 'X', sortOrder: 9 } });
+    await loadSeed(testDb(), example(), { reset: true });
+    expect(await testDb().reference.count()).toBe(3);
   });
 });
