@@ -317,16 +317,19 @@ offer page preview (TASK-138). Presentational only: no fetching, no shell, **nev
 
 | Prop | Type | Notes |
 |---|---|---|
-| `offer` | `PublicOffer` (required) | Exactly the shape of `GET /api/public/offers/{token}` (`src/api/types.ts`). Only these fields are read; extra fields (price, disposition, ids…) are never rendered. Internal callers map `OfferDetail` + seller + references text to it. |
-| `lang` | `'fi' \| 'en'` | Language of labels, the date (with weekday) and the references text. Default: current UI language. |
+| `offer` | `PublicOffer` (required) | Exactly the shape of `GET /api/public/offers/{token}` (`src/api/types.ts`). Only these fields are read; extra fields (price, disposition, ids…) are never rendered. The offer page passes `OfferDetail.preview` (the same payload). |
+| `lang` | `'fi' \| 'en'` | Language of labels, the date (with weekday) and the reference quotes. Default: current UI language. |
 | `titleLevel` | `1 \| 2` | Event name heading: `h1` (default, public page) or `h2` inside an app page; section labels are one level lower. |
 | `logoTheme` | `'dark' \| 'light'` | Logo colour override (the public page passes `'light'` while printing). Default: current theme. |
 | `className` | `string` | On the root `<article>`. |
 
 Content: logo, "Offer" eyebrow, event name, client, date with weekday (`formatDateWithWeekday`),
 venue + city, lineup (one line per item), what's included (line breaks kept), Spotify button
-(only `http(s)` URLs; opens in a new tab), references (`references[lang]`, hidden when `null`
-or empty), seller name / email (`mailto:`) / phone (`tel:`, hidden when `null`). Empty optional
+(only `http(s)` URLs; opens in a new tab), references (BR-108: one item per entry of the
+`references` list — `ReferencePhoto` (the photo, or a neutral grey square with the author's initials
+when `imageUrl` is null or fails to load; never an external image), the quote in the page language
+(EN falls back to FI, then `lang="fi"` on the quote; line breaks kept) and the author; photo beside
+the quote from 600 px of the preview's width, stacked below; hidden when `null` or empty), seller name / email (`mailto:`) / phone (`tel:`, hidden when `null`). Empty optional
 parts are hidden. Columns come from a container query (≥ 600 px of its own width), so it fits
 a phone, a full page and an app column. Texts: `offerPreview.*` and `publicOffer.*` in
 `src/features/offers/offerPreviewI18n.ts`.
@@ -370,6 +373,16 @@ offer's link is not found there either.
 - **Gig page:** "Tarjouksesta / From offer: <event>" (`GigOfferLink`) when `offerId` is set.
 - Texts: `src/features/offers/i18n.ts` (`offers`, `offer`, `convert`, `newOffer`, `offerHistory`,
   code labels `offerSource`, `offerEventType`, `offerHistoryType`, `offerField`).
+- **References** (`ReferencesPage`, BR-108): `/offers/references`, reached from the "Referenssit" button
+  in the Offers page head (no menu item). One card per reference in sort order (region "Referenssi N"):
+  `ReferencePhoto` thumbnail + Add / Replace photo (a `<label>` button around a file input, PNG/JPG/WebP
+  ≤ 10 MB checked in `referenceImageRules.ts`; 413/415 get photo-specific texts) + Remove photo
+  (confirm); inline FI quote, EN quote, author, Active switch; Move up / Move down (POST reorder with
+  all ids, optimistic, focus stays on the moved item); Delete reference (confirm); add form. Image URLs
+  get `?v=<time>` after an upload so the browser shows the new photo. Every change refreshes the
+  offer queries (previews). Texts: `referencesI18n.ts`. Mock: `mocks/referencesStore.ts` /
+  `referencesHandlers.ts` (`db.references`, four synthetic references, one inactive, no photos);
+  the token-scoped public photo route is in `publicOfferHandlers.ts`.
 - No email sync anywhere (BR-107).
 
 ### Shared classes (for hand-written markup)
