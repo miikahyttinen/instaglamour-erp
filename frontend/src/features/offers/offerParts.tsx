@@ -1,6 +1,6 @@
 // Shared components of the offer screens: status tag, gig cell, copy-link notice, confirm dialog.
 import { useMutation } from '@tanstack/react-query';
-import { useState, type ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import type { OfferSummary } from '../../api/types';
@@ -64,7 +64,12 @@ interface ConfirmDialogProps<T> {
   onError?: (error: unknown) => boolean;
 }
 
-/** Yes/no confirmation that runs one request; confirm is disabled while it runs (no double submit). */
+/**
+ * Yes/no confirmation that runs one request; confirm is disabled while it runs (no double submit).
+ * The guard is a ref set synchronously in the click handler (F-007): React Query publishes
+ * `isPending` only after a render, so a second click in the same frame would otherwise send a
+ * second request. The guard is released on error so the user can retry.
+ */
 export function ConfirmDialog<T>({
   title,
   children,
@@ -77,11 +82,23 @@ export function ConfirmDialog<T>({
 }: ConfirmDialogProps<T>) {
   const { t } = useTranslation();
   const [handled, setHandled] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const submittingRef = useRef(false);
   const mutation = useMutation({
     mutationFn,
     onSuccess: onDone,
-    onError: (error) => setHandled(onError?.(error) ?? false),
+    onError: (error) => {
+      submittingRef.current = false;
+      setSubmitting(false);
+      setHandled(onError?.(error) ?? false);
+    },
   });
+  const confirm = () => {
+    if (submittingRef.current) return;
+    submittingRef.current = true;
+    setSubmitting(true);
+    mutation.mutate();
+  };
   return (
     <Dialog title={title} onClose={onClose}>
       <div className="offer-dialog-body">{children}</div>
@@ -93,8 +110,8 @@ export function ConfirmDialog<T>({
       <div className="form-actions">
         <Button
           variant={danger ? 'danger' : 'primary'}
-          disabled={mutation.isPending}
-          onClick={() => mutation.mutate()}
+          disabled={submitting || mutation.isPending}
+          onClick={confirm}
         >
           {confirmLabel}
         </Button>

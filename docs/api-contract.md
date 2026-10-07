@@ -350,23 +350,24 @@ Duplicate = case-insensitive exact name match with another person.
 - `OfferEvent = { id, offerId, type, partnerId, at, details }`; details: `UPDATED {changes:[{field,from,to}]}`, `DISPOSITION_CHANGED {from,to}`, `CONVERTED {gigId}`, others `{}`.
 
 ## Public offer (UC-030) — no authentication
-`GET /api/public/offers/{token}` → 200 `PublicOffer = { eventName, clientName, eventDate, venue, city|null, lineup: string[], includesText|null, spotifyUrl|null, references: [{ id, quote: { fi, en|null }, author, imageUrl: string|null }] | null (active references in order; null when the offer hides references; `imageUrl` = `/api/public/offers/{token}/references/{id}/image`), seller: { name, email, phone|null } }` — nothing else. Unknown/regenerated/deleted → 404 `NOT_FOUND`. Response header `X-Robots-Tag: noindex`. This is the only `/api` route besides `/api/auth/*` reachable without a session.
+`GET /api/public/offers/{token}` → 200 `PublicOffer = { eventName, clientName, eventDate, venue, city|null, lineup: string[], includesText|null, spotifyUrl|null, references: [{ id, quote: { fi, en|null }, author, imageUrl: string|null }] | null (active references in order; null when the offer hides references; `imageUrl` = `/api/public/offers/{token}/references/{id}/image?v=<imageVersion>`), seller: { name, email, phone|null } }` — nothing else. Unknown/regenerated/deleted → 404 `NOT_FOUND`. Response header `X-Robots-Tag: noindex`. This is the only `/api` route besides `/api/auth/*` reachable without a session.
 
 ## References (owner request 2026-10-07)
-`Reference = { id, quoteFi, quoteEn|null, author, hasImage, sortOrder, active }`
+`Reference = { id, quoteFi, quoteEn|null, author, hasImage, imageVersion: string|null, sortOrder, active }` — `imageVersion` changes on every upload/remove (e.g. the upload timestamp); image URLs carry it as `?v=<imageVersion>` (servers ignore unknown query params) so replaced photos are never served from cache.
 | Method & path | Request | Response |
 |---|---|---|
 | `GET /api/references` | — | 200 `[Reference]` in sort order (incl. inactive) |
 | `POST /api/references` | `{ quoteFi, quoteEn?, author, active? }` | 201 `Reference` (appended last); `REQUIRED`/`TOO_LONG` (quote ≤ 5000, author ≤ 200) |
 | `PATCH /api/references/{id}` | any of `quoteFi, quoteEn, author, active` | 200 `Reference` |
-| `POST /api/references/reorder` | `{ ids: [id…] }` (all ids) | 200 `[Reference]` |
-| `PUT /api/references/{id}/image` | multipart `file` (PNG/JPG/WebP ≤ 10 MB) | 200 `Reference`; 413/415 |
+| `POST /api/references/reorder` | `{ ids: [id…] }` (exactly all ids) | 200 `[Reference]`; otherwise 400 `ids: INVALID_VALUE` |
+| `PUT /api/references/{id}/image` | multipart `file` (PNG/JPG/WebP ≤ 10 MB) | 200 `Reference`; 413 `FILE_TOO_LARGE` / 415 `UNSUPPORTED_FILE_TYPE` (reference limits differ from attachments; the UI shows reference-specific texts) |
 | `DELETE /api/references/{id}/image` | — | 200 `Reference` |
 | `GET /api/references/{id}/image` | — (session) | 200 image |
 | `DELETE /api/references/{id}` | — | 204 (hard delete incl. image file) |
 | `GET /api/public/offers/{token}/references/{id}/image` | — (no session) | 200 image only if token valid, offer not deleted, `showReferences` true, reference active and has image; else 404 |
 
 ## Change log
+- 2026-10-07 – Reference.imageVersion + `?v=` cache busting; reorder validation; reference upload error texts (PM)
 - 2026-10-07 – References entity + endpoints; PublicOffer.references becomes a list with photos (owner request, breaking for references) (PM)
 - 2026-10-07 – Offers clarifications from TASK-016: RATE_LIMITED, status filter values, deleted-offer behaviour, create defaults/validation, OfferEvent shape (PM)
 - 2026-10-07 – OfferDetail.preview (= PublicOffer); PublicOffer nullability and references as plain text (PM)

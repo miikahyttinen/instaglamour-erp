@@ -199,10 +199,10 @@ test.describe('desktop sidebar', () => {
     }
   });
 
-  test.fixme('gig list: the 8-column table fits next to the expanded sidebar from 1200 px, no sideways scroll inside the table (F-006)', async ({ page }) => {
-    // F-006: the page itself does not scroll (`.table-wrap` has overflow-x: auto), so the check above
-    // passes, but at 1200 px the table is ~950 px wide in an ~886 px box: "Kate-%" is cut off and the
-    // table scrolls sideways. It fits from ≈ 1264 px, or with the sidebar collapsed.
+  test('gig list: the 8-column table fits next to the expanded sidebar from 1200 px, no sideways scroll inside the table (F-006)', async ({ page }) => {
+    // F-006 (fixed in TASK-141): the page itself does not scroll (`.table-wrap` has overflow-x: auto),
+    // so the check above could not see that the table was ~950 px in an ~886 px box at 1200 px. Now
+    // the inner column gutters are narrower and a date range wraps after its dash below 1280 px.
     for (const mode of ['expanded', 'collapsed'] as const) {
       await page.addInitScript(([key, value]) => window.localStorage.setItem(key, value), [SIDEBAR_KEY, mode]);
       for (const w of [GIG_TABLE_MIN_WIDTH, 1280, 1440]) {

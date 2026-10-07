@@ -141,13 +141,24 @@ test('new offer: required fields refused, defaults applied when "what\'s include
   const preview = page.getByRole('article', { name: eventName });
   await expect(preview).toContainText('Placeholder: what is included in the offer.');
   await expect(preview).toContainText(fiDateWithWeekday(`${year}-06-12`));
-  await expect(preview).toContainText('Esimerkkiteksti: referenssit.');
+  // References: only presence (their content and shape are being redesigned).
+  await expect(preview.getByRole('region', { name: 'Referenssit' })).toBeVisible();
   await expect(preview).not.toContainText(fiMoney(300000));
   // Internal fields stay out of the customer view (event type "Häät", disposition "Odottaa").
   await expect(preview).not.toContainText('Häät');
   await expect(preview).not.toContainText(DISPOSITION_FI.PENDING);
   await expectNoEditSaveButtons(page.getByRole('main'), 'offer page');
   await expectNoHorizontalScroll(page, 'offer page');
+
+  // Switching "Näytä referenssit" off removes the references region from the preview.
+  const refSwitch = page.getByRole('main').getByRole('switch', { name: 'Näytä referenssit' });
+  const off = page.waitForResponse((r) => r.request().method() === 'PATCH' && r.url().endsWith(`/api/offers/${offer.id}`));
+  await refSwitch.click();
+  expect((await off).request().postDataJSON()).toEqual({ showReferences: false });
+  await page.reload();
+  await expect(refSwitch).not.toBeChecked();
+  await expect(preview).toBeVisible();
+  await expect(preview.getByRole('region', { name: 'Referenssit' })).toHaveCount(0);
 
   // API: the same rules (UC-029 E1), and a non-http Spotify link is refused.
   const bad = await page.request.post('/api/offers', { data: { eventName: '', eventDate: 'x', venue: '' } });
@@ -524,7 +535,7 @@ test('convert to gig: confirm dialog → gig per BR-105, offer WON / ACCEPTED, l
   await expect(fact('Myyjä ja tuottaja')).toHaveText('Partner B');
 
   // AC-3: a human double click on "Luo keikka" (two clicks 50 ms apart) sends one request: the
-  // button is disabled while the request runs. A zero-delay synthetic double click: see F-007 below.
+  // button is disabled while the request runs. A zero-delay synthetic double click: F-007 test below.
   const converts: number[] = [];
   page.on('response', (r) => {
     if (r.request().method() === 'POST' && r.url().endsWith(`/api/offers/${offer.id}/convert`)) converts.push(r.status());
@@ -675,10 +686,10 @@ test('convert: a zero-delay double click on "Luo keikka" still makes one gig and
   await expect(actions.getByRole('link', { name: `Keikka: ${offer.eventName}` })).toHaveAttribute('href', `/gigs/${gigs[0].id}`);
 });
 
-test.fixme('convert: a zero-delay double click sends only one request (F-007)', async ({ page }, testInfo) => {
-  // F-007: ConfirmDialog disables "Luo keikka" through useMutation's isPending, which React Query
-  // publishes asynchronously; a second click in the same frame (Playwright dblclick) is not blocked,
-  // so a second POST /convert goes out and the server answers 409. Data stays correct (test above).
+test('convert: a zero-delay double click sends only one request (F-007)', async ({ page }, testInfo) => {
+  // F-007 (fixed in TASK-141): useMutation's isPending is published asynchronously, so a second
+  // click in the same frame (Playwright dblclick) used to send a second POST /convert (409).
+  // ConfirmDialog now guards with a ref set synchronously in the click handler.
   const tag = tagOf(testInfo);
   const year = offerYear(testInfo);
   await signIn(page, PARTNER_A, { selectedYear: year });
