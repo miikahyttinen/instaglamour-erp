@@ -26,6 +26,12 @@ Actor is a signed-in partner unless stated.
 | UC-019 | View hours totals | A |
 | **Budget** ||
 | UC-020 | Manage yearly budget | A |
+| **Clients & offers (phase 2)** ||
+| UC-027 | Manage clients | A |
+| UC-028 | Offer list | A |
+| UC-029 | Create and edit offer | A |
+| UC-030 | View offer via public link | A |
+| UC-031 | Convert offer to gig | A |
 | **Development** ||
 | UC-024 | Load local seed data | A |
 

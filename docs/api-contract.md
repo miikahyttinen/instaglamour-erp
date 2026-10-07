@@ -37,6 +37,8 @@ The UI translates `code` and the field codes; it never shows `message` to users.
 | 409 | `GIG_DELETED` | Changing a deleted gig (except restore) |
 | 409 | `COST_NOT_PAYABLE` | Paying a `FUEL` line |
 | 409 | `BUDGET_NOT_EMPTY` | Copy budget into a year that already has budget numbers |
+| 409 | `CLIENT_IN_USE` | Deleting a client that gigs/offers link to |
+| 409 | `ALREADY_CONVERTED` | Converting an offer that already has a gig |
 | 413 | `FILE_TOO_LARGE` | Upload > 20 MB |
 | 415 | `UNSUPPORTED_FILE_TYPE` | Not PDF/DOCX/PNG/JPG |
 
@@ -315,7 +317,37 @@ Duplicate = case-insensitive exact name match with another person.
 
 `PUT /api/budget/{year}/{categoryId}` no longer has an actuals-only rule: all four fields accepted for every active row.
 
+## Clients (UC-027)
+| Method & path | Request | Response |
+|---|---|---|
+| `GET /api/clients` | `?q=` | 200 `[{ id, name, notes, gigCount, offerCount }]` sorted by name |
+| `POST /api/clients` | `{ name, notes? }` | 201 `Client`; `name: REQUIRED / DUPLICATE / TOO_LONG` |
+| `GET /api/clients/{id}` | — | 200 `{ client, gigs: [GigSummary], offers: [OfferSummary] }` (all years, newest first) |
+| `PATCH /api/clients/{id}` | `{ name?, notes? }` | 200 `Client` |
+| `DELETE /api/clients/{id}` | — | 204 soft; 409 `CLIENT_IN_USE` when gigs/offers link to it |
+
+`Client = { id, name, notes }`. Gig objects gain `clientId: id|null`, `clientName: string|null`, `offerId: id|null`; GigCreate/GigUpdate accept `clientId` (null clears; unknown → `UNKNOWN_REFERENCE`). `GET /api/gigs` `q` also matches client name.
+
+## Offers (UC-028, UC-029, UC-031)
+`OfferSummary = { id, clientId, clientName, eventName, eventDate, venue, city, priceCents|null, sellerId, source|null, eventType|null, disposition, status: OPEN|ACCEPTED|REJECTED, expired: bool, gigId|null, createdAt, updatedAt, deletedAt|null }`
+`OfferDetail = OfferSummary + { lineup: string[], includesText, spotifyUrl, showReferences, sharePath: "/o/<token>" }`
+
+| Method & path | Request | Response |
+|---|---|---|
+| `GET /api/offers` | `year` (required), `q`, `status`, `sellerId`, `disposition`, `eventType`, `source`, `deleted=true` | 200 `{ offers: [OfferSummary], summary: { openValueCents, winRatePct|null, wonCount, decidedCount } }` — summary ignores filters except year (BR-106) |
+| `POST /api/offers` | `{ clientId, eventName, eventDate, venue, city?, lineup?, includesText?, spotifyUrl?, showReferences?, priceCents?, sellerId?, source?, eventType? }` | 201 `OfferDetail` (defaults from settings; seller default me) |
+| `GET /api/offers/{id}` | — | 200 `OfferDetail` |
+| `PATCH /api/offers/{id}` | any editable field incl. `disposition` | 200 `OfferDetail`; logged |
+| `POST /api/offers/{id}/regenerate-link` | — | 200 `OfferDetail` (new `sharePath`) |
+| `POST /api/offers/{id}/convert` | — | 201 `{ offer: OfferDetail, gig: GigDetail }`; 409 `ALREADY_CONVERTED` |
+| `POST /api/offers/{id}/delete` / `/restore` | — | 204 / 200 |
+| `GET /api/offers/{id}/history` | — | 200 `[OfferEvent]` newest first |
+
+## Public offer (UC-030) — no authentication
+`GET /api/public/offers/{token}` → 200 `{ eventName, clientName, eventDate, venue, city, lineup, includesText, spotifyUrl, references: { fi, en } | null, seller: { name, email, phone|null } }` — nothing else. Unknown/regenerated/deleted → 404 `NOT_FOUND`. Response header `X-Robots-Tag: noindex`. This is the only `/api` route besides `/api/auth/*` reachable without a session.
+
 ## Change log
+- 2026-10-07 – Clients, Offers, public offer endpoint; gig clientId/offerId (owner request) (PM)
 - 2026-10-05 – Budget rows managed via /api/budget-categories; reference budgetCategories = {id, name}; no `budgeted` flag (owner request, breaking) (PM)
 - 2026-10-05 – technicalSetup is a single value or null; new `logistics` and `houseTechnician`; reference adds `logistics` (owner request, breaking change for technicalSetup) (PM)
 - 2026-10-03 – First version (PM)

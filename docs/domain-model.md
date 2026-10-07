@@ -197,3 +197,57 @@ FI/EN labels live in the translation files.
 - 2026-10-03 – First draft and iterations (PM)
 - 2026-10-03 – BudgetCategory active/sort_order (PM)
 - 2026-10-03 – Simplified MVP: no Played status, price + additional sales fields, one notes field, one cost list, paid timestamp, plain attachments, seed-only templates/settings, simple people/tasks, budget as one row per category per year (PM)
+
+
+---
+
+# Clients & Offers (owner request 2026-10-07)
+
+## Client
+| Field | Type | Notes |
+|---|---|---|
+| id | uuid | |
+| name | string | required, unique among non-deleted (case-insensitive, trimmed) |
+| notes | text | optional |
+| deleted_at | timestamp | soft delete; only allowed when no gig/offer links (BR-101) |
+
+No agencies: one client per gig and per offer. Real client names exist only in the local database / local seed (BR-090).
+
+## Gig (addition)
+| Field | Type | Notes |
+|---|---|---|
+| client_id | → Client | optional |
+| offer_id | → Offer | optional, unique; set when created by "Convert to gig" |
+
+## Offer
+| Field | Type | Notes |
+|---|---|---|
+| id | uuid | |
+| client_id | → Client | required |
+| event_name | string | required |
+| event_date | date | required; determines the offer's year |
+| venue | string | required |
+| city | string | optional |
+| lineup | string[] | one line per item, shown to the customer |
+| includes_text | text | "what's included", shown to the customer; default from setting `offers.default_includes` |
+| spotify_url | string | optional; default from setting `offers.default_spotify_url` |
+| price_cents | int | optional, excl. VAT, **internal only** |
+| seller_id | → Partner | required, default = creator |
+| show_references | bool | shows the references block (text from setting `offers.references_fi` / `_en`) |
+| source | `EMAIL` \| `WEBSITE` \| `INSTAGRAM` \| `OTHER` \| null | |
+| event_type | `PRIVATE` \| `WEDDING` \| `CORPORATE` \| null | |
+| disposition | `PENDING` \| `WON` \| `CANCELLED` \| `NO_RESPONSE` \| `LOST_PRICE` \| `LOST_COMPETITOR` \| `LOST_OTHER` \| `NO_CAPACITY` | default `PENDING` |
+| *status* | derived (server) | `OPEN` (PENDING) · `ACCEPTED` (WON) · `REJECTED` (others); *expired* = OPEN and event_date < today |
+| gig_id | → Gig | set by convert; at most one gig per offer |
+| share_token | string | ≥ 32 random bytes, URL-safe, unique; regenerating invalidates the old link |
+| deleted_at | timestamp | soft delete |
+| created_at, updated_at | timestamp | |
+
+## OfferEvent (history)
+`CREATED`, `UPDATED` (field old → new), `DISPOSITION_CHANGED`, `CONVERTED` (gig id), `LINK_REGENERATED`, `DELETED`, `RESTORED` — partner + time; append-only.
+
+## Partner (addition)
+| phone | string | optional, shown on the public offer as seller contact (local seed) |
+
+## Settings (additions, local seed)
+`offers.default_includes`, `offers.default_spotify_url`, `offers.references_fi`, `offers.references_en` (text).

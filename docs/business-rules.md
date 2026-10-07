@@ -20,7 +20,7 @@ Rules only — concrete values are seeded settings (`domain-model.md`).
 | BR-003 | **Margin** = total price − costs (budget and actual). |
 | BR-004 | **Margin %** = margin / total price, 1 decimal; "–" when total price = 0. |
 | BR-006 | **Total price** = price + additional sales amount. |
-| BR-007 | No customer or invoicing data is stored; it is in the contract attachment. Invoicing is a separate system. |
+| BR-007 | Invoicing details are not stored; they are in the contract attachment. Invoicing is a separate system. Clients are stored with name and notes only (BR-100). |
 | BR-008 | **Fuel** on a gig is an estimate only: a `FUEL` expense has a budgeted amount and never an actual amount. Actual fuel, if tracked, goes into a budget row of the partners' own choosing. |
 
 ## Gig lifecycle
@@ -83,3 +83,16 @@ Rules only — concrete values are seeded settings (`domain-model.md`).
 - 2026-10-03 – First draft and iterations (PM)
 - 2026-10-03 – Simplified MVP rules (PM)
 - 2026-10-03 – BR-022: double booking for performers only (owner decision) (PM)
+
+
+## Clients & Offers (2026-10-07)
+| ID | Rule |
+|---|---|
+| BR-100 | A client has a name (required, unique case-insensitively among active clients) and notes. Gigs and offers link to **at most one** client (no agencies). Gig client is optional; offer client is required. |
+| BR-101 | A client can be deleted only when no gig or offer links to it (409 `CLIENT_IN_USE`); deletion is soft. |
+| BR-102 | Offer status is derived on the server from disposition: PENDING → OPEN, WON → ACCEPTED, any other → REJECTED. *Expired* = OPEN and event date before today (display only). |
+| BR-103 | Every offer change is logged (OfferEvent); disposition changes are always logged with old → new. |
+| BR-104 | **Public link:** each offer has one unguessable link `/o/<token>` (≥ 32 random bytes, URL-safe). It works without sign-in and shows **only that offer**, **without price** or any internal field (disposition, source, event type, notes, gig link). Regenerating the token invalidates the old link; a deleted offer's link returns 404. |
+| BR-105 | **Convert to gig:** creates a gig from the offer — start date = event date, venue = venue (+ ", city"), lineup name = event name (custom lineup), client = offer client, price = offer price (0 if empty), seller and producer = offer seller — links gig ↔ offer, sets disposition WON (logged). Only one gig per offer (409 `ALREADY_CONVERTED`). |
+| BR-106 | **Offer figures for the selected year** (offers whose event date is in the year, non-deleted): *open value* = Σ price of OPEN, non-expired offers; *win rate* = WON / decided, where decided = disposition not PENDING and not CANCELLED ("–" when none decided). |
+| BR-107 | Email sync is out of scope. |

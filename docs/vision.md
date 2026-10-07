@@ -38,8 +38,11 @@ The partners. Everyone has the same rights and sees everything.
 - Yearly budget: budget and actual per category
 - Lineup templates, settings and budget categories from the local seed (no edit screens)
 
+## Phase 2 (2026-10-07)
+Clients register (name + notes), Offers with public link and convert-to-gig. Email sync out of scope.
+
 ## Out of scope
-Customer register, invoicing, payroll, per diems, sales pipeline, statistics, deployment,
+ invoicing, payroll, per diems, email sync, statistics beyond yearly sums, deployment,
 template/settings edit screens, spreadsheet import.
 
 ## Decisions (summary)
