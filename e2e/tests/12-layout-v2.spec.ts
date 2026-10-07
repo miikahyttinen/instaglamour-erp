@@ -22,15 +22,29 @@ import { busyIds, MAIN_PAGE_NAMES, mainPages, openLoaded, type BusyIds } from '.
 // on phones, the gig list as a table only from 1200 px, compact cost rows by container width.
 // Read-only flows: nothing here changes the shared database.
 
+// Eight items since TASK-015…139: Tarjoukset first (owner decision 2026-10-07), Asiakkaat after Keikat.
 const NAV: { label: string; path: string }[] = [
+  { label: 'Tarjoukset', path: '/offers' },
   { label: 'Vuosi', path: '/' },
   { label: 'Keikat', path: '/gigs' },
+  { label: 'Asiakkaat', path: '/clients' },
   { label: 'Henkilöt', path: '/people' },
   { label: 'Tehtävät', path: '/tasks' },
   { label: 'Tunnit', path: '/hours' },
   { label: 'Budjetti', path: '/budget' },
 ];
 const SIDEBAR_KEY = 'ig-sidebar'; // frontend/src/layout/sidebarState.ts
+/** Gig list table columns (FI), the client column since TASK-137. */
+const GIG_COLUMNS = [
+  'Päivä',
+  'Keikka',
+  'Asiakas',
+  'Myyjä / tuottaja',
+  'Kokonaishinta',
+  'Kulut, budjetti',
+  'Kulut, toteuma',
+  'Kate-%',
+];
 
 function sidebarNav(page: Page): Locator {
   return page.getByRole('navigation', { name: NAV_NAME });
@@ -104,6 +118,11 @@ test.describe('desktop sidebar', () => {
 
     const nav = sidebarNav(page);
     await expect(nav.getByRole('link')).toHaveCount(NAV.length);
+    // In menu order (pointer away from the rail: a visible tooltip changes the name, F-005).
+    await page.mouse.move(700, 500);
+    for (const [i, { label }] of NAV.entries()) {
+      await expect(nav.getByRole('link').nth(i), `item ${i + 1}`).toHaveAccessibleName(label);
+    }
     for (const { label, path } of NAV) {
       const link = nav.getByRole('link', { name: label, exact: true });
       await expect(link, `${label}: in the collapsed rail`).toBeInViewport();
@@ -172,10 +191,36 @@ test.describe('desktop sidebar', () => {
       } else {
         await expect(table, `${w} px: table`).toBeVisible();
         await expect(cards, `${w} px: no cards`).toHaveCount(0);
-        await expect(table.getByRole('columnheader')).toHaveCount(7);
+        // Eight columns since the client column (TASK-137).
+        await expect(table.getByRole('columnheader')).toHaveText(GIG_COLUMNS);
       }
       await expect(gigListRows(page).first()).toBeVisible();
       await expectNoHorizontalScroll(page, `gig list at ${w} px`);
+    }
+  });
+
+  test.fixme('gig list: the 8-column table fits next to the expanded sidebar from 1200 px, no sideways scroll inside the table (F-006)', async ({ page }) => {
+    // F-006: the page itself does not scroll (`.table-wrap` has overflow-x: auto), so the check above
+    // passes, but at 1200 px the table is ~950 px wide in an ~886 px box: "Kate-%" is cut off and the
+    // table scrolls sideways. It fits from ≈ 1264 px, or with the sidebar collapsed.
+    for (const mode of ['expanded', 'collapsed'] as const) {
+      await page.addInitScript(([key, value]) => window.localStorage.setItem(key, value), [SIDEBAR_KEY, mode]);
+      for (const w of [GIG_TABLE_MIN_WIDTH, 1280, 1440]) {
+        await page.setViewportSize({ width: w, height: 800 });
+        await openLoaded(page, '/gigs?status=ALL');
+        const table = page.getByRole('table', { name: 'Keikkalista' });
+        await expect(table).toBeVisible();
+        await expect(table.getByRole('columnheader')).toHaveText(GIG_COLUMNS);
+        const box = await table.evaluate((t) => {
+          const wrap = t.parentElement!;
+          return { scroll: wrap.scrollWidth, client: wrap.clientWidth };
+        });
+        expect(box.scroll, `sidebar ${mode}, ${w} px: table ${box.scroll} px in a ${box.client} px box`).toBeLessThanOrEqual(box.client);
+        // Every column header is fully inside the visible part of the table.
+        for (const th of await table.getByRole('columnheader').all()) {
+          await expect(th, `sidebar ${mode}, ${w} px`).toBeInViewport({ ratio: 1 });
+        }
+      }
     }
   });
 
@@ -249,6 +294,7 @@ test.describe('phone drawer', () => {
     await expect(drawer.getByRole('button', { name: 'Sulje valikko' })).toBeFocused();
     const links = drawer.getByRole('navigation', { name: NAV_NAME }).getByRole('link');
     await expect(links).toHaveCount(NAV.length);
+    await expect(links).toHaveText(NAV.map(({ label }) => label)); // menu order
     for (const { label } of NAV) await expect(drawer.getByRole('link', { name: label, exact: true })).toBeVisible();
     await expect(drawer.getByRole('link', { name: 'Vuosi', exact: true })).toHaveAttribute('aria-current', 'page');
     await expect(drawer.getByRole('button', { name: 'Vaihda kieleksi English' })).toBeVisible();

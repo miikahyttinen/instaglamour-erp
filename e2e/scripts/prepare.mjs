@@ -23,7 +23,7 @@ for (const dir of [backendDir, frontendDir]) {
 run('docker', ['compose', 'up', '-d', '--wait', 'db-test'], { cwd: repoRoot });
 
 // 3. Fresh e2e database.
-if (e2eDbName !== 'instaglamour_e2e') throw new Error('Refusing to recreate an unexpected database');
+if (!/^instaglamour_e2e[a-z0-9_]*$/.test(e2eDbName)) throw new Error('Refusing to recreate an unexpected database');
 const psql = (sql) =>
   run(
     'docker',
