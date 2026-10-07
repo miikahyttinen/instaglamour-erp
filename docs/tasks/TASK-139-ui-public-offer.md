@@ -1,5 +1,5 @@
 # TASK-139: Public offer page — UI
-- **owner:** ui · **status:** todo · **spec:** UC-030, BR-104, api-contract "Public offer" · **depends on:** TASK-137 (runs parallel to TASK-138)
+- **owner:** ui · **status:** done · **spec:** UC-030, BR-104, api-contract "Public offer" · **depends on:** TASK-137 (runs parallel to TASK-138)
 ## Acceptance criteria
 - [ ] Route `/o/:token` **outside** the auth guard and app shell (no sidebar/top bar/year); never calls authenticated endpoints.
 - [ ] Shared presentational component `OfferPreview` (in `src/features/offers/OfferPreview.tsx`, used by TASK-138 too — create it here with a stable props API documented in README): logo, event name, client, date with weekday, venue/city, lineup, includes, Spotify button, references, seller name/email/phone. No price.
