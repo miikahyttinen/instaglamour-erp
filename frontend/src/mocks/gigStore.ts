@@ -1,4 +1,5 @@
 // In-memory mock of the gig domain (gigs, cost lines, attachments, history, people, clients).
+// Offers live in offerStore.ts (db.offers).
 // Implements the rules of docs/api-contract.md (Gigs, Cost lines, Attachments) so the UI
 // behaves like the real backend: economics, played, notFullyStaffed, BR-020/021 line creation,
 // BR-022 double booking, BR-026 load-in switch, BR-027 seller/producer change, history events.
@@ -16,7 +17,6 @@ import type {
   Id,
   IsoDate,
   LineupTemplate,
-  OfferSummary,
   Person,
   PersonDoubleBookedWarning,
   Settings,
@@ -65,11 +65,6 @@ export interface MockAttachment extends Attachment {
 export interface GigState {
   people: Person[];
   clients: MockClient[];
-  /**
-   * Offers linked to clients. Only what the client page needs (UC-027); the offers feature
-   * (TASK-138) owns the full offer mock.
-   */
-  offers: OfferSummary[];
   gigs: MockGig[];
   /** Kept in creation order (contract: lines ordered by creation time). */
   costLines: CostLine[];
@@ -78,7 +73,7 @@ export interface GigState {
 }
 
 export function emptyGigState(): GigState {
-  return { people: [], clients: [], offers: [], gigs: [], costLines: [], attachments: [], events: [] };
+  return { people: [], clients: [], gigs: [], costLines: [], attachments: [], events: [] };
 }
 
 let idCounter = 0;

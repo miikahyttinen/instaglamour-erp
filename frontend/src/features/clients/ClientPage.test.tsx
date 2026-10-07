@@ -1,10 +1,9 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { formatMoney } from '../../lib/format';
-import { db } from '../../mocks/data';
 import { addMockClient, addMockGig, TEST_YEAR } from '../../test/gigFixtures';
 import { renderApp, signInMock } from '../../test/renderApp';
-import { mockOffer } from '../../test/offerFixtures';
+import { addMockOffer } from '../../test/offerFixtures';
 
 const fi = (cents: number) => formatMoney(cents, 'fi').replace(/\s/g, ' ');
 const bodyRows = (name: string) =>
@@ -43,34 +42,31 @@ describe('client page (UC-027)', () => {
 
   it('lists offers with status, expired and price', async () => {
     const x = addMockClient('Client X');
-    const open = mockOffer({ clientId: x.id, eventName: 'Event Open', eventDate: `${TEST_YEAR}-09-01` });
-    db.gigs.offers.push(
-      mockOffer({
-        clientId: x.id,
-        eventName: 'Event Lost',
-        eventDate: `${TEST_YEAR}-02-01`,
-        disposition: 'LOST_PRICE',
-        status: 'REJECTED',
-        priceCents: null,
-      }),
-      open,
-      mockOffer({ clientId: x.id, eventName: 'Event Expired', eventDate: `${TEST_YEAR}-04-01`, expired: true }),
-    );
+    addMockOffer({
+      clientId: x.id,
+      eventName: 'Event Lost',
+      eventDate: `${TEST_YEAR}-02-01`,
+      disposition: 'LOST_PRICE',
+      priceCents: null,
+    });
+    const open = addMockOffer({ clientId: x.id, eventName: 'Event Open', eventDate: `${TEST_YEAR}-09-01` });
+    // Expired = open and the event date has passed (derived by the backend, BR-102).
+    addMockOffer({ clientId: x.id, eventName: 'Event Expired', eventDate: '2020-04-01' });
     renderApp(`/clients/${x.id}`);
     await screen.findByRole('table', { name: 'Asiakkaan tarjoukset' });
     const rows = bodyRows('Asiakkaan tarjoukset');
     expect(rows.map((r) => within(r).getByRole('link').textContent)).toEqual([
       'Event Open',
-      'Event Expired',
       'Event Lost',
+      'Event Expired',
     ]);
     expect(within(rows[0]!).getByRole('link')).toHaveAttribute('href', `/offers/${open.id}`);
     expect(rows[0]).toHaveTextContent('Avoin');
     expect(rows[0]!.textContent!.replace(/\s/g, ' ')).toContain(fi(100000));
-    expect(rows[1]).toHaveTextContent('Vanhentunut');
-    expect(rows[2]).toHaveTextContent('Hylätty');
-    expect(rows[2]).toHaveTextContent('Hävitty: hinta');
-    expect(within(rows[2]!).getAllByRole('cell').at(-1)).toHaveTextContent('–');
+    expect(rows[2]).toHaveTextContent('Vanhentunut');
+    expect(rows[1]).toHaveTextContent('Hylätty');
+    expect(rows[1]).toHaveTextContent('Hävitty: hinta');
+    expect(within(rows[1]!).getAllByRole('cell').at(-1)).toHaveTextContent('–');
   });
 
   it('renames and edits notes in place; empty and duplicate names are not saved (A1, E1)', async () => {

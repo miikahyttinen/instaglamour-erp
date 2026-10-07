@@ -7,6 +7,7 @@ import { clientHandlers } from './clientHandlers';
 import { db, setMockSession } from './data';
 import { attachmentHandlers, costLineHandlers, gigHandlers } from './gigHandlers';
 import { hoursHandlers } from './hoursHandlers';
+import { offerHandlers } from './offerHandlers';
 import { peopleHandlers } from './peopleHandlers';
 import { publicOfferHandlers } from './publicOfferHandlers';
 import { tasksHandlers } from './tasksHandlers';
@@ -71,6 +72,7 @@ export const handlers = [
   ...authHandlers,
   ...publicOfferHandlers,
   ...referenceHandlers,
+  ...offerHandlers,
   ...yearHandlers,
   ...gigHandlers,
   ...costLineHandlers,

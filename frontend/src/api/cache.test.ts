@@ -15,6 +15,7 @@ const keys = {
   costLines: peopleKeys.costLines('p1', YEAR),
   peopleList: peopleKeys.list('all'),
   clientPage: ['clients', 'detail', 'c1'],
+  offerList: ['offers', 'list', { year: YEAR }],
   hourEntries: [...hoursKey, 'entries', YEAR, 'a'],
   hourTotals: [...hoursKey, 'totals', YEAR],
   budget: budgetKey(YEAR),
@@ -30,8 +31,8 @@ function invalidatedAfter(change: YearDataChange): Name[] {
 }
 
 describe('invalidateYearData', () => {
-  it('gig and cost line changes refresh the year page, gig lists, person cost lines and clients', () => {
-    expect(invalidatedAfter('gigs')).toEqual(['year', 'gigList', 'costLines', 'clientPage']);
+  it('gig and cost line changes refresh the year page, gig lists, person cost lines, clients and offers', () => {
+    expect(invalidatedAfter('gigs')).toEqual(['year', 'gigList', 'costLines', 'clientPage', 'offerList']);
   });
 
   it('hours changes refresh the year page and every hours query', () => {
