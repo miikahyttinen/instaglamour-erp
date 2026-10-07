@@ -1,5 +1,5 @@
 # TASK-016: Offers — backend
-- **owner:** backend · **status:** todo · **spec:** UC-028…031, BR-102…107, domain-model, api-contract "Offers" + "Public offer" · **depends on:** TASK-015
+- **owner:** backend · **status:** done · **spec:** UC-028…031, BR-102…107, domain-model, api-contract "Offers" + "Public offer" · **depends on:** TASK-015
 ## Acceptance criteria
 - [ ] Migration: `offer`, `offer_event`, `gig.offer_id` (unique nullable), `partner.phone` (nullable). Enums per domain model. `share_token` ≥ 32 random bytes URL-safe (crypto), unique.
 - [ ] Endpoints per contract incl. year filter, filters, summary (BR-106), patch (all fields, logged; disposition old → new), regenerate-link, convert (transaction; BR-105; 409 ALREADY_CONVERTED; idempotent under concurrency), delete/restore, history. Status/expired derived on the server (Helsinki today).

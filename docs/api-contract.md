@@ -39,6 +39,7 @@ The UI translates `code` and the field codes; it never shows `message` to users.
 | 409 | `BUDGET_NOT_EMPTY` | Copy budget into a year that already has budget numbers |
 | 409 | `CLIENT_IN_USE` | Deleting a client that gigs/offers link to |
 | 409 | `ALREADY_CONVERTED` | Converting an offer that already has a gig |
+| 429 | `RATE_LIMITED` | Public offer endpoint: > 60 requests/min/IP (`Retry-After` header) |
 | 413 | `FILE_TOO_LARGE` | Upload > 20 MB |
 | 415 | `UNSUPPORTED_FILE_TYPE` | Not PDF/DOCX/PNG/JPG |
 
@@ -343,10 +344,16 @@ Duplicate = case-insensitive exact name match with another person.
 | `POST /api/offers/{id}/delete` / `/restore` | — | 204 / 200 |
 | `GET /api/offers/{id}/history` | — | 200 `[OfferEvent]` newest first |
 
+- `status` filter: `OPEN` (incl. expired) · `ACCEPTED` · `REJECTED` · `EXPIRED` (open and past).
+- Deleted offers: GET and history work; PATCH, regenerate-link, convert, delete → 409 `INVALID_STATUS_TRANSITION`; restore of a non-deleted offer → same.
+- Create: omitted `includesText`/`spotifyUrl` → setting defaults; `null`/`""` → none. `spotifyUrl` must be http(s) (`INVALID_VALUE`). Lineup items trimmed, blanks dropped, ≤ 100 items × 500 chars.
+- `OfferEvent = { id, offerId, type, partnerId, at, details }`; details: `UPDATED {changes:[{field,from,to}]}`, `DISPOSITION_CHANGED {from,to}`, `CONVERTED {gigId}`, others `{}`.
+
 ## Public offer (UC-030) — no authentication
 `GET /api/public/offers/{token}` → 200 `PublicOffer = { eventName, clientName, eventDate, venue, city|null, lineup: string[], includesText|null, spotifyUrl|null, references: { fi: string, en: string } | null (plain text, line breaks kept), seller: { name, email, phone|null } }` — nothing else. Unknown/regenerated/deleted → 404 `NOT_FOUND`. Response header `X-Robots-Tag: noindex`. This is the only `/api` route besides `/api/auth/*` reachable without a session.
 
 ## Change log
+- 2026-10-07 – Offers clarifications from TASK-016: RATE_LIMITED, status filter values, deleted-offer behaviour, create defaults/validation, OfferEvent shape (PM)
 - 2026-10-07 – OfferDetail.preview (= PublicOffer); PublicOffer nullability and references as plain text (PM)
 - 2026-10-07 – Clients, Offers, public offer endpoint; gig clientId/offerId (owner request) (PM)
 - 2026-10-05 – Budget rows managed via /api/budget-categories; reference budgetCategories = {id, name}; no `budgeted` flag (owner request, breaking) (PM)
