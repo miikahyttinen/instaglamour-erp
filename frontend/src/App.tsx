@@ -8,6 +8,7 @@ import { SignInPage } from './auth/SignInPage';
 import { BudgetPage } from './features/budget/BudgetPage';
 import { GigsRoutes } from './features/gigs/GigsRoutes';
 import { HoursRoutes } from './features/hours/HoursRoutes';
+import { PublicOfferPage } from './features/offers/PublicOfferPage';
 import { PeopleRoutes } from './features/people/PeopleRoutes';
 import { TasksPage } from './features/tasks/TasksPage';
 import { YearPage } from './features/year/YearPage';
@@ -60,9 +61,19 @@ export function App({ queryClient }: { queryClient: QueryClient }) {
     <QueryClientProvider client={queryClient}>
       {/* Icons: thin line, 16 px, stroke 1.5 (docs/design.md). Pass `size` to override. */}
       <LucideProvider size={16} strokeWidth={1.5}>
-        <AuthProvider>
-          <AppRoutes />
-        </AuthProvider>
+        <Routes>
+          {/* Public offer link (UC-030): outside the auth provider and the shell, so it never
+              calls an authenticated endpoint (not even /api/me). */}
+          <Route path="/o/:token" element={<PublicOfferPage />} />
+          <Route
+            path="*"
+            element={
+              <AuthProvider>
+                <AppRoutes />
+              </AuthProvider>
+            }
+          />
+        </Routes>
       </LucideProvider>
     </QueryClientProvider>
   );

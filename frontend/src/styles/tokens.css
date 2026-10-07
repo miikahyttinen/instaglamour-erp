@@ -15,6 +15,7 @@
   --fs-lg: 1rem; /* 16 px — card / dialog titles, secondary figures */
   --fs-figure: 1.25rem; /* 20 px — stat tile numbers */
   --fs-title: 1.25rem; /* 20 px phone → 22 px desktop — page title */
+  --fs-display: 2rem; /* 32 px — title of a customer document (public offer, ≥ 600 px wide) */
   --lh-tight: 1.15;
   --lh-body: 1.5;
   --ls-label: 0.14em; /* mono uppercase letter spacing */
@@ -39,6 +40,7 @@
   --grid-gap: 16px; /* between tiles / cards (StatGrid, card grids) */
   --content-max: 1200px; /* content width inside .page-container (padding not included) */
   --label-w: 160px; /* label column of FieldList (≥ 600 px) */
+  --doc-max: 880px; /* reading width of customer documents (public offer page) */
 
   /* Shape */
   --radius: 2px; /* maximum radius anywhere */

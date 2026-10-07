@@ -32,6 +32,7 @@ import type {
   PersonCreate,
   PersonUpdate,
   PersonWithWarnings,
+  PublicOffer,
   ReasonRequest,
   ReferenceData,
   Task,
@@ -56,6 +57,14 @@ export const authApi = {
 export const meApi = {
   get: () => apiRequest<Partner>('/me'),
   update: (body: UpdateMeRequest) => apiRequest<Partner>('/me', { method: 'PATCH', body }),
+};
+
+// ---------- Public offer (UC-030) ----------
+
+/** The only data call of the public offer page. Works without a session. */
+export const publicOffersApi = {
+  get: (token: string, signal?: AbortSignal) =>
+    apiRequest<PublicOffer>(`/public/offers/${encodeURIComponent(token)}`, { signal }),
 };
 
 // ---------- Reference & year ----------

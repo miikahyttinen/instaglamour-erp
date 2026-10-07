@@ -75,6 +75,27 @@ export function formatDate(value: string | null | undefined, lang: Language): st
   return lang === 'fi' ? `${parts.d}.${parts.m}.${parts.y}` : `${parts.d} ${EN_MONTHS[parts.m - 1]} ${parts.y}`;
 }
 
+const weekdayFormatters = new Map<Language, Intl.DateTimeFormat>();
+
+/**
+ * A `YYYY-MM-DD` date with its weekday (no timezone shift): FI `Perjantai 1.5.2026`,
+ * EN `Friday 1 May 2026`. Invalid / empty → `–`.
+ */
+export function formatDateWithWeekday(value: string | null | undefined, lang: Language): string {
+  const parts = value ? parseIsoDate(value) : null;
+  if (!parts) return '–';
+  const date = new Date(Date.UTC(parts.y, parts.m - 1, parts.d));
+  if (Number.isNaN(date.getTime())) return '–';
+  let f = weekdayFormatters.get(lang);
+  if (!f) {
+    f = new Intl.DateTimeFormat(LOCALES[lang], { weekday: 'long', timeZone: 'UTC' });
+    weekdayFormatters.set(lang, f);
+  }
+  const weekday = f.format(date);
+  const capitalised = weekday.charAt(0).toLocaleUpperCase(LOCALES[lang]) + weekday.slice(1);
+  return `${capitalised} ${formatDate(value, lang)}`;
+}
+
 /** Formats a date range: one day → single date; FI `1.5.2026–3.5.2026`. */
 export function formatDateRange(start: string, end: string | null, lang: Language): string {
   if (!end || end === start) return formatDate(start, lang);

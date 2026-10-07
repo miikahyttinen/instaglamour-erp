@@ -211,6 +211,39 @@ export interface UpdateMeRequest {
   selectedYear?: number;
 }
 
+// ---------- Public offer (UC-030, no session) ----------
+
+/** References block of the public offer: the same text in both languages. */
+export interface PublicOfferReferences {
+  fi: string;
+  en: string;
+}
+
+/** Seller contact shown to the customer. */
+export interface PublicOfferSeller {
+  name: string;
+  email: string;
+  phone: string | null;
+}
+
+/**
+ * `GET /api/public/offers/{token}`: exactly these fields, nothing else (BR-104). No price, no
+ * internal fields, no ids.
+ */
+export interface PublicOffer {
+  eventName: string;
+  clientName: string;
+  eventDate: IsoDate;
+  venue: string;
+  city: string | null;
+  lineup: string[];
+  includesText: string | null;
+  spotifyUrl: string | null;
+  /** `null` when the offer does not show references. */
+  references: PublicOfferReferences | null;
+  seller: PublicOfferSeller;
+}
+
 // ---------- Reference data ----------
 
 export interface TemplateRole {

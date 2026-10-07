@@ -1,0 +1,180 @@
+/* OfferPreview (UC-030): customer-facing offer document. Tokens only. A container query decides
+   the columns, so the same component works full-page (/o/:token) and inside an app page (TASK-138).
+   Editorial look: big uppercase title, mono labels, hairline dividers, no surfaces. */
+
+.offer-preview {
+  container: offer-preview / inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: var(--section-gap);
+  color: var(--text);
+}
+
+.offer-preview-head {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding-bottom: var(--section-gap);
+  border-bottom: var(--hairline) solid var(--border);
+}
+
+.offer-preview .offer-preview-logo {
+  height: var(--space-6);
+  width: auto;
+  margin-bottom: var(--space-5);
+}
+
+.offer-preview-eyebrow {
+  margin: 0;
+}
+
+.offer-preview-title {
+  margin: 0;
+  font-size: var(--fs-title);
+  font-weight: var(--fw-bold);
+  line-height: var(--lh-tight);
+  letter-spacing: var(--ls-title);
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+
+/* Client · date · venue */
+.offer-preview-facts {
+  margin: 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-4);
+}
+.offer-preview-facts > div,
+.offer-preview-contact-list > div {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+.offer-preview dd {
+  margin: 0;
+  font-size: var(--fs-lg);
+  overflow-wrap: anywhere;
+}
+
+/* Lineup | what's included */
+.offer-preview-body {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--section-gap);
+  padding-top: var(--section-gap);
+  border-top: var(--hairline) solid var(--border);
+}
+.offer-preview .section-label {
+  margin: 0 0 var(--space-4);
+}
+
+.offer-preview-lineup {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  font-size: var(--fs-lg);
+}
+
+.offer-preview-text {
+  margin: 0;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.offer-preview-spotify {
+  margin-top: var(--space-5);
+}
+
+.offer-preview-references,
+.offer-preview-contact {
+  padding-top: var(--section-gap);
+  border-top: var(--hairline) solid var(--border);
+}
+
+.offer-preview-seller {
+  margin: 0 0 var(--space-3);
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-medium);
+}
+.offer-preview-contact-list {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4) var(--space-6);
+}
+.offer-preview-contact-list dd {
+  font-size: var(--fs-body);
+}
+.offer-preview-contact-list a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap);
+}
+
+@container offer-preview (min-width: 600px) {
+  .offer-preview-title {
+    font-size: var(--fs-display);
+  }
+  .offer-preview-facts {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-5);
+  }
+  .offer-preview-body {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .offer-preview-contact-list a {
+    min-height: 0;
+  }
+}
+
+@media print {
+  .offer-preview {
+    gap: var(--space-5);
+  }
+  .offer-preview-head,
+  .offer-preview-body,
+  .offer-preview-references,
+  .offer-preview-contact {
+    break-inside: avoid;
+  }
+  .offer-preview-head {
+    padding-bottom: var(--space-5);
+  }
+  .offer-preview-body,
+  .offer-preview-references,
+  .offer-preview-contact {
+    padding-top: var(--space-5);
+  }
+  /* The button is useless on paper: show the address as text instead. */
+  .offer-preview .offer-preview-spotify {
+    border: 0;
+    background: none;
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: var(--fs-body);
+    padding: 0;
+    gap: 0;
+    min-height: 0;
+    text-transform: none;
+    letter-spacing: normal;
+  }
+  .offer-preview .offer-preview-spotify svg,
+  .offer-preview .offer-preview-spotify .visually-hidden {
+    display: none;
+  }
+  .offer-preview .offer-preview-spotify::after {
+    content: ': ' attr(href);
+    word-break: break-all;
+  }
+  .offer-preview a {
+    text-decoration: none;
+  }
+}
