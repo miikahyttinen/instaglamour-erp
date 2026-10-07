@@ -468,7 +468,7 @@ async function applySeed(
     const { _max } = await tx.reference.aggregate({ _max: { sortOrder: true } });
     const image = images.get(i);
     const photo = image
-      ? { imageStorageKey: await copyImage(image), imageContentType: image.contentType, imageSizeBytes: image.sizeBytes }
+      ? { imageStorageKey: await copyImage(image), imageContentType: image.contentType, imageSizeBytes: image.sizeBytes, imageUploadedAt: new Date() }
       : {};
     await tx.reference.create({
       data: {

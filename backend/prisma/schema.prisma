@@ -554,8 +554,8 @@ model BudgetYear {
 
 /// A testimonial shown on offers with show_references (BR-108). Replaces the old text settings
 /// offers.references_fi / offers.references_en (those rows are left in place but no longer read).
-/// The optional photo is a file in UPLOAD_DIR, stored like attachments: either all three image_*
-/// columns are set or none (check constraint "reference_image_all_or_none").
+/// The optional photo is a file in UPLOAD_DIR, stored like attachments: either all four
+/// image_* columns are set or none (check constraint "reference_image_all_or_none").
 model Reference {
   id               String   @id @default(uuid()) @db.Uuid
   quoteFi          String   @map("quote_fi")
@@ -568,7 +568,9 @@ model Reference {
   /// Sniffed from the file content: image/png, image/jpeg or image/webp.
   imageContentType String?  @map("image_content_type")
   imageSizeBytes   Int?     @map("image_size_bytes")
-  createdAt        DateTime @default(now()) @map("created_at")
+  /// When the current photo was uploaded; its epoch milliseconds are the API's `imageVersion`.
+  imageUploadedAt  DateTime? @map("image_uploaded_at")
+  createdAt       DateTime @default(now()) @map("created_at")
   updatedAt        DateTime @updatedAt @map("updated_at")
 
   @@index([sortOrder])

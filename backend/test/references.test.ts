@@ -65,6 +65,7 @@ describe('POST /api/references', () => {
       quoteEn: 'Quote 1',
       author: '— Person 1, Client A Oy',
       hasImage: false,
+      imageVersion: null,
       sortOrder: 0,
       active: true,
     });
@@ -222,7 +223,7 @@ describe('photos', () => {
     // The browser-declared type and name are not trusted.
     const res = await uploadImage(s, ref.id, content, { filename: 'x.gif', contentType: 'image/gif' });
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toStrictEqual({ ...ref, hasImage: true });
+    expect(res.json()).toStrictEqual({ ...ref, hasImage: true, imageVersion: expect.stringMatching(/^\d+$/) });
     const stored = await files();
     expect(stored).toHaveLength(1);
     expect(await readFile(path.join(uploadDir, stored[0]!))).toEqual(content);
@@ -233,6 +234,31 @@ describe('photos', () => {
     expect(img.headers['x-content-type-options']).toBe('nosniff');
     expect(img.headers['cache-control']).toBe('private, no-cache');
     expect(img.rawPayload).toEqual(content);
+  });
+
+  it('imageVersion changes on every upload and remove; ?v= of the current version is cached long', async () => {
+    const ref = await createReference(s);
+    const v1 = (await uploadImage(s, ref.id, PNG)).json().imageVersion as string;
+    const v2 = (await uploadImage(s, ref.id, PNG)).json().imageVersion as string; // same bytes, new version
+    expect(v2).not.toBe(v1);
+    expect(Number(v2)).toBeGreaterThan(Number(v1));
+    expect((await list())[0].imageVersion).toBe(v2);
+
+    const get = (query: string) => call(s, 'GET', `/api/references/${ref.id}/image${query}`);
+    expect((await get(`?v=${v2}`)).headers['cache-control']).toBe('private, max-age=31536000, immutable');
+    expect((await get(`?v=${v2}&x=1`)).headers['cache-control']).toBe('private, max-age=31536000, immutable');
+    expect((await get(`?v=${v1}`)).headers['cache-control']).toBe('private, no-cache');
+    expect((await get('?other=1')).statusCode).toBe(200);
+    // A PATCH that doesn't touch the photo keeps the version.
+    expect((await call(s, 'PATCH', `/api/references/${ref.id}`, { author: 'New' })).json().imageVersion).toBe(v2);
+
+    const removed = (await call(s, 'DELETE', `/api/references/${ref.id}/image`)).json();
+    expect(removed).toMatchObject({ hasImage: false, imageVersion: null });
+    const missing = await get(`?v=${v2}`);
+    expect(missing.statusCode).toBe(404);
+    expect(missing.headers['cache-control']).toBe('no-store');
+    const v3 = (await uploadImage(s, ref.id, PNG)).json().imageVersion as string;
+    expect([v1, v2]).not.toContain(v3);
   });
 
   it('replacing a photo removes the old file', async () => {

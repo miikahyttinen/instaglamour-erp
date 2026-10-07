@@ -92,7 +92,8 @@ src/routes/publicOffers.ts  GET /api/public/offers/{token} and its token-scoped 
                    (BR-108): the only non-auth routes besides /api/auth/*; noindex, 60 requests/min per IP
                    each (in-memory, 429 RATE_LIMITED); every photo miss is the same 404
 src/references/    references/testimonials (routes/references.ts, BR-108): serializer, active list for
-                   PublicOffer, photo responses (private, no-cache + ETag, nosniff)
+                   PublicOffer, photo responses (private; ?v=imageVersion cached a year, else no-cache + ETag;
+                   errors no-store; nosniff)
 src/fileStore/     UPLOAD_DIR files (attachments, reference photos): streamed upload with size limit,
                    content sniffing (PNG/JPG/WebP), random UUID file names
 src/budget/        budget rows + loadBudget (single source for /api/budget and the year page); rows are

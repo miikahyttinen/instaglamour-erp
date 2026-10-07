@@ -587,7 +587,7 @@ describe('seed: references (TASK-018)', () => {
     };
     await loadSeed(testDb(), data, { seedDir: dir, uploadDir });
     const [withImage, without] = await refs();
-    expect(withImage).toMatchObject({ imageContentType: 'image/png', imageSizeBytes: PNG.length });
+    expect(withImage).toMatchObject({ imageContentType: 'image/png', imageSizeBytes: PNG.length, imageUploadedAt: expect.any(Date) });
     expect(uploaded()).toEqual([withImage!.imageStorageKey]);
     expect(readFileSync(path.join(uploadDir, withImage!.imageStorageKey!))).toEqual(PNG);
     expect(without!.imageStorageKey).toBeNull();

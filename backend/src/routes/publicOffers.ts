@@ -20,7 +20,7 @@ import { FixedWindowRateLimiter } from '../http/rateLimit.js';
 import type { Db } from '../db.js';
 import { hashShareToken, isWellFormedShareToken, sameToken } from '../offers/shareToken.js';
 import { offerInclude, toPublicOfferDto, type OfferWithRefs } from '../offers/store.js';
-import { loadActiveReferences, sendReferenceImage } from '../references/store.js';
+import { loadActiveReferences, sendReferenceImage, storedImage } from '../references/store.js';
 import { isUuid } from '../gigs/store.js';
 import { UploadDir } from '../fileStore/uploadDir.js';
 
@@ -76,9 +76,9 @@ export function publicOfferRoutes(app: FastifyInstance, deps: AppDeps): void {
     if (!offer || !offer.showReferences || !isUuid(request.params.id)) throw imageNotFound();
     const ref = await db.reference.findUnique({ where: { id: request.params.id } });
     if (!ref || !ref.active) throw imageNotFound();
-    const { imageStorageKey, imageContentType, imageSizeBytes } = ref;
-    if (!imageStorageKey || !imageContentType || imageSizeBytes === null || !(await uploads.exists(imageStorageKey)))
+    const image = storedImage(ref);
+    if (!image || !(await uploads.exists(image.storageKey)))
       throw imageNotFound();
-    return sendReferenceImage(reply, uploads, { imageStorageKey, imageContentType, imageSizeBytes }, request.headers['if-none-match']);
+    return sendReferenceImage(reply, uploads, image, request);
   });
 }

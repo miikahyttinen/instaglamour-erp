@@ -8,7 +8,7 @@ import { OFFER_SETTING_KEYS } from '../domain/enums.js';
 import type { Offer, OfferDisposition, OfferEvent, OfferEventType, Prisma } from '../generated/prisma/client.js';
 import { isUuid, logEvent, type Tx } from '../gigs/store.js';
 import { AppError, notFound } from '../http/errors.js';
-import { publicReferenceImageUrl, type PublicReferenceSource } from '../references/store.js';
+import { imageVersion, publicReferenceImageUrl, type PublicReferenceSource } from '../references/store.js';
 import type { FeeSettings } from '../routes/reference.js';
 import { sharePath } from './shareToken.js';
 
@@ -105,12 +105,15 @@ export function toPublicOfferDto(offer: OfferWithRefs, references: readonly Publ
     includesText: offer.includesText,
     spotifyUrl: offer.spotifyUrl,
     references: offer.showReferences
-      ? references.map((r) => ({
-          id: r.id,
-          quote: { fi: r.quoteFi, en: r.quoteEn },
-          author: r.author,
-          imageUrl: r.imageStorageKey ? publicReferenceImageUrl(offer.shareToken, r.id) : null,
-        }))
+      ? references.map((r) => {
+          const version = r.imageStorageKey ? imageVersion(r) : null;
+          return {
+            id: r.id,
+            quote: { fi: r.quoteFi, en: r.quoteEn },
+            author: r.author,
+            imageUrl: version ? publicReferenceImageUrl(offer.shareToken, r.id, version) : null,
+          };
+        })
       : null,
     seller: { name: offer.seller.person.name, email: offer.seller.email, phone: offer.seller.phone },
   };

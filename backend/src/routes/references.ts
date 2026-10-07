@@ -18,6 +18,7 @@ import {
   QUOTE_MAX,
   referenceOrder,
   sendReferenceImage,
+  storedImage,
   toReferenceDto,
 } from '../references/store.js';
 import { detectImageType, UploadDir } from '../fileStore/uploadDir.js';
@@ -131,14 +132,21 @@ export function referencesRoutes(app: FastifyInstance, deps: AppDeps): void {
    */
   const swapImage = (id: string, image: { imageStorageKey: string; imageContentType: string; imageSizeBytes: number } | null) =>
     inTransaction(db, async (tx) => {
-      const locked = await tx.$queryRaw<{ key: string | null }[]>`
-        SELECT "image_storage_key" AS "key" FROM "reference" WHERE "id" = ${id}::uuid FOR UPDATE`;
-      if (locked.length === 0) throw referenceNotFound(); // deleted meanwhile
+      const locked = await tx.$queryRaw<{ key: string | null; uploadedAt: Date | null }[]>`
+        SELECT "image_storage_key" AS "key", "image_uploaded_at" AS "uploadedAt"
+        FROM "reference" WHERE "id" = ${id}::uuid FOR UPDATE`;
+      const current = locked[0];
+      if (!current) throw referenceNotFound(); // deleted meanwhile
+      // Every upload gets a new, strictly later upload time = a new imageVersion (contract), even
+      // when two uploads land in the same millisecond.
+      const uploadedAt = new Date(Math.max(Date.now(), (current.uploadedAt?.getTime() ?? 0) + 1));
       const updated = await tx.reference.update({
         where: { id },
-        data: image ?? { imageStorageKey: null, imageContentType: null, imageSizeBytes: null },
+        data: image
+          ? { ...image, imageUploadedAt: uploadedAt }
+          : { imageStorageKey: null, imageContentType: null, imageSizeBytes: null, imageUploadedAt: null },
       });
-      return { updated, replacedKey: locked[0]!.key };
+      return { updated, replacedKey: current.key };
     });
 
   app.put<IdParams>('/api/references/:id/image', async (request) => {
@@ -173,11 +181,12 @@ export function referencesRoutes(app: FastifyInstance, deps: AppDeps): void {
   });
 
   app.get<IdParams>('/api/references/:id/image', async (request, reply) => {
+    reply.header('Cache-Control', 'no-store'); // errors are never cached; a served photo overrides it
     const ref = await requireReference(request.params.id);
-    const { imageStorageKey, imageContentType, imageSizeBytes } = ref;
-    if (!imageStorageKey || !imageContentType || imageSizeBytes === null || !(await uploads.exists(imageStorageKey)))
+    const image = storedImage(ref);
+    if (!image || !(await uploads.exists(image.storageKey)))
       throw notFound('Reference image not found');
-    return sendReferenceImage(reply, uploads, { imageStorageKey, imageContentType, imageSizeBytes }, request.headers['if-none-match']);
+    return sendReferenceImage(reply, uploads, image, request);
   });
 
   app.delete<IdParams>('/api/references/:id', async (request, reply) => {

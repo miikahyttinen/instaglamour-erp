@@ -55,6 +55,7 @@ beforeEach(async () => {
   offer = res.json();
   await call(s, 'PATCH', `/api/offers/${offer.id}`, { disposition: 'NO_CAPACITY' });
   token = offer.sharePath.slice('/o/'.length);
+  withImageUrl = await versionedUrl(token, withImage.id as string);
 });
 afterEach(async () => {
   await s.app.close();
@@ -66,7 +67,14 @@ afterAll(closeTestDb);
 const anon = (t: string, remoteAddress = '10.0.0.1', headers: Record<string, string> = {}) =>
   s.app.inject({ method: 'GET', url: `/api/public/offers/${t}`, remoteAddress, headers });
 
+/** The photo route without `?v=`. */
 const imageUrl = (t: string, id: string) => `/api/public/offers/${t}/references/${id}/image`;
+/** Current imageVersion of a reference (upload time in epoch ms). */
+const versionOf = async (id: string) => String((await testDb().reference.findUniqueOrThrow({ where: { id } })).imageUploadedAt!.getTime());
+/** The versioned photo URL the API hands out. */
+const versionedUrl = async (t: string, id: string) => `${imageUrl(t, id)}?v=${await versionOf(id)}`;
+/** withImage's URL on `token`, set in beforeEach. */
+let withImageUrl: string;
 
 const expected = () => ({
   eventName: 'Event 1',
@@ -78,7 +86,7 @@ const expected = () => ({
   includesText: 'Included 1\nIncluded 2',
   spotifyUrl: 'https://open.spotify.com/',
   references: [
-    { id: withImage.id, quote: { fi: 'Viite 1\nRivi 2', en: 'Reference 1\nLine 2' }, author: '— Person 1', imageUrl: imageUrl(token, withImage.id) },
+    { id: withImage.id, quote: { fi: 'Viite 1\nRivi 2', en: 'Reference 1\nLine 2' }, author: '— Person 1', imageUrl: withImageUrl },
     { id: noImage.id, quote: { fi: 'Viite 2', en: null }, author: '— Person 2', imageUrl: null },
   ],
   seller: { name: 'Partner A', email: 'partner.a@example.com', phone: '+358 40 000 0001' },
@@ -114,7 +122,7 @@ describe('GET /api/public/offers/{token}', () => {
     expect(res.statusCode).toBe(200);
     // Reference ids and the token-scoped photo URLs are public by contract (BR-108); check the rest.
     const json = res.json();
-    for (const r of json.references) expect(r.imageUrl === null || r.imageUrl === imageUrl(token, r.id)).toBe(true);
+    for (const r of json.references) expect(r.imageUrl === null || r.imageUrl === (await versionedUrl(token, r.id as string))).toBe(true);
     const body = JSON.stringify({ ...json, references: json.references.map((r: Record<string, unknown>) => ({ ...r, id: null, imageUrl: null })) });
     const internal = [
       String(PRICE),
@@ -169,7 +177,7 @@ describe('GET /api/public/offers/{token}', () => {
     const fresh = (await call(s, 'POST', `/api/offers/${offer.id}/regenerate-link`)).json();
     const freshToken = fresh.sharePath.slice(3);
     expect(fresh.preview).toStrictEqual((await anon(freshToken)).json());
-    expect(fresh.preview.references[0].imageUrl).toBe(imageUrl(freshToken, withImage.id));
+    expect(fresh.preview.references[0].imageUrl).toBe(await versionedUrl(freshToken, withImage.id as string));
   });
 
   it('references: active ones in sort order; [] when none are active; reorder and edits show up', async () => {
@@ -178,7 +186,7 @@ describe('GET /api/public/offers/{token}', () => {
     await call(s, 'PATCH', `/api/references/${inactive.id}`, { active: true });
     const refs = (await anon(token)).json().references;
     expect(refs.map((r: Json) => r.id as string)).toEqual([noImage.id, inactive.id, withImage.id]);
-    expect(refs[1].imageUrl).toBe(imageUrl(token, inactive.id));
+    expect(refs[1].imageUrl).toBe(await versionedUrl(token, inactive.id as string));
     for (const r of [withImage, noImage, inactive]) await call(s, 'PATCH', `/api/references/${r.id}`, { active: false });
     expect((await anon(token)).json().references).toEqual([]);
   });
@@ -277,7 +285,7 @@ describe('GET /api/public/offers/{token}/references/{id}/image (BR-108)', () => 
     expect(res.headers['cache-control']).toBe('private, no-cache');
     expect(res.headers['x-content-type-options']).toBe('nosniff');
     expect(res.headers['referrer-policy']).toBe('no-referrer');
-    expect(res.headers.etag).toMatch(/^"[0-9a-f-]{36}"$/);
+    expect(res.headers.etag).toBe(`"${await versionOf(withImage.id as string)}"`);
     expect(res.headers['set-cookie']).toBeUndefined();
 
     // Revalidation: same photo → 304 (still behind the access checks); a new photo → new ETag.
@@ -289,6 +297,33 @@ describe('GET /api/public/offers/{token}/references/{id}/image (BR-108)', () => 
     expect(replaced.statusCode).toBe(200);
     expect(replaced.headers['content-type']).toBe('image/jpeg');
     expect(replaced.rawPayload).toEqual(JPG);
+  });
+
+  it('versioned URLs (?v=) are cached long; stale/missing versions revalidate; other params are ignored', async () => {
+    const get = (url: string) => s.app.inject({ method: 'GET', url, remoteAddress: '10.0.1.4' });
+    const current = await get(withImageUrl);
+    expect(current.statusCode).toBe(200);
+    expect(current.headers['cache-control']).toBe('private, max-age=31536000, immutable');
+    expect(current.rawPayload).toEqual(PNG);
+    expect((await get(`${withImageUrl}&utm_source=x&foo`)).headers['cache-control']).toBe('private, max-age=31536000, immutable');
+    expect((await get(`${imageUrl(token, withImage.id)}?foo=bar`)).headers['cache-control']).toBe('private, no-cache');
+
+    // A new photo gets a new version and URL; the old URL still works but is no longer long-cached.
+    await uploadImage(s, withImage.id, JPG, { filename: 'new.jpg', contentType: 'image/jpeg' });
+    const newUrl = (await anon(token)).json().references[0].imageUrl as string;
+    expect(newUrl).not.toBe(withImageUrl);
+    expect(newUrl).toBe(await versionedUrl(token, withImage.id as string));
+    const stale = await get(withImageUrl);
+    expect(stale.statusCode).toBe(200);
+    expect(stale.headers['cache-control']).toBe('private, no-cache');
+    expect(stale.rawPayload).toEqual(JPG);
+    expect((await get(newUrl)).headers['cache-control']).toBe('private, max-age=31536000, immutable');
+
+    // A 404 is never cached, versioned URL or not.
+    await call(s, 'PATCH', `/api/references/${withImage.id}`, { active: false });
+    const gone = await get(newUrl);
+    expect(gone.statusCode).toBe(404);
+    expect(gone.headers['cache-control']).toBe('no-store');
   });
 
   it('any valid offer link that shows references can show any active photo', async () => {
