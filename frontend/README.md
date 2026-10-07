@@ -71,6 +71,7 @@ VITE_API_PROXY_TARGET=http://localhost:3100 VITE_PORT=5273 npm run dev
 | `src/lib/format.ts` | Money (cents), date, hours and percent formatting per language |
 | `src/mocks/` | MSW handlers and synthetic data (browser worker + Node server for tests). All state is in `db` (`data.ts`); `resetMockDb()` resets every store. Gig rules live in `gigStore.ts`, demo gigs in `gigSeed.ts`; tasks, hours and budget in `tasksStore.ts`, `hoursStore.ts`, `budgetStore.ts`. Budget rows (`/api/budget-categories`, `budgetCategoryHandlers` in `budgetHandlers.ts`) live in `db.reference.budgetCategories` (active rows only; removing drops the row there and keeps its amounts in `db.budget`). The year mock is computed from these stores |
 | `src/features/<feature>/` | One folder per feature: `year`, `gigs`, `people`, `tasks`, `hours`, `budget`; pages, query hooks and the feature texts in `i18n.ts` (gig texts are still in `src/i18n/fi.ts` / `en.ts`) |
+| `src/features/offers/` | `OfferPreview` (shared customer view of an offer) and the public page `/o/:token` (see "Offer preview") |
 | `src/features/gigs/` | Gig list, new gig, gig page (costs, attachments, history, move/cancel/delete dialogs) |
 | `src/components/` | Shared UI: `Button`/`IconButton`, `Card`, `StatTile`/`StatGrid`, `MiniBars`, `PageHead`, `SectionLabel`, `StatusTag`, `Notice`, `DataTable`, `Dialog`, `Field`, `MoneyInput`, `Logo` (see "Design system") |
 | `src/components/inline/` | Inline (save-on-blur) fields and `useInlineSave` (see "Inline editing") |
@@ -174,10 +175,10 @@ production builds) and its texts are English on purpose.
 | Colour | `--bg`, `--surface`, `--surface-2`, `--border`, `--border-strong`, `--text`, `--text-muted`, `--label`, `--accent`, `--accent-contrast`, `--backdrop` |
 | Status | `--info-fg/-bg/-border`, `--ok-fg/-bg/-border`, `--warn-fg/-bg/-border`, `--danger-fg/-bg/-border` |
 | Font | `--font-sans` (Afacad), `--font-mono` (JetBrains Mono) |
-| Type size | `--fs-meta` 10, `--fs-label` 10, `--fs-small` 12, `--fs-body` 14, `--fs-lg` 16, `--fs-figure` 20, `--fs-title` 20→22 (px; → = desktop) |
+| Type size | `--fs-meta` 10, `--fs-label` 10, `--fs-small` 12, `--fs-body` 14, `--fs-lg` 16, `--fs-figure` 20, `--fs-title` 20→22, `--fs-display` 32 (customer document title) (px; → = desktop) |
 | Type other | `--lh-tight` 1.15, `--lh-body` 1.5, `--ls-label` (0.14em), `--ls-title`, `--fw-regular`, `--fw-medium`, `--fw-bold` |
 | Spacing | `--space-1` … `--space-7` = 4/8/12/16/24/32/48 px |
-| Layout | `--page-pad` 16→40, `--section-gap` 32→40, `--card-pad` 16→20, `--grid-gap` 16, `--content-max` 1200, `--label-w` 160 |
+| Layout | `--page-pad` 16→40, `--section-gap` 32→40, `--card-pad` 16→20, `--grid-gap` 16, `--content-max` 1200, `--label-w` 160, `--doc-max` 880 (customer document width) |
 | Table | `--row-h` 48, `--cell-pad-y` 12, `--cell-pad-x` (= `--card-pad`) |
 | Shape / size | `--radius` (2 px, the max), `--hairline` (1 px), `--tap` 44, `--control-h` 44→36, `--inline-pad-x` 8, `--inline-num-trail` (space right of an inline money/hours unit), `--icon` 16, `--icon-nav` 18, `--icon-stroke` |
 | Shell | `--topbar-h` 56, `--sidebar-w` 232, `--sidebar-w-collapsed` 64, `--drawer-w` min(280 px, 85vw), `--nav-item-h` 44→40 |
@@ -307,6 +308,41 @@ Theme in code: `useTheme()` → `{ theme, setTheme, toggleTheme }` (`src/theme/t
 Shell parts in `src/layout/`: `Sidebar` (rail / drawer), `NavDrawer` (modal drawer, uses
 `useFocusTrap` from `src/lib/`), `sidebarState.ts`, `navItems.ts` (`NAV_ITEMS`,
 `activeNavItem(pathname)`), `YearSelector`, `ThemeToggle` and `LanguageButtons` (sign-in page).
+
+### Offer preview (`src/features/offers/OfferPreview.tsx`)
+
+The customer view of an offer (UC-030, BR-104). Used by the public page `/o/:token` and by the
+offer page preview (TASK-138). Presentational only: no fetching, no shell, **never a price**.
+
+| Prop | Type | Notes |
+|---|---|---|
+| `offer` | `PublicOffer` (required) | Exactly the shape of `GET /api/public/offers/{token}` (`src/api/types.ts`). Only these fields are read; extra fields (price, disposition, ids…) are never rendered. Internal callers map `OfferDetail` + seller + references text to it. |
+| `lang` | `'fi' \| 'en'` | Language of labels, the date (with weekday) and the references text. Default: current UI language. |
+| `titleLevel` | `1 \| 2` | Event name heading: `h1` (default, public page) or `h2` inside an app page; section labels are one level lower. |
+| `logoTheme` | `'dark' \| 'light'` | Logo colour override (the public page passes `'light'` while printing). Default: current theme. |
+| `className` | `string` | On the root `<article>`. |
+
+Content: logo, "Offer" eyebrow, event name, client, date with weekday (`formatDateWithWeekday`),
+venue + city, lineup (one line per item), what's included (line breaks kept), Spotify button
+(only `http(s)` URLs; opens in a new tab), references (`references[lang]`, hidden when `null`
+or empty), seller name / email (`mailto:`) / phone (`tel:`, hidden when `null`). Empty optional
+parts are hidden. Columns come from a container query (≥ 600 px of its own width), so it fits
+a phone, a full page and an app column. Texts: `offerPreview.*` and `publicOffer.*` in
+`src/features/offers/offerPreviewI18n.ts`.
+
+Accessible names: the `<article>` is named by the event name; regions "Event details"
+(heading visually hidden), "Lineup", "What's included", "References", "Contact" (FI:
+Tapahtuman tiedot, Kokoonpano, Tarjoukseen sisältyy, Referenssit, Yhteystiedot); the logo image
+"Instaglamour"; link "Listen on Spotify (opens in a new tab)".
+
+**Public page `/o/:token`** (`PublicOfferPage.tsx`) is routed in `App.tsx` **outside**
+`AuthProvider` and the shell, so its only request is the public endpoint. It defaults to the
+browser language (FI/EN switch, not saved), follows the theme like the rest of the app (OS unless
+this browser stored a choice), adds `<meta name="robots" content="noindex, nofollow">`, prints
+in the light theme without the switch, and shows "Offer not found" (no details) for any 404.
+With `npm run dev:mock` open `/o/demo-offer-0123456789abcdefghijklmnopqrstuvwxyzABCDEF` (full)
+or `/o/demo-offer-minimal-0123456789abcdefghijklmnopqrstuvwxyz` (no references / Spotify / phone);
+any other token is not found (`src/mocks/publicOfferHandlers.ts`).
 
 ### Shared classes (for hand-written markup)
 

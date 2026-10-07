@@ -4,6 +4,7 @@
 // registered at the end in navigation order.
 import { fi as budgetFi } from '../features/budget/i18n';
 import { fi as hoursFi } from '../features/hours/i18n';
+import { fi as offerPreviewFi } from '../features/offers/offerPreviewI18n';
 import { fi as peopleFi } from '../features/people/i18n';
 import { fi as tasksFi } from '../features/tasks/i18n';
 import { fi as yearFi } from '../features/year/i18n';
@@ -404,6 +405,7 @@ const fi = {
     joinsLoadIn: 'Roudaus ja soundcheck',
     actualCents: 'Toteuma',
   },
+  ...offerPreviewFi,
   year: yearFi,
   ...peopleFi,
   ...tasksFi,

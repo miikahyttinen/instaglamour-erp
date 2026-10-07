@@ -1,0 +1,72 @@
+/* Public offer page /o/:token (UC-030). No app shell: one centred document column at reading
+   width, the language switch above it. Tokens only. While printing the page sets
+   data-theme="light" on .public-offer (see PublicOfferPage), so paper gets dark text on white. */
+
+.public-offer {
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  padding: var(--space-4) var(--page-pad) var(--space-7);
+}
+
+.public-offer-inner {
+  max-width: var(--doc-max);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.public-offer-top {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.public-offer-state {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  margin: 0;
+}
+.public-offer-state p {
+  margin: 0;
+}
+.public-offer .public-offer-logo {
+  height: var(--space-6);
+  width: auto;
+  margin-bottom: var(--space-5);
+}
+.public-offer-state-title {
+  margin: 0;
+  font-size: var(--fs-title);
+  font-weight: var(--fw-bold);
+  text-transform: uppercase;
+  letter-spacing: var(--ls-title);
+}
+
+@media (min-width: 900px) {
+  .public-offer {
+    padding-top: var(--space-6);
+  }
+}
+
+@media print {
+  html[data-theme]:has(.public-offer),
+  body:has(.public-offer) {
+    background: none;
+    color-scheme: light; /* white paper even when the screen theme is dark */
+  }
+  .public-offer,
+  .public-offer[data-theme] {
+    min-height: 0;
+    padding: 0;
+    background: none;
+  }
+  .public-offer-top {
+    display: none;
+  }
+  .public-offer-inner {
+    max-width: none;
+  }
+}

@@ -7,6 +7,7 @@ import { db, setMockSession } from './data';
 import { attachmentHandlers, costLineHandlers, gigHandlers } from './gigHandlers';
 import { hoursHandlers } from './hoursHandlers';
 import { peopleHandlers } from './peopleHandlers';
+import { publicOfferHandlers } from './publicOfferHandlers';
 import { tasksHandlers } from './tasksHandlers';
 import { currentPartner, errorResponse, unauthenticated } from './util';
 import { yearHandlers } from './yearHandlers';
@@ -67,6 +68,7 @@ export const referenceHandlers = [
 
 export const handlers = [
   ...authHandlers,
+  ...publicOfferHandlers,
   ...referenceHandlers,
   ...yearHandlers,
   ...gigHandlers,

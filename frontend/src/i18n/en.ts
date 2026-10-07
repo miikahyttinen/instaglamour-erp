@@ -1,6 +1,7 @@
 // English UI texts. Must have exactly the same keys as fi.ts (checked by i18n.test.ts).
 import { en as budgetEn } from '../features/budget/i18n';
 import { en as hoursEn } from '../features/hours/i18n';
+import { en as offerPreviewEn } from '../features/offers/offerPreviewI18n';
 import { en as peopleEn } from '../features/people/i18n';
 import { en as tasksEn } from '../features/tasks/i18n';
 import { en as yearEn } from '../features/year/i18n';
@@ -401,6 +402,7 @@ const en: Resources = {
     joinsLoadIn: 'Load-in & soundcheck',
     actualCents: 'Actual',
   },
+  ...offerPreviewEn,
   year: yearEn,
   ...peopleEn,
   ...tasksEn,
