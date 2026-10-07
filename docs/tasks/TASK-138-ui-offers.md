@@ -1,5 +1,5 @@
 # TASK-138: Offers — UI (list, create/edit, offer page, convert)
-- **owner:** ui · **status:** todo · **spec:** UC-028, UC-029, UC-031, api-contract "Offers" · **depends on:** TASK-137
+- **owner:** ui · **status:** done · **spec:** UC-028, UC-029, UC-031, api-contract "Offers" · **depends on:** TASK-137
 ## Acceptance criteria
 - [ ] Menu: **Tarjoukset / Offers** as the **first** item (icon).
 - [ ] Offer list per UC-028: page head with open value + win rate (selected year), New offer; Excel-style sortable table with all columns; inline selects for source/event type/disposition; filters; search; Deleted view; Gig column = **"Convert to gig#"** button (confirm dialog per UC-031) or "Keikka →" link.
