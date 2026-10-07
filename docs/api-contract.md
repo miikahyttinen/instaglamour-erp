@@ -324,7 +324,7 @@ Duplicate = case-insensitive exact name match with another person.
 | `POST /api/clients` | `{ name, notes? }` | 201 `Client`; `name: REQUIRED / DUPLICATE / TOO_LONG` |
 | `GET /api/clients/{id}` | — | 200 `{ client, gigs: [GigSummary], offers: [OfferSummary] }` (all years, newest first) |
 | `PATCH /api/clients/{id}` | `{ name?, notes? }` | 200 `Client` |
-| `DELETE /api/clients/{id}` | — | 204 soft; 409 `CLIENT_IN_USE` when gigs/offers link to it |
+| `DELETE /api/clients/{id}` | — | 204 soft; 409 `CLIENT_IN_USE` when any gig/offer links to it (including deleted ones, so restore never points to a deleted client) |
 
 `Client = { id, name, notes }`. Gig objects gain `clientId: id|null`, `clientName: string|null`, `offerId: id|null`; GigCreate/GigUpdate accept `clientId` (null clears; unknown → `UNKNOWN_REFERENCE`). `GET /api/gigs` `q` also matches client name.
 
