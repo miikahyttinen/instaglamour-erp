@@ -10,6 +10,7 @@ import {
   listReferences,
   MAX_REFERENCE_IMAGE_BYTES,
   reorderReferences,
+  setReferenceImage,
   toReference,
   type MockReference,
 } from './referencesStore';
@@ -114,7 +115,7 @@ export const referencesHandlers = [
     if (file.size > MAX_REFERENCE_IMAGE_BYTES) return errorResponse(413, 'FILE_TOO_LARGE', 'Too large');
     const contentType = detectReferenceImageType(file);
     if (!contentType) return errorResponse(415, 'UNSUPPORTED_FILE_TYPE', 'Unsupported type');
-    ref.image = { contentType, content: file };
+    setReferenceImage(ref, { contentType, content: file });
     return json(ref);
   }),
 
@@ -122,7 +123,7 @@ export const referencesHandlers = [
     if (!currentPartner()) return unauthenticated();
     const ref = findRef(params.id);
     if (!ref) return notFound();
-    ref.image = null;
+    setReferenceImage(ref, null);
     return json(ref);
   }),
 

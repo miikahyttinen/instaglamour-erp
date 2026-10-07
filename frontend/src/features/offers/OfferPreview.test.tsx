@@ -18,7 +18,7 @@ const offer: PublicOffer = {
       id: 'ref-1',
       quote: { fi: 'Lainaus yksi FI\nToinen rivi', en: 'Quote one EN\nSecond line' },
       author: 'Person 5, Client A',
-      imageUrl: '/api/public/offers/token-1/references/ref-1/image',
+      imageUrl: '/api/public/offers/token-1/references/ref-1/image?v=1',
     },
     { id: 'ref-2', quote: { fi: 'Lainaus kaksi FI', en: null }, author: 'Client B', imageUrl: null },
   ],
@@ -126,7 +126,7 @@ describe('OfferPreview', () => {
 
     const [first, second] = items as [HTMLElement, HTMLElement];
     const photo = first.querySelector('img');
-    expect(photo).toHaveAttribute('src', '/api/public/offers/token-1/references/ref-1/image');
+    expect(photo).toHaveAttribute('src', '/api/public/offers/token-1/references/ref-1/image?v=1');
     expect(photo).toHaveAttribute('alt', '');
     expect(first.querySelector('blockquote')!.textContent).toBe('Lainaus yksi FI\nToinen rivi');
     expect(within(first).getByText('Person 5, Client A').tagName).toBe('FIGCAPTION');

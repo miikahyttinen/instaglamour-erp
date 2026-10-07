@@ -230,7 +230,7 @@ export interface PublicOfferReference {
   /** `en` null → the page shows `fi` (BR-108). */
   quote: { fi: string; en: string | null };
   author: string;
-  /** `/api/public/offers/{token}/references/{id}/image`, scoped to the offer token; null = no photo. */
+  /** `/api/public/offers/{token}/references/{id}/image?v=<imageVersion>`, scoped to the offer token; null = no photo. */
   imageUrl: string | null;
 }
 
@@ -653,6 +653,8 @@ export interface Reference {
   quoteEn: string | null;
   author: string;
   hasImage: boolean;
+  /** Changes on every photo upload / remove; image URLs carry it as `?v=` (cache busting). */
+  imageVersion: string | null;
   sortOrder: number;
   active: boolean;
 }

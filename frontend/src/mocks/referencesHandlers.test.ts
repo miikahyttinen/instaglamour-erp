@@ -49,13 +49,23 @@ describe('references mock (contract → References, BR-108)', () => {
 
   it('uploads PNG/JPG/WebP, answers 415 for other types, removes the photo', async () => {
     const id = REFERENCE_IDS.a;
-    expect((await referencesApi.uploadImage(id, testFile('a.webp', 'image/webp'))).hasImage).toBe(true);
+    expect((await referencesApi.list())[0]!.imageVersion).toBeNull();
+    const uploaded = await referencesApi.uploadImage(id, testFile('a.webp', 'image/webp'));
+    expect(uploaded.hasImage).toBe(true);
+    expect(uploaded.imageVersion).toEqual(expect.any(String));
+    const replaced = await referencesApi.uploadImage(id, testFile('b.png', 'image/png'));
+    expect(replaced.imageVersion).not.toBe(uploaded.imageVersion); // new version on every upload
     // (The faked size of testFile() does not survive multipart, so 413 is covered by the UI tests.)
     const pdf = await apiError(referencesApi.uploadImage(id, testFile('c.pdf', 'application/pdf')));
     expect([pdf.status, pdf.code]).toEqual([415, 'UNSUPPORTED_FILE_TYPE']);
-    expect((await fetch(referencesApi.imageUrl(id))).status).toBe(200);
-    expect((await referencesApi.removeImage(id)).hasImage).toBe(false);
-    expect((await fetch(referencesApi.imageUrl(id))).status).toBe(404);
+    expect(referencesApi.imageUrl(id, replaced.imageVersion)).toBe(
+      `/api/references/${id}/image?v=${encodeURIComponent(replaced.imageVersion!)}`,
+    );
+    expect((await fetch(referencesApi.imageUrl(id, replaced.imageVersion))).status).toBe(200);
+    const removed = await referencesApi.removeImage(id);
+    expect(removed.hasImage).toBe(false);
+    expect(removed.imageVersion).not.toBe(replaced.imageVersion); // and on remove
+    expect((await fetch(referencesApi.imageUrl(id, removed.imageVersion))).status).toBe(404);
   });
 
   it('public offer: active references in order, token-scoped photo URLs, 404 rules for photos', async () => {
@@ -72,7 +82,11 @@ describe('references mock (contract → References, BR-108)', () => {
       'Person 6, Client C',
     ]);
     const first = detail.preview.references![0]!;
-    expect(first.imageUrl).toBe(`/api/public/offers/${offer.shareToken}/references/${REFERENCE_IDS.a}/image`);
+    const version = db.references.references[0]!.imageVersion!;
+    expect(first.imageUrl).toBe(
+      `/api/public/offers/${offer.shareToken}/references/${REFERENCE_IDS.a}/image?v=${encodeURIComponent(version)}`,
+    );
+    expect((await fetch(first.imageUrl!)).status).toBe(200);
     expect(detail.preview.references![1]).toMatchObject({ quote: { en: null }, imageUrl: null });
     expect((await offersApi.get(hidden.id)).preview.references).toBeNull();
 

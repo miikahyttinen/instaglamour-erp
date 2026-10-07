@@ -49,8 +49,6 @@ export function ReferencesPage() {
   const queryClient = useQueryClient();
   const [notice, setNotice] = useState<PageNotice>(null);
   const [dialog, setDialog] = useState<ItemDialog>(null);
-  /** Per reference: bumped after a photo upload so the browser loads the new image. */
-  const [versions, setVersions] = useState<Record<Id, number>>({});
 
   const reorder = useMutation({
     mutationFn: (ids: Id[]) => referencesApi.reorder(ids),
@@ -139,14 +137,10 @@ export function ReferencesPage() {
               reference={reference}
               index={index}
               count={list.length}
-              version={versions[reference.id]}
               onMove={(dir) => move(reference, dir)}
               onDelete={() => openDialog('delete', reference)}
               onRemovePhoto={() => openDialog('removePhoto', reference)}
-              onUploaded={(updated) => {
-                apply(updated);
-                setVersions((v) => ({ ...v, [updated.id]: Date.now() }));
-              }}
+              onUploaded={apply}
             />
           ))}
         </ol>
@@ -216,14 +210,13 @@ interface ItemProps {
   reference: Reference;
   index: number;
   count: number;
-  version: number | undefined;
   onMove: (dir: MoveDir) => void;
   onDelete: () => void;
   onRemovePhoto: () => void;
   onUploaded: (reference: Reference) => void;
 }
 
-function ReferenceItem({ reference, index, count, version, onMove, onDelete, onRemovePhoto, onUploaded }: ItemProps) {
+function ReferenceItem({ reference, index, count, onMove, onDelete, onRemovePhoto, onUploaded }: ItemProps) {
   const { t } = useTranslation();
   const apply = useApplyReferences();
   const [problem, setProblem] = useState<string | null>(null);
@@ -286,7 +279,7 @@ function ReferenceItem({ reference, index, count, version, onMove, onDelete, onR
         <div className="reference-card-body">
           <div className="reference-card-photo">
             <ReferencePhoto
-              src={reference.hasImage ? referencesApi.imageUrl(reference.id, version) : null}
+              src={reference.hasImage ? referencesApi.imageUrl(reference.id, reference.imageVersion) : null}
               author={reference.author}
               className="reference-thumb"
             />

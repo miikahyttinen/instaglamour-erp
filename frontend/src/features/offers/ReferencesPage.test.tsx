@@ -93,10 +93,19 @@ describe('references page (UC-029 "References", BR-108)', () => {
       expect(el).not.toBeNull();
       return el!;
     });
-    expect(img.getAttribute('src')).toMatch(new RegExp(`^/api/references/${REFERENCE_IDS.a}/image\\?v=\\d+$`));
+    const srcOf = () =>
+      `/api/references/${REFERENCE_IDS.a}/image?v=${encodeURIComponent(db.references.references[0]!.imageVersion!)}`;
+    expect(img).toHaveAttribute('src', srcOf());
     expect(img).toHaveAttribute('alt', '');
     expect(within(first).getByLabelText('Vaihda kuva')).toBeInTheDocument();
     expect(db.references.references[0]!.image?.contentType).toBe('image/jpeg');
+
+    // Replace: the URL follows the new imageVersion from the API, so the browser loads the new photo.
+    const firstSrc = img.getAttribute('src');
+    await user.upload(within(first).getByLabelText('Vaihda kuva'), testFile('photo2.png', 'image/png'));
+    await waitFor(() => expect(first.querySelector('img')).toHaveAttribute('src', srcOf()));
+    expect(first.querySelector('img')!.getAttribute('src')).not.toBe(firstSrc);
+    expect(db.references.references[0]!.image?.contentType).toBe('image/png');
 
     await user.click(within(first).getByRole('button', { name: 'Poista kuva' }));
     const dialog = screen.getByRole('dialog', { name: 'Poista kuva' });

@@ -16,6 +16,8 @@ export interface MockReference {
   author: string;
   active: boolean;
   image: MockReferenceImage | null;
+  /** Changes on every upload / remove (contract `Reference.imageVersion`). */
+  imageVersion: string | null;
 }
 
 /** The list order is the sort order. */
@@ -57,6 +59,7 @@ export function seedReferences(): ReferencesState {
         author: 'Person 5, Client A',
         active: true,
         image: null,
+        imageVersion: null,
       },
       {
         id: REFERENCE_IDS.b,
@@ -65,6 +68,7 @@ export function seedReferences(): ReferencesState {
         author: 'Client B',
         active: true,
         image: null,
+        imageVersion: null,
       },
       {
         id: REFERENCE_IDS.c,
@@ -73,6 +77,7 @@ export function seedReferences(): ReferencesState {
         author: 'Person 6, Client C',
         active: true,
         image: null,
+        imageVersion: null,
       },
       {
         id: REFERENCE_IDS.d,
@@ -81,9 +86,19 @@ export function seedReferences(): ReferencesState {
         author: 'Client D',
         active: false,
         image: null,
+        imageVersion: null,
       },
     ],
   };
+}
+
+let versionCounter = 0;
+
+/** Sets or clears the photo and gives it a new, unique `imageVersion` (upload timestamp + counter). */
+export function setReferenceImage(ref: MockReference, image: MockReferenceImage | null): void {
+  ref.image = image;
+  versionCounter += 1;
+  ref.imageVersion = `${Date.now()}-${versionCounter}`;
 }
 
 export function toReference(state: ReferencesState, ref: MockReference): Reference {
@@ -93,6 +108,7 @@ export function toReference(state: ReferencesState, ref: MockReference): Referen
     quoteEn: ref.quoteEn,
     author: ref.author,
     hasImage: ref.image !== null,
+    imageVersion: ref.imageVersion,
     sortOrder: state.references.indexOf(ref),
     active: ref.active,
   };
@@ -105,7 +121,7 @@ export function createReference(
   state: ReferencesState,
   input: { quoteFi: string; quoteEn: string | null; author: string; active: boolean },
 ): MockReference {
-  const ref: MockReference = { id: mockId(), ...input, image: null };
+  const ref: MockReference = { id: mockId(), ...input, image: null, imageVersion: null };
   state.references.push(ref);
   return ref;
 }
@@ -127,6 +143,8 @@ export function publicReferences(state: ReferencesState, token: string): PublicO
       id: r.id,
       quote: { fi: r.quoteFi, en: r.quoteEn },
       author: r.author,
-      imageUrl: r.image ? `/api/public/offers/${token}/references/${r.id}/image` : null,
+      imageUrl: r.image
+        ? `/api/public/offers/${token}/references/${r.id}/image?v=${encodeURIComponent(r.imageVersion ?? '')}`
+        : null,
     }));
 }

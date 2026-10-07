@@ -379,7 +379,8 @@ offer's link is not found there either.
   ≤ 10 MB checked in `referenceImageRules.ts`; 413/415 get photo-specific texts) + Remove photo
   (confirm); inline FI quote, EN quote, author, Active switch; Move up / Move down (POST reorder with
   all ids, optimistic, focus stays on the moved item); Delete reference (confirm); add form. Image URLs
-  get `?v=<time>` after an upload so the browser shows the new photo. Every change refreshes the
+  carry `?v=<imageVersion>` from the API (`referencesApi.imageUrl(id, imageVersion)`; the public
+  `imageUrl` already includes it), so a replaced photo is never served from cache. Every change refreshes the
   offer queries (previews). Texts: `referencesI18n.ts`. Mock: `mocks/referencesStore.ts` /
   `referencesHandlers.ts` (`db.references`, four synthetic references, one inactive, no photos);
   the token-scoped public photo route is in `publicOfferHandlers.ts`.

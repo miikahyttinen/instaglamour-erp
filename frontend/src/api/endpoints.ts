@@ -244,8 +244,8 @@ export const referencesApi = {
     return apiRequest<Reference>(`/references/${id}/image`, { method: 'PUT', body: form });
   },
   removeImage: (id: Id) => apiRequest<Reference>(`/references/${id}/image`, { method: 'DELETE' }),
-  /** Session-scoped image URL (internal page). `version` busts the browser cache after a replace. */
-  imageUrl: (id: Id, version?: number) =>
-    buildUrl(`/references/${id}/image`, version ? { v: version } : undefined),
+  /** Session-scoped image URL (internal page) with `?v=<imageVersion>`, so a replaced photo is never cached. */
+  imageUrl: (id: Id, imageVersion: string | null) =>
+    buildUrl(`/references/${id}/image`, { v: imageVersion }),
   remove: (id: Id) => apiRequest<void>(`/references/${id}`, { method: 'DELETE' }),
 };
