@@ -1,5 +1,5 @@
 # TASK-137: Clients — UI
-- **owner:** ui · **status:** todo · **spec:** UC-027, api-contract "Clients" · **depends on:** none (backend TASK-015 parallel)
+- **owner:** ui · **status:** done · **spec:** UC-027, api-contract "Clients" · **depends on:** none (backend TASK-015 parallel)
 ## Acceptance criteria
 - [ ] Sidebar/drawer item **Asiakkaat / Clients** (icon) after Keikat.
 - [ ] Clients list: searchable table (Name · Gigs · Offers), add form (name, notes), errors REQUIRED/DUPLICATE translated.

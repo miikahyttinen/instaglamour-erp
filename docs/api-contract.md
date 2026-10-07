@@ -326,7 +326,7 @@ Duplicate = case-insensitive exact name match with another person.
 | `PATCH /api/clients/{id}` | `{ name?, notes? }` | 200 `Client` |
 | `DELETE /api/clients/{id}` | — | 204 soft; 409 `CLIENT_IN_USE` when any gig/offer links to it (including deleted ones, so restore never points to a deleted client) |
 
-`Client = { id, name, notes }`. Gig objects gain `clientId: id|null`, `clientName: string|null`, `offerId: id|null`; GigCreate/GigUpdate accept `clientId` (null clears; unknown → `UNKNOWN_REFERENCE`). `GET /api/gigs` `q` also matches client name.
+`Client = { id, name, notes }`. `GET /api/clients?q=` matches the name (substring, case-insensitive). A deleted client is `UNKNOWN_REFERENCE` for new links; existing gigs keep showing its `clientName`. Gig objects gain `clientId: id|null`, `clientName: string|null`, `offerId: id|null`; GigCreate/GigUpdate accept `clientId` (null clears; unknown → `UNKNOWN_REFERENCE`). `GET /api/gigs` `q` also matches client name.
 
 ## Offers (UC-028, UC-029, UC-031)
 `OfferSummary = { id, clientId, clientName, eventName, eventDate, venue, city, priceCents|null, sellerId, source|null, eventType|null, disposition, status: OPEN|ACCEPTED|REJECTED, expired: bool, gigId|null, createdAt, updatedAt, deletedAt|null }`
