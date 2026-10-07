@@ -40,8 +40,8 @@ The UI translates `code` and the field codes; it never shows `message` to users.
 | 409 | `CLIENT_IN_USE` | Deleting a client that gigs/offers link to |
 | 409 | `ALREADY_CONVERTED` | Converting an offer that already has a gig |
 | 429 | `RATE_LIMITED` | Public offer endpoint: > 60 requests/min/IP (`Retry-After` header) |
-| 413 | `FILE_TOO_LARGE` | Upload > 20 MB |
-| 415 | `UNSUPPORTED_FILE_TYPE` | Not PDF/DOCX/PNG/JPG |
+| 413 | `FILE_TOO_LARGE` | Upload too large (attachments > 20 MB; reference photos > 10 MB) |
+| 415 | `UNSUPPORTED_FILE_TYPE` | Wrong type (attachments: PDF/DOCX/PNG/JPG; reference photos: PNG/JPG/WebP) |
 
 **Field codes:** `REQUIRED`, `INVALID_DATE`, `END_BEFORE_START`, `NEGATIVE_AMOUNT`, `INVALID_VALUE`,
 `DESCRIPTION_REQUIRED`, `INVALID_HOURS`, `DUPLICATE`, `TOO_LONG` (strings > 500 chars; notes/description > 5000),
@@ -331,7 +331,7 @@ Duplicate = case-insensitive exact name match with another person.
 
 ## Offers (UC-028, UC-029, UC-031)
 `OfferSummary = { id, clientId, clientName, eventName, eventDate, venue, city, priceCents|null, sellerId, source|null, eventType|null, disposition, status: OPEN|ACCEPTED|REJECTED, expired: bool, gigId|null, createdAt, updatedAt, deletedAt|null }`
-`OfferDetail = OfferSummary + { lineup: string[], includesText, spotifyUrl, showReferences, sharePath: "/o/<token>", preview: PublicOffer }` — `preview` is exactly what `GET /api/public/offers/{token}` returns for this offer (incl. references text and seller phone), so the internal page shows the same view as the customer.
+`OfferDetail = OfferSummary + { lineup: string[], includesText, spotifyUrl, showReferences, sharePath: "/o/<token>", preview: PublicOffer }` — `preview` is exactly what `GET /api/public/offers/{token}` returns for this offer (incl. the references list and seller phone), so the internal page shows the same view as the customer.
 
 | Method & path | Request | Response |
 |---|---|---|

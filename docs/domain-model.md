@@ -233,7 +233,7 @@ No agencies: one client per gig and per offer. Real client names exist only in t
 | spotify_url | string | optional; default from setting `offers.default_spotify_url` |
 | price_cents | int | optional, excl. VAT, **internal only** |
 | seller_id | → Partner | required, default = creator |
-| show_references | bool | shows the references block (text from setting `offers.references_fi` / `_en`) |
+| show_references | bool | shows the active References (see Reference) |
 | source | `EMAIL` \| `WEBSITE` \| `INSTAGRAM` \| `OTHER` \| null | |
 | event_type | `PRIVATE` \| `WEDDING` \| `CORPORATE` \| null | |
 | disposition | `PENDING` \| `WON` \| `CANCELLED` \| `NO_RESPONSE` \| `LOST_PRICE` \| `LOST_COMPETITOR` \| `LOST_OTHER` \| `NO_CAPACITY` | default `PENDING` |
@@ -250,7 +250,7 @@ No agencies: one client per gig and per offer. Real client names exist only in t
 | phone | string | optional, shown on the public offer as seller contact (local seed) |
 
 ## Settings (additions, local seed)
-`offers.default_includes`, `offers.default_spotify_url`, `offers.references_fi`, `offers.references_en` (text).
+`offers.default_includes`, `offers.default_spotify_url` (text). (`offers.references_*` are obsolete — replaced by Reference.)
 
 ## Reference (testimonial) — owner request 2026-10-07
 | Field | Type | Notes |

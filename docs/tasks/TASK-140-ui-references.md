@@ -1,5 +1,5 @@
 # TASK-140: References page + references on offers — UI
-- **owner:** ui · **status:** todo · **spec:** UC-029 "References", BR-108, api-contract "References" + "Public offer" · **depends on:** TASK-138, TASK-139 (backend TASK-018 runs in parallel)
+- **owner:** ui · **status:** done · **spec:** UC-029 "References", BR-108, api-contract "References" + "Public offer" · **depends on:** TASK-138, TASK-139 (backend TASK-018 runs in parallel)
 ## Acceptance criteria
 - [ ] Route `/offers/references` ("Referenssit" / "References"), reached from a button in the Offers page head (no new main-menu item).
 - [ ] List of references in order: photo thumbnail (or placeholder), FI quote, EN quote, author, active switch — all **inline-editable**; photo upload/replace/remove (PNG/JPG/WebP ≤ 10 MB, errors translated, works from phone); move up/down to reorder; delete with confirmation; add form (FI quote, EN quote, author).
