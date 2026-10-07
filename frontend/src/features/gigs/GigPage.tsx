@@ -16,6 +16,7 @@ import { CostList } from './CostList';
 import { GigActions } from './GigActions';
 import { GigBasicFields, GigPriceFields } from './GigInfoFields';
 import { GigDeletedTag, GigStatusTag } from './GigStatusTag';
+import { GigOfferLink } from './GigOfferLink';
 import { History } from './History';
 import { personName, useGig, usePeople } from './queries';
 import './gigPage.css';
@@ -107,6 +108,8 @@ export function GigPage() {
           />
         }
       />
+
+      {gig.offerId && <GigOfferLink offerId={gig.offerId} />}
 
       {readOnly && (
         <NoticeBox tone="danger" role="note">

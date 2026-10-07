@@ -2,6 +2,7 @@
 import { en as budgetEn } from '../features/budget/i18n';
 import { en as clientsEn } from '../features/clients/i18n';
 import { en as hoursEn } from '../features/hours/i18n';
+import { en as offersEn } from '../features/offers/i18n';
 import { en as offerPreviewEn } from '../features/offers/offerPreviewI18n';
 import { en as peopleEn } from '../features/people/i18n';
 import { en as tasksEn } from '../features/tasks/i18n';
@@ -17,6 +18,7 @@ const en: Resources = {
   },
   nav: {
     label: 'Main menu',
+    offers: 'Offers',
     year: 'Year',
     gigs: 'Gigs',
     clients: 'Clients',
@@ -65,6 +67,7 @@ const en: Resources = {
     },
   },
   pages: {
+    offers: 'Offers {{year}}',
     year: 'Year {{year}}',
     gigs: 'Gigs {{year}}',
     clients: 'Clients',
@@ -85,6 +88,8 @@ const en: Resources = {
     COST_NOT_PAYABLE: 'Fuel is an estimate and cannot be marked paid.',
     BUDGET_NOT_EMPTY: 'The year already has budget numbers.',
     CLIENT_IN_USE: 'The client is in use: gigs or offers are linked to it.',
+    ALREADY_CONVERTED: 'A gig has already been made from this offer.',
+    RATE_LIMITED: 'Too many requests. Wait a moment and try again.',
     FILE_TOO_LARGE: 'The file is too large (max 20 MB).',
     UNSUPPORTED_FILE_TYPE: 'Allowed file types: PDF, DOCX, PNG and JPG.',
     NETWORK_ERROR: 'Could not reach the server.',
@@ -423,6 +428,7 @@ const en: Resources = {
     actualCents: 'Actual',
   },
   ...offerPreviewEn,
+  ...offersEn,
   year: yearEn,
   ...clientsEn,
   ...peopleEn,

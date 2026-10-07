@@ -1,0 +1,287 @@
+/* Offer screens (UC-028, UC-029, UC-031). Tokens only; scoped under .offers-page. */
+
+/* ---------- Shared ---------- */
+.offers-page .offer-back {
+  margin: 0 0 var(--space-2);
+}
+.offers-page .offer-back a {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  color: var(--text-muted);
+  text-decoration: none;
+}
+.offers-page .offer-back a:hover {
+  color: var(--text);
+}
+.offers-page .offer-notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-5);
+}
+.offers-page .offer-notice p {
+  margin: 0;
+}
+.offer-copy-fallback {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  flex: 1 1 280px;
+  min-width: 0;
+}
+.offer-copy-fallback input {
+  font-family: var(--font-mono);
+  font-size: var(--fs-small);
+}
+.offer-dialog-intro,
+.offer-dialog-body > p {
+  color: var(--text-muted);
+}
+/* Convert dialog: label / value pairs. */
+.offer-convert-facts {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0 0 var(--space-4);
+}
+.offer-convert-facts > div {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.offer-convert-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+/* ---------- List: figures, toolbar ---------- */
+.offers-page .offers-figures > * {
+  --span: 6;
+  --span-lg: 3;
+}
+.offers-page .offers-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin: 0 0 var(--space-6);
+}
+.offers-page .offers-toolbar > .segmented {
+  align-self: flex-start;
+}
+/* Search full width on phones; from 600 px search over two columns, filters fill the rest. */
+.offers-page .offers-filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 160px), 1fr));
+  gap: var(--space-3) var(--grid-gap);
+}
+.offers-page .offers-filters > * {
+  min-width: 0;
+}
+.offers-page .offers-filter-search {
+  grid-column: 1 / -1;
+}
+.offers-page .offers-filters label {
+  margin-top: 0;
+}
+.offers-page .offers-search-input {
+  position: relative;
+}
+.offers-page .offers-search-icon {
+  position: absolute;
+  top: 50%;
+  left: var(--space-3);
+  transform: translateY(-50%);
+  color: var(--label);
+  pointer-events: none;
+}
+.offers-page .offers-search-input input {
+  padding-left: calc(var(--space-3) + var(--icon) + var(--space-2));
+}
+.offers-page .offers-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-6) var(--card-pad);
+  border: var(--hairline) dashed var(--border);
+  border-radius: var(--radius);
+  color: var(--text-muted);
+}
+.offers-page .offers-empty p {
+  margin: 0;
+}
+
+/* ---------- List: table ---------- */
+.offers-page .offer-link {
+  color: var(--text);
+  font-weight: var(--fw-bold);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+.offers-page .offer-link:hover,
+.offers-page .offer-client-link:hover {
+  text-decoration: underline;
+}
+.offers-page .offer-client-link {
+  color: var(--text);
+  text-decoration: none;
+}
+.offers-page .offer-gig-link {
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.offers-page .offer-row-actions {
+  display: inline-flex;
+  gap: var(--space-1);
+}
+.offers-page .offer-table .inline-field {
+  margin: 0;
+}
+.offers-page .offer-row-rejected td:not(.offer-col-select, .offer-col-actions) {
+  color: var(--text-muted);
+}
+
+/* Excel-style from 600 px: one line per row, compact cells, horizontal scroll with the event
+   column pinned on the left. */
+@media (min-width: 600px) {
+  .offers-page .offer-table {
+    width: max-content;
+    min-width: 100%;
+  }
+  .offers-page .offer-table th,
+  .offers-page .offer-table td {
+    white-space: nowrap;
+    padding-left: var(--space-3);
+    padding-right: var(--space-3);
+  }
+  .offers-page .offer-table :is(th, td):first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    max-width: 240px;
+    padding-left: var(--cell-pad-x);
+    white-space: normal;
+    background: var(--surface);
+    box-shadow: inset calc(-1 * var(--hairline)) 0 0 var(--border);
+  }
+  .offers-page .offer-table thead th:first-child {
+    background: var(--surface-2);
+  }
+  .offers-page .offer-table tbody tr:hover td:first-child {
+    background: var(--surface-2);
+  }
+  .offers-page .offer-table td.offer-col-date {
+    font-family: var(--font-mono);
+    font-size: var(--fs-label);
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .offers-page .offer-table td.offer-col-select {
+    min-width: 150px;
+  }
+}
+
+/* ---------- New offer ---------- */
+.new-offer-page .new-offer-form {
+  max-width: calc(var(--label-w) * 4);
+}
+.new-offer-page .new-offer-section {
+  margin-bottom: var(--section-gap);
+}
+.new-offer-page .new-offer-section .field:first-of-type label {
+  margin-top: 0;
+}
+
+/* ---------- Offer page ---------- */
+.offer-page .offer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.offer-page .offer-head-date {
+  margin-right: var(--space-3);
+}
+.offer-page .offer-head-tags {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  vertical-align: middle;
+}
+.offer-page > .notice {
+  margin: 0 0 var(--space-5);
+}
+.offer-page .offer-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--section-gap) var(--grid-gap);
+  align-items: start;
+}
+.offer-page .offer-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--section-gap);
+  min-width: 0;
+}
+.offer-page .offer-preview-hint {
+  margin: 0 0 var(--space-3);
+}
+/* The customer document on its own sheet, so it reads as "what the customer gets". */
+.offer-page .offer-preview-frame {
+  padding: var(--space-5) var(--card-pad);
+  background: var(--surface);
+  border: var(--hairline) solid var(--border);
+  border-radius: var(--radius);
+}
+.offer-page .offer-fields .field-list > :first-child > label {
+  margin-top: 0;
+}
+.offer-page .offer-facts {
+  display: grid;
+  gap: var(--space-3);
+  margin: var(--space-4) 0 0;
+  padding-top: var(--space-4);
+  border-top: var(--hairline) solid var(--border);
+}
+.offer-page .offer-facts > div {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.offer-page .offer-facts dd {
+  margin: 0;
+}
+.offer-page .offer-history {
+  margin: 0;
+}
+
+@media (min-width: 600px) {
+  .offers-page .offers-filter-search {
+    grid-column: span 2;
+  }
+  .offer-page .offer-facts > div {
+    display: grid;
+    grid-template-columns: var(--label-w) minmax(0, 1fr);
+    column-gap: var(--space-4);
+    align-items: center;
+  }
+  .offer-page .offer-preview-frame {
+    padding: var(--space-6);
+  }
+}
+
+@media (min-width: 1200px) {
+  .offer-page .offer-layout {
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  }
+}

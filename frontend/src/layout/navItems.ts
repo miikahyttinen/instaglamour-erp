@@ -2,6 +2,7 @@ import {
   CalendarDays,
   Clock,
   Contact,
+  FileText,
   ListChecks,
   Music,
   Users,
@@ -11,12 +12,14 @@ import {
 
 export interface NavItem {
   to: string;
-  labelKey: `nav.${'year' | 'gigs' | 'clients' | 'people' | 'tasks' | 'hours' | 'budget'}`;
+  labelKey: `nav.${'offers' | 'year' | 'gigs' | 'clients' | 'people' | 'tasks' | 'hours' | 'budget'}`;
   icon: LucideIcon;
   end?: boolean;
 }
 
+/** Offers first (owner decision 2026-10-07); `/` stays the year page. */
 export const NAV_ITEMS: NavItem[] = [
+  { to: '/offers', labelKey: 'nav.offers', icon: FileText },
   { to: '/', labelKey: 'nav.year', icon: CalendarDays, end: true },
   { to: '/gigs', labelKey: 'nav.gigs', icon: Music },
   { to: '/clients', labelKey: 'nav.clients', icon: Contact },

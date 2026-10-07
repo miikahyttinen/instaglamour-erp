@@ -693,3 +693,15 @@
     border-top: 0;
   }
 }
+
+/* "From offer: <event>" (UC-031): one quiet line under the page head. */
+.gig-page .gig-offer-link {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-5);
+}
+.gig-page .gig-offer-link svg {
+  color: var(--label);
+}

@@ -5,6 +5,7 @@
 import { fi as budgetFi } from '../features/budget/i18n';
 import { fi as clientsFi } from '../features/clients/i18n';
 import { fi as hoursFi } from '../features/hours/i18n';
+import { fi as offersFi } from '../features/offers/i18n';
 import { fi as offerPreviewFi } from '../features/offers/offerPreviewI18n';
 import { fi as peopleFi } from '../features/people/i18n';
 import { fi as tasksFi } from '../features/tasks/i18n';
@@ -19,6 +20,7 @@ const fi = {
   },
   nav: {
     label: 'Päävalikko',
+    offers: 'Tarjoukset',
     year: 'Vuosi',
     gigs: 'Keikat',
     clients: 'Asiakkaat',
@@ -67,6 +69,7 @@ const fi = {
     },
   },
   pages: {
+    offers: 'Tarjoukset {{year}}',
     year: 'Vuosi {{year}}',
     gigs: 'Keikat {{year}}',
     clients: 'Asiakkaat',
@@ -87,6 +90,8 @@ const fi = {
     COST_NOT_PAYABLE: 'Polttoainetta ei merkitä maksetuksi (vain arvio).',
     BUDGET_NOT_EMPTY: 'Vuodelle on jo budjettilukuja.',
     CLIENT_IN_USE: 'Asiakas on käytössä: siihen on liitetty keikkoja tai tarjouksia.',
+    ALREADY_CONVERTED: 'Tarjouksesta on jo tehty keikka.',
+    RATE_LIMITED: 'Liian monta pyyntöä. Odota hetki ja yritä uudelleen.',
     FILE_TOO_LARGE: 'Tiedosto on liian suuri (enintään 20 Mt).',
     UNSUPPORTED_FILE_TYPE: 'Sallitut tiedostotyypit: PDF, DOCX, PNG ja JPG.',
     NETWORK_ERROR: 'Palvelimeen ei saatu yhteyttä.',
@@ -426,6 +431,7 @@ const fi = {
     actualCents: 'Toteuma',
   },
   ...offerPreviewFi,
+  ...offersFi,
   year: yearFi,
   ...clientsFi,
   ...peopleFi,
