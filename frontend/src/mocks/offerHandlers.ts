@@ -26,7 +26,7 @@ const STRING_MAX = 500;
 const TEXT_MAX = 5000;
 type Fields = Record<string, FieldCode>;
 
-const ctx = () => ({ clients: db.gigs.clients, partners: db.partners });
+const ctx = () => ({ clients: db.gigs.clients, partners: db.partners, references: db.references });
 const findOffer = (id: unknown): MockOffer | undefined => db.offers.offers.find((o) => o.id === id);
 const notFound = () => errorResponse(404, 'NOT_FOUND', 'Offer not found');
 /** Deleted offers are read-only: only GET, history and restore work. */

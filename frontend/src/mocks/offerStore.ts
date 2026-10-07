@@ -16,6 +16,7 @@ import type {
 } from '../api/types';
 import { todayIso } from '../lib/format';
 import { mockId, nowTs, type MockClient } from './gigStore';
+import { publicReferences, type ReferencesState } from './referencesStore';
 
 /** Full offer record, including the internal fields the public endpoint must never return. */
 export interface MockOffer {
@@ -47,8 +48,6 @@ export interface MockOffer {
 export interface OfferSettings {
   defaultIncludes: string;
   defaultSpotifyUrl: string;
-  referencesFi: string;
-  referencesEn: string;
   /** Partner id → phone shown as seller contact (domain model: Partner.phone). */
   partnerPhones: Record<Id, string | null>;
 }
@@ -63,6 +62,8 @@ export interface OfferState {
 export interface OfferContext {
   clients: MockClient[];
   partners: Partner[];
+  /** The reference register (BR-108); without it an offer that shows references gets an empty list. */
+  references?: ReferencesState;
 }
 
 // ---------- Derived values (BR-102, BR-106) ----------
@@ -113,7 +114,11 @@ export function toPublicView(state: OfferState, offer: MockOffer, ctx: OfferCont
     lineup: [...offer.lineup],
     includesText: offer.includesText,
     spotifyUrl: offer.spotifyUrl,
-    references: offer.showReferences ? { fi: settings.referencesFi, en: settings.referencesEn } : null,
+    references: offer.showReferences
+      ? ctx.references
+        ? publicReferences(ctx.references, offer.shareToken)
+        : []
+      : null,
     seller: {
       name: seller?.name ?? '',
       email: seller?.email ?? '',
@@ -133,7 +138,14 @@ export function toPublicOffer(offer: PublicOffer): PublicOffer {
     lineup: [...offer.lineup],
     includesText: offer.includesText,
     spotifyUrl: offer.spotifyUrl,
-    references: offer.references ? { fi: offer.references.fi, en: offer.references.en } : null,
+    references: offer.references
+      ? offer.references.map((r) => ({
+          id: r.id,
+          quote: { fi: r.quote.fi, en: r.quote.en },
+          author: r.author,
+          imageUrl: r.imageUrl,
+        }))
+      : null,
     seller: { name: offer.seller.name, email: offer.seller.email, phone: offer.seller.phone },
   };
 }

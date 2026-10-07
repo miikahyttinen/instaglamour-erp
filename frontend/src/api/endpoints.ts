@@ -37,6 +37,9 @@ import type {
   OfferListQuery,
   OfferListResponse,
   OfferUpdate,
+  Reference,
+  ReferenceCreate,
+  ReferenceUpdate,
   Partner,
   PeopleActiveFilter,
   Person,
@@ -223,4 +226,26 @@ export const budgetCategoriesApi = {
   rename: (id: Id, body: BudgetCategoryInput) =>
     apiRequest<BudgetCategory>(`/budget-categories/${id}`, { method: 'PATCH', body }),
   remove: (id: Id) => apiRequest<void>(`/budget-categories/${id}`, { method: 'DELETE' }),
+};
+
+// ---------- References (BR-108) ----------
+
+export const referencesApi = {
+  list: () => apiRequest<Reference[]>('/references'),
+  create: (body: ReferenceCreate) => apiRequest<Reference>('/references', { method: 'POST', body }),
+  update: (id: Id, body: ReferenceUpdate) =>
+    apiRequest<Reference>(`/references/${id}`, { method: 'PATCH', body }),
+  /** All ids in the new order. */
+  reorder: (ids: Id[]) =>
+    apiRequest<Reference[]>('/references/reorder', { method: 'POST', body: { ids } }),
+  uploadImage: (id: Id, file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return apiRequest<Reference>(`/references/${id}/image`, { method: 'PUT', body: form });
+  },
+  removeImage: (id: Id) => apiRequest<Reference>(`/references/${id}/image`, { method: 'DELETE' }),
+  /** Session-scoped image URL (internal page) with `?v=<imageVersion>`, so a replaced photo is never cached. */
+  imageUrl: (id: Id, imageVersion: string | null) =>
+    buildUrl(`/references/${id}/image`, { v: imageVersion }),
+  remove: (id: Id) => apiRequest<void>(`/references/${id}`, { method: 'DELETE' }),
 };

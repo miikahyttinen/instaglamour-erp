@@ -13,6 +13,7 @@ import { emptyGigState, type GigState } from './gigStore';
 import { seedHours, type HoursState } from './hoursStore';
 import { seedOffers } from './offerSeed';
 import type { OfferState } from './offerStore';
+import { seedReferences, type ReferencesState } from './referencesStore';
 import { seedTasks, type TasksState } from './tasksStore';
 
 export interface MockDb {
@@ -24,6 +25,8 @@ export interface MockDb {
   gigs: GigState;
   /** Offers, their history and the `offers.*` settings (UC-028…UC-031). */
   offers: OfferState;
+  /** References shown on offers (BR-108). */
+  references: ReferencesState;
   tasks: TasksState;
   hours: HoursState;
   budget: BudgetState;
@@ -130,6 +133,7 @@ export const db: MockDb = {
   reference: startReference,
   gigs: startGigs,
   offers: seedOffers(startGigs, startPartners),
+  references: seedReferences(),
   tasks: seedTasks(),
   hours: seedHours(startPartners),
   budget: seedBudget(startReference.budgetCategories),
@@ -152,6 +156,7 @@ export function resetMockDb(): void {
   db.reference = initialReference();
   db.gigs = initialGigs(db.partners, db.reference);
   db.offers = seedOffers(db.gigs, db.partners);
+  db.references = seedReferences();
   db.tasks = seedTasks();
   db.hours = seedHours(db.partners);
   db.budget = seedBudget(db.reference.budgetCategories);

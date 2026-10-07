@@ -69,7 +69,7 @@ describe('offer page (UC-029, UC-031)', () => {
     renderApp(`/offers/${offer.id}`);
     expect(await screen.findByRole('heading', { level: 1, name: 'Event 1' })).toBeInTheDocument();
     expect(within(preview()).getByRole('heading', { level: 2, name: 'Event 1' })).toBeInTheDocument();
-    expect(within(preview()).getByRole('region', { name: 'Referenssit' })).toHaveTextContent('Esiintyneet');
+    expect(within(preview()).getByRole('region', { name: 'Referenssit' })).toHaveTextContent('Esimerkkilainaus A');
     expect(within(preview()).getByRole('region', { name: 'Kokoonpano' })).toHaveTextContent('Line 1');
     expect(preview().textContent).not.toMatch(/9\s?876/);
     expect(screen.getByRole('textbox', { name: 'Hinta' })).toHaveDisplayValue(/^9\s?876,00$/);

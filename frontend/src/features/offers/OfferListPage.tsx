@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Link2, Plus, RotateCcw, Search, Trash2 } from 'lucide-react';
+import { Link2, Plus, Quote, RotateCcw, Search, Trash2 } from 'lucide-react';
 import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
@@ -171,10 +171,19 @@ export function OfferListPage() {
       {t('offers.newOffer')}
     </Link>
   );
+  const headActions = (
+    <>
+      <Link to="/offers/references" className={buttonClass()}>
+        <Quote className="btn-icon" />
+        {t('references.open')}
+      </Link>
+      {newOfferLink}
+    </>
+  );
 
   return (
     <section className="page offers-page">
-      <PageHead title={t('pages.offers', { year })} actions={newOfferLink} />
+      <PageHead title={t('pages.offers', { year })} actions={headActions} />
 
       {list.data && <YearFigures summary={list.data.summary} />}
 
