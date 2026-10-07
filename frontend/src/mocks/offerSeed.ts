@@ -11,6 +11,9 @@ export const DEMO_OFFER_TOKEN = 'demo-offer-0123456789abcdefghijklmnopqrstuvwxyz
 /** Minimal demo offer: no references, no Spotify, no phone, one lineup line. */
 export const MINIMAL_OFFER_TOKEN = 'demo-offer-minimal-0123456789abcdefghijklmnopqrstuvwxyz';
 
+/** Fixed ids of the seeded offers (`/offers/<id>` keeps working after a reload in dev:mock). */
+const seedId = (n: number) => `00000000-0000-4000-8000-0000000006${String(n).padStart(2, '0')}`;
+
 export function emptyOfferState(partners: Partner[]): OfferState {
   const [a, b, c] = partners;
   return {
@@ -51,6 +54,7 @@ export function seedOffers(gigs: GigState, partners: Partner[], year = new Date(
     state,
     {
       ...base,
+      id: seedId(1),
       clientId: CLIENT_IDS.a,
       eventName: 'Summer Party X',
       eventDate: '2026-06-13',
@@ -67,6 +71,7 @@ export function seedOffers(gigs: GigState, partners: Partner[], year = new Date(
     state,
     {
       ...base,
+      id: seedId(2),
       clientId: CLIENT_IDS.b,
       eventName: 'Wedding Y',
       eventDate: '2026-08-22',
@@ -86,6 +91,7 @@ export function seedOffers(gigs: GigState, partners: Partner[], year = new Date(
     state,
     {
       ...base,
+      id: seedId(3),
       clientId: CLIENT_IDS.c,
       eventName: 'Birthday V',
       eventDate: `${year}-05-02`,
@@ -103,6 +109,7 @@ export function seedOffers(gigs: GigState, partners: Partner[], year = new Date(
     state,
     {
       ...base,
+      id: seedId(4),
       clientId: CLIENT_IDS.c,
       eventName: 'Company Party Z',
       eventDate: `${year}-09-12`,
@@ -119,6 +126,7 @@ export function seedOffers(gigs: GigState, partners: Partner[], year = new Date(
     state,
     {
       ...base,
+      id: seedId(5),
       clientId: CLIENT_IDS.b,
       eventName: 'Christmas Party W',
       eventDate: `${year}-12-05`,
@@ -135,6 +143,7 @@ export function seedOffers(gigs: GigState, partners: Partner[], year = new Date(
     state,
     {
       ...base,
+      id: seedId(6),
       clientId: CLIENT_IDS.a,
       eventName: 'Gala Q',
       eventDate: `${year}-12-31`,
@@ -153,6 +162,7 @@ export function seedOffers(gigs: GigState, partners: Partner[], year = new Date(
     state,
     {
       ...base,
+      id: seedId(7),
       clientId: CLIENT_IDS.a,
       eventName: 'Autumn Event U',
       eventDate: gig?.startDate ?? `${year}-11-20`,
@@ -173,6 +183,7 @@ export function seedOffers(gigs: GigState, partners: Partner[], year = new Date(
     state,
     {
       ...base,
+      id: seedId(8),
       clientId: CLIENT_IDS.b,
       eventName: 'Event Deleted T',
       eventDate: `${year}-07-01`,

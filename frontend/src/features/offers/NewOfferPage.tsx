@@ -219,8 +219,9 @@ export function NewOfferPage() {
             {(p) => (
               <input
                 {...p}
-                type="url"
+                type="text"
                 inputMode="url"
+                autoComplete="off"
                 value={form.spotifyUrl}
                 onChange={(e) => set('spotifyUrl', e.target.value)}
               />

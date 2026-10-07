@@ -120,7 +120,7 @@ export function OfferPage() {
       <Button icon={RefreshCw} onClick={() => setDialog('regenerate')}>
         {t('offer.actions.regenerate')}
       </Button>
-      <GigCell offer={offer} onConvert={() => setDialog('convert')} />
+      <GigCell offer={offer} size="md" onConvert={() => setDialog('convert')} />
       <Button variant="danger" icon={Trash2} onClick={() => setDialog('delete')}>
         {t('offer.actions.delete')}
       </Button>

@@ -206,12 +206,14 @@ export interface NewOfferInput {
   disposition?: OfferDisposition;
   shareToken?: string;
   internalNote?: string | null;
+  /** Fixed id (seed only, so demo links survive a reload). */
+  id?: Id;
 }
 
 export function createOffer(state: OfferState, input: NewOfferInput, actorId: Id): MockOffer {
   const ts = nowTs();
   const offer: MockOffer = {
-    id: mockId(),
+    id: input.id ?? mockId(),
     clientId: input.clientId,
     eventName: input.eventName,
     eventDate: input.eventDate,

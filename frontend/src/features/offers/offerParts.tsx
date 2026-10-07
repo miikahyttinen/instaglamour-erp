@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import type { OfferSummary } from '../../api/types';
 import { Button } from '../../components/Button';
+import { buttonClass } from '../../components/buttonClass';
 import { Dialog } from '../../components/Dialog';
 import { Notice } from '../../components/Notice';
 import { StatusTag } from '../../components/StatusTag';
@@ -103,14 +104,25 @@ export function ConfirmDialog<T>({
   );
 }
 
-/** Gig column: the gig link once converted, else Convert (UC-031). */
-export function GigCell({ offer, onConvert }: { offer: OfferSummary; onConvert: () => void }) {
+/**
+ * Gig column / action: the gig link once converted, else Convert (UC-031). `size="md"` is the
+ * page-head action (full-size button look); the table uses the small one.
+ */
+export function GigCell({
+  offer,
+  onConvert,
+  size = 'sm',
+}: {
+  offer: OfferSummary;
+  onConvert: () => void;
+  size?: 'sm' | 'md';
+}) {
   const { t } = useTranslation();
   if (offer.gigId) {
     return (
       <Link
         to={`/gigs/${offer.gigId}`}
-        className="offer-gig-link"
+        className={size === 'md' ? buttonClass() : 'offer-gig-link'}
         aria-label={t('convert.gigLinkLabel', { event: offer.eventName })}
       >
         {t('convert.gigLink')}
@@ -118,7 +130,7 @@ export function GigCell({ offer, onConvert }: { offer: OfferSummary; onConvert: 
     );
   }
   return (
-    <Button size="sm" onClick={onConvert} aria-label={t('convert.buttonLabel', { event: offer.eventName })}>
+    <Button size={size} onClick={onConvert} aria-label={t('convert.buttonLabel', { event: offer.eventName })}>
       {t('convert.button')}
     </Button>
   );
