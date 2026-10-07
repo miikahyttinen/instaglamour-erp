@@ -524,7 +524,7 @@ test('convert to gig: confirm dialog → gig per BR-105, offer WON / ACCEPTED, l
   await expect(fact('Myyjä ja tuottaja')).toHaveText('Partner B');
 
   // AC-3: a human double click on "Luo keikka" (two clicks 50 ms apart) sends one request: the
-  // button is disabled while the request runs. A zero-delay synthetic double click: see F-007 below.
+  // button is disabled while the request runs. A zero-delay synthetic double click: F-007 test below.
   const converts: number[] = [];
   page.on('response', (r) => {
     if (r.request().method() === 'POST' && r.url().endsWith(`/api/offers/${offer.id}/convert`)) converts.push(r.status());
@@ -675,10 +675,10 @@ test('convert: a zero-delay double click on "Luo keikka" still makes one gig and
   await expect(actions.getByRole('link', { name: `Keikka: ${offer.eventName}` })).toHaveAttribute('href', `/gigs/${gigs[0].id}`);
 });
 
-test.fixme('convert: a zero-delay double click sends only one request (F-007)', async ({ page }, testInfo) => {
-  // F-007: ConfirmDialog disables "Luo keikka" through useMutation's isPending, which React Query
-  // publishes asynchronously; a second click in the same frame (Playwright dblclick) is not blocked,
-  // so a second POST /convert goes out and the server answers 409. Data stays correct (test above).
+test('convert: a zero-delay double click sends only one request (F-007)', async ({ page }, testInfo) => {
+  // F-007 (fixed in TASK-141): useMutation's isPending is published asynchronously, so a second
+  // click in the same frame (Playwright dblclick) used to send a second POST /convert (409).
+  // ConfirmDialog now guards with a ref set synchronously in the click handler.
   const tag = tagOf(testInfo);
   const year = offerYear(testInfo);
   await signIn(page, PARTNER_A, { selectedYear: year });
