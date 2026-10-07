@@ -64,8 +64,8 @@ phone-drawer tests at 1280 px). New findings: F-006 (major), F-007 (minor).
 | F-003 | minor | frontend | Year page tiles: secondary figure is read before its label ("Keikkoja 5 1 Peruttuja") |
 | F-004 | major | frontend | **Fixed (TASK-124).** My hours: an inline hours error does not wrap; the page scrolls sideways and the message is cut off |
 | F-005 | minor | frontend | Collapsed sidebar: while the CSS tooltip shows (hover / focus), it is added to the item's accessible name ("Vuosi Vuosi") |
-| F-006 | major | frontend | Gig list: the 8-column table does not fit next to the expanded sidebar at 1200–1263 px; "Kate-%" is cut off and the table scrolls sideways |
-| F-007 | minor | frontend | Convert to gig: a zero-delay double click on "Luo keikka" sends two requests (server answers 201 + 409; one gig, so AC-3 holds) |
+| F-006 | major | frontend | **Fixed (TASK-141).** Gig list: the 8-column table does not fit next to the expanded sidebar at 1200–1263 px; "Kate-%" is cut off and the table scrolls sideways |
+| F-007 | minor | frontend | **Fixed (TASK-141).** Convert to gig: a zero-delay double click on "Luo keikka" sends two requests (server answers 201 + 409; one gig, so AC-3 holds) |
 
 ---
 
@@ -196,6 +196,12 @@ phone-drawer tests at 1280 px). New findings: F-006 (major), F-007 (minor).
   `test.fixme('gig list: the 8-column table fits next to the expanded sidebar from 1200 px, no sideways scroll inside the table (F-006)')`
   (fails with `sidebar expanded, 1200 px: table 950 px in a 886 px box`). The breakpoint test above
   it (cards at 1199 px, the 8-column table at 1200 / 1440 px, no page scroll) passes.
+- **Fixed (TASK-141):** the table still switches at 1200 px viewport, but now fits the box: the
+  inner column gutters are 12 px instead of 20 px (outer edges keep `--cell-pad-x`, as in the
+  budget table), and at 1200–1279 px a date range wraps after its dash (two inline-block parts),
+  so the date column is one date wide. Min-content width of the table 950 → 786 px at 1200 px
+  (838 px from 1280 px, where ranges stay on one line). The test is no longer `fixme` and passes
+  at 1200 / 1280 / 1440 px in both sidebar states.
 
 ## F-007 — Convert to gig: a zero-delay double click sends two requests
 
@@ -217,6 +223,10 @@ phone-drawer tests at 1280 px). New findings: F-006 (major), F-007 (minor).
   `[201, 409]`). AC-3 itself is tested and passes: a human-speed double click sends one request,
   a zero-delay one still makes exactly one gig and shows success, and two parallel API requests
   give 201 + 409 and one gig.
+- **Fixed (TASK-141):** `ConfirmDialog` (used by convert, delete and regenerate-link) sets a
+  `useRef` flag and a `submitting` state in the click handler before `mutation.mutate()`; further
+  clicks return early and the button is disabled. The guard is released on error so the user can
+  retry. Unit test in `offerParts.test.tsx`; the e2e test is no longer `fixme` and passes.
 
 ---
 
