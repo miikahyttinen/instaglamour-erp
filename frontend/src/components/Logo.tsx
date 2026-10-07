@@ -19,10 +19,12 @@ export interface LogoProps {
   /** Override the theme (e.g. inside a `data-theme` subtree on /styleguide). */
   theme?: Theme;
   className?: string;
+  /** Alt text (default: the app name). The public offer page uses the brand name only. */
+  alt?: string;
 }
 
 /** Theme-aware logo: white on dark, black on light. Alt text is the app name. */
-export function Logo({ size = 'header', theme, className }: LogoProps) {
+export function Logo({ size = 'header', theme, className, alt }: LogoProps) {
   const { t } = useTranslation();
   const { theme: current } = useTheme();
   const height = size === 'large' ? 80 : 32;
@@ -30,7 +32,7 @@ export function Logo({ size = 'header', theme, className }: LogoProps) {
     <img
       className={['logo', `logo-${size}`, className].filter(Boolean).join(' ')}
       src={SOURCES[size][theme ?? current]}
-      alt={t('app.name')}
+      alt={alt ?? t('app.name')}
       width={Math.round(height * ASPECT)}
       height={height}
       decoding="async"

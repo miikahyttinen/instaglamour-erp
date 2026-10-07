@@ -3,6 +3,7 @@ import {
   centsToInput,
   formatDate,
   formatDateRange,
+  formatDateWithWeekday,
   formatHours,
   formatMoney,
   formatPercent,
@@ -114,5 +115,19 @@ describe('formatPercent', () => {
 describe('todayIso', () => {
   it('uses local date parts', () => {
     expect(todayIso(new Date(2026, 0, 5, 23, 30))).toBe('2026-01-05');
+  });
+});
+
+describe('formatDateWithWeekday', () => {
+  it('prefixes the capitalised weekday without timezone shift', () => {
+    expect(formatDateWithWeekday('2026-05-01', 'fi')).toBe('Perjantai 1.5.2026');
+    expect(formatDateWithWeekday('2026-05-01', 'en')).toBe('Friday 1 May 2026');
+    expect(formatDateWithWeekday('2026-12-31', 'en')).toBe('Thursday 31 Dec 2026');
+  });
+
+  it('returns a dash for empty or invalid input', () => {
+    expect(formatDateWithWeekday(null, 'fi')).toBe('–');
+    expect(formatDateWithWeekday('', 'en')).toBe('–');
+    expect(formatDateWithWeekday('not a date', 'en')).toBe('–');
   });
 });
