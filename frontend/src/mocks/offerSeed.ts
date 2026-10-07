@@ -22,8 +22,6 @@ export function emptyOfferState(partners: Partner[]): OfferState {
     settings: {
       defaultIncludes: 'Two 60-minute sets\nSound system and lights for up to 200 guests\nTravel within the region',
       defaultSpotifyUrl: 'https://example.com/listen/demo-band',
-      referencesFi: 'Esiintyneet mm. Client B:n ja Client C:n juhlissa.\nLisää referenssejä pyydettäessä.',
-      referencesEn: 'Played at parties for Client B and Client C.\nMore references on request.',
       partnerPhones: {
         ...(a ? { [a.id]: '+358 40 000 0001' } : {}),
         ...(b ? { [b.id]: null } : {}),

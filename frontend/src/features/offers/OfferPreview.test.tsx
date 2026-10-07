@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import type { PublicOffer } from '../../api/types';
 import { setLanguage } from '../../i18n';
@@ -13,7 +13,15 @@ const offer: PublicOffer = {
   lineup: ['Vocals – Person 1', 'Drums – Person 2'],
   includesText: 'Two sets\nSound system',
   spotifyUrl: 'https://example.com/listen',
-  references: { fi: 'Referenssiteksti FI', en: 'Reference text EN' },
+  references: [
+    {
+      id: 'ref-1',
+      quote: { fi: 'Lainaus yksi FI\nToinen rivi', en: 'Quote one EN\nSecond line' },
+      author: 'Person 5, Client A',
+      imageUrl: '/api/public/offers/token-1/references/ref-1/image',
+    },
+    { id: 'ref-2', quote: { fi: 'Lainaus kaksi FI', en: null }, author: 'Client B', imageUrl: null },
+  ],
   seller: { name: 'Partner A', email: 'partner.a@example.com', phone: '+358 40 000 0001' },
 };
 
@@ -44,8 +52,9 @@ describe('OfferPreview', () => {
     expect(includes).toHaveTextContent('Two sets');
     expect(includes).toHaveTextContent('Sound system');
 
-    expect(screen.getByRole('region', { name: 'Referenssit' })).toHaveTextContent('Referenssiteksti FI');
-    expect(screen.queryByText('Reference text EN')).not.toBeInTheDocument();
+    const references = screen.getByRole('region', { name: 'Referenssit' });
+    expect(references).toHaveTextContent('Lainaus yksi FI');
+    expect(screen.queryByText(/Quote one EN/)).not.toBeInTheDocument();
 
     const contact = screen.getByRole('region', { name: 'Yhteystiedot' });
     expect(within(contact).getByText('Partner A')).toBeInTheDocument();
@@ -84,7 +93,7 @@ describe('OfferPreview', () => {
     render(<OfferPreview offer={offer} lang="en" />);
     expect(screen.getByRole('article')).toHaveAttribute('lang', 'en');
     expect(screen.getByText('Friday 1 May 2026')).toBeInTheDocument();
-    expect(screen.getByRole('region', { name: 'References' })).toHaveTextContent('Reference text EN');
+    expect(screen.getByRole('region', { name: 'References' })).toHaveTextContent('Quote one EN');
     expect(screen.getByRole('link', { name: /Listen on Spotify/ })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Contact' })).toBeInTheDocument();
   });
@@ -107,6 +116,54 @@ describe('OfferPreview', () => {
     expect(screen.queryByRole('region', { name: 'Referenssit' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /Spotify/ })).not.toBeInTheDocument();
     expect(screen.queryByText('Puhelin')).not.toBeInTheDocument();
+  });
+
+  it('shows each reference with photo or placeholder, quote (line breaks kept) and author (BR-108)', () => {
+    const { container } = render(<OfferPreview offer={offer} />);
+    const region = screen.getByRole('region', { name: 'Referenssit' });
+    const items = within(region).getAllByRole('listitem');
+    expect(items).toHaveLength(2);
+
+    const [first, second] = items as [HTMLElement, HTMLElement];
+    const photo = first.querySelector('img');
+    expect(photo).toHaveAttribute('src', '/api/public/offers/token-1/references/ref-1/image');
+    expect(photo).toHaveAttribute('alt', '');
+    expect(first.querySelector('blockquote')!.textContent).toBe('Lainaus yksi FI\nToinen rivi');
+    expect(within(first).getByText('Person 5, Client A').tagName).toBe('FIGCAPTION');
+
+    expect(second.querySelector('img')).toBeNull();
+    const placeholder = within(second).getByTestId('reference-placeholder');
+    expect(placeholder).toHaveAttribute('aria-hidden', 'true');
+    expect(placeholder).toHaveTextContent('CB');
+    expect(within(second).getByText('Client B')).toBeInTheDocument();
+    // No external images anywhere: every img is the logo or an /api photo.
+    for (const img of container.querySelectorAll('img')) {
+      expect(img.getAttribute('src')).not.toMatch(/^https?:/);
+    }
+  });
+
+  it('falls back to the Finnish quote on the English page and marks its language', () => {
+    render(<OfferPreview offer={offer} lang="en" />);
+    const region = screen.getByRole('region', { name: 'References' });
+    const quotes = region.querySelectorAll('blockquote');
+    expect(quotes[0]).toHaveTextContent('Quote one EN');
+    expect(quotes[0]).not.toHaveAttribute('lang');
+    expect(quotes[1]).toHaveTextContent('Lainaus kaksi FI');
+    expect(quotes[1]).toHaveAttribute('lang', 'fi');
+  });
+
+  it('replaces a photo that fails to load with the placeholder', () => {
+    render(<OfferPreview offer={offer} />);
+    const region = screen.getByRole('region', { name: 'Referenssit' });
+    const first = within(region).getAllByRole('listitem')[0]!;
+    fireEvent.error(first.querySelector('img')!);
+    expect(first.querySelector('img')).toBeNull();
+    expect(within(first).getByTestId('reference-placeholder')).toHaveTextContent('P5');
+  });
+
+  it('hides the references section for an empty list', () => {
+    render(<OfferPreview offer={{ ...offer, references: [] }} />);
+    expect(screen.queryByRole('region', { name: 'Referenssit' })).not.toBeInTheDocument();
   });
 
   it('uses h2 for the title and h3 for sections inside an app page (titleLevel 2)', () => {

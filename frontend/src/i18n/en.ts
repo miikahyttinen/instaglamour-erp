@@ -4,6 +4,7 @@ import { en as clientsEn } from '../features/clients/i18n';
 import { en as hoursEn } from '../features/hours/i18n';
 import { en as offersEn } from '../features/offers/i18n';
 import { en as offerPreviewEn } from '../features/offers/offerPreviewI18n';
+import { en as referencesEn } from '../features/offers/referencesI18n';
 import { en as peopleEn } from '../features/people/i18n';
 import { en as tasksEn } from '../features/tasks/i18n';
 import { en as yearEn } from '../features/year/i18n';
@@ -429,6 +430,7 @@ const en: Resources = {
   },
   ...offerPreviewEn,
   ...offersEn,
+  ...referencesEn,
   year: yearEn,
   ...clientsEn,
   ...peopleEn,

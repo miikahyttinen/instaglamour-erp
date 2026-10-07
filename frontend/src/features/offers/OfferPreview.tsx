@@ -2,13 +2,14 @@ import { ExternalLink } from 'lucide-react';
 import { useId } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Language } from '../../api/enums';
-import type { PublicOffer } from '../../api/types';
+import type { PublicOffer, PublicOfferReference } from '../../api/types';
 import { buttonClass } from '../../components/buttonClass';
 import { Logo } from '../../components/Logo';
 import { SectionLabel } from '../../components/SectionLabel';
 import { isLanguage } from '../../i18n';
 import { formatDateWithWeekday } from '../../lib/format';
 import type { Theme } from '../../theme/theme';
+import { ReferencePhoto } from './ReferencePhoto';
 import './offerPreview.css';
 
 /**
@@ -19,10 +20,10 @@ export interface OfferPreviewProps {
   /**
    * What the customer sees — exactly the shape of `GET /api/public/offers/{token}`. Only these
    * fields are read; anything else on the object (price, disposition, ids, …) is never rendered.
-   * Internal callers map `OfferDetail` + seller + references text to this shape.
+   * The offer page passes `OfferDetail.preview` (the same payload).
    */
   offer: PublicOffer;
-  /** Language of labels, the date and the references text. Default: the current UI language. */
+  /** Language of labels, the date and the reference quotes. Default: the current UI language. */
   lang?: Language;
   /** Heading level of the event name: 1 on the public page (default), 2 inside an app page. */
   titleLevel?: 1 | 2;
@@ -51,6 +52,34 @@ function nonEmpty(value: string | null | undefined): string | null {
   return trimmed ? trimmed : null;
 }
 
+interface ShownReference {
+  id: string;
+  quote: string;
+  /** Language of the quote text (EN falls back to FI, BR-108). */
+  quoteLang: Language;
+  author: string;
+  imageUrl: string | null;
+}
+
+/** BR-108: quote in the page language; EN falls back to FI. References without any text are skipped. */
+function shownReferences(list: PublicOfferReference[] | null, language: Language): ShownReference[] {
+  if (!list) return [];
+  return list.flatMap((ref) => {
+    const own = language === 'en' ? nonEmpty(ref.quote.en) : nonEmpty(ref.quote.fi);
+    const quote = own ?? nonEmpty(ref.quote.fi);
+    if (!quote) return [];
+    return [
+      {
+        id: ref.id,
+        quote,
+        quoteLang: own ? language : 'fi',
+        author: ref.author.trim(),
+        imageUrl: ref.imageUrl,
+      },
+    ];
+  });
+}
+
 /**
  * Customer view of an offer (UC-030, BR-104): logo, event name, client, date with weekday,
  * venue / city, lineup, what's included, Spotify button, references, seller contact.
@@ -69,7 +98,7 @@ export function OfferPreview({ offer, lang, titleLevel = 1, logoTheme, className
   const lineup = offer.lineup.map((line) => line.trim()).filter(Boolean);
   const includes = nonEmpty(offer.includesText);
   const spotifyUrl = safeHttpUrl(nonEmpty(offer.spotifyUrl));
-  const references = nonEmpty(offer.references?.[language]);
+  const references = shownReferences(offer.references, language);
   const phone = nonEmpty(offer.seller.phone);
 
   return (
@@ -147,12 +176,24 @@ export function OfferPreview({ offer, lang, titleLevel = 1, logoTheme, className
         </div>
       )}
 
-      {references && (
+      {references.length > 0 && (
         <section className="offer-preview-references" aria-labelledby={`${ids}-references`}>
           <SectionLabel as={sectionTag} id={`${ids}-references`}>
             {t('offerPreview.references')}
           </SectionLabel>
-          <p className="offer-preview-text">{references}</p>
+          <ul className="offer-preview-reference-list">
+            {references.map((ref) => (
+              <li key={ref.id} className="offer-preview-reference">
+                <ReferencePhoto src={ref.imageUrl} author={ref.author} className="offer-preview-reference-photo" />
+                <figure className="offer-preview-reference-body">
+                  <blockquote className="offer-preview-quote" lang={ref.quoteLang === language ? undefined : ref.quoteLang}>
+                    <p>{ref.quote}</p>
+                  </blockquote>
+                  {ref.author && <figcaption className="offer-preview-author">{ref.author}</figcaption>}
+                </figure>
+              </li>
+            ))}
+          </ul>
         </section>
       )}
 

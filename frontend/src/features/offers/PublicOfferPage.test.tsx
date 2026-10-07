@@ -138,12 +138,12 @@ describe('PublicOfferPage /o/:token', () => {
     const { user } = renderApp(`/o/${DEMO_OFFER_TOKEN}`);
     await screen.findByRole('heading', { level: 1, name: 'Summer Party X' });
     expect(screen.getByText('Saturday 13 Jun 2026')).toBeInTheDocument();
-    expect(screen.getByRole('region', { name: 'References' })).toHaveTextContent('Played at parties');
+    expect(screen.getByRole('region', { name: 'References' })).toHaveTextContent('Sample quote A');
 
     const switcher = screen.getByRole('group', { name: 'Language' });
     await user.click(within(switcher).getByRole('button', { name: 'Suomi' }));
     expect(screen.getByText('Lauantai 13.6.2026')).toBeInTheDocument();
-    expect(screen.getByRole('region', { name: 'Referenssit' })).toHaveTextContent('Esiintyneet');
+    expect(screen.getByRole('region', { name: 'Referenssit' })).toHaveTextContent('Esimerkkilainaus A');
     expect(within(screen.getByRole('group', { name: 'Kieli' })).getByRole('button', { name: 'Suomi' })).toHaveAttribute(
       'aria-pressed',
       'true',

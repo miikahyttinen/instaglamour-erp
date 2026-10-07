@@ -10,6 +10,7 @@ import { hoursHandlers } from './hoursHandlers';
 import { offerHandlers } from './offerHandlers';
 import { peopleHandlers } from './peopleHandlers';
 import { publicOfferHandlers } from './publicOfferHandlers';
+import { referencesHandlers } from './referencesHandlers';
 import { tasksHandlers } from './tasksHandlers';
 import { currentPartner, errorResponse, unauthenticated } from './util';
 import { yearHandlers } from './yearHandlers';
@@ -73,6 +74,7 @@ export const handlers = [
   ...publicOfferHandlers,
   ...referenceHandlers,
   ...offerHandlers,
+  ...referencesHandlers,
   ...yearHandlers,
   ...gigHandlers,
   ...costLineHandlers,

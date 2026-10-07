@@ -224,10 +224,14 @@ export interface UpdateMeRequest {
 
 // ---------- Public offer (UC-030, no session) ----------
 
-/** References block of the public offer: the same text in both languages. */
-export interface PublicOfferReferences {
-  fi: string;
-  en: string;
+/** One active reference on the public offer (BR-108). The client picks the language. */
+export interface PublicOfferReference {
+  id: Id;
+  /** `en` null → the page shows `fi` (BR-108). */
+  quote: { fi: string; en: string | null };
+  author: string;
+  /** `/api/public/offers/{token}/references/{id}/image`, scoped to the offer token; null = no photo. */
+  imageUrl: string | null;
 }
 
 /** Seller contact shown to the customer. */
@@ -250,8 +254,8 @@ export interface PublicOffer {
   lineup: string[];
   includesText: string | null;
   spotifyUrl: string | null;
-  /** `null` when the offer does not show references. */
-  references: PublicOfferReferences | null;
+  /** Active references in sort order; `null` when the offer does not show references. */
+  references: PublicOfferReference[] | null;
   seller: PublicOfferSeller;
 }
 
@@ -640,3 +644,26 @@ export interface OfferEventDetails {
   /** CONVERTED: the created gig. */
   gigId?: Id;
 }
+
+// ---------- References (owner request 2026-10-07, BR-108) ----------
+
+export interface Reference {
+  id: Id;
+  quoteFi: string;
+  quoteEn: string | null;
+  author: string;
+  hasImage: boolean;
+  sortOrder: number;
+  active: boolean;
+}
+
+/** `POST /api/references`. Quotes ≤ 5000 chars, author ≤ 200. Appended last. */
+export interface ReferenceCreate {
+  quoteFi: string;
+  quoteEn?: string | null;
+  author: string;
+  active?: boolean;
+}
+
+/** `PATCH /api/references/{id}`. */
+export type ReferenceUpdate = Partial<Pick<Reference, 'quoteFi' | 'quoteEn' | 'author' | 'active'>>;
