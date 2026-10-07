@@ -30,6 +30,13 @@ import type {
   HourEntryUpdate,
   HoursTotals,
   Id,
+  OfferConvertResponse,
+  OfferCreate,
+  OfferDetail,
+  OfferEvent,
+  OfferListQuery,
+  OfferListResponse,
+  OfferUpdate,
   Partner,
   PeopleActiveFilter,
   Person,
@@ -156,6 +163,26 @@ export const clientsApi = {
   update: (id: Id, body: ClientUpdate) =>
     apiRequest<Client>(`/clients/${id}`, { method: 'PATCH', body }),
   remove: (id: Id) => apiRequest<void>(`/clients/${id}`, { method: 'DELETE' }),
+};
+
+// ---------- Offers (UC-028, UC-029, UC-031) ----------
+
+export const offersApi = {
+  list: (query: OfferListQuery) =>
+    apiRequest<OfferListResponse>('/offers', {
+      query: { ...query, q: query.q || undefined, deleted: query.deleted ? true : undefined },
+    }),
+  create: (body: OfferCreate) => apiRequest<OfferDetail>('/offers', { method: 'POST', body }),
+  get: (id: Id) => apiRequest<OfferDetail>(`/offers/${id}`),
+  update: (id: Id, body: OfferUpdate) =>
+    apiRequest<OfferDetail>(`/offers/${id}`, { method: 'PATCH', body }),
+  regenerateLink: (id: Id) =>
+    apiRequest<OfferDetail>(`/offers/${id}/regenerate-link`, { method: 'POST' }),
+  convert: (id: Id) =>
+    apiRequest<OfferConvertResponse>(`/offers/${id}/convert`, { method: 'POST' }),
+  delete: (id: Id) => apiRequest<void>(`/offers/${id}/delete`, { method: 'POST' }),
+  restore: (id: Id) => apiRequest<OfferDetail>(`/offers/${id}/restore`, { method: 'POST' }),
+  history: (id: Id) => apiRequest<OfferEvent[]>(`/offers/${id}/history`),
 };
 
 // ---------- Tasks ----------

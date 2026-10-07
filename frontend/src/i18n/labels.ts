@@ -7,6 +7,9 @@ import type {
   GigEventType,
   Language,
   OfferDisposition,
+  OfferEventType,
+  OfferHistoryType,
+  OfferSource,
   OfferStatus,
   SignInErrorCode,
   TaskStatus,
@@ -29,6 +32,10 @@ export const gigEventTypeLabel = (t: TFunction, code: GigEventType) => t(`gigEve
 export const offerStatusLabel = (t: TFunction, code: OfferStatus) => t(`offerStatus.${code}`);
 export const offerDispositionLabel = (t: TFunction, code: OfferDisposition) =>
   t(`offerDisposition.${code}`);
+export const offerSourceLabel = (t: TFunction, code: OfferSource) => t(`offerSource.${code}`);
+export const offerEventTypeLabel = (t: TFunction, code: OfferEventType) => t(`offerEventType.${code}`);
+export const offerHistoryTypeLabel = (t: TFunction, code: OfferHistoryType) =>
+  t(`offerHistoryType.${code}`, { defaultValue: code });
 export const fieldErrorLabel = (t: TFunction, code: FieldCode) => t(`fields.${code}`);
 export const signInErrorLabel = (t: TFunction, code: SignInErrorCode) =>
   t(`signIn.errors.${code}`);

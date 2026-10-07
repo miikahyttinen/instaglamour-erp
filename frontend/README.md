@@ -69,11 +69,11 @@ VITE_API_PROXY_TARGET=http://localhost:3100 VITE_PORT=5273 npm run dev
 | `src/reference/useReference.ts` | Reference data, loaded once per session and cached |
 | `src/i18n/` | `fi.ts` / `en.ts` texts (glossary terms), label helpers for codes and errors |
 | `src/lib/format.ts` | Money (cents), date, hours and percent formatting per language |
-| `src/mocks/` | MSW handlers and synthetic data (browser worker + Node server for tests). All state is in `db` (`data.ts`); `resetMockDb()` resets every store. Gig rules live in `gigStore.ts`, demo gigs in `gigSeed.ts`; tasks, hours and budget in `tasksStore.ts`, `hoursStore.ts`, `budgetStore.ts`. Budget rows (`/api/budget-categories`, `budgetCategoryHandlers` in `budgetHandlers.ts`) live in `db.reference.budgetCategories` (active rows only; removing drops the row there and keeps its amounts in `db.budget`). The year mock is computed from these stores |
+| `src/mocks/` | MSW handlers and synthetic data (browser worker + Node server for tests). All state is in `db` (`data.ts`); `resetMockDb()` resets every store. Gig rules live in `gigStore.ts`, demo gigs in `gigSeed.ts`; tasks, hours and budget in `tasksStore.ts`, `hoursStore.ts`, `budgetStore.ts`; offers (with history, `offers.*` settings and partner phones) in `offerStore.ts` / `offerSeed.ts` (`db.offers`, seeded offers have fixed ids `…000601`–`…000608`). Budget rows (`/api/budget-categories`, `budgetCategoryHandlers` in `budgetHandlers.ts`) live in `db.reference.budgetCategories` (active rows only; removing drops the row there and keeps its amounts in `db.budget`). The year mock is computed from these stores |
 | `src/features/<feature>/` | One folder per feature: `year`, `gigs`, `clients`, `people`, `tasks`, `hours`, `budget`; pages, query hooks and the feature texts in `i18n.ts` (gig texts are still in `src/i18n/fi.ts` / `en.ts`) |
-| `src/features/offers/` | `OfferPreview` (shared customer view of an offer) and the public page `/o/:token` (see "Offer preview") |
+| `src/features/offers/` | Offers (UC-028, UC-029, UC-031, see "Offers"): list `/offers`, new offer `/offers/new`, offer page `/offers/:id`, convert dialog; plus `OfferPreview` (shared customer view) and the public page `/o/:token` (see "Offer preview") |
 | `src/features/gigs/` | Gig list, new gig, gig page (costs, attachments, history, move/cancel/delete dialogs) |
-| `src/features/clients/` | Client register (UC-027): list + search + add, client page (inline name/notes, gigs, offers, delete), `ClientSelect` / `InlineClientSelect` ("–", clients, "New client…") used by the new gig form and the gig page. Mock: `mocks/clientHandlers.ts`; clients and a minimal `offers` list live in `db.gigs` (seed: Client A–C in `gigSeed.ts`) |
+| `src/features/clients/` | Client register (UC-027): list + search + add, client page (inline name/notes, gigs, offers, delete), `ClientSelect` / `InlineClientSelect` ("–", clients, "New client…") used by the new gig and new offer forms, the gig page and the offer page. Mock: `mocks/clientHandlers.ts`; clients live in `db.gigs` (seed: Client A–C in `gigSeed.ts`), offers in `db.offers` |
 | `src/components/` | Shared UI: `Button`/`IconButton`, `Card`, `StatTile`/`StatGrid`, `MiniBars`, `PageHead`, `SectionLabel`, `StatusTag`, `Notice`, `DataTable`, `Dialog`, `Field`, `MoneyInput`, `Logo` (see "Design system") |
 | `src/components/inline/` | Inline (save-on-blur) fields and `useInlineSave` (see "Inline editing") |
 | `src/lib/hours.ts` | Hours input parsing / validation / formatting (shared by the hours feature and `InlineHours`) |
@@ -83,7 +83,7 @@ VITE_API_PROXY_TARGET=http://localhost:3100 VITE_PORT=5273 npm run dev
 | `src/styleguide/` | Dev-only `/styleguide` page |
 | `src/assets/brand/` | Processed logos (generated, see "Logos") |
 | `src/pages/` | Not-found page |
-| `src/test/` | Test setup, `renderApp`, `gigFixtures` (synthetic gigs, `addMockClient`), `offerFixtures` (`mockOffer`), `testFile` for uploads |
+| `src/test/` | Test setup, `renderApp`, `gigFixtures` (synthetic gigs, `addMockClient`), `offerFixtures` (`addMockOffer`, `offerSummaryOf`), `testFile` for uploads |
 
 ## Conventions
 
@@ -343,7 +343,34 @@ this browser stored a choice), adds `<meta name="robots" content="noindex, nofol
 in the light theme without the switch, and shows "Offer not found" (no details) for any 404.
 With `npm run dev:mock` open `/o/demo-offer-0123456789abcdefghijklmnopqrstuvwxyzABCDEF` (full)
 or `/o/demo-offer-minimal-0123456789abcdefghijklmnopqrstuvwxyz` (no references / Spotify / phone);
-any other token is not found (`src/mocks/publicOfferHandlers.ts`).
+any other token is not found. The public mock looks the token up in `db.offers` and filters the
+fields with `toPublicOffer` (`src/mocks/publicOfferHandlers.ts`), so a regenerated or deleted
+offer's link is not found there either.
+
+### Offers (`src/features/offers/`, UC-028 / UC-029 / UC-031)
+
+- **Menu:** Tarjoukset / Offers is the first item (`/offers`); `/` stays the year page.
+- **List** (`OfferListPage`): figures of the selected year from `summary` (open value, win rate,
+  BR-106; they ignore the filters), filters (status incl. Expired, seller, disposition, event type,
+  source) and search in the URL, Excel-style `DataTable` sorted on the client (`offerSort.ts`:
+  every column, empty values last, `?sort=&dir=`; default event date ascending). From 600 px the
+  table keeps one line per row and scrolls sideways with the event column pinned; phones get cards.
+  Source / event type / disposition are `InlineSelect`s. Gig column: "Convert to gig" (confirm
+  dialog `ConvertDialog`, BR-105 fields) or the "Keikka →" link. Row actions: copy public link
+  (fetches the offer for `sharePath`), delete (confirm). Deleted view with Restore.
+- **New offer** (`NewOfferPage`): `ClientSelect` with "New client…", lineup textarea (one item per
+  line) filled from a lineup template (role labels), seller = me. "What's included" and Spotify
+  are only sent when filled, so the server applies the setting defaults.
+- **Offer page** (`OfferPage`): `OfferPreview` with `offer.preview` (the same payload as the
+  public page) + internal panel: every field inline (NFR-8), price / source / event type /
+  disposition, status, created / changed, history (`OfferHistory`). Actions: Copy public link
+  (absolute URL from `sharePath` + `window.location.origin`; falls back to a read-only field when
+  the clipboard is blocked), Regenerate link (confirm), Convert / Keikka →, Delete (confirm). A
+  deleted offer is read-only with Restore only.
+- **Gig page:** "Tarjouksesta / From offer: <event>" (`GigOfferLink`) when `offerId` is set.
+- Texts: `src/features/offers/i18n.ts` (`offers`, `offer`, `convert`, `newOffer`, `offerHistory`,
+  code labels `offerSource`, `offerEventType`, `offerHistoryType`, `offerField`).
+- No email sync anywhere (BR-107).
 
 ### Shared classes (for hand-written markup)
 

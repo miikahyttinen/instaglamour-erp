@@ -12,7 +12,11 @@ import type {
   MusicianRole,
   ExpenseCategory,
   OfferDisposition,
+  OfferEventType,
+  OfferHistoryType,
+  OfferSource,
   OfferStatus,
+  OfferStatusFilter,
   TaskStatus,
   TechnicalSetup,
   Logistics,
@@ -533,8 +537,8 @@ export interface OfferSummary {
   city: string | null;
   priceCents: Cents | null;
   sellerId: Id;
-  source: string | null;
-  eventType: string | null;
+  source: OfferSource | null;
+  eventType: OfferEventType | null;
   disposition: OfferDisposition;
   status: OfferStatus;
   /** OPEN and the event date is before today (display only, BR-102). */
@@ -543,4 +547,96 @@ export interface OfferSummary {
   createdAt: IsoTimestamp;
   updatedAt: IsoTimestamp;
   deletedAt: IsoTimestamp | null;
+}
+
+/** `GET /api/offers/{id}`: the summary plus the customer-facing content and the public link. */
+export interface OfferDetail extends OfferSummary {
+  /** One item per line, shown to the customer. */
+  lineup: string[];
+  includesText: string | null;
+  spotifyUrl: string | null;
+  showReferences: boolean;
+  /** `/o/<token>`; the UI makes it absolute with the current origin. */
+  sharePath: string;
+  /** Exactly what `GET /api/public/offers/{token}` returns for this offer. */
+  preview: PublicOffer;
+}
+
+export interface OfferListQuery {
+  year: number;
+  q?: string;
+  /** OPEN includes expired; EXPIRED = open and past (BR-102). */
+  status?: OfferStatusFilter;
+  sellerId?: Id;
+  disposition?: OfferDisposition;
+  eventType?: OfferEventType;
+  source?: OfferSource;
+  deleted?: boolean;
+}
+
+/** BR-106: figures of the year (ignores every filter except `year`). */
+export interface OfferYearSummary {
+  openValueCents: Cents;
+  /** `null` when nothing is decided yet. */
+  winRatePct: number | null;
+  wonCount: number;
+  decidedCount: number;
+}
+
+export interface OfferListResponse {
+  offers: OfferSummary[];
+  summary: OfferYearSummary;
+}
+
+export interface OfferCreate {
+  clientId: Id;
+  eventName: string;
+  eventDate: IsoDate;
+  venue: string;
+  city?: string | null;
+  lineup?: string[];
+  /** Omitted → default text from settings; `null` / `""` → none. */
+  includesText?: string | null;
+  /** Omitted → default link from settings; `null` / `""` → none. Must be http(s). */
+  spotifyUrl?: string | null;
+  showReferences?: boolean;
+  priceCents?: Cents | null;
+  /** Omitted → me. */
+  sellerId?: Id;
+  source?: OfferSource | null;
+  eventType?: OfferEventType | null;
+}
+
+/** PATCH: any editable field, including `disposition` (status follows it, BR-102). */
+export interface OfferUpdate extends Partial<Omit<OfferCreate, 'clientId' | 'eventName' | 'eventDate' | 'venue'>> {
+  clientId?: Id;
+  eventName?: string;
+  eventDate?: IsoDate;
+  venue?: string;
+  disposition?: OfferDisposition;
+}
+
+export interface OfferConvertResponse {
+  offer: OfferDetail;
+  gig: GigDetail;
+}
+
+/** Offer history entry (BR-103). Unknown or missing `details` are shown without detail lines. */
+export interface OfferEvent {
+  id: Id;
+  offerId: Id;
+  type: OfferHistoryType;
+  partnerId: Id;
+  at: IsoTimestamp;
+  details: OfferEventDetails;
+}
+
+export interface OfferEventDetails {
+  /** UPDATED: field old → new. */
+  changes?: FieldChange[];
+  /** DISPOSITION_CHANGED: old → new disposition. */
+  from?: OfferDisposition;
+  to?: OfferDisposition;
+  /** CONVERTED: the created gig. */
+  gigId?: Id;
 }

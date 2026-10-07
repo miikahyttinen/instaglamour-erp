@@ -118,6 +118,21 @@ describe('PublicOfferPage /o/:token', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Summer Party X' })).toBeInTheDocument();
   });
 
+  it('treats 429 RATE_LIMITED as a generic error with retry', async () => {
+    server.use(
+      http.get('/api/public/offers/:token', () =>
+        HttpResponse.json(
+          { error: { code: 'RATE_LIMITED', message: 'slow down' } },
+          { status: 429, headers: { 'Retry-After': '60' } },
+        ),
+      ),
+    );
+    renderApp(`/o/${DEMO_OFFER_TOKEN}`);
+    expect(await screen.findByRole('heading', { level: 1, name: 'Tarjousta ei voitu ladata' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Yritä uudelleen' })).toBeInTheDocument();
+    expect(screen.queryByText('slow down')).not.toBeInTheDocument();
+  });
+
   it('defaults to the browser language and switches FI/EN without saving anything', async () => {
     mockBrowserLanguages(['en-GB', 'en']);
     const { user } = renderApp(`/o/${DEMO_OFFER_TOKEN}`);

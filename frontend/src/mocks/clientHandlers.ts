@@ -1,5 +1,6 @@
 // Mock handlers for docs/api-contract.md → Clients (UC-027, BR-100, BR-101). Clients live in the
-// gig mock store (db.gigs.clients) so gigs can show the client name and search it.
+// gig mock store (db.gigs.clients) so gigs can show the client name and search it; offers are in
+// db.offers (offerStore.ts).
 import { http, HttpResponse } from 'msw';
 import type { FieldCode } from '../api/enums';
 import type {
@@ -12,6 +13,7 @@ import type {
 import { todayIso } from '../lib/format';
 import { db } from './data';
 import { mockId, nowTs, toSummary, type MockClient } from './gigStore';
+import { toOfferSummary } from './offerStore';
 import { currentPartner, errorResponse, unauthenticated, validationError } from './util';
 
 const NAME_MAX = 500;
@@ -22,7 +24,7 @@ const findActive = (id: unknown) => active().find((c) => c.id === id);
 const publicClient = (c: MockClient): Client => ({ id: c.id, name: c.name, notes: c.notes });
 
 const linkedGigs = (id: string) => db.gigs.gigs.filter((g) => g.clientId === id && g.deletedAt === null);
-const linkedOffers = (id: string) => db.gigs.offers.filter((o) => o.clientId === id && o.deletedAt === null);
+const linkedOffers = (id: string) => db.offers.offers.filter((o) => o.clientId === id && o.deletedAt === null);
 
 /** Trimmed name or the field code. Unique case-insensitively among active clients (BR-100). */
 function checkName(value: unknown, exceptId?: string): { name?: string; error?: FieldCode } {
@@ -95,7 +97,7 @@ export const clientHandlers = [
         .map((g) => toSummary(db.gigs, g, today))
         .sort((a, b) => b.startDate.localeCompare(a.startDate)),
       offers: linkedOffers(client.id)
-        .map((o) => ({ ...o, clientName: client.name }))
+        .map((o) => toOfferSummary(o, { clients: db.gigs.clients, partners: db.partners }, today))
         .sort((a, b) => b.eventDate.localeCompare(a.eventDate)),
     };
     return HttpResponse.json(body);
@@ -124,7 +126,7 @@ export const clientHandlers = [
     // BR-101: any linking gig (also a deleted one, which could be restored) or offer blocks it.
     const inUse =
       db.gigs.gigs.some((g) => g.clientId === client.id) ||
-      db.gigs.offers.some((o) => o.clientId === client.id);
+      db.offers.offers.some((o) => o.clientId === client.id);
     if (inUse) return errorResponse(409, 'CLIENT_IN_USE', 'Client in use');
     client.deletedAt = nowTs();
     return new HttpResponse(null, { status: 204 });

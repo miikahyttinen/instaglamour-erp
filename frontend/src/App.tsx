@@ -9,6 +9,7 @@ import { BudgetPage } from './features/budget/BudgetPage';
 import { ClientsRoutes } from './features/clients/ClientsRoutes';
 import { GigsRoutes } from './features/gigs/GigsRoutes';
 import { HoursRoutes } from './features/hours/HoursRoutes';
+import { OffersRoutes } from './features/offers/OffersRoutes';
 import { PublicOfferPage } from './features/offers/PublicOfferPage';
 import { PeopleRoutes } from './features/people/PeopleRoutes';
 import { TasksPage } from './features/tasks/TasksPage';
@@ -44,6 +45,7 @@ export function AppRoutes() {
         }
       >
         {/* Same order as the navigation (layout/navItems.ts). */}
+        <Route path="offers/*" element={<OffersRoutes />} />
         <Route index element={<YearPage />} />
         <Route path="gigs/*" element={<GigsRoutes />} />
         <Route path="clients/*" element={<ClientsRoutes />} />

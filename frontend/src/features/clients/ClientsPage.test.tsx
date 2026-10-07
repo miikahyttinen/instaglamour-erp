@@ -6,7 +6,7 @@ import { db } from '../../mocks/data';
 import { addMockClient, addMockGig, TEST_YEAR } from '../../test/gigFixtures';
 import { installMatchMedia } from '../../test/matchMedia';
 import { renderApp, signInMock } from '../../test/renderApp';
-import { mockOffer } from '../../test/offerFixtures';
+import { addMockOffer } from '../../test/offerFixtures';
 
 const table = () => screen.getByRole('table', { name: 'Asiakkaat' });
 const bodyRows = () => within(table()).getAllByRole('row').filter((r) => r.closest('tbody'));
@@ -24,7 +24,7 @@ describe('client list (UC-027)', () => {
     addMockGig({ clientId: x.id, startDate: `${TEST_YEAR + 1}-02-01` }); // all years count
     const deletedGig = addMockGig({ clientId: x.id });
     deletedGig.deletedAt = new Date().toISOString();
-    db.gigs.offers.push(mockOffer({ clientId: x.id }));
+    addMockOffer({ clientId: x.id });
 
     installMatchMedia({ [DESKTOP_QUERY]: true });
     const { user } = renderApp('/');
@@ -40,11 +40,12 @@ describe('client list (UC-027)', () => {
       'Keikat',
       'Tarjoukset',
     ]);
-    // Seed: Client A has two gigs this year, Client B one, Client C none.
+    // Seed: Client A has two gigs this year, Client B one, Client C none; offers per offerSeed.ts
+    // (non-deleted, all years).
     expect(rowTexts()).toEqual([
-      ['Client A', '2', '0'],
-      ['Client B', '1', '0'],
-      ['Client C', '0', '0'],
+      ['Client A', '2', '3'],
+      ['Client B', '1', '2'],
+      ['Client C', '0', '2'],
       ['Client X', '2', '1'],
     ]);
     expect(within(table()).getByRole('link', { name: 'Client X' })).toHaveAttribute('href', `/clients/${x.id}`);

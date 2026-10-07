@@ -91,8 +91,10 @@ export const ERROR_CODES = [
   'COST_NOT_PAYABLE',
   'BUDGET_NOT_EMPTY',
   'CLIENT_IN_USE',
+  'ALREADY_CONVERTED',
   'FILE_TOO_LARGE',
   'UNSUPPORTED_FILE_TYPE',
+  'RATE_LIMITED',
 ] as const;
 export type ErrorCode = (typeof ERROR_CODES)[number];
 
@@ -118,6 +120,10 @@ export type WarningCode = (typeof WARNING_CODES)[number];
 export const OFFER_STATUSES = ['OPEN', 'ACCEPTED', 'REJECTED'] as const;
 export type OfferStatus = (typeof OFFER_STATUSES)[number];
 
+/** `status` filter of `GET /api/offers`: OPEN includes expired; EXPIRED = open and past. */
+export const OFFER_STATUS_FILTERS = ['OPEN', 'EXPIRED', 'ACCEPTED', 'REJECTED'] as const;
+export type OfferStatusFilter = (typeof OFFER_STATUS_FILTERS)[number];
+
 export const OFFER_DISPOSITIONS = [
   'PENDING',
   'WON',
@@ -129,6 +135,26 @@ export const OFFER_DISPOSITIONS = [
   'NO_CAPACITY',
 ] as const;
 export type OfferDisposition = (typeof OFFER_DISPOSITIONS)[number];
+
+/** Where the offer request came from (domain model: Offer.source). */
+export const OFFER_SOURCES = ['EMAIL', 'WEBSITE', 'INSTAGRAM', 'OTHER'] as const;
+export type OfferSource = (typeof OFFER_SOURCES)[number];
+
+/** Kind of event the offer is for (domain model: Offer.event_type). */
+export const OFFER_EVENT_TYPES = ['PRIVATE', 'WEDDING', 'CORPORATE'] as const;
+export type OfferEventType = (typeof OFFER_EVENT_TYPES)[number];
+
+/** Offer history event types (domain model: OfferEvent, BR-103). */
+export const OFFER_HISTORY_TYPES = [
+  'CREATED',
+  'UPDATED',
+  'DISPOSITION_CHANGED',
+  'CONVERTED',
+  'LINK_REGENERATED',
+  'DELETED',
+  'RESTORED',
+] as const;
+export type OfferHistoryType = (typeof OFFER_HISTORY_TYPES)[number];
 
 /** `?error=` codes on /login after the Google callback. */
 export const SIGN_IN_ERROR_CODES = ['WRONG_DOMAIN', 'NOT_A_PARTNER', 'SIGN_IN_FAILED'] as const;

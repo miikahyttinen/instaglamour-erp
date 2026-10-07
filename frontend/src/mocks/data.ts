@@ -11,6 +11,8 @@ import { seedBudget, type BudgetState } from './budgetStore';
 import { seedGigState } from './gigSeed';
 import { emptyGigState, type GigState } from './gigStore';
 import { seedHours, type HoursState } from './hoursStore';
+import { seedOffers } from './offerSeed';
+import type { OfferState } from './offerStore';
 import { seedTasks, type TasksState } from './tasksStore';
 
 export interface MockDb {
@@ -20,6 +22,8 @@ export interface MockDb {
   reference: Omit<ReferenceData, 'partners'>;
   /** Gigs, cost lines, attachments, history and people. */
   gigs: GigState;
+  /** Offers, their history and the `offers.*` settings (UC-028…UC-031). */
+  offers: OfferState;
   tasks: TasksState;
   hours: HoursState;
   budget: BudgetState;
@@ -118,12 +122,14 @@ function initialGigs(partners: Partner[], reference: MockDb['reference']): GigSt
 
 const startPartners = initialPartners();
 const startReference = initialReference();
+const startGigs = initialGigs(startPartners, startReference);
 
 export const db: MockDb = {
   partners: startPartners,
   sessionPartnerId: readStoredSession(),
   reference: startReference,
-  gigs: initialGigs(startPartners, startReference),
+  gigs: startGigs,
+  offers: seedOffers(startGigs, startPartners),
   tasks: seedTasks(),
   hours: seedHours(startPartners),
   budget: seedBudget(startReference.budgetCategories),
@@ -145,6 +151,7 @@ export function resetMockDb(): void {
   db.partners = initialPartners();
   db.reference = initialReference();
   db.gigs = initialGigs(db.partners, db.reference);
+  db.offers = seedOffers(db.gigs, db.partners);
   db.tasks = seedTasks();
   db.hours = seedHours(db.partners);
   db.budget = seedBudget(db.reference.budgetCategories);

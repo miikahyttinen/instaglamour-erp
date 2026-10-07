@@ -26,6 +26,7 @@ describe('app shell', () => {
     expect(await screen.findByRole('heading', { name: 'Vuosi 2030' })).toBeInTheDocument();
 
     for (const [label, heading] of [
+      ['Tarjoukset', 'Tarjoukset 2030'],
       ['Keikat', 'Keikat 2030'],
       ['Asiakkaat', 'Asiakkaat'],
       ['Henkilöt', 'Henkilöt'],
@@ -318,6 +319,7 @@ describe('app shell', () => {
 
       const links = within(mainNav()).getAllByRole('link');
       expect(links.map((l) => l.textContent)).toEqual([
+        'Tarjoukset',
         'Vuosi',
         'Keikat',
         'Asiakkaat',
