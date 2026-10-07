@@ -1,7 +1,7 @@
 # TASK-017: e2e for clients and offers (+ fix 3 failing layout tests)
 
 - **owner:** backend (integration; edits `e2e/` only)
-- **status:** todo
+- **status:** done
 - **depends on:** TASK-015, 016, 137, 138, 139 (merged)
 
 ## Goal
