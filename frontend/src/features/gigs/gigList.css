@@ -222,16 +222,42 @@
 }
 
 /* ---------- Table (≥ 1200 px) ---------- */
-/* Eight columns in ~890 px (1200 px viewport next to the expanded sidebar): two-word headers may
-   wrap, bottom-aligned so the labels share one baseline above the figures. */
+/* Eight columns in ~886 px (1200 px viewport next to the expanded sidebar, F-006): two-word
+   headers may wrap, bottom-aligned so the labels share one baseline above the figures. */
 .gig-list-page .gig-table thead th {
   white-space: normal;
   vertical-align: bottom;
 }
-/* Date column as wide as its longest value (a date range), never wrapping. */
+/* The outer edges keep --cell-pad-x (first column lines up with the cards and tiles); between
+   columns a smaller gutter, header and body identical, as in the budget table (F-006). */
+.gig-list-page .gig-table th,
+.gig-list-page .gig-table td {
+  padding-left: var(--space-3);
+  padding-right: var(--space-3);
+}
+.gig-list-page .gig-table th:first-child,
+.gig-list-page .gig-table td:first-child {
+  padding-left: var(--cell-pad-x);
+}
+.gig-list-page .gig-table th:last-child,
+.gig-list-page .gig-table td:last-child {
+  padding-right: var(--cell-pad-x);
+}
+/* Date column as wide as its longest value, never breaking inside a date. */
 .gig-list-page .gig-table .gig-col-date {
   width: 1%;
   white-space: nowrap;
+}
+.gig-list-page .gig-table .gig-date-part {
+  display: inline-block;
+  white-space: nowrap;
+}
+/* 1200–1279 px (≈ 886 px box next to the expanded sidebar): a date range wraps after its dash
+   (between the two inline-block parts), so the column is one date wide (F-006). From 1280 px a range stays on one line. */
+@media (max-width: 1279px) {
+  .gig-list-page .gig-table .gig-col-date {
+    white-space: normal;
+  }
 }
 .gig-list-page .gig-table td.gig-col-date {
   font-family: var(--font-mono);

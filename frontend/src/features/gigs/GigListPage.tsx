@@ -314,8 +314,9 @@ interface GigRowsProps {
 
 /** Wide screens (≥ 1200 px): hairline table. Narrower: cards with economics on tap. */
 function GigRows(props: GigRowsProps) {
-  // The 7-column table needs the content width of a ≥ 1200 px viewport (the sidebar takes
-  // 232 px from 900 px). Below that the list is shown as cards.
+  // The 8-column table needs the content width of a ≥ 1200 px viewport (the sidebar takes
+  // 232 px from 900 px). Below that the list is shown as cards. It fits the ~886 px box next to
+  // the expanded sidebar because a date range may wrap after its dash (F-006, gigList.css).
   const wide = useMediaQuery(WIDE_QUERY);
   const today = todayIso();
   const firstUpcomingId = props.gigs.find((g) => g.startDate >= today)?.id;
@@ -342,6 +343,21 @@ function GigFlags({ gig, status }: { gig: GigSummary; status: GigDisplayStatus }
   );
 }
 
+/**
+ * Date or date range for the table. A range may break after the dash (never inside a date), so
+ * the date column can be one date wide at 1200–1279 px (F-006, gigList.css); wider it stays on
+ * one line. The text is the same as `formatDateRange`.
+ */
+function TableDateRange({ start, end, lang }: { start: string; end: string | null; lang: 'fi' | 'en' }) {
+  if (!end || end === start) return <span className="gig-date-part">{formatDate(start, lang)}</span>;
+  return (
+    <>
+      <span className="gig-date-part">{formatDate(start, lang)}–</span>
+      <span className="gig-date-part">{formatDate(end, lang)}</span>
+    </>
+  );
+}
+
 function GigTable({ gigs, partners, lang, firstUpcomingId }: GigRowsProps & { firstUpcomingId?: string }) {
   const { t } = useTranslation();
   const columns: DataTableColumn<GigSummary>[] = [
@@ -349,7 +365,7 @@ function GigTable({ gigs, partners, lang, firstUpcomingId }: GigRowsProps & { fi
       key: 'date',
       label: t('gigs.columns.date'),
       className: 'gig-col-date',
-      cell: (gig) => formatDateRange(gig.startDate, gig.endDate, lang),
+      cell: (gig) => <TableDateRange start={gig.startDate} end={gig.endDate} lang={lang} />,
     },
     {
       key: 'gig',
