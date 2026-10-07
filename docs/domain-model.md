@@ -251,3 +251,16 @@ No agencies: one client per gig and per offer. Real client names exist only in t
 
 ## Settings (additions, local seed)
 `offers.default_includes`, `offers.default_spotify_url`, `offers.references_fi`, `offers.references_en` (text).
+
+## Reference (testimonial) — owner request 2026-10-07
+| Field | Type | Notes |
+|---|---|---|
+| id | uuid | |
+| quote_fi | text | required |
+| quote_en | text | optional (falls back to FI on the EN page) |
+| author | string | required, e.g. "— Name, Company" |
+| image | file | optional photo (PNG/JPG/WebP ≤ 10 MB) stored like attachments in `UPLOAD_DIR`; placeholder shown when missing |
+| sort_order | int | display order |
+| active | bool | inactive references are not shown on offers |
+
+Replaces settings `offers.references_fi/_en`. Real quotes, authors and photos exist only in the local database/uploads (BR-090); the example seed has 3 synthetic references without photos.

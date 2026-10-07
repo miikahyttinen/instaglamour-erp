@@ -19,6 +19,9 @@ Write an offer for a client, internally, in the customer-facing format.
 ## Error flows
 - **E1 – Missing client/event/date/venue** → field errors, nothing saved.
 
+## References (2026-10-07)
+Partners manage references on **Tarjoukset → Referenssit** (`/offers/references`): add (FI quote, EN quote, author), upload/replace/remove photo, reorder, activate/deactivate, delete. Offers with "Näytä referenssit" show the active ones (photo + quote + author); missing photo → neutral placeholder.
+
 ## Acceptance criteria
 - [ ] AC-1: Create with required fields; defaults from settings.
 - [ ] AC-2: Every change saved in place and logged; disposition history visible.
