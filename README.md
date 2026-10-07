@@ -1,6 +1,6 @@
 # Instaglamour ERP
 
-A small, focused web app for the partners of a live-music band to run the business: **gigs, staffing and costs, contracts, tasks, work hours and the yearly budget — all organised by year.** It replaces a large spreadsheet with a real data model, keeps a full change history, and works on desktop and phone in Finnish and English, in dark and light mode.
+A small, focused web app for the partners of a live-music band to run the business: **offers with a customer-facing link, clients, gigs, staffing and costs, contracts, tasks, work hours and the yearly budget — all organised by year.** It replaces a large spreadsheet with a real data model, keeps a full change history, and works on desktop and phone in Finnish and English, in dark and light mode.
 
 > All data in this README and in the repository is **synthetic test data** ("Partner A", "Person 1", "Venue X", round amounts). Real names, customers, fees and budgets never enter the repository — see [Data protection](#data-protection).
 
@@ -23,6 +23,29 @@ A small, focused web app for the partners of a live-music band to run the busine
 ---
 
 ## Screenshots
+
+### Offers
+Offer list for the selected year with open value and win rate; Excel-style sortable table, inline source/event type/outcome, and **Convert to gig** (creates the gig, links it, marks the offer won).
+
+| Offer list | Offer page (customer preview + internal fields) |
+|---|---|
+| ![](docs/screenshots/offers-dark.png) | ![](docs/screenshots/offer-dark.png) |
+
+| New offer | References (photo + quote + author) |
+|---|---|
+| ![](docs/screenshots/new-offer-dark.png) | ![](docs/screenshots/references-dark.png) |
+
+### Public offer link — no sign-in, no price
+Each offer has one unguessable link (`/o/<token>`, 32 random bytes) that shows only that offer to the customer. Regenerating the link invalidates the old one.
+
+| Light | Dark | Phone |
+|---|---|---|
+| ![](docs/screenshots/public-offer-light.png) | ![](docs/screenshots/public-offer-dark.png) | ![](docs/screenshots/phone-public-offer-light.png) |
+
+### Clients
+| Client list | Client page (gigs and offers) |
+|---|---|
+| ![](docs/screenshots/clients-dark.png) | ![](docs/screenshots/client-dark.png) |
 
 ### Year page (home)
 The selected year at a glance: sold gigs sum, costs and margin, hours per partner, budget vs. actual and the year result, plus the next upcoming gigs.
@@ -93,6 +116,10 @@ Fixed costs and income per category: budget, actual and variance; every cell sav
 
 | Area | What it does |
 |---|---|
+| **Offers** | Offer list per year with open value and win rate; create/edit in place with full history; outcome (won, lost: price/competitor/…); **Convert to gig#** with one gig per offer (safe against double clicks and parallel requests). Email sync intentionally left out. |
+| **Public offer link** | `/o/<token>` without sign-in: event, client, date, venue, lineup, what's included, Spotify, references, seller contact — **never price or internal data**; FI/EN; regenerate to revoke; rate-limited, `noindex`. |
+| **References** | Testimonials with photo, FI/EN quote and author, managed in the app; shown on offers that enable them; photos only reachable through a valid offer link. |
+| **Clients** | Name + notes; gigs and offers link to a client; client page lists them. |
 | **Year first** | A selected year (always visible top right) drives every total: sold gigs sum, hours sum, budget vs. actual, year result. |
 | **Gigs** | Create from a lineup template or custom; status *Sold / Cancelled* ("played" derived from the date); move (dates logged), cancel/uncancel with reason, soft delete & restore. |
 | **Price** | Price + additional sales; total, margin and margin % calculated live. |
@@ -100,8 +127,8 @@ Fixed costs and income per category: budget, actual and variance; every cell sav
 | **Technical setup & logistics** | Technical setup (house tech, own PA set A/B/C), logistics (own van, rental van, taxi, other), house technician yes/no. |
 | **Attachments** | Contracts and other files per gig (PDF, DOCX, PNG, JPG); customer and invoicing details live in the contract, not in the database. |
 | **History** | Every change on a gig is logged (who, when, old → new) and cannot be edited. |
-| **People, tasks, hours** | Simple people register; shared to-do list; partners log hours (date, comment, hours) with month and year totals. |
-| **Budget** | Budget and actual per fixed cost/income category and year; copy budget from the previous year. |
+| **People, tasks, hours** | Simple people register; shared to-do list; hours as spreadsheet-style tables (date, partner, comment, hours) with partner filter and totals. |
+| **Budget** | Partners add, rename and remove budget rows; budget and actual per row and year; copy budget from the previous year. |
 | **Inline editing** | No Edit/Save buttons: fields save on blur/Enter, selects and switches on change, with saving/saved/error feedback. |
 | **Design** | Dark & light themes, Afacad typeface + monospace labels, collapsible icon sidebar, phone drawer, Finnish & English UI, responsive down to 375 px. |
 | **Access** | Google sign-in restricted to the company Workspace domain **and** registered partners. |
@@ -156,13 +183,13 @@ Everything the code does is written down first, in [`docs/`](docs/README.md), an
 | Document | Content |
 |---|---|
 | [`vision.md`](docs/vision.md) | Problem, goal, users, principles, MVP scope, out of scope, decision log |
-| [`use-cases/`](docs/use-cases/README.md) | **19 active use cases** (UC-001…UC-025; retired IDs are kept so IDs are never reused) — each with goal, trigger, main/alternative/error flows and testable acceptance criteria |
+| [`use-cases/`](docs/use-cases/README.md) | **24 active use cases** (UC-001…UC-031; retired IDs are kept so IDs are never reused) — each with goal, trigger, main/alternative/error flows and testable acceptance criteria |
 | [`business-rules.md`](docs/business-rules.md) | 34 numbered rules (BR-xxx): economics, lifecycle, staffing, load-in deduction, year sums, access, data protection |
 | [`domain-model.md`](docs/domain-model.md) | Entities, fields, enums |
 | [`api-contract.md`](docs/api-contract.md) | Every endpoint, request/response shape, error and field code — the single source of truth for both developers |
 | [`design.md`](docs/design.md) | Design system, Layout v2 (sidebar, type scale, spacing), inline-editing rules |
 | [`glossary.md`](docs/glossary.md) | Finnish ⇄ English domain terms |
-| [`tasks/`](docs/tasks) | 45 developer task files with owner, dependencies and acceptance criteria |
+| [`tasks/`](docs/tasks) | 60+ developer task files with owner, dependencies and acceptance criteria |
 
 Use cases by area:
 
@@ -172,6 +199,7 @@ Use cases by area:
 | Gigs | UC-002 Create · UC-003 List · UC-004 View & edit · UC-005 Costs & staffing · UC-007 Price · UC-008 Attachments · UC-009 Move · UC-010 Cancel · UC-012 Uncancel · UC-013 History · UC-025 Delete & restore |
 | People, tasks, hours | UC-014 People · UC-017 Tasks · UC-018 Log hours · UC-019 Hours totals |
 | Budget | UC-020 Yearly budget |
+| Clients & offers | UC-027 Clients · UC-028 Offer list · UC-029 Create & edit offer (+ references) · UC-030 Public offer link · UC-031 Convert offer to gig |
 | Development | UC-024 Local seed data |
 
 ---
@@ -229,8 +257,10 @@ flowchart LR
 | 6 Inline editing | Shared inline fields → five screens → e2e update | 1 → 5 → 1 |
 | 7 Layout v2 | Collapsible icon sidebar, smaller type, spacing → five alignment passes → polish, top-bar controls, e2e | 1 → 5 → 3 |
 | 8 Domain change | Technical setup / logistics / house technician: migration with data mapping · UI · e2e | 2 → 1 |
+| 9 Owner iterations | Partner-managed budget rows, hours as spreadsheet tables (three owner feedback rounds) | 2 → 1 |
+| 10 Clients & offers | Prototype studied read-only (kept out of git) → clients · offers · public link · references with photos · convert-to-gig · e2e incl. "no price leaks" checks | 3 → 3 → 3 |
 
-About **45 tasks, 190 commits and 45 reviewed merges** over three days.
+About **60 tasks, 270 commits and 64 reviewed merges** over five days.
 
 ### Lessons the process encoded
 - **Owner decides, PM proposes.** Every open question got a recommended default; silence never counted as approval for anything destructive.
@@ -244,9 +274,9 @@ About **45 tasks, 190 commits and 45 reviewed merges** over three days.
 
 | Suite | Size | What |
 |---|---|---|
-| Backend | ~290 tests | Every endpoint (success + errors) and business rule against a real PostgreSQL test database, incl. migration data-mapping tests |
-| Frontend | ~305 tests | Components, inline-editing behaviour, every screen against MSW mocks, i18n completeness, formatting |
-| End-to-end | 136 tests (2 viewports) | Playwright against the real backend, frontend and a fresh database at 375 px and 1280 px: all flows, inline saves surviving reload, Esc/invalid values not saved, no Edit buttons, sidebar/drawer behaviour, no horizontal scroll on any page. 106 run per full pass; 30 are viewport-specific skips or documented `fixme`s |
+| Backend | ~490 tests | Every endpoint (success + errors) and business rule against a real PostgreSQL test database, incl. migration data-mapping tests |
+| Frontend | ~420 tests | Components, inline-editing behaviour, every screen against MSW mocks, i18n completeness, formatting |
+| End-to-end | 220 tests (2 viewports) | Playwright against the real backend, frontend and a fresh database at 375 px and 1280 px: all flows, inline saves surviving reload, Esc/invalid values not saved, no Edit buttons, sidebar/drawer behaviour, no horizontal scroll on any page. 177 run per full pass; the rest are viewport-specific skips or documented `fixme`s. Includes public-link security checks (no price in DOM or network, no session, noindex, revoked links 404) |
 
 ```bash
 cd backend  && npm test && npm run lint
@@ -263,7 +293,7 @@ Findings from the e2e suite are tracked in [`e2e/FINDINGS.md`](e2e/FINDINGS.md).
 Rule **BR-090**, enforced in every review:
 
 - The repository contains **no real names, customer data, business figures (fees, prices, budgets) or secrets** — code and generic specs only.
-- Real data lives only locally and is git-ignored: `backend/.env`, `backend/seed/seed.local.json`, uploaded files, the original spreadsheet and design references.
+- Real data lives only locally and is git-ignored: `backend/.env`, `backend/seed/seed.local.json`, uploaded files (contracts, reference photos), the original spreadsheet, design references and the offer prototype used as a reference.
 - Business values (default fees, load-in deduction, budget categories, lineup templates, allowed sign-in domain) are **configuration from the local seed / `.env`**, never hard-coded.
 - Tests, mocks, the example seed and these screenshots use synthetic data only.
 
@@ -285,7 +315,7 @@ CLAUDE.md            Instructions for the PM and developer agents
 
 ## Open items
 - Small accessibility fix: collapsed-sidebar tooltips are read twice by screen readers (e2e F-005).
-- Minor alignment: gig price total vs. price field; year-page budget table at ~900 px.
+- Before any deployment: set `trustProxy` to the real proxy so the public-link rate limit can't be bypassed (see `backend/README.md`).
 - Deployment is intentionally out of scope for now (local development only).
 
 ---
