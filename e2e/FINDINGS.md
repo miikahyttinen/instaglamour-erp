@@ -1,4 +1,4 @@
-# E2E findings — TASK-004, TASK-007, TASK-008 … TASK-014
+# E2E findings — TASK-004, TASK-007, TASK-008 … TASK-014, TASK-017
 
 Mismatches and bugs found while running the real frontend against the real backend.
 The e2e suite does not fix `frontend/` or `backend/` code; it records problems here and marks
@@ -49,6 +49,14 @@ hours" and 10 "hours totals with a month opened", both projects) because they us
 After updating 07 / 10 and adding `tests/14-hours-tables.spec.ts`: **122 passed, 0 failed,
 30 skipped** (same 30 as above) at 375 px and 1280 px from a fresh database. No new findings.
 
+Run of 2026-10-07 against `main` at `fd24ff2` (clients, offers, public link; TASK-015, 016, 137,
+138, 139), see [TASK-017](#task-017--clients-and-offers-end-to-end-layout-tests-after-the-menu-grew-to-8-items):
+baseline 119 passed / 3 failed (outdated 6-item menu and 7-column checks). After the update and
+the new specs 15–17: **174 passed, 0 failed, 46 skipped** at 375 px and 1280 px from a fresh
+database — 6 `test.fixme` (F-005, F-006, F-007, one per project each), 1 by design (economics
+toggle, gig table ≥ 1200 px), 39 viewport-only (21 desktop-sidebar tests at 375 px, 18
+phone-drawer tests at 1280 px). New findings: F-006 (major), F-007 (minor).
+
 | Id | Severity | Side to fix | Summary |
 |---|---|---|---|
 | F-001 | minor | frontend | `/api` proxy target and dev port are hard-coded in `vite.config.ts` |
@@ -56,6 +64,8 @@ After updating 07 / 10 and adding `tests/14-hours-tables.spec.ts`: **122 passed,
 | F-003 | minor | frontend | Year page tiles: secondary figure is read before its label ("Keikkoja 5 1 Peruttuja") |
 | F-004 | major | frontend | **Fixed (TASK-124).** My hours: an inline hours error does not wrap; the page scrolls sideways and the message is cut off |
 | F-005 | minor | frontend | Collapsed sidebar: while the CSS tooltip shows (hover / focus), it is added to the item's accessible name ("Vuosi Vuosi") |
+| F-006 | major | frontend | Gig list: the 8-column table does not fit next to the expanded sidebar at 1200–1263 px; "Kate-%" is cut off and the table scrolls sideways |
+| F-007 | minor | frontend | Convert to gig: a zero-delay double click on "Luo keikka" sends two requests (server answers 201 + 409; one gig, so AC-3 holds) |
 
 ---
 
@@ -160,6 +170,82 @@ After updating 07 / 10 and adding `tests/14-hours-tables.spec.ts`: **122 passed,
   `test.fixme('collapsed: the hover / focus tooltip shows the label and keeps the accessible name (F-005)')`
   (fails with `Expected: "Vuosi"`, `Received: "Vuosi Vuosi"`). The reachability test in the same
   file finds every collapsed item by its name with the pointer moved away and passes.
+
+## F-006 — Gig list: the 8-column table overflows its box next to the expanded sidebar (1200–1263 px)
+
+- **Severity:** major (NFR-1; at a common laptop width a column of figures is hidden and the
+  table must be scrolled sideways, although the design switches to cards exactly to avoid this)
+- **Where:** `frontend/src/features/gigs/GigListPage.tsx` (`GigTable`: the table is used from
+  `WIDE_QUERY` = `(min-width: 1200px)`, `frontend/src/lib/useMediaQuery.ts`, regardless of the
+  sidebar state) and `frontend/src/features/gigs/gigList.css` (`.gig-table` column widths; the
+  comment there says "Eight columns in ~890 px (1200 px viewport next to the expanded sidebar)").
+- **Steps:** desktop, sidebar expanded (default) → window 1200 px wide → Keikat.
+- **Expected:** from 1200 px the table fits the content column (≈ 886 px), as the CSS comment
+  intends, or the list stays as cards until the table fits.
+- **Actual:** after TASK-137 added the "Asiakas" column the table needs ≈ 950 px: its scroll box
+  (`.table-wrap`, `overflow-x: auto`) is 886 px, so 64 px are hidden — "Kate-%" is cut and the
+  table scrolls sideways. Measured min-content widths at 1200 px: Päivä 159 (nowrap date range),
+  Keikka 169, Asiakas 92, Myyjä / tuottaja 99, Kokonaishinta 136, Kulut budjetti 100, Kulut
+  toteuma 100, Kate-% 96. It fits from ≈ 1264 px with the sidebar expanded, and at every width
+  ≥ 1200 px with it collapsed (1054 px box). The page itself does not scroll, which is why the
+  old page-level check could not see it.
+- **Possible fix:** switch to the table by the list's own width (container query ≥ ≈ 960 px, or
+  `WIDE_QUERY` + collapsed sidebar), or make the columns narrower at 1200–1279 px (e.g. let the
+  date range wrap, merge "Kulut, budjetti / toteuma" into one column as the cards do).
+- **Tests:** `e2e/tests/12-layout-v2.spec.ts` →
+  `test.fixme('gig list: the 8-column table fits next to the expanded sidebar from 1200 px, no sideways scroll inside the table (F-006)')`
+  (fails with `sidebar expanded, 1200 px: table 950 px in a 886 px box`). The breakpoint test above
+  it (cards at 1199 px, the 8-column table at 1200 / 1440 px, no page scroll) passes.
+
+## F-007 — Convert to gig: a zero-delay double click sends two requests
+
+- **Severity:** minor (no wrong data: the server creates one gig and answers the second request
+  with 409 `ALREADY_CONVERTED`; the user sees "Keikka luotu." and the gig link)
+- **Where:** `frontend/src/features/offers/offerParts.tsx` → `ConfirmDialog`: the confirm button
+  is `disabled={mutation.isPending}`; React Query publishes `isPending` asynchronously, so a second
+  click in the same frame is not blocked. Used by `ConvertDialog.tsx`, whose comment says "a double
+  click sends one request (AC-3)".
+- **Steps:** an offer → Muuta keikaksi → double-click "Luo keikka" with no delay between the clicks
+  (Playwright `dblclick()`; also scripted or very fast clicks).
+- **Expected:** one `POST /api/offers/{id}/convert`.
+- **Actual:** two requests; one answers 201, the other 409. Two clicks 30 / 80 / 150 ms apart send
+  one request (the button is disabled by then), so a normal human double click is fine.
+- **Possible fix:** guard synchronously, e.g. a `useRef` flag set in the click handler before
+  `mutation.mutate()`, or check `useIsMutating` / a local `submitting` state set before the call.
+- **Tests:** `e2e/tests/16-offers.spec.ts` →
+  `test.fixme('convert: a zero-delay double click sends only one request (F-007)')` (fails with
+  `[201, 409]`). AC-3 itself is tested and passes: a human-speed double click sends one request,
+  a zero-delay one still makes exactly one gig and shows success, and two parallel API requests
+  give 201 + 409 and one gig.
+
+---
+
+## TASK-017 — clients and offers end to end; layout tests after the menu grew to 8 items
+
+Baseline on `main` at `fd24ff2` (fresh database, 375 px and 1280 px): **119 passed, 3 failed,
+30 skipped**. The three failures in `12-layout-v2`:
+
+| Test | Cause | Verdict / change |
+|---|---|---|
+| Phone drawer (375 px) | Expected 6 links, the drawer has 8 (Tarjoukset first, Asiakkaat after Keikat) | Outdated test. `NAV` has the 8 items; the drawer test now also checks their order |
+| Collapsed sidebar names (1280 px) | Same: 6 vs 8 links | Outdated test. Also checks the menu order by accessible name (pointer moved away first, F-005) |
+| Gig list cards below / table from 1200 px | Expected 7 column headers, the table has 8 (client column). The test stopped there, before its page-scroll check | The column count was outdated: the test now expects the 8 named headers and passes (the page does not scroll). **But the 8-column table really overflows its own scroll box at 1200 px next to the expanded sidebar** (950 px in 886 px) — a real bug the page-level check can't see: **F-006**, new `test.fixme` that measures the table box at 1200 / 1280 / 1440 px with the sidebar expanded and collapsed |
+
+New specs: `15-clients` (5 tests per project), `16-offers` (8 per project, one `fixme`),
+`17-public-offer` (2 per project); helpers in `tests/offers.ts`. `tests/pages.ts` now also lists
+the offers list, deleted view, new offer, an offer page, the clients list and a client page, so
+`10-no-horizontal-scroll` and `12-layout-v2` check them in every sidebar / drawer state (they
+pass). `scripts/env.mjs` / `prepare.mjs`: optional `E2E_DB_NAME` so two checkouts can run the
+suite at the same time on the shared test Postgres.
+
+Observations (not bugs):
+
+- The public page fetches `GET /api/public/offers/{token}` twice per load **in the dev server**:
+  React StrictMode mounts it twice and the first request is aborted (`signal` in the query). A
+  production build makes one request. The test asserts which requests are made (only that GET,
+  without a cookie), not how many.
+- The offer list figures test needs offers before and after today, so it writes tagged offers to
+  the current year; it skips itself after 20 December (no future dates left in the year).
 
 ---
 

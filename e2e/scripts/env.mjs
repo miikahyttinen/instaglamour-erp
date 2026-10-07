@@ -14,10 +14,17 @@ export const backendUrl = `http://127.0.0.1:${backendPort}`;
 
 // Separate database on the *test* Postgres (docker compose service db-test, port 5433).
 // Never the dev database on :5432.
-export const e2eDbName = 'instaglamour_e2e';
+// E2E_DB_NAME lets two checkouts run the suite at the same time (must start with instaglamour_e2e).
+export const e2eDbName = process.env.E2E_DB_NAME ?? 'instaglamour_e2e';
+if (!/^instaglamour_e2e[a-z0-9_]*$/.test(e2eDbName)) {
+  throw new Error(`E2E_DB_NAME must match instaglamour_e2e[a-z0-9_]* (got ${e2eDbName})`);
+}
 export const databaseUrl = `postgresql://instaglamour:instaglamour@127.0.0.1:5433/${e2eDbName}`;
 
-export const uploadDir = path.join(os.tmpdir(), 'instaglamour-e2e-uploads');
+export const uploadDir = path.join(
+  os.tmpdir(),
+  e2eDbName === 'instaglamour_e2e' ? 'instaglamour-e2e-uploads' : `instaglamour-e2e-uploads-${e2eDbName}`,
+);
 
 /** Environment for the backend process (no .env file is read or written). */
 export function backendEnv() {
