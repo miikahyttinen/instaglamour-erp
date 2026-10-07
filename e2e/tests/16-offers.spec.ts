@@ -141,13 +141,24 @@ test('new offer: required fields refused, defaults applied when "what\'s include
   const preview = page.getByRole('article', { name: eventName });
   await expect(preview).toContainText('Placeholder: what is included in the offer.');
   await expect(preview).toContainText(fiDateWithWeekday(`${year}-06-12`));
-  await expect(preview).toContainText('Esimerkkiteksti: referenssit.');
+  // References: only presence (their content and shape are being redesigned).
+  await expect(preview.getByRole('region', { name: 'Referenssit' })).toBeVisible();
   await expect(preview).not.toContainText(fiMoney(300000));
   // Internal fields stay out of the customer view (event type "Häät", disposition "Odottaa").
   await expect(preview).not.toContainText('Häät');
   await expect(preview).not.toContainText(DISPOSITION_FI.PENDING);
   await expectNoEditSaveButtons(page.getByRole('main'), 'offer page');
   await expectNoHorizontalScroll(page, 'offer page');
+
+  // Switching "Näytä referenssit" off removes the references region from the preview.
+  const refSwitch = page.getByRole('main').getByRole('switch', { name: 'Näytä referenssit' });
+  const off = page.waitForResponse((r) => r.request().method() === 'PATCH' && r.url().endsWith(`/api/offers/${offer.id}`));
+  await refSwitch.click();
+  expect((await off).request().postDataJSON()).toEqual({ showReferences: false });
+  await page.reload();
+  await expect(refSwitch).not.toBeChecked();
+  await expect(preview).toBeVisible();
+  await expect(preview.getByRole('region', { name: 'Referenssit' })).toHaveCount(0);
 
   // API: the same rules (UC-029 E1), and a non-http Spotify link is refused.
   const bad = await page.request.post('/api/offers', { data: { eventName: '', eventDate: 'x', venue: '' } });

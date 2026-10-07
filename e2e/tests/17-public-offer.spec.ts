@@ -117,7 +117,8 @@ test('public link without a session: only that offer, no price or internal field
   const lineup = article.getByRole('region', { name: 'Kokoonpano' });
   for (const item of ['Vocals', 'Guitar', 'Drums']) await expect(lineup).toContainText(item);
   await expect(article.getByRole('region', { name: 'Tarjoukseen sisältyy' })).toContainText('Placeholder: what is included in the offer.');
-  await expect(article.getByRole('region', { name: 'Referenssit' })).toContainText('Esimerkkiteksti: referenssit.');
+  // References: only presence when showReferences is on (contents / shape are being redesigned).
+  await expect(article.getByRole('region', { name: 'Referenssit' })).toBeVisible();
   const contact = article.getByRole('region', { name: 'Yhteystiedot' });
   await expect(contact).toContainText(me.name);
   await expect(contact.getByRole('link', { name: 'partner.a@example.com' })).toHaveAttribute('href', 'mailto:partner.a@example.com');
@@ -184,10 +185,9 @@ test('public link without a session: only that offer, no price or internal field
   await languages.getByRole('button', { name: 'English' }).click();
   await expect(p.getByRole('group', { name: 'Language' }).getByRole('button', { name: 'English' })).toHaveAttribute('aria-pressed', 'true');
   await expect(article.getByRole('region', { name: 'Lineup' })).toBeVisible();
-  await expect(article.getByRole('region', { name: 'References' })).toContainText('Placeholder text: references.');
+  await expect(article.getByRole('region', { name: 'References' })).toBeVisible();
   await expect(article.getByRole('region', { name: 'Contact' })).toBeVisible();
   await expect(article.getByRole('link', { name: 'Listen on Spotify (opens in a new tab)' })).toBeVisible();
-  await expect(article).not.toContainText('Esimerkkiteksti');
   await expectNoPrice(anon, 'EN');
   await p.getByRole('group', { name: 'Language' }).getByRole('button', { name: 'Suomi' }).click();
   await expect(article.getByRole('region', { name: 'Kokoonpano' })).toBeVisible();
@@ -225,9 +225,11 @@ test('public link: unknown token → not found; regenerated → old not found, n
     await expect(p.getByText(offer.eventName)).toHaveCount(0);
   }
 
-  // The real link works.
+  // The real link works; showReferences is off (default) → no references region.
   await p.goto(offer.sharePath);
   await expect(p.getByRole('article', { name: offer.eventName })).toBeVisible();
+  await expect(p.getByRole('article', { name: offer.eventName }).getByRole('region', { name: 'Tarjoukseen sisältyy' })).toBeVisible();
+  await expect(p.getByRole('region', { name: 'Referenssit' })).toHaveCount(0);
 
   // Regenerate (signed-in side) → the open page's link is dead after a reload; the new one works.
   const regenerated = (await api(page).post(`/offers/${offer.id}/regenerate-link`)) as OfferDetail;

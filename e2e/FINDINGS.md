@@ -244,6 +244,7 @@ Observations (not bugs):
   React StrictMode mounts it twice and the first request is aborted (`signal` in the query). A
   production build makes one request. The test asserts which requests are made (only that GET,
   without a cookie), not how many.
+- References (PM, 2026-10-07): the public `references` field is being redesigned (list of photo + quote + author). The offer and public-link tests assert only that the references region is shown with "Näytä referenssit" on and absent when off, never its contents or shape. Re-run after that change: same 174 passed / 46 skipped.
 - The offer list figures test needs offers before and after today, so it writes tagged offers to
   the current year; it skips itself after 20 December (no future dates left in the year).
 
