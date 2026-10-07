@@ -8,7 +8,8 @@
  *   partners have since edited in the app is never overwritten:
  *   budget category (code if given, else name, case-insensitive; removed rows count too — partners
  *   manage the rows in the app), client (name, case-insensitive, among non-deleted clients),
- *   gig (startDate + venue + lineupName; an existing gig's client is never changed), task (title + owner),
+ *   gig (startDate + venue + lineupName; an existing gig's client is never changed),
+ *   offer (client + eventName + eventDate; a `converted` offer also gets its gig, BR-105), task (title + owner),
  *   hour entry (partner + date + comment), budget row (category + year).
  */
 import { existsSync, readFileSync } from 'node:fs';
@@ -16,7 +17,9 @@ import path from 'node:path';
 import type { Db } from '../src/db.js';
 import { dateFromIso } from '../src/domain/dates.js';
 import { defaultCostLines } from '../src/domain/costLines.js';
-import { isMusicianRole, SETTING_KEYS } from '../src/domain/enums.js';
+import { isMusicianRole, OFFER_SETTING_KEYS, SETTING_KEYS } from '../src/domain/enums.js';
+import { newShareToken } from '../src/offers/shareToken.js';
+import { convertOfferInTx } from '../src/offers/store.js';
 import type { Prisma } from '../src/generated/prisma/client.js';
 import { clientNameKey, findSeedCategory, validateSeed, type SeedData } from './schema.js';
 
@@ -41,6 +44,7 @@ export interface SeedSummary {
   clients: number;
   clientsCreated: number;
   gigsCreated: number;
+  offersCreated: number;
   tasksCreated: number;
   hoursCreated: number;
   budgetRowsCreated: number;
@@ -70,11 +74,13 @@ export function readSeedFile(file: string): unknown {
 /** Delete all application data (keeps the schema). Order respects foreign keys. */
 export async function emptyDatabase(tx: Tx): Promise<void> {
   await tx.session.deleteMany();
+  await tx.offerEvent.deleteMany();
   await tx.gigEvent.deleteMany();
   await tx.attachment.deleteMany();
   await tx.costLine.deleteMany();
   await tx.gigTechnicalSetupLegacy.deleteMany();
   await tx.gig.deleteMany();
+  await tx.offer.deleteMany();
   await tx.client.deleteMany();
   await tx.task.deleteMany();
   await tx.hourEntry.deleteMany();
@@ -140,6 +146,7 @@ async function applySeed(tx: Tx, data: SeedData): Promise<SeedSummary> {
     clients: 0,
     clientsCreated: 0,
     gigsCreated: 0,
+    offersCreated: 0,
     tasksCreated: 0,
     hoursCreated: 0,
     budgetRowsCreated: 0,
@@ -153,12 +160,15 @@ async function applySeed(tx: Tx, data: SeedData): Promise<SeedSummary> {
     let partner: { id: string; personId: string };
     if (existing) {
       await tx.person.update({ where: { id: existing.personId }, data: { name: p.name, active: true } });
+      // Phone is contact data from the seed: updated when the file gives it.
+      if (p.phone !== undefined && p.phone !== existing.phone)
+        await tx.partner.update({ where: { id: existing.id }, data: { phone: p.phone } });
       partner = existing;
     } else {
       const unlinked = await tx.person.findFirst({ where: { name: p.name, partner: null } });
       const personId = unlinked?.id ?? (await tx.person.create({ data: { name: p.name } })).id;
       // Language is a personal preference: only set when the partner is first created.
-      partner = await tx.partner.create({ data: { email: p.email, personId, language: p.language } });
+      partner = await tx.partner.create({ data: { email: p.email, personId, language: p.language, phone: p.phone ?? null } });
     }
     partnerByEmail.set(p.email, partner);
     personIdByName.set(p.name, partner.personId);
@@ -184,14 +194,24 @@ async function applySeed(tx: Tx, data: SeedData): Promise<SeedSummary> {
   }
 
   // Settings
-  for (const [key, valueCents] of Object.entries(data.settings)) {
-    await tx.setting.upsert({ where: { key }, create: { key, valueCents }, update: { valueCents } });
+  for (const [key, value] of Object.entries(data.settings)) {
+    const values = typeof value === 'number' ? { valueCents: value, valueText: null } : { valueCents: null, valueText: value };
+    await tx.setting.upsert({ where: { key }, create: { key, ...values }, update: values });
     summary.settings++;
   }
+  const centsSetting = (key: string) => {
+    const v = data.settings[key];
+    return typeof v === 'number' ? v : 0;
+  };
   const fees = {
-    officeDefaultCents: data.settings[SETTING_KEYS.officeDefault] ?? 0,
-    salesDefaultCents: data.settings[SETTING_KEYS.salesDefault] ?? 0,
-    productionDefaultCents: data.settings[SETTING_KEYS.productionDefault] ?? 0,
+    officeDefaultCents: centsSetting(SETTING_KEYS.officeDefault),
+    salesDefaultCents: centsSetting(SETTING_KEYS.salesDefault),
+    productionDefaultCents: centsSetting(SETTING_KEYS.productionDefault),
+  };
+  // Offer defaults from the database (just upserted from the file if it has them).
+  const textSetting = async (key: string) => {
+    const text = (await tx.setting.findUnique({ where: { key } }))?.valueText;
+    return text && text.trim() !== '' ? text : null;
   };
 
   // Budget categories (insert only: partners manage the rows in the app)
@@ -278,6 +298,40 @@ async function applySeed(tx: Tx, data: SeedData): Promise<SeedSummary> {
     });
     await tx.gigEvent.create({ data: { gigId: gig.id, type: 'CREATED', partnerId: partnerId(g.seller), details: {} } });
     summary.gigsCreated++;
+  }
+
+  // Offers (insert only; natural key client + eventName + eventDate, deleted offers count too)
+  const defaultIncludes = await textSetting(OFFER_SETTING_KEYS.defaultIncludes);
+  const defaultSpotifyUrl = await textSetting(OFFER_SETTING_KEYS.defaultSpotifyUrl);
+  for (const o of data.offers) {
+    const clientId = clientIdByKey.get(clientNameKey(o.client))!;
+    const eventDate = dateFromIso(o.eventDate);
+    if (await tx.offer.findFirst({ where: { clientId, eventName: o.eventName, eventDate } })) continue;
+    const sellerId = partnerId(o.seller);
+    const token = newShareToken();
+    const offer = await tx.offer.create({
+      data: {
+        clientId,
+        eventName: o.eventName,
+        eventDate,
+        venue: o.venue,
+        city: o.city ?? null,
+        lineup: o.lineup,
+        includesText: o.includesText ?? defaultIncludes,
+        spotifyUrl: o.spotifyUrl ?? defaultSpotifyUrl,
+        showReferences: o.showReferences,
+        priceCents: o.priceCents ?? null,
+        sellerId,
+        source: o.source ?? null,
+        eventType: o.eventType ?? null,
+        disposition: o.disposition ?? 'PENDING',
+        shareToken: token.token,
+        shareTokenHash: token.hash,
+      },
+    });
+    await tx.offerEvent.create({ data: { offerId: offer.id, type: 'CREATED', partnerId: sellerId, details: {} } });
+    if (o.converted) await convertOfferInTx(tx, { offerId: offer.id, partnerId: sellerId, fees });
+    summary.offersCreated++;
   }
 
   // Tasks (insert only)

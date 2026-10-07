@@ -5,7 +5,19 @@
  */
 import { z } from 'zod';
 import { isIsoDate } from '../src/domain/dates.js';
-import { ALL_SETTING_KEYS, COST_TYPES, DESCRIPTION_REQUIRED_TYPES, isMusicianRole, LANGUAGES, LOGISTICS, TECHNICAL_SETUPS } from '../src/domain/enums.js';
+import {
+  ALL_OFFER_SETTING_KEYS,
+  ALL_SETTING_KEYS,
+  COST_TYPES,
+  DESCRIPTION_REQUIRED_TYPES,
+  EVENT_TYPES,
+  isMusicianRole,
+  LANGUAGES,
+  LOGISTICS,
+  OFFER_DISPOSITIONS,
+  OFFER_SOURCES,
+  TECHNICAL_SETUPS,
+} from '../src/domain/enums.js';
 
 const cents = z.number().int().nonnegative();
 const name = z.string().trim().min(1).max(500);
@@ -51,6 +63,30 @@ const gig = z.strictObject({
   costLines: z.array(costLine).optional(),
 });
 
+const httpUrl = z
+  .string()
+  .trim()
+  .max(500)
+  .refine((v) => /^https?:\/\//i.test(v) && URL.canParse(v), 'must be an http(s) URL');
+
+const offer = z.strictObject({
+  client: name,
+  eventName: name,
+  eventDate: isoDate,
+  venue: name,
+  city: name.optional(),
+  lineup: z.array(name).max(100).default([]),
+  includesText: z.string().max(5000).optional(),
+  spotifyUrl: httpUrl.optional(),
+  showReferences: z.boolean().default(false),
+  priceCents: cents.optional(),
+  seller: email,
+  source: z.enum(OFFER_SOURCES).optional(),
+  eventType: z.enum(EVENT_TYPES).optional(),
+  disposition: z.enum(OFFER_DISPOSITIONS).optional(),
+  converted: z.boolean().default(false),
+});
+
 /** Keys of the pre-TASK-012 budget category format; rejected with a conversion hint. */
 const LEGACY_CATEGORY_KEYS = ['nameFi', 'nameEn', 'budgeted'];
 export const LEGACY_CATEGORY_HINT =
@@ -85,7 +121,9 @@ export function findSeedCategory<C extends { code?: string | undefined; name: st
 
 export const seedSchema = z.strictObject({
   partners: z
-    .array(z.strictObject({ name, email, language: z.enum(LANGUAGES).default('fi') }))
+    .array(
+      z.strictObject({ name, email, language: z.enum(LANGUAGES).default('fi'), phone: z.string().trim().min(1).max(50).optional() }),
+    )
     .min(1),
   people: z.array(z.strictObject({ name, active: z.boolean().default(true) })).default([]),
   lineupTemplates: z
@@ -96,10 +134,12 @@ export const seedSchema = z.strictObject({
       }),
     )
     .default([]),
-  settings: z.record(z.string(), cents),
+  // Fee settings are cents; offer settings (offers.*) are texts.
+  settings: z.record(z.string(), z.union([cents, z.string().max(5000)])),
   budgetCategories: z.array(budgetCategory).default([]),
   clients: z.array(z.strictObject({ name, notes: z.string().max(5000).optional() })).default([]),
   gigs: z.array(gig).default([]),
+  offers: z.array(offer).default([]),
   tasks: z
     .array(
       z.strictObject({
@@ -179,8 +219,15 @@ export function validateSeed(input: unknown): ValidationResult {
   const clientKeys = new Set(data.clients.map((c) => clientNameKey(c.name)));
 
   for (const key of ALL_SETTING_KEYS) if (!(key in data.settings)) errors.push(`settings: missing ${key}`);
-  for (const key of Object.keys(data.settings))
-    if (!ALL_SETTING_KEYS.includes(key as (typeof ALL_SETTING_KEYS)[number])) errors.push(`settings: unknown key ${key}`);
+  for (const [key, value] of Object.entries(data.settings)) {
+    if (ALL_SETTING_KEYS.includes(key as (typeof ALL_SETTING_KEYS)[number])) {
+      if (typeof value !== 'number') errors.push(`settings.${key}: must be an amount in cents`);
+    } else if (ALL_OFFER_SETTING_KEYS.includes(key as (typeof ALL_OFFER_SETTING_KEYS)[number])) {
+      if (typeof value !== 'string') errors.push(`settings.${key}: must be a text`);
+    } else {
+      errors.push(`settings: unknown key ${key}`);
+    }
+  }
 
   data.gigs.forEach((g, i) => {
     const at = `gigs.${i}`;
@@ -205,6 +252,16 @@ export function validateSeed(input: unknown): ValidationResult {
       if (c.paidBy && !partnerEmails.has(c.paidBy)) errors.push(`${lat}.paidBy: unknown partner ${c.paidBy}`);
     });
   });
+
+  data.offers.forEach((o, i) => {
+    const at = `offers.${i}`;
+    if (!clientKeys.has(clientNameKey(o.client))) errors.push(`${at}.client: unknown client "${o.client}" (list it in clients)`);
+    if (!partnerEmails.has(o.seller)) errors.push(`${at}.seller: unknown partner ${o.seller}`);
+    if (o.converted && o.disposition !== undefined && o.disposition !== 'WON')
+      errors.push(`${at}.disposition: a converted offer is WON (omit disposition or use WON)`);
+  });
+  for (const d of duplicates(data.offers.map((o) => `${clientNameKey(o.client)}/${o.eventName}/${o.eventDate}`)))
+    errors.push(`offers: duplicate offer ${d} (client + eventName + eventDate)`);
 
   data.tasks.forEach((t, i) => {
     if (!partnerEmails.has(t.owner)) errors.push(`tasks.${i}.owner: unknown partner ${t.owner}`);

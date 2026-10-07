@@ -2,7 +2,7 @@
  * Clients (docs/api-contract.md "Clients"; UC-027, BR-100, BR-101).
  * A client is a name + notes. Names are unique case-insensitively (trimmed) among non-deleted
  * clients. Deleting is soft and only allowed when no gig links to the client.
- * Offers arrive in TASK-016: until then `offerCount` is 0 and `offers` is empty.
+ * Offers (TASK-016) are counted and listed too, and block deletion like gigs.
  */
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
@@ -14,6 +14,7 @@ import { AppError, notFound, parseInput, validationError } from '../http/errors.
 import { LONG_TEXT_MAX, optionalText, requiredText, SHORT_TEXT_MAX } from '../gigs/schemas.js';
 import { toGigSummaryDto } from '../gigs/serialize.js';
 import { gigSummaryInclude, inTransaction, type Tx } from '../gigs/store.js';
+import { offerInclude, toOfferSummaryDto } from '../offers/store.js';
 import { isUniqueViolation } from './budgetCategories.js';
 
 type IdParams = { Params: { id: string } };
@@ -57,10 +58,12 @@ export function clientRoutes(app: FastifyInstance, deps: AppDeps): void {
     const search = q?.trim();
     const clients = await db.client.findMany({
       where: { deletedAt: null, ...(search ? { name: { contains: search, mode: 'insensitive' } } : {}) },
-      include: { _count: { select: { gigs: { where: { deletedAt: null } } } } },
+      include: {
+        _count: { select: { gigs: { where: { deletedAt: null } }, offers: { where: { deletedAt: null } } } },
+      },
       orderBy: [{ name: 'asc' }, { id: 'asc' }],
     });
-    return clients.map((c) => ({ ...toClientDto(c), gigCount: c._count.gigs, offerCount: 0 }));
+    return clients.map((c) => ({ ...toClientDto(c), gigCount: c._count.gigs, offerCount: c._count.offers }));
   });
 
   // ---------------------------------------------------------------- create
@@ -83,8 +86,17 @@ export function clientRoutes(app: FastifyInstance, deps: AppDeps): void {
       include: gigSummaryInclude,
       orderBy: [{ startDate: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }],
     });
+    const offers = await db.offer.findMany({
+      where: { clientId: client.id, deletedAt: null },
+      include: offerInclude,
+      orderBy: [{ eventDate: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }],
+    });
     const today = todayIso();
-    return { client: toClientDto(client), gigs: gigs.map((g) => toGigSummaryDto(g, today)), offers: [] };
+    return {
+      client: toClientDto(client),
+      gigs: gigs.map((g) => toGigSummaryDto(g, today)),
+      offers: offers.map((o) => toOfferSummaryDto(o, today)),
+    };
   });
 
   // ---------------------------------------------------------------- update
@@ -111,9 +123,11 @@ export function clientRoutes(app: FastifyInstance, deps: AppDeps): void {
         SELECT "id"::text FROM "client" WHERE "id" = ${id}::uuid AND "deleted_at" IS NULL FOR UPDATE`;
       if (locked.length === 0) throw notFound('Client not found');
       const client = { id };
-      // Deleted gigs count too: restoring one must never leave it linked to a deleted client.
-      const links = await tx.gig.count({ where: { clientId: client.id } });
-      if (links > 0) throw new AppError('CLIENT_IN_USE', 'Gigs link to this client');
+      // Deleted gigs/offers count too: restoring one must never leave it linked to a deleted client.
+      const links =
+        (await tx.gig.count({ where: { clientId: client.id } })) +
+        (await tx.offer.count({ where: { clientId: client.id } }));
+      if (links > 0) throw new AppError('CLIENT_IN_USE', 'Gigs or offers link to this client');
       await tx.client.update({ where: { id: client.id }, data: { deletedAt: new Date() } });
     });
     return reply.status(204).send();

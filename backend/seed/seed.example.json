@@ -1,8 +1,8 @@
 {
   "partners": [
-    { "name": "Partner A", "email": "partner.a@example.com", "language": "fi" },
-    { "name": "Partner B", "email": "partner.b@example.com", "language": "en" },
-    { "name": "Partner C", "email": "partner.c@example.com", "language": "fi" },
+    { "name": "Partner A", "email": "partner.a@example.com", "phone": "+358 40 000 0001", "language": "fi" },
+    { "name": "Partner B", "email": "partner.b@example.com", "phone": "+358 40 000 0002", "language": "en" },
+    { "name": "Partner C", "email": "partner.c@example.com", "phone": "+358 40 000 0003", "language": "fi" },
     { "name": "Partner D", "email": "partner.d@example.com", "language": "fi" },
     { "name": "Partner E", "email": "partner.e@example.com", "language": "en" }
   ],
@@ -58,7 +58,11 @@
     "fees.office_default": 10000,
     "fees.sales_default": 10000,
     "fees.production_default": 10000,
-    "fees.load_in_deduction": 1000
+    "fees.load_in_deduction": 1000,
+    "offers.default_includes": "Placeholder: what is included in the offer.\nSecond placeholder line.",
+    "offers.default_spotify_url": "https://open.spotify.com/",
+    "offers.references_fi": "Esimerkkiteksti: referenssit.\nToinen rivi.",
+    "offers.references_en": "Placeholder text: references.\nSecond line."
   },
   "budgetCategories": [
     { "name": "Category A" },
@@ -187,6 +191,134 @@
       "seller": "partner.a@example.com",
       "producer": "partner.a@example.com",
       "priceCents": 120000
+    }
+  ],
+  "offers": [
+    {
+      "client": "Client A Oy",
+      "eventName": "Event 1",
+      "eventDate": "2026-11-14",
+      "venue": "Venue X",
+      "city": "City A",
+      "priceCents": 300000,
+      "source": "EMAIL",
+      "eventType": "CORPORATE",
+      "showReferences": true,
+      "lineup": ["Vocals", "Guitar", "Bass", "Drums", "Keys"],
+      "seller": "partner.a@example.com"
+    },
+    {
+      "client": "Client B ry",
+      "eventName": "Event 2",
+      "eventDate": "2026-12-05",
+      "venue": "Venue Y",
+      "priceCents": 200000,
+      "source": "WEBSITE",
+      "eventType": "PRIVATE",
+      "seller": "partner.b@example.com",
+      "lineup": ["Vocals", "Guitar", "Bass", "Drums", "Keys"]
+    },
+    {
+      "client": "Client C Ltd",
+      "eventName": "Event 3",
+      "eventDate": "2026-06-20",
+      "venue": "Venue X",
+      "city": "City B",
+      "priceCents": 400000,
+      "source": "INSTAGRAM",
+      "eventType": "WEDDING",
+      "converted": true,
+      "lineup": ["Vocals", "Guitar", "Bass", "Drums", "Keys"],
+      "seller": "partner.a@example.com"
+    },
+    {
+      "client": "Client D Oy",
+      "eventName": "Event 4",
+      "eventDate": "2026-08-15",
+      "venue": "Venue X",
+      "priceCents": 300000,
+      "source": "EMAIL",
+      "eventType": "CORPORATE",
+      "disposition": "LOST_PRICE",
+      "lineup": ["Vocals", "Guitar", "Bass", "Drums", "Keys"],
+      "seller": "partner.a@example.com"
+    },
+    {
+      "client": "Client E Oy",
+      "eventName": "Event 5",
+      "eventDate": "2026-09-12",
+      "venue": "Venue X",
+      "priceCents": 200000,
+      "source": "OTHER",
+      "eventType": "PRIVATE",
+      "disposition": "NO_RESPONSE",
+      "seller": "partner.b@example.com",
+      "lineup": ["Vocals", "Guitar", "Bass", "Drums", "Keys"]
+    },
+    {
+      "client": "Client A Oy",
+      "eventName": "Event 6",
+      "eventDate": "2026-05-09",
+      "venue": "Venue X",
+      "priceCents": 100000,
+      "disposition": "CANCELLED",
+      "lineup": ["Vocals", "Guitar", "Bass", "Drums", "Keys"],
+      "seller": "partner.a@example.com"
+    },
+    {
+      "client": "Client B ry",
+      "eventName": "Event 7",
+      "eventDate": "2026-07-04",
+      "venue": "Venue Z",
+      "priceCents": 200000,
+      "source": "WEBSITE",
+      "eventType": "WEDDING",
+      "disposition": "LOST_COMPETITOR",
+      "lineup": ["Vocals", "Guitar", "Bass", "Drums", "Keys"],
+      "seller": "partner.a@example.com"
+    },
+    {
+      "client": "Client D Oy",
+      "eventName": "Event 8",
+      "eventDate": "2026-03-21",
+      "venue": "Venue X",
+      "priceCents": 300000,
+      "disposition": "NO_CAPACITY",
+      "lineup": ["Vocals", "Guitar", "Bass", "Drums", "Keys"],
+      "seller": "partner.a@example.com"
+    },
+    {
+      "client": "Client C Ltd",
+      "eventName": "Event 9",
+      "eventDate": "2026-09-26",
+      "venue": "Venue X",
+      "eventType": "PRIVATE",
+      "source": "EMAIL",
+      "lineup": ["Vocals", "Guitar", "Bass", "Drums", "Keys"],
+      "seller": "partner.a@example.com"
+    },
+    {
+      "client": "Client E Oy",
+      "eventName": "Event 10",
+      "eventDate": "2025-12-12",
+      "venue": "Venue X",
+      "priceCents": 200000,
+      "disposition": "WON",
+      "eventType": "CORPORATE",
+      "source": "EMAIL",
+      "seller": "partner.c@example.com",
+      "lineup": ["Vocals", "Guitar", "Bass", "Drums", "Keys"]
+    },
+    {
+      "client": "Client A Oy",
+      "eventName": "Event 11",
+      "eventDate": "2026-10-30",
+      "venue": "Venue X",
+      "priceCents": 100000,
+      "disposition": "LOST_OTHER",
+      "source": "INSTAGRAM",
+      "lineup": ["Vocals", "Guitar", "Bass", "Drums", "Keys"],
+      "seller": "partner.a@example.com"
     }
   ],
   "tasks": [

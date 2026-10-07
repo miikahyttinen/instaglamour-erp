@@ -89,6 +89,7 @@ export function toGigSummaryDto(gig: GigWithLines, today: string) {
     notes: gig.notes,
     clientId: gig.clientId,
     clientName: gig.client?.name ?? null,
+    offerId: gig.offerId,
     ...gigEconomics(gig),
     notFullyStaffed: isNotFullyStaffed(gig.costLines),
     deletedAt: gig.deletedAt?.toISOString() ?? null,

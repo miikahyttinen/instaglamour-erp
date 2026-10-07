@@ -23,6 +23,8 @@ async function snapshot() {
     gig: await db.gig.count(),
     costLine: await db.costLine.count(),
     gigEvent: await db.gigEvent.count(),
+    offer: await db.offer.count(),
+    offerEvent: await db.offerEvent.count(),
     task: await db.task.count(),
     hour: await db.hourEntry.count(),
     budget: await db.budgetYear.count(),
@@ -217,6 +219,7 @@ describe('validateSeed: clients (TASK-015)', () => {
   it('clients and gig client are optional (older seed files still validate)', () => {
     const old = example();
     delete old.clients;
+    delete old.offers; // older seed files have no offers either (offers need a client)
     for (const g of old.gigs) delete g.client;
     const result = validateSeed(old);
     expect(result.ok ? [] : result.errors).toEqual([]);
@@ -283,6 +286,7 @@ describe('loadSeed: clients (TASK-015)', () => {
   it('a seed without clients loads gigs without a client', async () => {
     const old = example();
     delete old.clients;
+    delete old.offers; // older seed files have no offers either (offers need a client)
     for (const g of old.gigs) delete g.client;
     await loadSeed(testDb(), old);
     expect(await testDb().client.count()).toBe(0);
@@ -397,5 +401,114 @@ describe('resolveSeedFile', () => {
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
+  });
+});
+
+describe('validateSeed: offers (TASK-016)', () => {
+  type Offers = Record<string, unknown>[];
+
+  it('offers, partner phones and offer settings are optional (older seed files still validate)', () => {
+    const old = example();
+    delete old.offers;
+    for (const p of old.partners as Record<string, unknown>[]) delete p.phone;
+    const settings = old.settings as Record<string, unknown>;
+    for (const key of Object.keys(settings)) if (key.startsWith('offers.')) delete settings[key];
+    const result = validateSeed(old);
+    expect(result.ok ? [] : result.errors).toEqual([]);
+  });
+
+  it('checks offer references, converted disposition, duplicates and setting types', () => {
+    const data = example();
+    const offers = data.offers as Offers;
+    offers[0]!.client = 'Client Q Oy';
+    offers[1]!.seller = 'nobody@example.com';
+    offers[2]!.disposition = 'LOST_PRICE'; // offers[2] is converted
+    offers.push({ ...offers[3]! });
+    data.settings = { ...(data.settings as object), 'offers.default_includes': 5, 'fees.office_default': 'x', 'offers.unknown': 'x' };
+    const result = validateSeed(data);
+    const errors = result.ok ? [] : result.errors;
+    expect(errors).toEqual(
+      expect.arrayContaining([
+        'offers.0.client: unknown client "Client Q Oy" (list it in clients)',
+        'offers.1.seller: unknown partner nobody@example.com',
+        'offers.2.disposition: a converted offer is WON (omit disposition or use WON)',
+        'offers: duplicate offer client d oy/Event 4/2026-08-15 (client + eventName + eventDate)',
+        'settings.offers.default_includes: must be a text',
+        'settings.fees.office_default: must be an amount in cents',
+        'settings: unknown key offers.unknown',
+      ]),
+    );
+  });
+
+  it('rejects bad offer values structurally', () => {
+    const data = example();
+    const offers = data.offers as Offers;
+    offers[0]!.disposition = 'MAYBE';
+    offers[1]!.spotifyUrl = 'javascript:alert(1)';
+    offers[2]!.unknownKey = 1;
+    const result = validateSeed(data);
+    const errors = result.ok ? [] : result.errors;
+    expect(errors.some((e) => e.startsWith('offers.0.disposition'))).toBe(true);
+    expect(errors.some((e) => e.startsWith('offers.1.spotifyUrl'))).toBe(true);
+    expect(errors.some((e) => e.startsWith('offers.2'))).toBe(true);
+  });
+});
+
+describe('loadSeed: offers (TASK-016)', () => {
+  it('loads synthetic offers across dispositions, one converted per BR-105', async () => {
+    const summary = await loadSeed(testDb(), example());
+    const db = testDb();
+    const offers = await db.offer.findMany({ include: { gig: true, client: true } });
+    expect(summary.offersCreated).toBe(offers.length);
+    expect(offers.length).toBeGreaterThanOrEqual(8);
+    expect(new Set(offers.map((o) => o.disposition)).size).toBeGreaterThanOrEqual(6);
+    for (const o of offers) {
+      expect(Buffer.from(o.shareToken, 'base64url')).toHaveLength(32);
+      expect(o.priceCents === null || o.priceCents === 1000 || o.priceCents % 10000 === 0).toBe(true);
+    }
+    expect(new Set(offers.map((o) => o.shareToken)).size).toBe(offers.length);
+
+    const converted = offers.filter((o) => o.gig !== null);
+    expect(converted).toHaveLength(1);
+    const c = converted[0]!;
+    expect(c.disposition).toBe('WON');
+    expect(c.gig).toMatchObject({
+      startDate: c.eventDate,
+      venue: c.city ? `${c.venue}, ${c.city}` : c.venue,
+      lineupName: c.eventName,
+      clientId: c.clientId,
+      priceCents: c.priceCents ?? 0,
+      sellerId: c.sellerId,
+      producerId: c.sellerId,
+      lineupTemplateId: null,
+    });
+    const events = await db.offerEvent.findMany({ where: { offerId: c.id }, orderBy: { seq: 'asc' } });
+    expect(events.map((e) => e.type)).toEqual(['CREATED', 'DISPOSITION_CHANGED', 'CONVERTED']);
+
+    // Defaults from the (placeholder) settings; partner phones; text settings keep line breaks.
+    const includes = await db.setting.findUniqueOrThrow({ where: { key: 'offers.default_includes' } });
+    expect(includes).toMatchObject({ valueCents: null });
+    expect(includes.valueText).toContain('\n');
+    expect(offers.every((o) => o.includesText === includes.valueText)).toBe(true);
+    expect((await db.partner.findUniqueOrThrow({ where: { email: 'partner.a@example.com' } })).phone).toMatch(/^\+358 40 000 000\d$/);
+  });
+
+  it('is insert-only: a re-run creates no offers or gigs and never changes app edits', async () => {
+    await loadSeed(testDb(), example());
+    const db = testDb();
+    const first = await snapshot();
+    const any = await db.offer.findFirstOrThrow({ where: { gig: null } });
+    await db.offer.update({ where: { id: any.id }, data: { disposition: 'LOST_OTHER', venue: 'Venue Edited' } });
+    const summary = await loadSeed(db, example());
+    expect(summary.offersCreated).toBe(0);
+    expect(await snapshot()).toEqual(first);
+    expect(await db.offer.findUniqueOrThrow({ where: { id: any.id } })).toMatchObject({ disposition: 'LOST_OTHER', venue: 'Venue Edited' });
+  });
+
+  it('--reset also removes offers and their gigs', async () => {
+    await loadSeed(testDb(), example());
+    const first = await snapshot();
+    await loadSeed(testDb(), example(), { reset: true });
+    expect(await snapshot()).toEqual(first);
   });
 });

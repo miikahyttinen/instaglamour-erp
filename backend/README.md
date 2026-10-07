@@ -63,7 +63,12 @@ cookie, `hd` hint) → `GET /api/auth/google/callback`: the code is exchanged se
 token is verified (signature, audience, expiry) and the email must be Google-verified, in
 `AUTH_ALLOWED_DOMAIN` and belong to a partner. On success an httpOnly, `SameSite=Lax` session cookie
 is set (30 days, sliding; sessions are stored hashed in the `session` table).
-Every `/api/*` route except `/api/auth/*` returns 401 without a session.
+Every `/api/*` route except `/api/auth/*` and the exact public offer route
+`GET /api/public/offers/{token}` returns 401 without a session.
+
+The public offer rate limit keys on `request.ip`. The app sets `trustProxy: true`, so that IP comes
+from `X-Forwarded-For`: only expose the server behind a proxy that sets it (otherwise a client can
+spoof it and bypass the limit).
 
 ## Layout
 
@@ -77,6 +82,12 @@ src/domain/        shared enums (CostType, TechnicalSetup…), dates, default co
 src/gigs/          gig data access (events, double-booking check, year gigs), input schemas, serializers
 src/hours/         hour entries + loadHoursTotals (single source for /api/hours/totals and the year page)
 src/clients/       client lookup + name-uniqueness check (routes/clients.ts; soft delete, BR-100/101)
+src/offers/        offers (routes/offers.ts): derived status/expired (BR-102), year summary (BR-106),
+                   convert-to-gig in one transaction (row lock + unique gig.offer_id, BR-105),
+                   PublicOffer whitelist serializer (also OfferDetail.preview) and share tokens
+                   (32 CSPRNG bytes, base64url; looked up by SHA-256, BR-104)
+src/routes/publicOffers.ts  GET /api/public/offers/{token}: the only non-auth route besides /api/auth/*;
+                   noindex, no-store, 60 requests/min per IP (in-memory, 429 RATE_LIMITED)
 src/budget/        budget rows + loadBudget (single source for /api/budget and the year page); rows are
                    partner-managed (routes/budgetCategories.ts), removed = active false, values kept
 src/http/errors.ts contract error format + zod → field codes (`parseInput`)

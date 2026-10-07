@@ -2,7 +2,14 @@
  * Fixed lists from docs/domain-model.md ("Fixed lists"). Shared by all backend modules;
  * the database enums in prisma/schema.prisma must contain exactly the same values.
  */
-import type { CostType, Logistics, TechnicalSetup } from '../generated/prisma/enums.js';
+import type {
+  CostType,
+  EventType,
+  Logistics,
+  OfferDisposition,
+  OfferSource,
+  TechnicalSetup,
+} from '../generated/prisma/enums.js';
 
 /** People roles that play / work the gig: load-in switch and staffing check apply (BR-023, BR-026). */
 export const MUSICIAN_ROLES = [
@@ -73,5 +80,29 @@ export const SETTING_KEYS = {
 } as const;
 
 export const ALL_SETTING_KEYS = Object.values(SETTING_KEYS);
+
+/** Text settings for offers (domain-model.md "Settings (additions)"); optional in the seed. */
+export const OFFER_SETTING_KEYS = {
+  defaultIncludes: 'offers.default_includes',
+  defaultSpotifyUrl: 'offers.default_spotify_url',
+  referencesFi: 'offers.references_fi',
+  referencesEn: 'offers.references_en',
+} as const;
+
+export const ALL_OFFER_SETTING_KEYS = Object.values(OFFER_SETTING_KEYS);
+
+/** Offer fixed lists (domain-model.md "Offer"). */
+export const OFFER_SOURCES = ['EMAIL', 'WEBSITE', 'INSTAGRAM', 'OTHER'] as const satisfies readonly OfferSource[];
+export const EVENT_TYPES = ['PRIVATE', 'WEDDING', 'CORPORATE'] as const satisfies readonly EventType[];
+export const OFFER_DISPOSITIONS = [
+  'PENDING',
+  'WON',
+  'CANCELLED',
+  'NO_RESPONSE',
+  'LOST_PRICE',
+  'LOST_COMPETITOR',
+  'LOST_OTHER',
+  'NO_CAPACITY',
+] as const satisfies readonly OfferDisposition[];
 
 export const LANGUAGES = ['fi', 'en'] as const;
