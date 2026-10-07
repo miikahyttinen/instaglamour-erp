@@ -3,6 +3,7 @@ import type { FieldCode } from '../api/enums';
 import { LANGUAGES } from '../api/enums';
 import type { DevLoginRequest, ReferenceData, UpdateMeRequest } from '../api/types';
 import { budgetCategoryHandlers, budgetHandlers } from './budgetHandlers';
+import { clientHandlers } from './clientHandlers';
 import { db, setMockSession } from './data';
 import { attachmentHandlers, costLineHandlers, gigHandlers } from './gigHandlers';
 import { hoursHandlers } from './hoursHandlers';
@@ -74,6 +75,7 @@ export const handlers = [
   ...gigHandlers,
   ...costLineHandlers,
   ...attachmentHandlers,
+  ...clientHandlers,
   ...peopleHandlers,
   ...tasksHandlers,
   ...hoursHandlers,

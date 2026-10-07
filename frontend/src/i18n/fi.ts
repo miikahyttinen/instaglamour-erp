@@ -3,6 +3,7 @@
 // Gig texts are below; the other features keep theirs in features/<feature>/i18n.ts and are
 // registered at the end in navigation order.
 import { fi as budgetFi } from '../features/budget/i18n';
+import { fi as clientsFi } from '../features/clients/i18n';
 import { fi as hoursFi } from '../features/hours/i18n';
 import { fi as offerPreviewFi } from '../features/offers/offerPreviewI18n';
 import { fi as peopleFi } from '../features/people/i18n';
@@ -20,6 +21,7 @@ const fi = {
     label: 'Päävalikko',
     year: 'Vuosi',
     gigs: 'Keikat',
+    clients: 'Asiakkaat',
     people: 'Henkilöt',
     tasks: 'Tehtävät',
     hours: 'Tunnit',
@@ -67,6 +69,7 @@ const fi = {
   pages: {
     year: 'Vuosi {{year}}',
     gigs: 'Keikat {{year}}',
+    clients: 'Asiakkaat',
     people: 'Henkilöt',
     tasks: 'Tehtävät',
     hours: 'Tunnit {{year}}',
@@ -83,6 +86,7 @@ const fi = {
     GIG_DELETED: 'Keikka on poistettu. Palauta se ensin.',
     COST_NOT_PAYABLE: 'Polttoainetta ei merkitä maksetuksi (vain arvio).',
     BUDGET_NOT_EMPTY: 'Vuodelle on jo budjettilukuja.',
+    CLIENT_IN_USE: 'Asiakas on käytössä: siihen on liitetty keikkoja tai tarjouksia.',
     FILE_TOO_LARGE: 'Tiedosto on liian suuri (enintään 20 Mt).',
     UNSUPPORTED_FILE_TYPE: 'Sallitut tiedostotyypit: PDF, DOCX, PNG ja JPG.',
     NETWORK_ERROR: 'Palvelimeen ei saatu yhteyttä.',
@@ -158,6 +162,21 @@ const fi = {
     OPEN: 'Avoin',
     DONE: 'Tehty',
   },
+  offerStatus: {
+    OPEN: 'Avoin',
+    ACCEPTED: 'Hyväksytty',
+    REJECTED: 'Hylätty',
+  },
+  offerDisposition: {
+    PENDING: 'Odottaa',
+    WON: 'Voitettu',
+    CANCELLED: 'Peruttu',
+    NO_RESPONSE: 'Ei vastausta',
+    LOST_PRICE: 'Hävitty: hinta',
+    LOST_COMPETITOR: 'Hävitty: kilpailija',
+    LOST_OTHER: 'Hävitty: muu syy',
+    NO_CAPACITY: 'Ei kapasiteettia',
+  },
   gigEventType: {
     CREATED: 'Keikka luotu',
     UPDATED: 'Tietoja muutettu',
@@ -206,7 +225,7 @@ const fi = {
       deleted: 'Poistetut',
     },
     search: 'Haku',
-    searchPlaceholder: 'Paikka, kokoonpano tai muistiinpanot',
+    searchPlaceholder: 'Paikka, kokoonpano, asiakas tai muistiinpanot',
     whenLabel: 'Ajankohta',
     when: {
       all: 'Kaikki',
@@ -257,7 +276,7 @@ const fi = {
     additionalSalesDescription: 'Lisämyynnin kuvaus',
     totalPrice: 'Kokonaishinta',
     notes: 'Muistiinpanot',
-    noCustomerData: 'Asiakas- ja laskutustiedot kuuluvat sopimusliitteeseen.',
+    noCustomerData: 'Laskutustiedot kuuluvat sopimusliitteeseen.',
     create: 'Luo keikka',
     creating: 'Luodaan…',
   },
@@ -395,6 +414,7 @@ const fi = {
     houseTechnician: 'Talon teknikko',
     sellerId: 'Myyjä',
     producerId: 'Tuottaja',
+    clientId: 'Asiakas',
     priceCents: 'Hinta',
     additionalSalesCents: 'Lisämyynti',
     additionalSalesDescription: 'Lisämyynnin kuvaus',
@@ -407,6 +427,7 @@ const fi = {
   },
   ...offerPreviewFi,
   year: yearFi,
+  ...clientsFi,
   ...peopleFi,
   ...tasksFi,
   ...hoursFi,

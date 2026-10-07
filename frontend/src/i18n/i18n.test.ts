@@ -10,6 +10,8 @@ import {
   TASK_STATUSES,
   TECHNICAL_SETUPS,
   LOGISTICS,
+  OFFER_DISPOSITIONS,
+  OFFER_STATUSES,
   WARNING_CODES,
 } from '../api/enums';
 import en from './en';
@@ -38,6 +40,8 @@ const enumNamespaces: [string, readonly string[]][] = [
   ['logistics', LOGISTICS],
   ['gigStatus', GIG_DISPLAY_STATUSES],
   ['taskStatus', TASK_STATUSES],
+  ['offerStatus', OFFER_STATUSES],
+  ['offerDisposition', OFFER_DISPOSITIONS],
   ['gigEventType', GIG_EVENT_TYPES],
   ['errors', ERROR_CODES],
   ['fields', FIELD_CODES],

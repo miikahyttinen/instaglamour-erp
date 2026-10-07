@@ -171,6 +171,11 @@
   color: var(--text-muted);
   font-size: var(--fs-small);
 }
+/* Client (UC-027): one small line on cards, a small linked name in the table. */
+.gig-list-page .gig-client {
+  font-size: var(--fs-small);
+  overflow-wrap: anywhere;
+}
 .gig-list-page .gig-card-foot {
   display: flex;
   flex-wrap: wrap;
@@ -217,7 +222,7 @@
 }
 
 /* ---------- Table (≥ 1200 px) ---------- */
-/* Seven columns in ~890 px (1200 px viewport next to the expanded sidebar): two-word headers may
+/* Eight columns in ~890 px (1200 px viewport next to the expanded sidebar): two-word headers may
    wrap, bottom-aligned so the labels share one baseline above the figures. */
 .gig-list-page .gig-table thead th {
   white-space: normal;
@@ -234,6 +239,13 @@
   letter-spacing: 0.06em;
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
+}
+.gig-list-page .gig-table td.gig-col-client {
+  font-size: var(--fs-small);
+  overflow-wrap: anywhere;
+}
+.gig-list-page .gig-table .gig-client-link {
+  color: var(--text);
 }
 .gig-list-page .gig-table td.gig-col-people {
   color: var(--text-muted);

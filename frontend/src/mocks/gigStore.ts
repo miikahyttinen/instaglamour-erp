@@ -1,4 +1,4 @@
-// In-memory mock of the gig domain (gigs, cost lines, attachments, history, people).
+// In-memory mock of the gig domain (gigs, cost lines, attachments, history, people, clients).
 // Implements the rules of docs/api-contract.md (Gigs, Cost lines, Attachments) so the UI
 // behaves like the real backend: economics, played, notFullyStaffed, BR-020/021 line creation,
 // BR-022 double booking, BR-026 load-in switch, BR-027 seller/producer change, history events.
@@ -16,6 +16,7 @@ import type {
   Id,
   IsoDate,
   LineupTemplate,
+  OfferSummary,
   Person,
   PersonDoubleBookedWarning,
   Settings,
@@ -40,9 +41,19 @@ export interface MockGig {
   additionalSalesCents: number;
   additionalSalesDescription: string | null;
   notes: string | null;
+  clientId: Id | null;
+  offerId: Id | null;
   deletedAt: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+/** Client (UC-027). Soft-deleted clients keep their row so old links still resolve a name. */
+export interface MockClient {
+  id: Id;
+  name: string;
+  notes: string | null;
+  deletedAt: string | null;
 }
 
 export interface MockAttachment extends Attachment {
@@ -53,6 +64,12 @@ export interface MockAttachment extends Attachment {
 
 export interface GigState {
   people: Person[];
+  clients: MockClient[];
+  /**
+   * Offers linked to clients. Only what the client page needs (UC-027); the offers feature
+   * (TASK-138) owns the full offer mock.
+   */
+  offers: OfferSummary[];
   gigs: MockGig[];
   /** Kept in creation order (contract: lines ordered by creation time). */
   costLines: CostLine[];
@@ -61,7 +78,7 @@ export interface GigState {
 }
 
 export function emptyGigState(): GigState {
-  return { people: [], gigs: [], costLines: [], attachments: [], events: [] };
+  return { people: [], clients: [], offers: [], gigs: [], costLines: [], attachments: [], events: [] };
 }
 
 let idCounter = 0;
@@ -130,6 +147,9 @@ export function toSummary(state: GigState, gig: MockGig, today = todayIso()): Gi
     marginBudgetPct: pct(marginBudgetCents, totalPriceCents),
     marginActualPct: pct(marginActualCents, totalPriceCents),
     notFullyStaffed: lines.some((l) => isMusicianRole(l.type) && l.personId === null),
+    clientId: gig.clientId,
+    clientName: state.clients.find((c) => c.id === gig.clientId)?.name ?? null,
+    offerId: gig.offerId,
     deletedAt: gig.deletedAt,
     createdAt: gig.createdAt,
     updatedAt: gig.updatedAt,
@@ -253,6 +273,7 @@ export interface NewGigInput {
   additionalSalesCents: number;
   additionalSalesDescription: string | null;
   notes: string | null;
+  clientId?: Id | null;
 }
 
 export function partnerPersonId(partners: { id: Id; personId: Id }[], partnerId: Id): Id | null {
@@ -301,6 +322,8 @@ export function createGig(
     additionalSalesCents: input.additionalSalesCents,
     additionalSalesDescription: input.additionalSalesDescription,
     notes: input.notes,
+    clientId: input.clientId ?? null,
+    offerId: null,
     deletedAt: null,
     createdAt: ts,
     updatedAt: ts,
@@ -439,7 +462,8 @@ export type GigPatchField =
   | 'priceCents'
   | 'additionalSalesCents'
   | 'additionalSalesDescription'
-  | 'notes';
+  | 'notes'
+  | 'clientId';
 
 export const GIG_PATCH_FIELDS: GigPatchField[] = [
   'lineupName',
@@ -453,6 +477,7 @@ export const GIG_PATCH_FIELDS: GigPatchField[] = [
   'additionalSalesCents',
   'additionalSalesDescription',
   'notes',
+  'clientId',
 ];
 
 function sameValue(a: unknown, b: unknown): boolean {

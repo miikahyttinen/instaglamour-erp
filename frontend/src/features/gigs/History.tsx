@@ -6,6 +6,7 @@ import { apiErrorMessage } from '../../i18n/labels';
 import { useLang } from '../../i18n/useLang';
 import { formatDateTime } from '../../lib/format';
 import { useReference } from '../../reference/useReference';
+import { useClientList } from '../clients/queries';
 import { describeEvent, HISTORY_FILTERS, matchesFilter, type HistoryFilter } from './historyText';
 import { useGigHistory } from './queries';
 
@@ -15,6 +16,7 @@ export function History({ gigId, people }: { gigId: Id; people: Person[] | undef
   const lang = useLang();
   const { data: reference } = useReference();
   const history = useGigHistory(gigId);
+  const { data: clients } = useClientList();
   const [filter, setFilter] = useState<HistoryFilter>('all');
 
   if (history.isPending) return <p role="status">{t('app.loading')}</p>;
@@ -26,7 +28,7 @@ export function History({ gigId, people }: { gigId: Id; people: Person[] | undef
     );
   }
   const events = history.data.filter((e) => matchesFilter(e, filter));
-  const ctx = { partners: reference?.partners, people };
+  const ctx = { partners: reference?.partners, people, clients };
 
   return (
     <div className="history">

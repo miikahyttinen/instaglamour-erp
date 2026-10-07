@@ -6,6 +6,7 @@ import { AuthProvider } from './auth/AuthProvider';
 import { RequireAuth } from './auth/RequireAuth';
 import { SignInPage } from './auth/SignInPage';
 import { BudgetPage } from './features/budget/BudgetPage';
+import { ClientsRoutes } from './features/clients/ClientsRoutes';
 import { GigsRoutes } from './features/gigs/GigsRoutes';
 import { HoursRoutes } from './features/hours/HoursRoutes';
 import { PublicOfferPage } from './features/offers/PublicOfferPage';
@@ -45,6 +46,7 @@ export function AppRoutes() {
         {/* Same order as the navigation (layout/navItems.ts). */}
         <Route index element={<YearPage />} />
         <Route path="gigs/*" element={<GigsRoutes />} />
+        <Route path="clients/*" element={<ClientsRoutes />} />
         <Route path="people/*" element={<PeopleRoutes />} />
         <Route path="tasks/*" element={<TasksPage />} />
         <Route path="hours/*" element={<HoursRoutes />} />

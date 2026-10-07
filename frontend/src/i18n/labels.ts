@@ -6,6 +6,8 @@ import type {
   GigDisplayStatus,
   GigEventType,
   Language,
+  OfferDisposition,
+  OfferStatus,
   SignInErrorCode,
   TaskStatus,
   TechnicalSetup,
@@ -24,6 +26,9 @@ export const logisticsLabel = (t: TFunction, code: Logistics) => t(`logistics.${
 export const gigStatusLabel = (t: TFunction, code: GigDisplayStatus) => t(`gigStatus.${code}`);
 export const taskStatusLabel = (t: TFunction, code: TaskStatus) => t(`taskStatus.${code}`);
 export const gigEventTypeLabel = (t: TFunction, code: GigEventType) => t(`gigEventType.${code}`);
+export const offerStatusLabel = (t: TFunction, code: OfferStatus) => t(`offerStatus.${code}`);
+export const offerDispositionLabel = (t: TFunction, code: OfferDisposition) =>
+  t(`offerDisposition.${code}`);
 export const fieldErrorLabel = (t: TFunction, code: FieldCode) => t(`fields.${code}`);
 export const signInErrorLabel = (t: TFunction, code: SignInErrorCode) =>
   t(`signIn.errors.${code}`);

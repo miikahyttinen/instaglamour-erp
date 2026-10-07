@@ -11,6 +11,8 @@ import type {
   Language,
   MusicianRole,
   ExpenseCategory,
+  OfferDisposition,
+  OfferStatus,
   TaskStatus,
   TechnicalSetup,
   Logistics,
@@ -93,6 +95,11 @@ export interface GigSummary {
   marginBudgetPct: number | null;
   marginActualPct: number | null;
   notFullyStaffed: boolean;
+  /** Client of the gig (UC-027), or null. `clientName` is the client's current name. */
+  clientId: Id | null;
+  clientName: string | null;
+  /** Offer the gig was converted from (UC-031), or null. */
+  offerId: Id | null;
   deletedAt: IsoTimestamp | null;
   createdAt: IsoTimestamp;
   updatedAt: IsoTimestamp;
@@ -343,6 +350,8 @@ export interface GigCreate {
   additionalSalesCents?: Cents;
   additionalSalesDescription?: string | null;
   notes?: string | null;
+  /** Optional client; unknown id → UNKNOWN_REFERENCE. */
+  clientId?: Id | null;
 }
 
 export interface GigUpdate {
@@ -357,6 +366,8 @@ export interface GigUpdate {
   additionalSalesCents?: Cents;
   additionalSalesDescription?: string | null;
   notes?: string | null;
+  /** null clears the client. */
+  clientId?: Id | null;
 }
 
 export interface GigUpdateResponse {
@@ -478,3 +489,58 @@ export interface BudgetResponse {
 }
 
 export type BudgetRowUpdate = BudgetAmounts;
+
+// ---------- Clients (UC-027) ----------
+
+export interface Client {
+  id: Id;
+  name: string;
+  notes: string | null;
+}
+
+/** Row of `GET /api/clients` (sorted by name). */
+export interface ClientListItem extends Client {
+  gigCount: number;
+  offerCount: number;
+}
+
+export interface ClientCreate {
+  name: string;
+  notes?: string | null;
+}
+
+export interface ClientUpdate {
+  name?: string;
+  notes?: string | null;
+}
+
+/** `GET /api/clients/{id}`: linked gigs and offers of all years, newest first. */
+export interface ClientDetailResponse {
+  client: Client;
+  gigs: GigSummary[];
+  offers: OfferSummary[];
+}
+
+// ---------- Offers (UC-028) ----------
+
+export interface OfferSummary {
+  id: Id;
+  clientId: Id;
+  clientName: string;
+  eventName: string;
+  eventDate: IsoDate;
+  venue: string;
+  city: string | null;
+  priceCents: Cents | null;
+  sellerId: Id;
+  source: string | null;
+  eventType: string | null;
+  disposition: OfferDisposition;
+  status: OfferStatus;
+  /** OPEN and the event date is before today (display only, BR-102). */
+  expired: boolean;
+  gigId: Id | null;
+  createdAt: IsoTimestamp;
+  updatedAt: IsoTimestamp;
+  deletedAt: IsoTimestamp | null;
+}

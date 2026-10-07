@@ -90,6 +90,7 @@ export const ERROR_CODES = [
   'GIG_DELETED',
   'COST_NOT_PAYABLE',
   'BUDGET_NOT_EMPTY',
+  'CLIENT_IN_USE',
   'FILE_TOO_LARGE',
   'UNSUPPORTED_FILE_TYPE',
 ] as const;
@@ -112,6 +113,22 @@ export type FieldCode = (typeof FIELD_CODES)[number];
 
 export const WARNING_CODES = ['PERSON_DOUBLE_BOOKED', 'DUPLICATE_NAME'] as const;
 export type WarningCode = (typeof WARNING_CODES)[number];
+
+/** Offer status, derived on the server from the disposition (BR-102). */
+export const OFFER_STATUSES = ['OPEN', 'ACCEPTED', 'REJECTED'] as const;
+export type OfferStatus = (typeof OFFER_STATUSES)[number];
+
+export const OFFER_DISPOSITIONS = [
+  'PENDING',
+  'WON',
+  'CANCELLED',
+  'NO_RESPONSE',
+  'LOST_PRICE',
+  'LOST_COMPETITOR',
+  'LOST_OTHER',
+  'NO_CAPACITY',
+] as const;
+export type OfferDisposition = (typeof OFFER_DISPOSITIONS)[number];
 
 /** `?error=` codes on /login after the Google callback. */
 export const SIGN_IN_ERROR_CODES = ['WRONG_DOMAIN', 'NOT_A_PARTNER', 'SIGN_IN_FAILED'] as const;

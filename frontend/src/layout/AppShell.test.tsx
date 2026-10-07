@@ -27,6 +27,7 @@ describe('app shell', () => {
 
     for (const [label, heading] of [
       ['Keikat', 'Keikat 2030'],
+      ['Asiakkaat', 'Asiakkaat'],
       ['Henkilöt', 'Henkilöt'],
       ['Tehtävät', 'Tehtävät'],
       ['Tunnit', 'Tunnit 2030'],
@@ -319,6 +320,7 @@ describe('app shell', () => {
       expect(links.map((l) => l.textContent)).toEqual([
         'Vuosi',
         'Keikat',
+        'Asiakkaat',
         'Henkilöt',
         'Tehtävät',
         'Tunnit',

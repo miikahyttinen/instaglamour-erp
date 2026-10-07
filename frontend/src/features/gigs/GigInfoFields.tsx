@@ -15,6 +15,7 @@ import { FieldList } from '../../components/FieldList';
 import { useLang } from '../../i18n/useLang';
 import { formatMoney } from '../../lib/format';
 import { useReference } from '../../reference/useReference';
+import { InlineClientSelect } from '../clients/ClientSelect';
 import { NONE_LABEL, useLogisticsOptions, useTechnicalSetupOptions } from './gigOptions';
 import { useApplyGig } from './queries';
 
@@ -87,6 +88,13 @@ export function GigBasicFields({
           field="venue"
           disabled={readOnly}
           onSave={(venue) => patch({ venue })}
+        />
+        <InlineClientSelect
+          label={t('clients.select.label')}
+          value={gig.clientId}
+          currentName={gig.clientName}
+          disabled={readOnly}
+          onSave={(clientId) => patch({ clientId })}
         />
         <InlineSelect<TechnicalSetup | null>
           label={t('gigForm.technicalSetup')}

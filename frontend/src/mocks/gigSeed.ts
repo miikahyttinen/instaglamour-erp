@@ -1,7 +1,7 @@
 // Synthetic demo gigs for `npm run dev:mock` and tests (BR-090: no real names or numbers).
 // Dates are in the current year so the default gig list shows something.
 import type { LineupTemplate, Partner, Person, Settings } from '../api/types';
-import type { GigState, NewGigInput } from './gigStore';
+import type { GigState, MockClient, NewGigInput } from './gigStore';
 import {
   addAttachment,
   addCostLine,
@@ -25,6 +25,21 @@ export function seedPeople(partners: Partner[]): Person[] {
   ];
 }
 
+/** Synthetic demo clients (BR-090). Fixed ids so the seed can link gigs to them. */
+export const CLIENT_IDS = {
+  a: '00000000-0000-4000-8000-000000000501',
+  b: '00000000-0000-4000-8000-000000000502',
+  c: '00000000-0000-4000-8000-000000000503',
+} as const;
+
+export function seedClients(): MockClient[] {
+  return [
+    { id: CLIENT_IDS.a, name: 'Client A', notes: 'Synthetic demo client.', deletedAt: null },
+    { id: CLIENT_IDS.b, name: 'Client B', notes: null, deletedAt: null },
+    { id: CLIENT_IDS.c, name: 'Client C', notes: null, deletedAt: null },
+  ];
+}
+
 export function seedGigState(
   state: GigState,
   partners: Partner[],
@@ -32,6 +47,7 @@ export function seedGigState(
   year = new Date().getFullYear(),
 ): void {
   state.people = seedPeople(partners);
+  state.clients = seedClients();
   const [a, b] = partners;
   if (!a || !b) return;
   const ctx = { templates: reference.lineupTemplates, settings: reference.settings, partners };
@@ -62,7 +78,7 @@ export function seedGigState(
   // 1. Fully staffed, everything paid.
   const g1 = createGig(
     state,
-    { ...base, startDate: `${year}-02-14`, priceCents: 200000, technicalSetup: 'HOUSE_TECH', houseTechnician: true },
+    { ...base, startDate: `${year}-02-14`, clientId: CLIENT_IDS.a, priceCents: 200000, technicalSetup: 'HOUSE_TECH', houseTechnician: true },
     a.id,
     ctx,
   );
@@ -78,6 +94,7 @@ export function seedGigState(
       endDate: `${year}-05-02`,
       lineupTemplateId: templateB?.id ?? null,
       venue: 'Venue Y',
+      clientId: CLIENT_IDS.b,
       sellerId: b.id,
       technicalSetup: 'SET_A',
       logistics: 'OWN_VAN',
@@ -113,7 +130,7 @@ export function seedGigState(
   // 5. and 6. Same date: assigning Person 1 to a musician line of gig 6 warns about gig 5 (BR-022).
   const g5 = createGig(
     state,
-    { ...base, startDate: `${year}-11-20`, venue: 'Venue Z', producerId: b.id, priceCents: 300000 },
+    { ...base, startDate: `${year}-11-20`, venue: 'Venue Z', clientId: CLIENT_IDS.a, producerId: b.id, priceCents: 300000 },
     a.id,
     ctx,
   );

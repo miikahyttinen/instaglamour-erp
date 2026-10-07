@@ -1,0 +1,91 @@
+/* Clients (UC-027). Design tokens only; tables become cards below 600 px (DataTable). */
+
+.clients-page {
+  /* Width of the add form, the search and the inline fields: lines them up. */
+  --client-form-w: calc(var(--label-w) * 3);
+}
+
+/* Add form and search are separate blocks: the section rhythm applies between them. */
+.clients-page .clients-add,
+.clients-page .clients-search,
+.clients-page .client-fields,
+.clients-page .client-section {
+  margin-bottom: var(--section-gap);
+}
+.clients-page .client-form,
+.clients-page .clients-search {
+  max-width: var(--client-form-w);
+}
+.clients-page .client-form .field:first-child label {
+  margin-top: 0;
+}
+
+.clients-page .clients-notice,
+.clients-page .clients-load-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.clients-page .clients-notice p,
+.clients-page .clients-load-error p {
+  margin: 0;
+}
+
+/* Search: same look as the gig list search (icon inside the field). */
+.clients-page .clients-search label {
+  margin-top: 0;
+}
+.clients-page .clients-search-input {
+  position: relative;
+}
+.clients-page .clients-search-icon {
+  position: absolute;
+  top: 50%;
+  left: var(--space-3);
+  transform: translateY(-50%);
+  color: var(--label);
+  pointer-events: none;
+}
+.clients-page .clients-search-input input {
+  padding-left: calc(var(--space-3) + var(--icon) + var(--space-2));
+}
+
+/* Table mode only (cards below 600 px use the full card width). */
+@media (min-width: 600px) {
+  .clients-page .clients-table .client-count {
+    width: 1%;
+    white-space: nowrap;
+  }
+}
+.clients-page .client-fields {
+  max-width: var(--client-form-w);
+}
+.clients-page .client-col-date {
+  white-space: nowrap;
+}
+.clients-page .client-offer-status {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* "New client…" name input under a client select (form or inline field). */
+.client-create {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+}
+.client-create .inline-actions {
+  margin-top: 0;
+}
+@media (min-width: 600px) {
+  /* Inside a FieldList: start in the control column. */
+  .field-list > .client-create {
+    margin-top: 0;
+    margin-left: calc(var(--field-label-w) + var(--space-4));
+  }
+}
