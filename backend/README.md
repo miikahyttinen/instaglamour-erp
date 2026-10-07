@@ -54,7 +54,7 @@ outside local development.**
 | `AUTH_ALLOWED_DOMAIN` | Only verified Google accounts in this domain may sign in (BR-070) |
 | `DEV_LOGIN_ENABLED` | `true` registers `POST /api/auth/dev-login` (otherwise 404) |
 | `FRONTEND_URL` | Where the Google callback redirects (`/` or `/login?error=…`), e.g. `http://localhost:5173` |
-| `UPLOAD_DIR` | Attachment storage, outside the repository (created on first upload; tests use a temp dir) |
+| `UPLOAD_DIR` | Attachment and reference photo storage, outside the repository (created on first upload; tests use a temp dir; `npm run db:seed` copies seed photos here) |
 
 ## Sign-in
 
@@ -63,10 +63,12 @@ cookie, `hd` hint) → `GET /api/auth/google/callback`: the code is exchanged se
 token is verified (signature, audience, expiry) and the email must be Google-verified, in
 `AUTH_ALLOWED_DOMAIN` and belong to a partner. On success an httpOnly, `SameSite=Lax` session cookie
 is set (30 days, sliding; sessions are stored hashed in the `session` table).
-Every `/api/*` route except `/api/auth/*` and the exact public offer route
-`GET /api/public/offers/{token}` returns 401 without a session.
+Every `/api/*` route except `/api/auth/*` and the exact public routes
+`GET /api/public/offers/{token}` and `GET /api/public/offers/{token}/references/{id}/image` returns
+401 without a session.
 
-The public offer rate limit keys on `request.ip`. The app sets `trustProxy: true`, so that IP comes
+The public offer and public reference photo rate limits (60 requests/min per IP each, separate
+budgets) key on `request.ip`. The app sets `trustProxy: true`, so that IP comes
 from `X-Forwarded-For`: only expose the server behind a proxy that sets it (otherwise a client can
 spoof it and bypass the limit).
 
@@ -86,8 +88,14 @@ src/offers/        offers (routes/offers.ts): derived status/expired (BR-102), y
                    convert-to-gig in one transaction (row lock + unique gig.offer_id, BR-105),
                    PublicOffer whitelist serializer (also OfferDetail.preview) and share tokens
                    (32 CSPRNG bytes, base64url; looked up by SHA-256, BR-104)
-src/routes/publicOffers.ts  GET /api/public/offers/{token}: the only non-auth route besides /api/auth/*;
-                   noindex, no-store, 60 requests/min per IP (in-memory, 429 RATE_LIMITED)
+src/routes/publicOffers.ts  GET /api/public/offers/{token} and its token-scoped reference photos
+                   (BR-108): the only non-auth routes besides /api/auth/*; noindex, 60 requests/min per IP
+                   each (in-memory, 429 RATE_LIMITED); every photo miss is the same 404
+src/references/    references/testimonials (routes/references.ts, BR-108): serializer, active list for
+                   PublicOffer, photo responses (private; ?v=imageVersion cached a year, else no-cache + ETag;
+                   errors no-store; nosniff)
+src/fileStore/     UPLOAD_DIR files (attachments, reference photos): streamed upload with size limit,
+                   content sniffing (PNG/JPG/WebP), random UUID file names
 src/budget/        budget rows + loadBudget (single source for /api/budget and the year page); rows are
                    partner-managed (routes/budgetCategories.ts), removed = active false, values kept
 src/http/errors.ts contract error format + zod → field codes (`parseInput`)

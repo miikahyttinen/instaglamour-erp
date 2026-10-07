@@ -1,12 +1,9 @@
 /** Attachment endpoints (docs/api-contract.md "Attachments"; UC-008, BR-040). */
-import { randomUUID } from 'node:crypto';
-import { createReadStream, createWriteStream } from 'node:fs';
-import { mkdir, open, rm, stat } from 'node:fs/promises';
-import path from 'node:path';
-import { pipeline } from 'node:stream/promises';
+import { createReadStream } from 'node:fs';
 import type { FastifyInstance } from 'fastify';
 import type { AppDeps } from '../app.js';
-import { AppError, notFound, validationError } from '../http/errors.js';
+import { AppError, notFound } from '../http/errors.js';
+import { UploadDir } from '../fileStore/uploadDir.js';
 import { toAttachmentDto } from '../gigs/serialize.js';
 import { assertNotDeleted, inTransaction, isUuid, logEvent, requireGigDetail } from '../gigs/store.js';
 
@@ -48,56 +45,25 @@ function contentDisposition(contentType: string, filename: string): string {
   return `${inline ? 'inline' : 'attachment'}; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(filename)}`;
 }
 
-async function readHead(file: string, length: number): Promise<Buffer> {
-  const handle = await open(file, 'r');
-  try {
-    const buffer = Buffer.alloc(length);
-    const { bytesRead } = await handle.read(buffer, 0, length, 0);
-    return buffer.subarray(0, bytesRead);
-  } finally {
-    await handle.close();
-  }
-}
-
 export function attachmentRoutes(app: FastifyInstance, deps: AppDeps): void {
   const { db, config } = deps;
-  const uploadDir = path.resolve(config.uploadDir);
-  const storagePath = (key: string) => path.join(uploadDir, key);
+  const uploads = new UploadDir(config.uploadDir);
 
   app.post<IdParams>('/api/gigs/:id/attachments', async (request, reply) => {
     const me = request.requirePartner();
     const gig = await requireGigDetail(db, request.params.id);
     assertNotDeleted(gig);
 
-    if (!request.isMultipart()) throw validationError({ file: 'REQUIRED' }, 'multipart/form-data with a file expected');
-    const part = await request.file({ limits: { fileSize: MAX_ATTACHMENT_BYTES, files: 1 } });
-    if (!part || part.fieldname !== 'file') {
-      part?.file.resume();
-      throw validationError({ file: 'REQUIRED' });
-    }
-
-    await mkdir(uploadDir, { recursive: true });
-    const storageKey = randomUUID();
-    const file = storagePath(storageKey);
-    const filename = cleanFilename(part.filename);
-    try {
-      await pipeline(part.file, createWriteStream(file, { flags: 'wx' }));
-      if (part.file.truncated) throw new AppError('FILE_TOO_LARGE', 'File is larger than 20 MB');
-    } catch (err) {
-      await rm(file, { force: true });
-      if ((err as { code?: string }).code === 'FST_REQ_FILE_TOO_LARGE') {
-        throw new AppError('FILE_TOO_LARGE', 'File is larger than 20 MB');
-      }
-      throw err;
-    }
+    const upload = await uploads.receive(request, { maxBytes: MAX_ATTACHMENT_BYTES, tooLargeMessage: 'File is larger than 20 MB' });
+    const filename = cleanFilename(upload.filename);
+    const { storageKey } = upload;
 
     try {
-      const contentType = detectContentType(await readHead(file, 8), filename);
+      const contentType = detectContentType(upload.head, filename);
       if (!contentType) throw new AppError('UNSUPPORTED_FILE_TYPE', 'Only PDF, DOCX, PNG and JPG files are allowed');
-      const { size } = await stat(file);
       const attachment = await inTransaction(db, async (tx) => {
         const created = await tx.attachment.create({
-          data: { gigId: gig.id, filename, contentType, sizeBytes: size, storageKey, uploadedById: me.id },
+          data: { gigId: gig.id, filename, contentType, sizeBytes: upload.sizeBytes, storageKey, uploadedById: me.id },
         });
         await logEvent(tx, {
           gigId: gig.id,
@@ -109,7 +75,7 @@ export function attachmentRoutes(app: FastifyInstance, deps: AppDeps): void {
       });
       return reply.status(201).send(toAttachmentDto(attachment));
     } catch (err) {
-      await rm(file, { force: true });
+      await uploads.remove(storageKey);
       throw err;
     }
   });
@@ -118,12 +84,8 @@ export function attachmentRoutes(app: FastifyInstance, deps: AppDeps): void {
     const { id } = request.params;
     const attachment = isUuid(id) ? await db.attachment.findUnique({ where: { id } }) : null;
     if (!attachment || attachment.deletedAt) throw notFound('Attachment not found');
-    const file = storagePath(attachment.storageKey);
-    try {
-      await stat(file);
-    } catch {
-      throw notFound('Attachment file not found');
-    }
+    if (!(await uploads.exists(attachment.storageKey))) throw notFound('Attachment file not found');
+    const file = uploads.pathOf(attachment.storageKey);
     return reply
       .header('Content-Type', attachment.contentType)
       .header('Content-Disposition', contentDisposition(attachment.contentType, attachment.filename))

@@ -7,6 +7,7 @@
 import 'dotenv/config';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
+import { DEFAULT_UPLOAD_DIR } from '../src/config.js';
 import { createDb } from '../src/db.js';
 import { loadSeed, readSeedFile, resolveSeedFile, SeedValidationError } from './load.js';
 
@@ -25,7 +26,12 @@ console.log(`Seeding from ${path.relative(process.cwd(), file)}${values.reset ? 
 
 const db = createDb(databaseUrl);
 try {
-  const summary = await loadSeed(db, readSeedFile(file), { reset: values.reset });
+  const summary = await loadSeed(db, readSeedFile(file), {
+    reset: values.reset,
+    seedDir: path.dirname(file),
+    // Same default as the server (src/config.ts), relative to the backend directory.
+    uploadDir: process.env.UPLOAD_DIR || DEFAULT_UPLOAD_DIR,
+  });
   console.log('Seed loaded:', summary);
 } catch (err) {
   if (err instanceof SeedValidationError) {

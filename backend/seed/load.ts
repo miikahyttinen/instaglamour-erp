@@ -10,18 +10,23 @@
  *   manage the rows in the app), client (name, case-insensitive, among non-deleted clients),
  *   gig (startDate + venue + lineupName; an existing gig's client is never changed),
  *   offer (client + eventName + eventDate; a `converted` offer also gets its gig, BR-105), task (title + owner),
- *   hour entry (partner + date + comment), budget row (category + year).
+ *   hour entry (partner + date + comment), budget row (category + year),
+ *   reference (quoteFi + author; appended after the existing ones, its photo copied to UPLOAD_DIR).
  */
+import { randomUUID } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
+import { copyFile, mkdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 import type { Db } from '../src/db.js';
 import { dateFromIso } from '../src/domain/dates.js';
 import { defaultCostLines } from '../src/domain/costLines.js';
-import { isMusicianRole, OFFER_SETTING_KEYS, SETTING_KEYS } from '../src/domain/enums.js';
+import { isMusicianRole, LEGACY_OFFER_SETTING_KEYS, OFFER_SETTING_KEYS, SETTING_KEYS } from '../src/domain/enums.js';
 import { newShareToken } from '../src/offers/shareToken.js';
 import { convertOfferInTx } from '../src/offers/store.js';
 import type { Prisma } from '../src/generated/prisma/client.js';
-import { clientNameKey, findSeedCategory, validateSeed, type SeedData } from './schema.js';
+import { MAX_REFERENCE_IMAGE_BYTES } from '../src/references/store.js';
+import { detectImageType, readHead, UploadDir, type ImageContentType } from '../src/fileStore/uploadDir.js';
+import { clientNameKey, findSeedCategory, referenceKey, validateSeed, type SeedData } from './schema.js';
 
 type Tx = Prisma.TransactionClient;
 
@@ -48,6 +53,7 @@ export interface SeedSummary {
   tasksCreated: number;
   hoursCreated: number;
   budgetRowsCreated: number;
+  referencesCreated: number;
 }
 
 export class SeedValidationError extends Error {
@@ -74,6 +80,7 @@ export function readSeedFile(file: string): unknown {
 /** Delete all application data (keeps the schema). Order respects foreign keys. */
 export async function emptyDatabase(tx: Tx): Promise<void> {
   await tx.session.deleteMany();
+  await tx.reference.deleteMany();
   await tx.offerEvent.deleteMany();
   await tx.gigEvent.deleteMany();
   await tx.attachment.deleteMany();
@@ -94,18 +101,86 @@ export async function emptyDatabase(tx: Tx): Promise<void> {
   await tx.person.deleteMany();
 }
 
-export async function loadSeed(db: Db, input: unknown, options: { reset?: boolean } = {}): Promise<SeedSummary> {
+export interface LoadSeedOptions {
+  /** Empty all data first. Reference photo files already in UPLOAD_DIR are left on disk. */
+  reset?: boolean;
+  /** Directory of the seed file: reference `image` paths are relative to it. */
+  seedDir?: string;
+  /** Where reference photos are copied (UPLOAD_DIR). Required when a reference has an image. */
+  uploadDir?: string;
+}
+
+/** A checked reference photo from the seed file, ready to be copied. */
+interface SeedImage {
+  source: string;
+  contentType: ImageContentType;
+  sizeBytes: number;
+}
+
+/** Check every reference photo (exists, ≤ 10 MB, PNG/JPG/WebP by content) before loading anything. */
+async function checkReferenceImages(data: SeedData, options: LoadSeedOptions): Promise<Map<number, SeedImage>> {
+  const images = new Map<number, SeedImage>();
+  const errors: string[] = [];
+  for (const [i, r] of data.references.entries()) {
+    if (r.image === undefined) continue;
+    const at = `references.${i}.image`;
+    if (!options.seedDir || !options.uploadDir) {
+      errors.push(`${at}: photos need the seed file's directory and UPLOAD_DIR (load the file with the seed command)`);
+      continue;
+    }
+    const source = path.resolve(options.seedDir, r.image);
+    let sizeBytes: number;
+    try {
+      const info = await stat(source);
+      if (!info.isFile()) throw new Error('not a file');
+      sizeBytes = info.size;
+    } catch {
+      errors.push(`${at}: file not found: ${r.image} (paths are relative to the seed file)`);
+      continue;
+    }
+    if (sizeBytes > MAX_REFERENCE_IMAGE_BYTES) {
+      errors.push(`${at}: ${r.image} is larger than 10 MB`);
+      continue;
+    }
+    const contentType = detectImageType(await readHead(source));
+    if (!contentType) {
+      errors.push(`${at}: ${r.image} is not a PNG, JPG or WebP image`);
+      continue;
+    }
+    images.set(i, { source, contentType, sizeBytes });
+  }
+  if (errors.length > 0) throw new SeedValidationError(errors);
+  return images;
+}
+
+export async function loadSeed(db: Db, input: unknown, options: LoadSeedOptions = {}): Promise<SeedSummary> {
   const result = validateSeed(input);
   if (!result.ok) throw new SeedValidationError(result.errors);
   const data = result.data;
+  const images = await checkReferenceImages(data, options);
+  const uploads = options.uploadDir ? new UploadDir(options.uploadDir) : null;
+  /** Photos copied during this run; removed again if the transaction fails (nothing is loaded). */
+  const copied: string[] = [];
+  const copyImage = async (image: SeedImage): Promise<string> => {
+    await mkdir(uploads!.root, { recursive: true });
+    const key = randomUUID();
+    copied.push(key);
+    await copyFile(image.source, uploads!.pathOf(key));
+    return key;
+  };
 
-  return db.$transaction(
-    async (tx) => {
-      if (options.reset) await emptyDatabase(tx);
-      return applySeed(tx, data);
-    },
-    { timeout: 120_000, maxWait: 10_000 },
-  );
+  try {
+    return await db.$transaction(
+      async (tx) => {
+        if (options.reset) await emptyDatabase(tx);
+        return applySeed(tx, data, images, copyImage);
+      },
+      { timeout: 120_000, maxWait: 10_000 },
+    );
+  } catch (err) {
+    for (const key of copied) await uploads!.remove(key);
+    throw err;
+  }
 }
 
 async function upsertPersonByName(tx: Tx, name: string, active: boolean): Promise<string> {
@@ -135,7 +210,12 @@ async function findCategory(tx: Tx, c: SeedData['budgetCategories'][number]): Pr
   return rows[0] ?? null;
 }
 
-async function applySeed(tx: Tx, data: SeedData): Promise<SeedSummary> {
+async function applySeed(
+  tx: Tx,
+  data: SeedData,
+  images: ReadonlyMap<number, SeedImage>,
+  copyImage: (image: SeedImage) => Promise<string>,
+): Promise<SeedSummary> {
   const summary: SeedSummary = {
     partners: 0,
     people: 0,
@@ -150,6 +230,7 @@ async function applySeed(tx: Tx, data: SeedData): Promise<SeedSummary> {
     tasksCreated: 0,
     hoursCreated: 0,
     budgetRowsCreated: 0,
+    referencesCreated: 0,
   };
 
   // Partners (and their Person rows)
@@ -195,6 +276,8 @@ async function applySeed(tx: Tx, data: SeedData): Promise<SeedSummary> {
 
   // Settings
   for (const [key, value] of Object.entries(data.settings)) {
+    // Former reference texts (replaced by `references`): accepted in older files, not stored.
+    if ((LEGACY_OFFER_SETTING_KEYS as readonly string[]).includes(key)) continue;
     const values = typeof value === 'number' ? { valueCents: value, valueText: null } : { valueCents: null, valueText: value };
     await tx.setting.upsert({ where: { key }, create: { key, ...values }, update: values });
     summary.settings++;
@@ -375,6 +458,30 @@ async function applySeed(tx: Tx, data: SeedData): Promise<SeedSummary> {
       },
     });
     summary.budgetRowsCreated++;
+  }
+
+  // References (insert only: partners manage them in the app). Appended in listed order.
+  const existingReferences = await tx.reference.findMany({ select: { quoteFi: true, author: true } });
+  const referenceKeys = new Set(existingReferences.map(referenceKey));
+  for (const [i, r] of data.references.entries()) {
+    if (referenceKeys.has(referenceKey(r))) continue;
+    const { _max } = await tx.reference.aggregate({ _max: { sortOrder: true } });
+    const image = images.get(i);
+    const photo = image
+      ? { imageStorageKey: await copyImage(image), imageContentType: image.contentType, imageSizeBytes: image.sizeBytes, imageUploadedAt: new Date() }
+      : {};
+    await tx.reference.create({
+      data: {
+        quoteFi: r.quoteFi,
+        quoteEn: r.quoteEn ?? null,
+        author: r.author,
+        active: r.active,
+        sortOrder: (_max.sortOrder ?? -1) + 1,
+        ...photo,
+      },
+    });
+    referenceKeys.add(referenceKey(r));
+    summary.referencesCreated++;
   }
 
   return summary;

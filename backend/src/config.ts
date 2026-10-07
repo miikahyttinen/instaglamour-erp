@@ -5,6 +5,9 @@ const booleanString = z
   .optional()
   .transform((v) => v === 'true' || v === '1');
 
+/** Default UPLOAD_DIR (relative to the working directory, i.e. backend/): outside the repository. */
+export const DEFAULT_UPLOAD_DIR = '../../instaglamour-uploads';
+
 const envSchema = z.object({
   PORT: z.coerce.number().int().positive().default(3000),
   HOST: z.string().default('127.0.0.1'),
@@ -16,7 +19,7 @@ const envSchema = z.object({
   AUTH_ALLOWED_DOMAIN: z.string().min(1),
   DEV_LOGIN_ENABLED: booleanString,
   FRONTEND_URL: z.string().url().default('http://localhost:5173'),
-  UPLOAD_DIR: z.string().min(1).default('../../instaglamour-uploads'),
+  UPLOAD_DIR: z.string().min(1).default(DEFAULT_UPLOAD_DIR),
 });
 
 export interface AppConfig {

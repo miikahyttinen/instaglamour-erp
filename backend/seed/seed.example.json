@@ -321,6 +321,11 @@
       "seller": "partner.a@example.com"
     }
   ],
+  "references": [
+    { "quoteFi": "Esimerkkilainaus 1: synteettinen palaute.", "quoteEn": "Example quote 1: synthetic feedback.", "author": "— Person 1, Client A Oy" },
+    { "quoteFi": "Esimerkkilainaus 2: synteettinen palaute.\nToinen rivi.", "author": "— Person 2, Client B Oy" },
+    { "quoteFi": "Esimerkkilainaus 3: piilotettu.", "quoteEn": "Example quote 3: hidden.", "author": "— Person 3", "active": false }
+  ],
   "tasks": [
     { "title": "Update website gig calendar", "owner": "partner.a@example.com", "dueDate": "2026-09-15" },
     { "title": "Renew equipment insurance", "owner": "partner.b@example.com", "dueDate": "2026-11-30", "description": "Compare two offers." },
