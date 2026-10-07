@@ -216,10 +216,27 @@ test.describe('desktop sidebar', () => {
           return { scroll: wrap.scrollWidth, client: wrap.clientWidth };
         });
         expect(box.scroll, `sidebar ${mode}, ${w} px: table ${box.scroll} px in a ${box.client} px box`).toBeLessThanOrEqual(box.client);
-        // Every column header is fully inside the visible part of the table.
-        for (const th of await table.getByRole('columnheader').all()) {
-          await expect(th, `sidebar ${mode}, ${w} px`).toBeInViewport({ ratio: 1 });
+        // Every column header lies fully inside the table's box, and the box inside the viewport,
+        // horizontally. Measured as geometry, not `toBeInViewport()`: the gig list scrolls today's
+        // row to the centre on load (GigListPage), so the header row may be above the viewport
+        // vertically, which says nothing about the width (TASK-019).
+        await table.locator('thead').scrollIntoViewIfNeeded();
+        const fit = await table.evaluate((t) => {
+          const wrap = t.parentElement!.getBoundingClientRect();
+          const ths = [...t.querySelectorAll('thead th')].map((th) => {
+            const r = th.getBoundingClientRect();
+            return { name: th.textContent?.trim() ?? '', left: r.left, right: r.right };
+          });
+          return { wrapLeft: wrap.left, wrapRight: wrap.right, viewport: document.documentElement.clientWidth, ths };
+        });
+        expect(fit.ths, `sidebar ${mode}, ${w} px: column headers`).toHaveLength(GIG_COLUMNS.length);
+        expect(fit.wrapLeft, `sidebar ${mode}, ${w} px: table box starts in the viewport`).toBeGreaterThanOrEqual(0);
+        expect(fit.wrapRight, `sidebar ${mode}, ${w} px: table box ends in the viewport`).toBeLessThanOrEqual(fit.viewport + 0.5);
+        for (const th of fit.ths) {
+          expect(th.left, `sidebar ${mode}, ${w} px: "${th.name}" starts inside the table box`).toBeGreaterThanOrEqual(fit.wrapLeft - 0.5);
+          expect(th.right, `sidebar ${mode}, ${w} px: "${th.name}" ends inside the table box`).toBeLessThanOrEqual(fit.wrapRight + 0.5);
         }
+        await expectNoHorizontalScroll(page, `gig list, sidebar ${mode}, ${w} px`);
       }
     }
   });
