@@ -100,6 +100,44 @@ enum GigEventType {
   ATTACHMENT_REMOVED
 }
 
+/// Where an offer request came from (domain-model.md "Offer").
+enum OfferSource {
+  EMAIL
+  WEBSITE
+  INSTAGRAM
+  OTHER
+}
+
+/// Kind of event an offer is for (Offer.event_type).
+enum EventType {
+  PRIVATE
+  WEDDING
+  CORPORATE
+}
+
+/// Outcome of an offer; the status is derived from it (BR-102).
+enum OfferDisposition {
+  PENDING
+  WON
+  CANCELLED
+  NO_RESPONSE
+  LOST_PRICE
+  LOST_COMPETITOR
+  LOST_OTHER
+  NO_CAPACITY
+}
+
+/// Offer history (BR-103).
+enum OfferEventType {
+  CREATED
+  UPDATED
+  DISPOSITION_CHANGED
+  CONVERTED
+  LINK_REGENERATED
+  DELETED
+  RESTORED
+}
+
 // ---------------------------------------------------------------------------
 // People and partners
 // ---------------------------------------------------------------------------
@@ -124,31 +162,35 @@ model Partner {
   language     Language @default(fi)
   /// Selected year (BR-081). null = current year.
   selectedYear Int?     @map("selected_year")
+  /// Optional; shown on the public offer as the seller's contact (local seed).
+  phone        String?
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
-  person             Person       @relation(fields: [personId], references: [id])
-  soldGigs           Gig[]        @relation("GigSeller")
-  producedGigs       Gig[]        @relation("GigProducer")
-  deletedGigs        Gig[]        @relation("GigDeletedBy")
-  paidCostLines      CostLine[]   @relation("CostLinePaidBy")
+  person              Person       @relation(fields: [personId], references: [id])
+  soldGigs            Gig[]        @relation("GigSeller")
+  producedGigs        Gig[]        @relation("GigProducer")
+  deletedGigs         Gig[]        @relation("GigDeletedBy")
+  paidCostLines       CostLine[]   @relation("CostLinePaidBy")
   uploadedAttachments Attachment[]
-  gigEvents          GigEvent[]
-  tasks              Task[]
-  hourEntries        HourEntry[]
-  sessions           Session[]
+  gigEvents           GigEvent[]
+  tasks               Task[]
+  hourEntries         HourEntry[]
+  sessions            Session[]
+  soldOffers          Offer[]      @relation("OfferSeller")
+  offerEvents         OfferEvent[]
 
   @@map("partner")
 }
 
 /// Server-side login session (UC-001). The cookie holds a random token; only its hash is stored.
 model Session {
-  id         String   @id @default(uuid()) @db.Uuid
-  tokenHash  String   @unique @map("token_hash")
-  partnerId  String   @map("partner_id") @db.Uuid
-  expiresAt  DateTime @map("expires_at")
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
+  id        String   @id @default(uuid()) @db.Uuid
+  tokenHash String   @unique @map("token_hash")
+  partnerId String   @map("partner_id") @db.Uuid
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   partner Partner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
 
@@ -173,13 +215,13 @@ model LineupTemplate {
 }
 
 model TemplateRole {
-  id               String   @id @default(uuid()) @db.Uuid
-  templateId       String   @map("template_id") @db.Uuid
-  position         Int
-  role             CostType
-  defaultFeeCents  Int      @map("default_fee_cents")
-  createdAt        DateTime @default(now()) @map("created_at")
-  updatedAt        DateTime @updatedAt @map("updated_at")
+  id              String   @id @default(uuid()) @db.Uuid
+  templateId      String   @map("template_id") @db.Uuid
+  position        Int
+  role            CostType
+  defaultFeeCents Int      @map("default_fee_cents")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
 
   template LineupTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
 
@@ -187,11 +229,13 @@ model TemplateRole {
   @@map("template_role")
 }
 
-/// Seeded key/value settings. All current settings are money amounts in cents.
+/// Seeded key/value settings: fee settings are money amounts in cents (value_cents), offer
+/// settings are texts (value_text).
 model Setting {
   id         String   @id @default(uuid()) @db.Uuid
   key        String   @unique
-  valueCents Int      @map("value_cents")
+  valueCents Int?     @map("value_cents")
+  valueText  String?  @map("value_text")
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @updatedAt @map("updated_at")
 
@@ -203,34 +247,37 @@ model Setting {
 // ---------------------------------------------------------------------------
 
 model Gig {
-  id                         String           @id @default(uuid()) @db.Uuid
-  startDate                  DateTime         @map("start_date") @db.Date
-  endDate                    DateTime?        @map("end_date") @db.Date
-  status                     GigStatus        @default(SOLD)
-  lineupTemplateId           String?          @map("lineup_template_id") @db.Uuid
-  lineupName                 String           @map("lineup_name")
+  id                         String          @id @default(uuid()) @db.Uuid
+  startDate                  DateTime        @map("start_date") @db.Date
+  endDate                    DateTime?       @map("end_date") @db.Date
+  status                     GigStatus       @default(SOLD)
+  lineupTemplateId           String?         @map("lineup_template_id") @db.Uuid
+  lineupName                 String          @map("lineup_name")
   venue                      String
-  technicalSetup             TechnicalSetup?  @map("technical_setup")
+  technicalSetup             TechnicalSetup? @map("technical_setup")
   logistics                  Logistics?
-  houseTechnician            Boolean          @default(false) @map("house_technician")
-  sellerId                   String           @map("seller_id") @db.Uuid
-  producerId                 String           @map("producer_id") @db.Uuid
-  priceCents                 Int              @map("price_cents")
-  additionalSalesCents       Int              @default(0) @map("additional_sales_cents")
-  additionalSalesDescription String?          @map("additional_sales_description")
+  houseTechnician            Boolean         @default(false) @map("house_technician")
+  sellerId                   String          @map("seller_id") @db.Uuid
+  producerId                 String          @map("producer_id") @db.Uuid
+  priceCents                 Int             @map("price_cents")
+  additionalSalesCents       Int             @default(0) @map("additional_sales_cents")
+  additionalSalesDescription String?         @map("additional_sales_description")
   notes                      String?
   /// Optional client (BR-100); a linked client can't be deleted (BR-101).
-  clientId                   String?          @map("client_id") @db.Uuid
-  deletedAt                  DateTime?        @map("deleted_at")
-  deletedById                String?          @map("deleted_by") @db.Uuid
-  createdAt                  DateTime         @default(now()) @map("created_at")
-  updatedAt                  DateTime         @updatedAt @map("updated_at")
+  clientId                   String?         @map("client_id") @db.Uuid
+  /// The offer this gig was converted from (BR-105); unique = at most one gig per offer.
+  offerId                    String?         @unique @map("offer_id") @db.Uuid
+  deletedAt                  DateTime?       @map("deleted_at")
+  deletedById                String?         @map("deleted_by") @db.Uuid
+  createdAt                  DateTime        @default(now()) @map("created_at")
+  updatedAt                  DateTime        @updatedAt @map("updated_at")
 
   lineupTemplate LineupTemplate? @relation(fields: [lineupTemplateId], references: [id])
   seller         Partner         @relation("GigSeller", fields: [sellerId], references: [id])
   producer       Partner         @relation("GigProducer", fields: [producerId], references: [id])
   deletedBy      Partner?        @relation("GigDeletedBy", fields: [deletedById], references: [id])
   client         Client?         @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  offer          Offer?          @relation(fields: [offerId], references: [id], onDelete: Restrict)
   costLines      CostLine[]
   attachments    Attachment[]
   events         GigEvent[]
@@ -257,9 +304,72 @@ model Client {
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
 
-  gigs Gig[]
+  gigs   Gig[]
+  offers Offer[]
 
   @@map("client")
+}
+
+// ---------------------------------------------------------------------------
+// Offers (UC-028…UC-031, BR-102…BR-107)
+// ---------------------------------------------------------------------------
+
+/// An offer to a client. Status is derived from the disposition (BR-102). The gig created by
+/// "Convert to gig" points back here (gig.offer_id, unique).
+model Offer {
+  id             String           @id @default(uuid()) @db.Uuid
+  clientId       String           @map("client_id") @db.Uuid
+  eventName      String           @map("event_name")
+  eventDate      DateTime         @map("event_date") @db.Date
+  venue          String
+  city           String?
+  /// Shown to the customer, one item per line.
+  lineup         String[]         @default([])
+  includesText   String?          @map("includes_text")
+  spotifyUrl     String?          @map("spotify_url")
+  /// Internal only, excl. VAT; never shown on the public page (BR-104).
+  priceCents     Int?             @map("price_cents")
+  sellerId       String           @map("seller_id") @db.Uuid
+  showReferences Boolean          @default(false) @map("show_references")
+  source         OfferSource?
+  eventType      EventType?       @map("event_type")
+  disposition    OfferDisposition @default(PENDING)
+  /// Public link token (BR-104): 32 random bytes, base64url. Kept to build the share link.
+  shareToken     String           @unique @map("share_token")
+  /// SHA-256 (hex) of share_token; the public endpoint looks offers up by this hash.
+  shareTokenHash String           @unique @map("share_token_hash")
+  deletedAt      DateTime?        @map("deleted_at")
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+
+  client Client       @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  seller Partner      @relation("OfferSeller", fields: [sellerId], references: [id])
+  gig    Gig?
+  events OfferEvent[]
+
+  @@index([eventDate])
+  @@index([clientId])
+  @@map("offer")
+}
+
+/// Full, append-only offer history (BR-103).
+model OfferEvent {
+  id        String         @id @default(uuid()) @db.Uuid
+  offerId   String         @map("offer_id") @db.Uuid
+  type      OfferEventType
+  partnerId String         @map("partner_id") @db.Uuid
+  at        DateTime       @default(now())
+  details   Json           @default("{}")
+  /// Insertion order; breaks ties between events with the same `at` (history is newest first).
+  seq       BigInt         @default(autoincrement())
+  createdAt DateTime       @default(now()) @map("created_at")
+  updatedAt DateTime       @updatedAt @map("updated_at")
+
+  offer   Offer   @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  partner Partner @relation(fields: [partnerId], references: [id])
+
+  @@index([offerId, at])
+  @@map("offer_event")
 }
 
 /// Original multi-select technical_setup array of gigs that existed before TASK-010 (migration

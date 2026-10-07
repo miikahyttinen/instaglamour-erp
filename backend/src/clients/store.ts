@@ -20,6 +20,18 @@ export async function findActiveClient(db: Tx, id: string): Promise<Client | nul
 }
 
 /**
+ * Lock a non-deleted client against concurrent deletion for the rest of the transaction
+ * (FOR SHARE conflicts with the FOR UPDATE taken by DELETE /api/clients/{id}). False if the
+ * client is unknown or deleted.
+ */
+export async function lockActiveClient(tx: Tx, id: string): Promise<boolean> {
+  if (!isUuid(id)) return false;
+  const rows = await tx.$queryRaw<{ id: string }[]>`
+    SELECT "id"::text FROM "client" WHERE "id" = ${id}::uuid AND "deleted_at" IS NULL FOR SHARE`;
+  return rows.length > 0;
+}
+
+/**
  * True if another non-deleted client has this name, compared the same way as the database index
  * "client_active_name_key" (lower(btrim(name))).
  */
