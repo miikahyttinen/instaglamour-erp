@@ -33,3 +33,6 @@ See and manage the selected year's offers, and the open value and win rate.
 
 ## Change log
 - 2026-10-07 – First version (PM)
+
+## Change 2026-10-14 (owner)
+Filters move into the column titles (Excel-style filter icons); the filter dropdowns above the table are removed. Search stays.

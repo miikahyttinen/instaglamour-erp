@@ -45,3 +45,6 @@ Partner opens **Gigs**.
 ## Change log
 - 2026-10-03 – First version and iterations (PM)
 - 2026-10-03 – Simplified MVP (PM)
+
+## Change 2026-10-14 (owner)
+The gig list uses the shared Excel-style table (same as offers): column filters via filter icons in the column titles replace the filter dropdowns above the table. Search stays.
