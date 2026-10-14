@@ -17,10 +17,10 @@ export interface NavItem {
   end?: boolean;
 }
 
-/** Offers first (owner decision 2026-10-07); `/` stays the year page. */
+/** Year first, then Offers (owner decision TASK-142). */
 export const NAV_ITEMS: NavItem[] = [
-  { to: '/offers', labelKey: 'nav.offers', icon: FileText },
   { to: '/', labelKey: 'nav.year', icon: CalendarDays, end: true },
+  { to: '/offers', labelKey: 'nav.offers', icon: FileText },
   { to: '/gigs', labelKey: 'nav.gigs', icon: Music },
   { to: '/clients', labelKey: 'nav.clients', icon: Contact },
   { to: '/people', labelKey: 'nav.people', icon: Users },

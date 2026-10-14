@@ -22,10 +22,10 @@ import { busyIds, MAIN_PAGE_NAMES, mainPages, openLoaded, type BusyIds } from '.
 // on phones, the gig list as a table only from 1200 px, compact cost rows by container width.
 // Read-only flows: nothing here changes the shared database.
 
-// Eight items since TASK-015…139: Tarjoukset first (owner decision 2026-10-07), Asiakkaat after Keikat.
+// Eight items since TASK-015…139, Asiakkaat after Keikat; Vuosi first, then Tarjoukset (TASK-142).
 const NAV: { label: string; path: string }[] = [
-  { label: 'Tarjoukset', path: '/offers' },
   { label: 'Vuosi', path: '/' },
+  { label: 'Tarjoukset', path: '/offers' },
   { label: 'Keikat', path: '/gigs' },
   { label: 'Asiakkaat', path: '/clients' },
   { label: 'Henkilöt', path: '/people' },

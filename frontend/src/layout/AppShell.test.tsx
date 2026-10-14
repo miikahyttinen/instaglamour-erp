@@ -319,8 +319,8 @@ describe('app shell', () => {
 
       const links = within(mainNav()).getAllByRole('link');
       expect(links.map((l) => l.textContent)).toEqual([
-        'Tarjoukset',
         'Vuosi',
+        'Tarjoukset',
         'Keikat',
         'Asiakkaat',
         'Henkilöt',
