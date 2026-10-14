@@ -373,9 +373,13 @@ Duplicate = case-insensitive exact name match with another person.
 |---|---|---|
 | `PUT /api/people/{id}/partner` | `{ email }` | 200 `Person` — makes/keeps the person an active partner with this email. `email: REQUIRED / INVALID_VALUE` (not in allowed domain) `/ DUPLICATE` |
 | `DELETE /api/people/{id}/partner` | — | 200 `Person` — deactivates; revokes all its sessions. 409 `CANNOT_REMOVE_SELF`, 409 `LAST_PARTNER`; 404 if not a partner |
-`GET /api/people` gains `?partner=true|false`. Sign-in (Google and dev login) requires an **active** partner; an inactive partner's existing session → 401 on the next request.
+`GET /api/people` gains `?partner=true|false` (`true` = active partner; `false` = never or removed; combines with `active`).
+- DELETE on a person who is not an active partner → 404. Changing an active partner's email (PUT with a new email) ends that partner's other sessions (old Google account). Granting to an inactive person → 409 `INVALID_STATUS_TRANSITION`.
+- The seed never reactivates or changes existing partners (insert-only), so a removal in the app is permanent until re-granted in the app.
+- Convert offer → gig: if the offer's seller is no longer an active partner, the converting partner becomes seller and producer. Sign-in (Google and dev login) requires an **active** partner; an inactive partner's existing session → 401 on the next request.
 
 ## Change log
+- 2026-10-14 – Partner status clarifications (404, ?partner, email change, inactive person, seed insert-only, convert with removed seller) (PM)
 - 2026-10-14 – Partner status managed in the app (UC-032): person.partner, PUT/DELETE /api/people/{id}/partner, partner.active, CANNOT_REMOVE_SELF, LAST_PARTNER (PM)
 - 2026-10-07 – Reference.imageVersion + `?v=` cache busting; reorder validation; reference upload error texts (PM)
 - 2026-10-07 – References entity + endpoints; PublicOffer.references becomes a list with photos (owner request, breaking for references) (PM)
