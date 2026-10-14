@@ -1,5 +1,5 @@
 # TASK-142: Year first in the menu
-- **owner:** ui (may also edit the menu-order expectations in `e2e/`) · **status:** todo · **depends on:** none
+- **owner:** ui (may also edit the menu-order expectations in `e2e/`) · **status:** done · **depends on:** none
 ## Goal
 Owner request: put **Vuosi / Year** at the very top of the menu. New order: Vuosi, Tarjoukset, Keikat, Asiakkaat, Henkilöt, Tehtävät, Tunnit, Budjetti.
 ## Acceptance criteria
