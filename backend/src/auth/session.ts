@@ -65,7 +65,9 @@ export async function resolveSession(
     include: { partner: { include: { person: true } } },
   });
   if (!session) return null;
-  if (session.expiresAt.getTime() <= now.getTime()) {
+  // BR-111: a removed (inactive) partner's sessions are deleted on removal; this is the backstop
+  // for a session created concurrently with the removal.
+  if (!session.partner.active || session.expiresAt.getTime() <= now.getTime()) {
     await db.session.delete({ where: { id: session.id } }).catch(() => undefined);
     return null;
   }
@@ -75,6 +77,12 @@ export async function resolveSession(
     reply.setCookie(SESSION_COOKIE, token, cookieOptions(config, newExpiry));
   }
   return session.partner;
+}
+
+/** Hash of the request's own session token (to tell the current session apart), or null. */
+export function currentSessionTokenHash(request: FastifyRequest): string | null {
+  const token = readToken(request);
+  return token ? hashToken(token) : null;
 }
 
 export async function endSession(db: Db, config: AppConfig, request: FastifyRequest, reply: FastifyReply) {

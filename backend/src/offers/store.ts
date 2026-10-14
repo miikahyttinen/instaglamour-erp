@@ -212,15 +212,21 @@ export async function convertOfferInTx(
 
   const offer = await tx.offer.findUniqueOrThrow({
     where: { id: input.offerId },
-    include: { gig: { select: { id: true } }, seller: { select: { personId: true } } },
+    include: { gig: { select: { id: true } }, seller: { select: { personId: true, active: true } } },
   });
   assertOfferNotDeleted(offer);
   if (offer.gig) throw new AppError('ALREADY_CONVERTED', 'The offer already has a gig');
 
+  // BR-111: a removed (inactive) partner is never chosen for a new gig. If the offer's seller has
+  // been removed, the partner doing the conversion becomes the gig's seller and producer.
+  const gigPartner = offer.seller.active
+    ? { id: offer.sellerId, personId: offer.seller.personId }
+    : await tx.partner.findUniqueOrThrow({ where: { id: input.partnerId }, select: { id: true, personId: true } });
+
   const lines = defaultCostLines({
     templateRoles: [],
-    sellerPersonId: offer.seller.personId,
-    producerPersonId: offer.seller.personId,
+    sellerPersonId: gigPartner.personId,
+    producerPersonId: gigPartner.personId,
     fees: input.fees,
   });
   const createdBase = Date.now();
@@ -231,8 +237,8 @@ export async function convertOfferInTx(
       lineupTemplateId: null,
       lineupName: offer.eventName,
       venue: offer.city ? `${offer.venue}, ${offer.city}` : offer.venue,
-      sellerId: offer.sellerId,
-      producerId: offer.sellerId,
+      sellerId: gigPartner.id,
+      producerId: gigPartner.id,
       priceCents: offer.priceCents ?? 0,
       clientId: offer.clientId,
       offerId: offer.id,

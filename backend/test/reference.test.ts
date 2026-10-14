@@ -39,6 +39,7 @@ describe('GET /api/reference', () => {
       email: 'partner.a@example.com',
       language: 'fi',
       selectedYear: expect.any(Number),
+      active: true,
     });
 
     expect(body.lineupTemplates.map((t: { name: string }) => t.name)).toEqual(['Template A', 'Template B', 'Template C']);

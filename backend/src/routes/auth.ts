@@ -23,9 +23,10 @@ const devLoginBody = z.object({ email: z.string().trim().min(1).max(500).email()
 export function authRoutes(app: FastifyInstance, deps: AppDeps): void {
   const { db, config, google } = deps;
 
+  /** BR-070 / BR-111: only an **active** partner may sign in. */
   const findPartnerByEmail = (email: string) =>
     db.partner.findFirst({
-      where: { email: { equals: email.trim(), mode: 'insensitive' } },
+      where: { email: { equals: email.trim(), mode: 'insensitive' }, active: true },
       include: { person: true },
     });
 

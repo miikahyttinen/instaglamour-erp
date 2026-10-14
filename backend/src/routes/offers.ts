@@ -148,8 +148,9 @@ const alreadyConverted = () => new AppError('ALREADY_CONVERTED', 'The offer alre
 export function offerRoutes(app: FastifyInstance, deps: AppDeps): void {
   const { db } = deps;
 
+  /** BR-111: new seller choices must be active partners. */
   const partnerExists = async (id: string) =>
-    isUuid(id) && (await db.partner.count({ where: { id } })) > 0;
+    isUuid(id) && (await db.partner.count({ where: { id, active: true } })) > 0;
 
   const detail = async (id: string) =>
     toOfferDetailDto(await requireOffer(db, id), todayIso(), await loadActiveReferences(db));

@@ -61,8 +61,19 @@ outside local development.**
 `GET /api/auth/google/start` → Google (authorization code + PKCE, state in a signed short-lived
 cookie, `hd` hint) → `GET /api/auth/google/callback`: the code is exchanged server-side, the ID
 token is verified (signature, audience, expiry) and the email must be Google-verified, in
-`AUTH_ALLOWED_DOMAIN` and belong to a partner. On success an httpOnly, `SameSite=Lax` session cookie
+`AUTH_ALLOWED_DOMAIN` and belong to an **active** partner. On success an httpOnly, `SameSite=Lax` session cookie
 is set (30 days, sliding; sessions are stored hashed in the `session` table).
+A session of a partner who is no longer active is refused (401) and deleted.
+
+Partner status (UC-032, BR-110…112) is managed with `PUT/DELETE /api/people/{id}/partner`
+(`src/partners/store.ts`). Every grant/revoke runs in one transaction under a Postgres advisory lock
+(`pg_advisory_xact_lock`), so the "not yourself" / "not the last active partner" guards hold under
+concurrent requests. Removal deactivates the partner (the row and its id stay, so old gigs, offers,
+tasks and hours keep it) and deletes all its sessions in the same transaction; changing an active
+partner's email also ends its sessions (except the requester's own). The email must be in
+`AUTH_ALLOWED_DOMAIN` (checked on the server) and is unique case-insensitively (DB index
+`partner_email_lower_key`). New seller/producer/owner choices must be active partners.
+
 Every `/api/*` route except `/api/auth/*` and the exact public routes
 `GET /api/public/offers/{token}` and `GET /api/public/offers/{token}/references/{id}/image` returns
 401 without a session.
@@ -85,12 +96,15 @@ src/gigs/          gig data access (events, double-booking check, year gigs), in
 src/hours/         hour entries + loadHoursTotals (single source for /api/hours/totals and the year page)
 src/clients/       client lookup + name-uniqueness check (routes/clients.ts; soft delete, BR-100/101)
 src/offers/        offers (routes/offers.ts): derived status/expired (BR-102), year summary (BR-106),
-                   convert-to-gig in one transaction (row lock + unique gig.offer_id, BR-105),
+                   convert-to-gig in one transaction (row lock + unique gig.offer_id, BR-105; if the
+                   offer's seller is an inactive partner, the converting partner becomes the gig's
+                   seller and producer, BR-111),
                    PublicOffer whitelist serializer (also OfferDetail.preview) and share tokens
                    (32 CSPRNG bytes, base64url; looked up by SHA-256, BR-104)
 src/routes/publicOffers.ts  GET /api/public/offers/{token} and its token-scoped reference photos
                    (BR-108): the only non-auth routes besides /api/auth/*; noindex, 60 requests/min per IP
                    each (in-memory, 429 RATE_LIMITED); every photo miss is the same 404
+src/partners/      partner status grant/revoke (UC-032): advisory-locked transaction, session revocation
 src/references/    references/testimonials (routes/references.ts, BR-108): serializer, active list for
                    PublicOffer, photo responses (private; ?v=imageVersion cached a year, else no-cache + ETag;
                    errors no-store; nosniff)
