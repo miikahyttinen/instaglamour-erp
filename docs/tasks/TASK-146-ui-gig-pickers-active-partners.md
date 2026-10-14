@@ -1,5 +1,5 @@
 # TASK-146: Gig seller/producer pickers offer only active partners
-- **owner:** ui · **status:** todo · **spec:** UC-032, BR-111 · **depends on:** TASK-144, TASK-145
+- **owner:** ui · **status:** done · **spec:** UC-032, BR-111 · **depends on:** TASK-144, TASK-145
 ## Goal
 BR-111: inactive partners are not offered for new seller/producer choices. TASK-145 did this for offers and tasks; the gig pickers were left because TASK-144 was editing `features/gigs/`.
 ## Contract
