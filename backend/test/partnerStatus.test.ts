@@ -106,6 +106,25 @@ describe('PUT /api/people/{id}/partner — grant', () => {
     expect(await testDb().partner.count({ where: { email: 'same@example.com' } })).toBe(1);
   });
 
+  it('an inactive person cannot be made a partner (409 INVALID_STATUS_TRANSITION); nothing changes', async () => {
+    await call(s, 'PATCH', `/api/people/${s.world.p1.id}`, { active: false });
+    const res = await put(s.world.p1.id, { email: 'person.one@example.com' });
+    expect(res.statusCode).toBe(409);
+    expect(res.json().error.code).toBe('INVALID_STATUS_TRANSITION');
+    expect(await testDb().partner.count({ where: { personId: s.world.p1.id } })).toBe(0);
+
+    // Also for re-granting a removed partner whose person was deactivated.
+    await del(s.world.c.personId);
+    await call(s, 'PATCH', `/api/people/${s.world.c.personId}`, { active: false });
+    const regrant = await put(s.world.c.personId, { email: 'partner.c@example.com' });
+    expect(regrant.statusCode).toBe(409);
+    expect(regrant.json().error.code).toBe('INVALID_STATUS_TRANSITION');
+    expect((await testDb().partner.findUniqueOrThrow({ where: { id: s.world.c.id } })).active).toBe(false);
+
+    // Validation (400) still comes first.
+    expect((await put(s.world.p1.id, { email: 'x@example.org' })).statusCode).toBe(400);
+  });
+
   it('validates (400) before existence (404); unknown or malformed id → 404', async () => {
     expect((await put(UNKNOWN_ID, { email: 'x@example.org' })).statusCode).toBe(400);
     for (const id of [UNKNOWN_ID, 'not-a-uuid']) {
@@ -418,6 +437,38 @@ describe('new choices reject removed partners; existing records keep them (BR-11
     expect(unknown.statusCode).toBe(400);
     const missingTask = await call(s, 'PATCH', `/api/tasks/${UNKNOWN_ID}`, { ownerId: s.world.c.id });
     expect(missingTask.statusCode).toBe(404);
+  });
+
+  it("converting an offer whose seller was removed makes the converting partner the gig's seller and producer", async () => {
+    const client = await testDb().client.create({ data: { name: 'Client A Oy' } });
+    const body = {
+      clientId: client.id,
+      eventName: 'Event 1',
+      eventDate: '2026-11-14',
+      venue: 'Venue X',
+      lineup: ['Vocals'],
+      priceCents: 100000,
+      source: 'EMAIL',
+      eventType: 'CORPORATE',
+    };
+    const removedSeller = (await call(s, 'POST', '/api/offers', { ...body, sellerId: s.world.c.id })).json();
+    const activeSeller = (await call(s, 'POST', '/api/offers', { ...body, eventName: 'Event 2', sellerId: s.world.b.id })).json();
+    await del(s.world.c.personId);
+
+    const res = await call(s, 'POST', `/api/offers/${removedSeller.id}/convert`);
+    expect(res.statusCode).toBe(201);
+    const { gig, offer } = res.json();
+    expect(gig).toMatchObject({ sellerId: s.world.a.id, producerId: s.world.a.id });
+    expect(gig.costLines.map((l: { type: string; personId: string | null }) => [l.type, l.personId])).toEqual([
+      ['OFFICE', null],
+      ['SALES', s.world.a.personId],
+      ['PRODUCTION', s.world.a.personId],
+    ]);
+    expect(offer.sellerId).toBe(s.world.c.id); // the offer itself keeps its seller
+
+    // An active seller is still used as before.
+    const kept = (await call(s, 'POST', `/api/offers/${activeSeller.id}/convert`)).json();
+    expect(kept.gig).toMatchObject({ sellerId: s.world.b.id, producerId: s.world.b.id });
   });
 
   it("a removed partner's hours stay readable", async () => {

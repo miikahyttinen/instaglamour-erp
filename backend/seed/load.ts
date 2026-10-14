@@ -3,7 +3,9 @@
  *
  * Idempotency rules (natural keys):
  * - Reference data is upserted — the seed file wins:
- *   partner (email), person (name), lineup template (name; roles replaced), setting (key).
+ *   person (name), lineup template (name; roles replaced), setting (key).
+ * - Partners (email, case-insensitive) are insert-only: created active when missing; an existing
+ *   partner and its person are never changed (partner status is managed in the app, UC-032).
  * - Business data is only inserted when its natural key is not in the database yet, so data
  *   partners have since edited in the app is never overwritten:
  *   budget category (code if given, else name, case-insensitive; removed rows count too — partners
@@ -240,22 +242,16 @@ async function applySeed(
     const existing = await tx.partner.findFirst({ where: { email: { equals: p.email, mode: 'insensitive' } } });
     let partner: { id: string; personId: string };
     if (existing) {
-      await tx.person.update({ where: { id: existing.personId }, data: { name: p.name, active: true } });
-      // Phone is contact data from the seed: updated when the file gives it.
-      if (p.phone !== undefined && p.phone !== existing.phone)
-        await tx.partner.update({ where: { id: existing.id }, data: { phone: p.phone } });
-      // Partners listed in the seed are active (the seed file wins, like the person's `active`).
-      if (!existing.active)
-        await tx.partner.update({
-          where: { id: existing.id },
-          data: { active: true, grantedById: null, grantedAt: new Date(), revokedById: null, revokedAt: null },
-        });
+      // Insert-only (UC-032): partners are managed in the app. An existing partner and its person are
+      // never changed — in particular a partner removed in the app is never re-activated by a re-run.
       partner = existing;
     } else {
       const unlinked = await tx.person.findFirst({ where: { name: p.name, partner: null } });
       const personId = unlinked?.id ?? (await tx.person.create({ data: { name: p.name } })).id;
-      // Language is a personal preference: only set when the partner is first created.
-      partner = await tx.partner.create({ data: { email: p.email, personId, language: p.language, phone: p.phone ?? null } });
+      // New partners are active. Language is a personal preference: only set when the partner is created.
+      partner = await tx.partner.create({
+        data: { email: p.email, personId, language: p.language, phone: p.phone ?? null, active: true },
+      });
     }
     partnerByEmail.set(p.email, partner);
     personIdByName.set(p.name, partner.personId);

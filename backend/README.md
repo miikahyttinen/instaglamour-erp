@@ -96,7 +96,9 @@ src/gigs/          gig data access (events, double-booking check, year gigs), in
 src/hours/         hour entries + loadHoursTotals (single source for /api/hours/totals and the year page)
 src/clients/       client lookup + name-uniqueness check (routes/clients.ts; soft delete, BR-100/101)
 src/offers/        offers (routes/offers.ts): derived status/expired (BR-102), year summary (BR-106),
-                   convert-to-gig in one transaction (row lock + unique gig.offer_id, BR-105),
+                   convert-to-gig in one transaction (row lock + unique gig.offer_id, BR-105; if the
+                   offer's seller is an inactive partner, the converting partner becomes the gig's
+                   seller and producer, BR-111),
                    PublicOffer whitelist serializer (also OfferDetail.preview) and share tokens
                    (32 CSPRNG bytes, base64url; looked up by SHA-256, BR-104)
 src/routes/publicOffers.ts  GET /api/public/offers/{token} and its token-scoped reference photos

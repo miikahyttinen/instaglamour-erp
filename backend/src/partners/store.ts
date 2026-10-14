@@ -75,6 +75,8 @@ export async function grantPartner(
       const person = await tx.person.findUnique({ where: { id: personId }, include: { partner: true } });
       if (!person) throw notFound('Person not found');
       if (await emailTakenByOther(tx, email, personId)) throw duplicateEmail();
+      // An inactive person can't be (or stay, via PUT) a partner: re-activate the person first.
+      if (!person.active) throw new AppError('INVALID_STATUS_TRANSITION', 'An inactive person cannot be made a partner');
 
       const partner = person.partner;
       if (!partner) {

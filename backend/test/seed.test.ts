@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { EXAMPLE_SEED_FILE, LOCAL_SEED_FILE, loadSeed, readSeedFile, resolveSeedFile, SeedValidationError } from '../seed/load.js';
 import { validateSeed } from '../seed/schema.js';
-import { closeTestDb, resetDb, testDb } from './helpers.js';
+import { closeTestDb, resetDb, testApp, testDb } from './helpers.js';
 
 const exampleSeedPath = path.resolve(import.meta.dirname, '../seed/seed.example.json');
 const example = () => structuredClone(readSeedFile(exampleSeedPath)) as Record<string, unknown> & { gigs: Record<string, unknown>[] };
@@ -354,17 +354,29 @@ describe('loadSeed', () => {
     expect((await db.setting.findUniqueOrThrow({ where: { key: 'fees.load_in_deduction' } })).valueCents).toBe(2000);
   });
 
-  it('seeded partners are active: new ones, and a re-run re-activates one removed in the app (UC-032)', async () => {
+  it('partners are insert-only: created active; a re-run never re-activates or changes one (UC-032)', async () => {
     await loadSeed(testDb(), example());
     const db = testDb();
     expect(await db.partner.count({ where: { active: false } })).toBe(0);
-    await db.partner.update({
-      where: { email: 'partner.b@example.com' },
-      data: { active: false, revokedAt: new Date() },
-    });
+    const removedAt = new Date('2026-10-14T12:00:00.000Z');
+    await db.partner.update({ where: { email: 'partner.b@example.com' }, data: { active: false, revokedAt: removedAt } });
+    const before = await db.partner.findUniqueOrThrow({ where: { email: 'partner.b@example.com' }, include: { person: true } });
+    await db.person.update({ where: { id: before.personId }, data: { name: 'Partner B renamed' } });
+
     await loadSeed(db, example());
-    const b = await db.partner.findUniqueOrThrow({ where: { email: 'partner.b@example.com' } });
-    expect(b).toMatchObject({ active: true, revokedAt: null, revokedById: null });
+    const after = await db.partner.findUniqueOrThrow({ where: { email: 'partner.b@example.com' }, include: { person: true } });
+    expect(after).toMatchObject({ active: false, revokedAt: removedAt, email: before.email, phone: before.phone });
+    expect(after.updatedAt).toEqual(before.updatedAt);
+    expect(after.person.name).toBe('Partner B renamed');
+
+    // Sign-in still refused.
+    const app = await testApp();
+    try {
+      const res = await app.inject({ method: 'POST', url: '/api/auth/dev-login', payload: { email: 'partner.b@example.com' } });
+      expect(res.statusCode).toBe(403);
+    } finally {
+      await app.close();
+    }
   });
 
   it('an invalid file changes nothing', async () => {
