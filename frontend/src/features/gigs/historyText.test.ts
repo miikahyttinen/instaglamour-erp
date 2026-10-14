@@ -8,7 +8,7 @@ const partners = [
   { id: 'pa', personId: 'p-a', name: 'Partner A' },
   { id: 'pb', personId: 'p-b', name: 'Partner B' },
 ] as Partner[];
-const people: Person[] = [{ id: 'p1', name: 'Person 1', active: true }];
+const people: Person[] = [{ id: 'p1', name: 'Person 1', active: true, partner: null }];
 const ctx = { partners, people };
 
 const base = { id: 'e', gigId: 'g', partnerId: 'pa', at: '2030-06-01T10:00:00.000Z', reason: null };

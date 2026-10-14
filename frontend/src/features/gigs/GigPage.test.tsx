@@ -267,6 +267,23 @@ describe('gig page (UC-004, UC-007)', () => {
     expect(paidAmounts.map((el) => (el as HTMLInputElement).value)).toContain('100,00');
   });
 
+  it('seller/producer offer active partners plus the current removed one (BR-111)', async () => {
+    const c = db.partners.find((p) => p.name === 'Partner C')!;
+    c.active = false;
+    const gig = addMockGig({ sellerId: c.id });
+    renderApp(`/gigs/${gig.id}`);
+    await screen.findAllByRole('option', { name: 'Partner B' });
+    const basic = section('Perustiedot');
+    const names = (select: HTMLElement) =>
+      within(select).getAllByRole('option').map((o) => o.textContent);
+    const seller = within(basic).getByRole('combobox', { name: 'Myyjä' });
+    expect(seller).toHaveDisplayValue('Partner C');
+    expect(names(seller)).toEqual(['Partner C', 'Partner A', 'Partner B']);
+    const producer = within(basic).getByRole('combobox', { name: 'Tuottaja' });
+    expect(producer).toHaveDisplayValue('Partner A');
+    expect(names(producer)).toEqual(['Partner A', 'Partner B']);
+  });
+
   it('shows not found for an unknown gig', async () => {
     renderApp('/gigs/00000000-0000-4000-8000-999999999999');
     expect(await screen.findByRole('alert')).toHaveTextContent('Tietoa ei löytynyt.');

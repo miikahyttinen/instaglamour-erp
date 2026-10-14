@@ -79,12 +79,8 @@ export interface Person {
   id: Id;
   name: string;
   active: boolean;
-  /**
-   * null = never a partner; `active: false` = partner status removed. The server always sends it;
-   * optional here only so hand-written fixtures without it (features/gigs tests) still compile.
-   * Treat `undefined` as null.
-   */
-  partner?: PersonPartner | null;
+  /** null = never a partner; `active: false` = partner status removed. */
+  partner: PersonPartner | null;
 }
 
 export interface GigSummary {

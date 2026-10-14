@@ -129,4 +129,17 @@ describe('new gig (UC-002)', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('Tarkista lomakkeen tiedot.');
     expect(screen.queryByText(/Server English text/)).not.toBeInTheDocument();
   });
+
+  it('seller and producer offer only active partners (BR-111)', async () => {
+    db.partners.find((p) => p.name === 'Partner C')!.active = false;
+    renderApp('/gigs/new');
+    await screen.findByRole('option', { name: 'Template A' });
+    for (const name of ['Myyjä', 'Tuottaja']) {
+      const select = screen.getByRole('combobox', { name });
+      expect(within(select).getAllByRole('option').map((o) => o.textContent)).toEqual([
+        'Partner A',
+        'Partner B',
+      ]);
+    }
+  });
 });
