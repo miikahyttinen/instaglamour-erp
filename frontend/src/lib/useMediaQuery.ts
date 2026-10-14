@@ -1,5 +1,8 @@
 import { useCallback, useSyncExternalStore } from 'react';
 
+/** Same breakpoint as the CSS (`@media (min-width: 600px)`): tables instead of phone cards. */
+export const TABLET_QUERY = '(min-width: 600px)';
+
 /** Same breakpoint as the CSS (`@media (min-width: 900px)`): sidebar instead of the ☰ drawer. */
 export const DESKTOP_QUERY = '(min-width: 900px)';
 

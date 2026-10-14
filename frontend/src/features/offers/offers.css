@@ -74,19 +74,9 @@
 .offers-page .offers-toolbar > .segmented {
   align-self: flex-start;
 }
-/* Search full width on phones; from 600 px search over two columns, filters fill the rest. */
-.offers-page .offers-filters {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 140px), 1fr));
-  gap: var(--space-3) var(--grid-gap);
-}
-.offers-page .offers-filters > * {
-  min-width: 0;
-}
-.offers-page .offers-filter-search {
-  grid-column: 1 / -1;
-}
-.offers-page .offers-filters label {
+/* Search: full width on phones, ~2.5 label columns from 600 px. The column filters live in the
+   table headers (ExcelTable). */
+.offers-page .offers-search label {
   margin-top: 0;
 }
 .offers-page .offers-search-input {
@@ -150,35 +140,9 @@
   color: var(--text-muted);
 }
 
-/* Excel-style from 600 px: one line per row, compact cells, horizontal scroll with the event
-   column pinned on the left. */
+/* From 600 px (one line per row, pinned event column: ExcelTable): mono dates, room for the
+   inline selects. */
 @media (min-width: 600px) {
-  .offers-page .offer-table {
-    width: max-content;
-    min-width: 100%;
-  }
-  .offers-page .offer-table th,
-  .offers-page .offer-table td {
-    white-space: nowrap;
-    padding-left: var(--space-3);
-    padding-right: var(--space-3);
-  }
-  .offers-page .offer-table :is(th, td):first-child {
-    position: sticky;
-    left: 0;
-    z-index: 1;
-    max-width: 240px;
-    padding-left: var(--cell-pad-x);
-    white-space: normal;
-    background: var(--surface);
-    box-shadow: inset calc(-1 * var(--hairline)) 0 0 var(--border);
-  }
-  .offers-page .offer-table thead th:first-child {
-    background: var(--surface-2);
-  }
-  .offers-page .offer-table tbody tr:hover td:first-child {
-    background: var(--surface-2);
-  }
   .offers-page .offer-table td.offer-col-date {
     font-family: var(--font-mono);
     font-size: var(--fs-label);
@@ -296,8 +260,8 @@
 }
 
 @media (min-width: 600px) {
-  .offers-page .offers-filter-search {
-    grid-column: span 2;
+  .offers-page .offers-search {
+    max-width: calc(var(--label-w) * 2.5);
   }
   .offer-page .offer-facts > div {
     display: grid;

@@ -15,7 +15,7 @@ export const fi = {
     views: { active: 'Tarjoukset', deleted: 'Poistetut' },
     search: 'Haku',
     searchPlaceholder: 'Tapahtuma, asiakas, paikka tai kaupunki',
-    any: 'Kaikki',
+    gigFilter: { yes: 'Keikka luotu', no: 'Ei keikkaa' },
     expired: 'Vanhentunut',
     statusFilter: {
       OPEN: 'Avoin',
@@ -184,7 +184,7 @@ export const en: typeof fi = {
     views: { active: 'Offers', deleted: 'Deleted' },
     search: 'Search',
     searchPlaceholder: 'Event, client, venue or city',
-    any: 'All',
+    gigFilter: { yes: 'Gig created', no: 'No gig' },
     expired: 'Expired',
     statusFilter: {
       OPEN: 'Open',

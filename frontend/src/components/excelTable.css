@@ -1,0 +1,277 @@
+/* Excel-style table (components/ExcelTable.tsx, docs/design.md → "Excel-style tables").
+   Builds on .table-wrap / .data-table / .data-table-cards in styles.css. Tokens only. */
+
+/* ---------- Bar above the table: row count, phone "Filters", "Clear filters" ---------- */
+.excel-table-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-3);
+  margin: 0 0 var(--space-3);
+}
+.excel-table-count {
+  margin: 0;
+}
+.excel-table-bar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+.excel-table-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  margin-left: var(--space-1);
+  padding: 0 var(--space-1);
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
+.excel-table-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-6) var(--card-pad);
+  border: var(--hairline) dashed var(--border);
+  border-radius: var(--radius);
+  color: var(--text-muted);
+}
+.excel-table-empty p {
+  margin: 0;
+}
+
+/* ---------- Header: title (sort) + filter icon ---------- */
+.excel-th {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.excel-table-grid .num .excel-th {
+  justify-content: flex-end;
+}
+.excel-filter-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: var(--hairline) solid transparent;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--label);
+  cursor: pointer;
+}
+.excel-filter-btn svg {
+  width: 12px;
+  height: 12px;
+}
+.excel-filter-btn:hover,
+.excel-filter-btn[aria-expanded='true'] {
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+.excel-filter-btn:focus-visible {
+  outline: var(--hairline) solid var(--accent);
+  outline-offset: 1px;
+}
+/* Filtered column: accent icon, filled funnel, accent outline. */
+.excel-filter-btn.is-active {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.excel-filter-btn.is-active svg {
+  fill: currentColor;
+}
+
+/* ---------- Filter popover / form ---------- */
+.column-filter-popover {
+  position: fixed;
+  z-index: var(--z-popover);
+  width: 280px;
+  max-width: calc(100vw - 2 * var(--space-2));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: var(--space-3);
+  background: var(--surface);
+  color: var(--text);
+  border: var(--hairline) solid var(--border-strong);
+  border-radius: var(--radius);
+  /* Reset the header cell look it is opened from. */
+  font-family: var(--font-sans);
+  font-size: var(--fs-body);
+  letter-spacing: normal;
+  text-transform: none;
+  white-space: normal;
+}
+.column-filter {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-height: 0;
+}
+.column-filter-popover .column-filter {
+  flex: 1 1 auto;
+}
+.column-filter-search {
+  position: relative;
+}
+.column-filter-search input {
+  padding-left: calc(var(--space-3) + var(--icon) + var(--space-2));
+}
+.column-filter-search-icon {
+  position: absolute;
+  top: 50%;
+  left: var(--space-3);
+  transform: translateY(-50%);
+  color: var(--label);
+  pointer-events: none;
+}
+.column-filter-bulk,
+.column-filter-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.column-filter-actions {
+  justify-content: flex-end;
+}
+.column-filter-values {
+  min-height: 0;
+  max-height: 280px;
+  overflow-y: auto;
+  margin: 0;
+  padding: var(--space-1) 0;
+  border: 0;
+  border-top: var(--hairline) solid var(--border);
+  border-bottom: var(--hairline) solid var(--border);
+}
+.column-filter-popover .column-filter-values {
+  flex: 1 1 auto;
+}
+.column-filter-values .column-filter-value {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 32px;
+  margin: 0;
+  padding: 0 var(--space-1);
+  font-family: var(--font-sans);
+  font-size: var(--fs-body);
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--text);
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+.column-filter-values .column-filter-value:hover {
+  background: var(--surface-2);
+}
+.column-filter-none {
+  margin: 0;
+  padding: var(--space-2) var(--space-1);
+  color: var(--text-muted);
+}
+
+/* ---------- Phone sheet ---------- */
+.excel-sheet-list,
+.excel-sheet-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.excel-sheet-panel > .btn {
+  align-self: flex-start;
+}
+.excel-sheet-title {
+  margin: 0;
+  font-size: var(--fs-lg);
+}
+.excel-sheet-panel .column-filter-values {
+  max-height: 40vh;
+}
+.excel-sheet-panel .column-filter-value {
+  min-height: var(--tap);
+}
+.excel-sheet-sort {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: var(--space-3);
+}
+.excel-sheet-sort .field > label {
+  margin-top: 0;
+}
+.excel-sheet-columns {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: var(--hairline) solid var(--border);
+}
+.excel-sheet-column {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: var(--tap);
+  padding: var(--space-2) 0;
+  border: 0;
+  border-bottom: var(--hairline) solid var(--border);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.excel-sheet-state {
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  color: var(--label);
+}
+.excel-sheet-column.is-active .excel-sheet-state {
+  color: var(--accent);
+}
+
+/* ---------- Table from 600 px: one line per row, compact cells, first column pinned ---------- */
+@media (min-width: 600px) {
+  .excel-table-grid {
+    width: max-content;
+    min-width: 100%;
+  }
+  .excel-table-grid th,
+  .excel-table-grid td {
+    white-space: nowrap;
+    padding-left: var(--space-3);
+    padding-right: var(--space-3);
+  }
+  .excel-table-grid :is(th, td):first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    max-width: 240px;
+    padding-left: var(--cell-pad-x);
+    white-space: normal;
+    background: var(--surface);
+    box-shadow: inset calc(-1 * var(--hairline)) 0 0 var(--border);
+  }
+  .excel-table-grid :is(th, td):last-child {
+    padding-right: var(--cell-pad-x);
+  }
+  .excel-table-grid thead th:first-child {
+    background: var(--surface-2);
+  }
+  .excel-table-grid tbody tr:hover td:first-child {
+    background: var(--surface-2);
+  }
+}
