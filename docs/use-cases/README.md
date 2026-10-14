@@ -32,6 +32,7 @@ Actor is a signed-in partner unless stated.
 | UC-029 | Create and edit offer | A |
 | UC-030 | View offer via public link | A |
 | UC-031 | Convert offer to gig | A |
+| UC-032 | Manage partner status | A |
 | **Development** ||
 | UC-024 | Load local seed data | A |
 

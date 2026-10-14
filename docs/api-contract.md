@@ -39,6 +39,7 @@ The UI translates `code` and the field codes; it never shows `message` to users.
 | 409 | `BUDGET_NOT_EMPTY` | Copy budget into a year that already has budget numbers |
 | 409 | `CLIENT_IN_USE` | Deleting a client that gigs/offers link to |
 | 409 | `ALREADY_CONVERTED` | Converting an offer that already has a gig |
+| 409 | `CANNOT_REMOVE_SELF` / `LAST_PARTNER` | Removing own partner status / the last active partner |
 | 429 | `RATE_LIMITED` | Public offer endpoint: > 60 requests/min/IP (`Retry-After` header) |
 | 413 | `FILE_TOO_LARGE` | Upload too large (attachments > 20 MB; reference photos > 10 MB) |
 | 415 | `UNSUPPORTED_FILE_TYPE` | Wrong type (attachments: PDF/DOCX/PNG/JPG; reference photos: PNG/JPG/WebP) |
@@ -366,7 +367,16 @@ Duplicate = case-insensitive exact name match with another person.
 | `DELETE /api/references/{id}` | — | 204 (hard delete incl. image file) |
 | `GET /api/public/offers/{token}/references/{id}/image` | — (no session) | 200 image only if token valid, offer not deleted, `showReferences` true, reference active and has image; else 404 |
 
+## Partner status (UC-032)
+`Person` gains `partner: { id, email, active } | null` (null = never a partner). `Partner` (in `/api/me`, `/api/reference`) gains `active`; `/api/reference.partners` lists all partners incl. inactive (UI offers only active ones for new choices).
+| Method & path | Request | Response |
+|---|---|---|
+| `PUT /api/people/{id}/partner` | `{ email }` | 200 `Person` — makes/keeps the person an active partner with this email. `email: REQUIRED / INVALID_VALUE` (not in allowed domain) `/ DUPLICATE` |
+| `DELETE /api/people/{id}/partner` | — | 200 `Person` — deactivates; revokes all its sessions. 409 `CANNOT_REMOVE_SELF`, 409 `LAST_PARTNER`; 404 if not a partner |
+`GET /api/people` gains `?partner=true|false`. Sign-in (Google and dev login) requires an **active** partner; an inactive partner's existing session → 401 on the next request.
+
 ## Change log
+- 2026-10-14 – Partner status managed in the app (UC-032): person.partner, PUT/DELETE /api/people/{id}/partner, partner.active, CANNOT_REMOVE_SELF, LAST_PARTNER (PM)
 - 2026-10-07 – Reference.imageVersion + `?v=` cache busting; reorder validation; reference upload error texts (PM)
 - 2026-10-07 – References entity + endpoints; PublicOffer.references becomes a list with photos (owner request, breaking for references) (PM)
 - 2026-10-07 – Offers clarifications from TASK-016: RATE_LIMITED, status filter values, deleted-offer behaviour, create defaults/validation, OfferEvent shape (PM)

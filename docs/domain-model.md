@@ -264,3 +264,7 @@ No agencies: one client per gig and per offer. Real client names exist only in t
 | active | bool | inactive references are not shown on offers |
 
 Replaces settings `offers.references_fi/_en`. Real quotes, authors and photos exist only in the local database/uploads (BR-090); the example seed has 3 synthetic references without photos.
+
+## Partner management (owner request 2026-10-14)
+Partner gains: `active` (bool, default true), `granted_by` / `granted_at`, `revoked_by` / `revoked_at`.
+A Person is a partner when an **active** Partner links to it. Partners are now created/removed in the app (UC-032), not only via seed.
