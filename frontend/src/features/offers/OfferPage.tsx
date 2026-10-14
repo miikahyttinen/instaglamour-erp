@@ -25,6 +25,7 @@ import { StatusTag } from '../../components/StatusTag';
 import { apiErrorMessage } from '../../i18n/labels';
 import { useLang } from '../../i18n/useLang';
 import { formatDateTime, formatDateWithWeekday } from '../../lib/format';
+import { partnerOptions } from '../../reference/partners';
 import { useReference } from '../../reference/useReference';
 import { InlineClientSelect } from '../clients/ClientSelect';
 import { ConvertDialog } from './ConvertDialog';
@@ -273,10 +274,8 @@ function OfferDetailFields({ offer, readOnly }: { offer: OfferDetail; readOnly: 
   const { t } = useTranslation();
   const { data: reference } = useReference();
   const patch = useOfferPatch(offer);
-  const partners = reference?.partners ?? [];
-  const sellerOptions = partners.some((p) => p.id === offer.sellerId)
-    ? partners.map((p) => ({ value: p.id, label: p.name }))
-    : [{ value: offer.sellerId, label: '–' }, ...partners.map((p) => ({ value: p.id, label: p.name }))];
+  // Active partners + the current seller even if removed (UC-032).
+  const sellerOptions = partnerOptions(reference?.partners, offer.sellerId);
   return (
     <Card as="div" className="offer-fields">
       <FieldList>

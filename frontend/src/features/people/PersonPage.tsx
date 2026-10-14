@@ -17,6 +17,8 @@ import { useLang } from '../../i18n/useLang';
 import { formatDate, formatMoney } from '../../lib/format';
 import { GigStatusTag } from '../gigs/GigStatusTag';
 import { NoticeBox, type Notice } from './Notices';
+import { isPartner } from './partnerRules';
+import { PartnerStatus, PartnerTag } from './PartnerStatus';
 import { PersonActiveSwitch, PersonNameField } from './PersonFields';
 import { usePeopleList, usePersonCostLines } from './queries';
 import './people.css';
@@ -25,8 +27,8 @@ import './people.css';
 const TOTALS_SPAN: GridSpan = { base: 6, lg: 3 };
 
 /**
- * One person: name and active edited in place (NFR-8), and their cost lines in the selected year
- * (UC-014 A2).
+ * One person: name, active and partner status edited in place (NFR-8, UC-032), and their cost
+ * lines in the selected year (UC-014 A2).
  */
 export function PersonPage() {
   const { t } = useTranslation();
@@ -60,9 +62,12 @@ export function PersonPage() {
           <PageHead
             title={person.name}
             subtitle={
-              person.active ? undefined : (
-                <StatusTag tone="muted">{t('people.inactiveBadge')}</StatusTag>
-              )
+              isPartner(person) || !person.active ? (
+                <span className="person-tags">
+                  {isPartner(person) && <PartnerTag />}
+                  {!person.active && <StatusTag tone="muted">{t('people.inactiveBadge')}</StatusTag>}
+                </span>
+              ) : undefined
             }
           >
             {backLink}
@@ -70,6 +75,7 @@ export function PersonPage() {
           <FieldList className="person-fields">
             <PersonNameField person={person} label={t('people.name')} onNotice={setNotice} />
             <PersonActiveSwitch person={person} label={t('people.active')} onNotice={setNotice} />
+            <PartnerStatus person={person} onNotice={setNotice} />
           </FieldList>
           <NoticeBox notice={notice} onDismiss={() => setNotice(null)} />
           <CostLines personId={person.id} />

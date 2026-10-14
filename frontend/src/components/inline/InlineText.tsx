@@ -1,3 +1,4 @@
+import type { FieldCode } from '../../api/enums';
 import { textControlProps } from './controlProps';
 import { InlineFieldFrame } from './InlineFieldFrame';
 import type { InlineBaseProps } from './types';
@@ -8,6 +9,10 @@ interface TextOwnProps {
   maxLength?: number;
   placeholder?: string;
   autoComplete?: string;
+  /** Field-specific texts for some codes (see `useInlineSave`). */
+  fieldMessages?: Partial<Record<FieldCode, string>>;
+  /** Input type: `text` (default) or `email` (phone keyboard). */
+  type?: 'text' | 'email';
 }
 
 /**
@@ -38,6 +43,7 @@ function useTextField(props: InlineTextProps) {
       return { ok: true, value: text };
     },
     equals: textEquals,
+    fieldMessages: props.fieldMessages,
   });
 }
 
@@ -58,7 +64,7 @@ export function InlineText(props: InlineTextProps) {
         <input
           {...control}
           {...textControlProps(state)}
-          type="text"
+          type={props.type ?? 'text'}
           placeholder={props.placeholder}
           autoComplete={props.autoComplete ?? 'off'}
           disabled={props.disabled}

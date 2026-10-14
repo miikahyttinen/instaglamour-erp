@@ -16,6 +16,7 @@ import { SectionLabel } from '../../components/SectionLabel';
 import { apiErrorMessage, apiFieldErrors, costTypeLabel } from '../../i18n/labels';
 import { useLang } from '../../i18n/useLang';
 import { parseMoneyField } from '../../lib/moneyField';
+import { activePartners } from '../../reference/partners';
 import { useReference } from '../../reference/useReference';
 import { ClientSelect } from '../clients/ClientSelect';
 import { PartnerOptions } from '../gigs/formParts';
@@ -186,7 +187,7 @@ export function NewOfferPage() {
           <Field label={t('offer.fields.seller')} error={errors.sellerId}>
             {(p) => (
               <select {...p} value={form.sellerId} onChange={(e) => set('sellerId', e.target.value)}>
-                <PartnerOptions partners={reference?.partners} />
+                <PartnerOptions partners={activePartners(reference?.partners)} />
               </select>
             )}
           </Field>

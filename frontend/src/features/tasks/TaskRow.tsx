@@ -9,6 +9,7 @@ import { StatusTag } from '../../components/StatusTag';
 import { apiErrorMessage } from '../../i18n/labels';
 import { useLang } from '../../i18n/useLang';
 import { formatDate } from '../../lib/format';
+import { partnerOptions } from '../../reference/partners';
 import { useDeleteTask, useUpdateTask } from './hooks';
 
 interface Props {
@@ -32,11 +33,8 @@ export function TaskRow({ task, partners }: Props) {
 
   const patch = (body: TaskUpdate) => update.mutateAsync({ id: task.id, body });
 
-  // The current owner must be among the options even if the reference list lacks them.
-  const ownerOptions = partners.map((p) => ({ value: p.id, label: p.name }));
-  if (!ownerOptions.some((o) => o.value === task.ownerId)) {
-    ownerOptions.unshift({ value: task.ownerId, label: '–' });
-  }
+  // Active partners + the current owner even if removed (UC-032) or missing from the list.
+  const ownerOptions = partnerOptions(partners, task.ownerId);
 
   return (
     <li

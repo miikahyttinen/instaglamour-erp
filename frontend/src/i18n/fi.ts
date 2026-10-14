@@ -92,6 +92,8 @@ const fi = {
     BUDGET_NOT_EMPTY: 'Vuodelle on jo budjettilukuja.',
     CLIENT_IN_USE: 'Asiakas on käytössä: siihen on liitetty keikkoja tai tarjouksia.',
     ALREADY_CONVERTED: 'Tarjouksesta on jo tehty keikka.',
+    CANNOT_REMOVE_SELF: 'Et voi poistaa omaa osakkuuttasi.',
+    LAST_PARTNER: 'Viimeistä osakasta ei voi poistaa.',
     RATE_LIMITED: 'Liian monta pyyntöä. Odota hetki ja yritä uudelleen.',
     FILE_TOO_LARGE: 'Tiedosto on liian suuri (enintään 20 Mt).',
     UNSUPPORTED_FILE_TYPE: 'Sallitut tiedostotyypit: PDF, DOCX, PNG ja JPG.',
