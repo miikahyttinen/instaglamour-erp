@@ -72,7 +72,7 @@ test('new offer: required fields refused, defaults applied when "what\'s include
   const client = await createClientViaApi(page, `Client ${tag}-${suffix()}-offer`);
   const eventName = `Juhla ${tag}-${suffix()}`;
 
-  // Offers is the first menu item; the selected year has no offers yet → empty state (E1).
+  // Offers is the second menu item (after Vuosi, TASK-142); the selected year has no offers yet → empty state (E1).
   await page.goto('/');
   await goNav(page, 'Tarjoukset');
   await expect(page.getByRole('heading', { level: 1, name: `Tarjoukset ${year}` })).toBeVisible();

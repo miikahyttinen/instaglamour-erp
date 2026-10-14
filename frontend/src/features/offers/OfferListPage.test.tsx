@@ -21,7 +21,7 @@ describe('offer list (UC-028)', () => {
     clientId = addMockClient('Client X').id;
   });
 
-  it('is the first menu item and shows the year figures, all columns and the default sort', async () => {
+  it('is the second menu item (after Vuosi) and shows the year figures, all columns and the default sort', async () => {
     addMockOffer({ clientId, eventName: 'Event B', eventDate: `${TEST_YEAR}-09-01`, priceCents: 200000 });
     addMockOffer({ clientId, eventName: 'Event A', eventDate: `${TEST_YEAR}-03-01`, city: 'City Y' });
     addMockOffer({ clientId, eventName: 'Event W', eventDate: `${TEST_YEAR}-04-01`, disposition: 'WON' });
@@ -30,9 +30,11 @@ describe('offer list (UC-028)', () => {
     installMatchMedia({ [DESKTOP_QUERY]: true });
     const { user } = renderApp('/');
     const nav = await screen.findByRole('navigation', { name: 'Päävalikko' });
-    const first = within(nav).getAllByRole('link')[0]!;
-    expect(first).toHaveTextContent('Tarjoukset');
-    await user.click(first);
+    const links = within(nav).getAllByRole('link');
+    expect(links[0]).toHaveTextContent('Vuosi');
+    const offers = links[1]!;
+    expect(offers).toHaveTextContent('Tarjoukset');
+    await user.click(offers);
 
     expect(await screen.findByRole('heading', { level: 1, name: `Tarjoukset ${TEST_YEAR}` })).toBeInTheDocument();
     expect(text(screen.getByRole('region', { name: 'Avoimet tarjoukset' }))).toContain(fiMoney(300000));
