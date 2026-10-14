@@ -44,6 +44,7 @@ function initialPartners(): Partner[] {
       email: 'partner.a@example.com',
       language: 'fi',
       selectedYear: year,
+      active: true,
     },
     {
       id: '00000000-0000-4000-8000-00000000000b',
@@ -52,6 +53,7 @@ function initialPartners(): Partner[] {
       email: 'partner.b@example.com',
       language: 'en',
       selectedYear: year,
+      active: true,
     },
     {
       id: '00000000-0000-4000-8000-00000000000c',
@@ -60,6 +62,7 @@ function initialPartners(): Partner[] {
       email: 'partner.c@example.com',
       language: 'fi',
       selectedYear: year,
+      active: true,
     },
   ];
 }

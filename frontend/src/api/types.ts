@@ -63,12 +63,28 @@ export interface Partner {
   email: string;
   language: Language;
   selectedYear: number;
+  /** False = removed partner (UC-032): name stays on old records, not offered for new choices. */
+  active: boolean;
+}
+
+/** Partner status of a person (UC-032). */
+export interface PersonPartner {
+  /** Partner id */
+  id: Id;
+  email: string;
+  active: boolean;
 }
 
 export interface Person {
   id: Id;
   name: string;
   active: boolean;
+  /**
+   * null = never a partner; `active: false` = partner status removed. The server always sends it;
+   * optional here only so hand-written fixtures without it (features/gigs tests) still compile.
+   * Treat `undefined` as null.
+   */
+  partner?: PersonPartner | null;
 }
 
 export interface GigSummary {
@@ -421,6 +437,13 @@ export interface CostLinePayRequest {
 // ---------- People ----------
 
 export type PeopleActiveFilter = 'true' | 'false' | 'all';
+/** `?partner=` of GET /api/people (UC-032); undefined = not sent (everyone). */
+export type PeoplePartnerFilter = 'true' | 'false';
+
+/** PUT /api/people/{id}/partner */
+export interface PersonPartnerUpdate {
+  email: string;
+}
 
 export interface PersonCreate {
   name: string;

@@ -14,8 +14,9 @@ export function errorResponse(
   return HttpResponse.json(body, { status });
 }
 
+/** The signed-in partner. A removed (inactive) partner's session no longer works (BR-111). */
 export function currentPartner(): Partner | undefined {
-  return db.partners.find((p) => p.id === db.sessionPartnerId);
+  return db.partners.find((p) => p.id === db.sessionPartnerId && p.active);
 }
 
 export const unauthenticated = () => errorResponse(401, 'UNAUTHENTICATED', 'No session');

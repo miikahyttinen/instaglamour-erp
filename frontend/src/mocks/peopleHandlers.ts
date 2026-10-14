@@ -1,5 +1,6 @@
-// Mock handlers for docs/api-contract.md → People (UC-014). People live in the gig mock store
-// (db.gigs.people) so the gig pickers and the people register share one list.
+// Mock handlers for docs/api-contract.md → People (UC-014) and Partner status (UC-032). People
+// live in the gig mock store (db.gigs.people) so the gig pickers and the people register share
+// one list; `person.partner` is derived from db.partners (linked by personId).
 import { http, HttpResponse } from 'msw';
 import type { FieldCode } from '../api/enums';
 import type {
@@ -7,15 +8,19 @@ import type {
   PersonCostLine,
   PersonCostLinesResponse,
   PersonCreate,
+  PersonPartnerUpdate,
   PersonUpdate,
   PersonWithWarnings,
   Warning,
 } from '../api/types';
 import { db } from './data';
-import { mockId } from './gigStore';
+import { mockId, type MockPerson } from './gigStore';
 import { currentPartner, errorResponse, unauthenticated, validationError } from './util';
 
 const NAME_MAX = 500;
+/** AUTH_ALLOWED_DOMAIN of the mock backend (synthetic, BR-090). */
+export const MOCK_ALLOWED_DOMAIN = 'example.com';
+const EMAIL_RE = /^[^\s@]+@[^\s@]+$/;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** Trimmed name, or the field code when invalid. `undefined` = not sent (PATCH). */
@@ -44,7 +49,32 @@ async function readJson<T>(request: Request): Promise<Partial<T>> {
   }
 }
 
-function findPerson(id: unknown): Person | undefined {
+function partnerOf(personId: string) {
+  return db.partners.find((p) => p.personId === personId);
+}
+
+/** API shape: the stored person + its partner status. */
+function toPerson(stored: MockPerson): Person {
+  const partner = partnerOf(stored.id);
+  return {
+    ...stored,
+    partner: partner ? { id: partner.id, email: partner.email, active: partner.active } : null,
+  };
+}
+
+/** BR-110: required, in the allowed domain, unique among partners (case-insensitive). */
+function checkPartnerEmail(value: unknown, personId: string): { email?: string; error?: FieldCode } {
+  if (value != null && typeof value !== 'string') return { error: 'INVALID_VALUE' };
+  const email = typeof value === 'string' ? value.trim().toLowerCase() : '';
+  if (!email) return { error: 'REQUIRED' };
+  if (!EMAIL_RE.test(email) || !email.endsWith(`@${MOCK_ALLOWED_DOMAIN}`)) return { error: 'INVALID_VALUE' };
+  if (db.partners.some((p) => p.personId !== personId && p.email.toLowerCase() === email)) {
+    return { error: 'DUPLICATE' };
+  }
+  return { email };
+}
+
+function findPerson(id: unknown): MockPerson | undefined {
   return typeof id === 'string' && UUID_RE.test(id)
     ? db.gigs.people.find((p) => p.id === id)
     : undefined;
@@ -55,12 +85,18 @@ const notFound = () => errorResponse(404, 'NOT_FOUND', 'Person not found');
 export const peopleHandlers = [
   http.get('/api/people', ({ request }) => {
     if (!currentPartner()) return unauthenticated();
-    const active = new URL(request.url).searchParams.get('active') ?? 'true';
+    const params = new URL(request.url).searchParams;
+    const active = params.get('active') ?? 'true';
     if (!['true', 'false', 'all'].includes(active)) return validationError({ active: 'INVALID_VALUE' });
+    const partner = params.get('partner');
+    if (partner !== null && !['true', 'false'].includes(partner)) {
+      return validationError({ partner: 'INVALID_VALUE' });
+    }
     const people: Person[] = db.gigs.people
       .filter((p) => active === 'all' || p.active === (active === 'true'))
-      .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
-      .map((p) => ({ ...p }));
+      .map(toPerson)
+      .filter((p) => partner === null || (p.partner?.active === true) === (partner === 'true'))
+      .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
     return HttpResponse.json(people);
   }),
 
@@ -70,9 +106,9 @@ export const peopleHandlers = [
     const { name, error } = checkName(body.name, true);
     if (error || name === undefined) return validationError({ name: error ?? 'REQUIRED' });
     const warnings = duplicateWarnings(name);
-    const person: Person = { id: mockId(), name, active: true };
+    const person: MockPerson = { id: mockId(), name, active: true };
     db.gigs.people.push(person);
-    const response: PersonWithWarnings = { person: { ...person }, warnings };
+    const response: PersonWithWarnings = { person: toPerson(person), warnings };
     return HttpResponse.json(response, { status: 201 });
   }),
 
@@ -87,10 +123,56 @@ export const peopleHandlers = [
     const person = findPerson(params.id);
     if (!person) return notFound();
     const warnings = name === undefined ? [] : duplicateWarnings(name, person.id);
-    if (name !== undefined) person.name = name;
+    if (name !== undefined) {
+      person.name = name;
+      // Partner.name comes from the linked Person.
+      const partner = partnerOf(person.id);
+      if (partner) partner.name = name;
+    }
     if (body.active !== undefined) person.active = body.active;
-    const response: PersonWithWarnings = { person: { ...person }, warnings };
+    const response: PersonWithWarnings = { person: toPerson(person), warnings };
     return HttpResponse.json(response);
+  }),
+
+  // UC-032 / BR-110: make (or re-activate) a partner, or change its email.
+  http.put('/api/people/:id/partner', async ({ request, params }) => {
+    if (!currentPartner()) return unauthenticated();
+    const body = await readJson<PersonPartnerUpdate>(request);
+    const person = findPerson(params.id);
+    const { email, error } = checkPartnerEmail(body.email, person?.id ?? '');
+    if (error || email === undefined) return validationError({ email: error ?? 'REQUIRED' });
+    if (!person) return notFound();
+    const partner = partnerOf(person.id);
+    if (partner) {
+      partner.email = email;
+      partner.active = true;
+    } else {
+      db.partners.push({
+        id: mockId(),
+        personId: person.id,
+        name: person.name,
+        email,
+        language: 'fi',
+        selectedYear: new Date().getFullYear(),
+        active: true,
+      });
+    }
+    return HttpResponse.json(toPerson(person));
+  }),
+
+  // BR-111 / BR-112: deactivate; the partner's mock session stops working (currentPartner()).
+  http.delete('/api/people/:id/partner', ({ params }) => {
+    const me = currentPartner();
+    if (!me) return unauthenticated();
+    const person = findPerson(params.id);
+    const partner = person && partnerOf(person.id);
+    if (!person || !partner?.active) return notFound();
+    if (partner.id === me.id) return errorResponse(409, 'CANNOT_REMOVE_SELF', 'Cannot remove own partner status');
+    if (db.partners.filter((p) => p.active).length <= 1) {
+      return errorResponse(409, 'LAST_PARTNER', 'Cannot remove the last partner');
+    }
+    partner.active = false;
+    return HttpResponse.json(toPerson(person));
   }),
 
   http.get('/api/people/:id/cost-lines', ({ request, params }) => {

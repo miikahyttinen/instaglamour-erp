@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:mock": "VITE_USE_MOCKS=true VITE_DEV_LOGIN=true vite",
+    "dev:mock": "VITE_USE_MOCKS=true VITE_DEV_LOGIN=true VITE_AUTH_ALLOWED_DOMAIN=example.com vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "test": "vitest run",
