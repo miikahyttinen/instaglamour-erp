@@ -189,6 +189,35 @@ describe('people register (UC-014)', () => {
     expect(db.gigs.people.find((p) => p.name === 'Person 2')!.active).toBe(true);
   });
 
+  it('shows an Osakas tag on partners and filters by partner status (UC-032 AC-5)', async () => {
+    const { user } = await openPeople();
+    expect(within(row('Partner A')).getByText('Osakas')).toHaveClass('tag');
+    expect(within(row('Person 1')).queryByText('Osakas')).not.toBeInTheDocument();
+
+    const filter = screen.getByRole('combobox', { name: 'Osakkuus' });
+    expect(filter).toHaveDisplayValue('Kaikki');
+    await user.selectOptions(filter, 'Osakkaat');
+    await waitFor(() => expect(names()).toEqual(['Partner A', 'Partner B', 'Partner C']));
+
+    await user.selectOptions(filter, 'Muut');
+    await waitFor(() => expect(names()).not.toContain('Partner A'));
+    expect(names()).toContain('Person 1');
+
+    // Combines with the active filter (both in the URL).
+    await user.click(screen.getByRole('button', { name: 'Ei käytössä' }));
+    await waitFor(() => expect(names()).toEqual(['Person 9']));
+    expect(filter).toHaveDisplayValue('Muut');
+  });
+
+  it('a removed partner has no tag and is not in the partner filter', async () => {
+    db.partners.find((p) => p.name === 'Partner C')!.active = false;
+    const { user } = await openPeople('/people?partner=true');
+    await waitFor(() => expect(names()).toEqual(['Partner A', 'Partner B']));
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Osakkuus' }), 'Kaikki');
+    await waitFor(() => expect(names()).toContain('Partner C'));
+    expect(within(row('Partner C')).queryByText('Osakas')).not.toBeInTheDocument();
+  });
+
   it('shows English texts', async () => {
     db.partners[0]!.language = 'en';
     setLanguage('en');
