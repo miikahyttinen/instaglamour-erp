@@ -1,5 +1,5 @@
 import { useMutation } from '@tanstack/react-query';
-import { useDeferredValue, useEffect, useRef, useState } from 'react';
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Plus, RotateCcw, Search } from 'lucide-react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
@@ -9,7 +9,14 @@ import type { GigListQuery, GigSummary, Partner, YearGigTotals } from '../../api
 import { useSelectedYear } from '../../auth/SignedInContext';
 import { Button } from '../../components/Button';
 import { buttonClass } from '../../components/buttonClass';
-import { DataTable, type DataTableColumn } from '../../components/DataTable';
+import { ExcelTable } from '../../components/ExcelTable';
+import {
+  applyTableState,
+  useUrlTableState,
+  type ExcelColumn,
+  type ExcelTableState,
+  type TableFilters,
+} from '../../components/excelTableState';
 import { Notice } from '../../components/Notice';
 import { PageHead } from '../../components/PageHead';
 import { SectionLabel } from '../../components/SectionLabel';
@@ -18,20 +25,36 @@ import { StatusTag } from '../../components/StatusTag';
 import { apiErrorMessage, gigDisplayStatus } from '../../i18n/labels';
 import { useLang } from '../../i18n/useLang';
 import { formatDate, formatDateRange, formatMoney, formatPercent, todayIso } from '../../lib/format';
-import { WIDE_QUERY, useMediaQuery } from '../../lib/useMediaQuery';
 import { useReference } from '../../reference/useReference';
 import { GigStatusTag } from './GigStatusTag';
 import { useApplyGig, useGigList } from './queries';
 import './gigList.css';
 
-type When = NonNullable<GigListQuery['when']>;
-const WHENS: When[] = ['all', 'upcoming', 'past'];
+/** Order of the status filter values and of the status sort. */
+const GIG_DISPLAY_STATUSES: GigDisplayStatus[] = ['SOLD', 'PLAYED', 'CANCELLED'];
+/** UC-003 AC-1: the list opens with the SOLD gigs (sold + played); cancelled via the Tila filter. */
+const DEFAULT_STATUS_FILTER: GigDisplayStatus[] = ['SOLD', 'PLAYED'];
+/** Default order (UC-003 step 1): by date. */
+const DEFAULT_SORT = { key: 'date', dir: 'asc' } as const;
+
+/** Filter values in the order of a code list (unknown values last). */
+const byCodeOrder =
+  (codes: readonly string[]) =>
+  (a: string, b: string): number => {
+    const ia = codes.indexOf(a);
+    const ib = codes.indexOf(b);
+    return (ia < 0 ? codes.length : ia) - (ib < 0 ? codes.length : ib);
+  };
 
 function partnerName(partners: Partner[] | undefined, id: string): string {
   return partners?.find((p) => p.id === id)?.name ?? '–';
 }
 
-/** Gigs of the selected year: year summary, filters, search, deleted view (UC-003, UC-025). */
+/**
+ * Gigs of the selected year (UC-003, UC-025): year summary (unfiltered), search, Excel-style table
+ * with column filters (ExcelTable; filters and sort in the URL, client-side over the year's
+ * gigs), Deleted view.
+ */
 export function GigListPage() {
   const { t } = useTranslation();
   const lang = useLang();
@@ -39,14 +62,12 @@ export function GigListPage() {
   const { data: reference } = useReference();
   const [params, setParams] = useSearchParams();
   const location = useLocation();
-  const deletedNotice = (location.state as { notice?: string } | null)?.notice === 'deleted';
+  // Read once: the table state updates replace the history entry, which drops `location.state`.
+  const [deletedNotice] = useState(() => (location.state as { notice?: string } | null)?.notice === 'deleted');
 
   const deletedView = params.get('view') === 'deleted';
-  const when = (WHENS as string[]).includes(params.get('when') ?? '') ? (params.get('when') as When) : 'all';
-  const includeCancelled = params.get('cancelled') === '1';
-  const sellerId = params.get('seller') ?? '';
-  const producerId = params.get('producer') ?? '';
-  const notFullyStaffed = params.get('nfs') === '1';
+  const urlTableState = useUrlTableState({ defaultSort: DEFAULT_SORT });
+  const tableState = useDefaultStatusFilter(urlTableState);
   const [search, setSearch] = useState(params.get('q') ?? '');
   const q = useDeferredValue(search.trim());
 
@@ -75,25 +96,18 @@ export function GigListPage() {
     );
   }, [q, params, setParams]);
 
+  // The column filters are client-side over all of the year's gigs (design.md); only the search
+  // goes to the API.
   const query: GigListQuery = deletedView
     ? { year, status: 'ALL', deleted: true, q: q || undefined }
-    : {
-        year,
-        status: includeCancelled ? 'ALL' : 'SOLD',
-        when,
-        sellerId: sellerId || undefined,
-        producerId: producerId || undefined,
-        notFullyStaffed: notFullyStaffed || undefined,
-        q: q || undefined,
-      };
+    : { year, status: 'ALL', q: q || undefined };
   const list = useGigList(query);
   const applyGig = useApplyGig();
   const restore = useMutation({
     mutationFn: (id: string) => gigsApi.restore(id),
     onSuccess: (gig) => applyGig(gig, gig.id),
   });
-  const filtered =
-    Boolean(q) || when !== 'all' || Boolean(sellerId) || Boolean(producerId) || notFullyStaffed;
+  const filtered = Boolean(q);
 
   const newGigLink = (
     <Link to="/gigs/new" className={buttonClass({ className: 'gig-new-link' })}>
@@ -124,84 +138,20 @@ export function GigListPage() {
           </button>
         </div>
 
-        <div className="gig-filters">
-          <div className="gig-filter-search">
-            <label htmlFor="gig-search">{t('gigs.search')}</label>
-            <div className="gig-search-input">
-              <Search className="gig-search-icon" />
-              <input
-                id="gig-search"
-                type="search"
-                value={search}
-                placeholder={t('gigs.searchPlaceholder')}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
+        {/* The column filters live in the table headers (ExcelTable); the search stays here. */}
+        <div className="gig-search">
+          <label htmlFor="gig-search">{t('gigs.search')}</label>
+          <div className="gig-search-input">
+            <Search className="gig-search-icon" />
+            <input
+              id="gig-search"
+              type="search"
+              value={search}
+              placeholder={t('gigs.searchPlaceholder')}
+              onChange={(e) => setSearch(e.target.value)}
+            />
           </div>
-          {!deletedView && (
-            <>
-              <div className="gig-filter-select">
-                <label htmlFor="gig-seller">{t('gigs.seller')}</label>
-                <select id="gig-seller" value={sellerId} onChange={(e) => setParam('seller', e.target.value)}>
-                  <option value="">{t('gigs.anyone')}</option>
-                  {reference?.partners.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="gig-filter-select">
-                <label htmlFor="gig-producer">{t('gigs.producer')}</label>
-                <select
-                  id="gig-producer"
-                  value={producerId}
-                  onChange={(e) => setParam('producer', e.target.value)}
-                >
-                  <option value="">{t('gigs.anyone')}</option>
-                  {reference?.partners.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </>
-          )}
         </div>
-
-        {!deletedView && (
-          <div className="gig-filter-flags">
-            <div className="segmented" role="group" aria-label={t('gigs.whenLabel')}>
-              {WHENS.map((w) => (
-                <button
-                  key={w}
-                  type="button"
-                  aria-pressed={when === w}
-                  onClick={() => setParam('when', w === 'all' ? null : w)}
-                >
-                  {t(`gigs.when.${w}`)}
-                </button>
-              ))}
-            </div>
-            <label className="check">
-              <input
-                type="checkbox"
-                checked={includeCancelled}
-                onChange={(e) => setParam('cancelled', e.target.checked ? '1' : null)}
-              />
-              {t('gigs.includeCancelled')}
-            </label>
-            <label className="check">
-              <input
-                type="checkbox"
-                checked={notFullyStaffed}
-                onChange={(e) => setParam('nfs', e.target.checked ? '1' : null)}
-              />
-              {t('gigs.notFullyStaffed')}
-            </label>
-          </div>
-        )}
       </div>
 
       {deletedView && restore.isError && (
@@ -246,10 +196,34 @@ export function GigListPage() {
         ) : deletedView ? (
           <DeletedList gigs={list.data.gigs} onRestore={(id) => restore.mutate(id)} pending={restore.isPending} />
         ) : (
-          <GigRows gigs={list.data.gigs} partners={reference?.partners} lang={lang} />
+          <GigTable gigs={list.data.gigs} partners={reference?.partners} lang={lang} tableState={tableState} />
         ))}
     </section>
   );
+}
+
+/**
+ * UC-003 AC-1: the list opens with the SOLD gigs (Myyty + Soitettu); "Näytä myös perutut" is now
+ * the Tila filter. While the URL has no status filter and nobody has changed the filters on this
+ * visit, the table shows the default status filter (not written to the URL, so a plain /gigs link
+ * stays the default view). After the first filter change the URL alone counts, so "Valitse
+ * kaikki" / "Tyhjennä suodattimet" really show every status.
+ */
+function useDefaultStatusFilter(state: ExcelTableState): ExcelTableState {
+  const [touched, setTouched] = useState(false);
+  const { filters, onFiltersChange } = state;
+  const effective = useMemo(
+    () => (touched || filters.status !== undefined ? filters : { ...filters, status: DEFAULT_STATUS_FILTER }),
+    [touched, filters],
+  );
+  const change = useCallback(
+    (next: TableFilters) => {
+      setTouched(true);
+      onFiltersChange(next);
+    },
+    [onFiltersChange],
+  );
+  return { ...state, filters: effective, onFiltersChange: change };
 }
 
 /** Mono line under the page title: gig count and sold gigs sum. */
@@ -306,233 +280,200 @@ function useScrollToFirstUpcoming(firstUpcomingId: string | undefined) {
   return containerRef;
 }
 
-interface GigRowsProps {
-  gigs: GigSummary[];
-  partners: Partner[] | undefined;
-  lang: 'fi' | 'en';
-}
-
-/** Wide screens (≥ 1200 px): hairline table. Narrower: cards with economics on tap. */
-function GigRows(props: GigRowsProps) {
-  // The 8-column table needs the content width of a ≥ 1200 px viewport (the sidebar takes
-  // 232 px from 900 px). Below that the list is shown as cards. It fits the ~886 px box next to
-  // the expanded sidebar because a date range may wrap after its dash (F-006, gigList.css).
-  const wide = useMediaQuery(WIDE_QUERY);
-  const today = todayIso();
-  const firstUpcomingId = props.gigs.find((g) => g.startDate >= today)?.id;
-  const containerRef = useScrollToFirstUpcoming(firstUpcomingId);
+/** Ties in the gig table (and the order without a sort): start date, then lineup, then venue. */
+function gigTieBreak(a: GigSummary, b: GigSummary): number {
   return (
-    <div ref={containerRef} className="gig-rows-wrap">
-      {wide ? (
-        <GigTable {...props} firstUpcomingId={firstUpcomingId} />
-      ) : (
-        <GigCards {...props} firstUpcomingId={firstUpcomingId} />
-      )}
-    </div>
+    a.startDate.localeCompare(b.startDate) ||
+    a.lineupName.localeCompare(b.lineupName) ||
+    a.venue.localeCompare(b.venue)
   );
 }
 
-function GigFlags({ gig, status }: { gig: GigSummary; status: GigDisplayStatus }) {
-  const { t } = useTranslation();
-  if (status === 'SOLD' && !gig.notFullyStaffed) return null;
+interface GigTableProps {
+  gigs: GigSummary[];
+  partners: Partner[] | undefined;
+  lang: 'fi' | 'en';
+  tableState: ExcelTableState;
+}
+
+/**
+ * Date or date range for the table, never breaking inside a date. The text is the same as
+ * `formatDateRange`.
+ */
+function TableDateRange({ start, end, lang }: { start: string; end: string | null; lang: 'fi' | 'en' }) {
+  if (!end || end === start) return <span className="gig-date-part">{formatDate(start, lang)}</span>;
+  // One wrapper, so a phone card (flex row: label | value) keeps the range together.
   return (
-    <span className="gig-flags">
-      {status !== 'SOLD' && <GigStatusTag status={status} />}
-      {gig.notFullyStaffed && <StatusTag tone="warn">{t('gigs.notFullyStaffed')}</StatusTag>}
+    <span className="gig-date-range">
+      <span className="gig-date-part">{formatDate(start, lang)}–</span>
+      <span className="gig-date-part">{formatDate(end, lang)}</span>
     </span>
   );
 }
 
 /**
- * Date or date range for the table. A range may break after the dash (never inside a date), so
- * the date column can be one date wide at 1200–1279 px (F-006, gigList.css); wider it stays on
- * one line. The text is the same as `formatDateRange`.
+ * Excel-style table (UC-003 change 2026-10-14, design.md "Excel-style tables"), the same component
+ * and look as the offer list: every column sortable, filter icons on the coded / text columns, one
+ * line per row from 600 px with the lineup column pinned on horizontal scroll. Phones (< 600 px):
+ * one card per gig + the "Suodattimet" sheet. Scrolls the first upcoming visible gig into view.
  */
-function TableDateRange({ start, end, lang }: { start: string; end: string | null; lang: 'fi' | 'en' }) {
-  if (!end || end === start) return <span className="gig-date-part">{formatDate(start, lang)}</span>;
-  return (
-    <>
-      <span className="gig-date-part">{formatDate(start, lang)}–</span>
-      <span className="gig-date-part">{formatDate(end, lang)}</span>
-    </>
-  );
-}
-
-function GigTable({ gigs, partners, lang, firstUpcomingId }: GigRowsProps & { firstUpcomingId?: string }) {
+function GigTable({ gigs, partners, lang, tableState }: GigTableProps) {
   const { t } = useTranslation();
-  const columns: DataTableColumn<GigSummary>[] = [
+  const clientNames = useMemo(
+    () => new Map(gigs.filter((g) => g.clientId).map((g) => [g.clientId!, g.clientName ?? '–'])),
+    [gigs],
+  );
+  const statusLabel = (s: GigDisplayStatus) => t(`gigStatus.${s}`);
+
+  const columns: ExcelColumn<GigSummary>[] = [
+    {
+      key: 'lineup',
+      label: t('gigs.columns.lineup'),
+      primary: true,
+      className: 'gig-col-lineup',
+      sortValue: (g) => g.lineupName,
+      filterValue: (g) => g.lineupName,
+      cell: (g) => (
+        <Link to={`/gigs/${g.id}`} className="gig-link">
+          {g.lineupName}{' '}
+          {/* The venue has its own column; the link name stays "Lineup · Venue" (unique per gig). */}
+          <span className="visually-hidden">· {g.venue}</span>
+        </Link>
+      ),
+    },
     {
       key: 'date',
       label: t('gigs.columns.date'),
       className: 'gig-col-date',
-      cell: (gig) => <TableDateRange start={gig.startDate} end={gig.endDate} lang={lang} />,
+      sortValue: (g) => g.startDate,
+      cell: (g) => <TableDateRange start={g.startDate} end={g.endDate} lang={lang} />,
     },
     {
-      key: 'gig',
-      label: t('gigs.columns.gig'),
-      primary: true,
-      className: 'gig-col-gig',
-      cell: (gig) => (
-        <span className="gig-main">
-          <Link to={`/gigs/${gig.id}`} className="gig-link">
-            {gig.lineupName} · {gig.venue}
-          </Link>
-          <GigFlags gig={gig} status={gigDisplayStatus(gig)} />
-        </span>
-      ),
+      key: 'venue',
+      label: t('gigs.columns.venue'),
+      sortValue: (g) => g.venue,
+      filterValue: (g) => g.venue,
+      cell: (g) => g.venue,
     },
     {
       key: 'client',
       label: t('clients.gigColumn'),
-      className: 'gig-col-client',
-      cell: (gig) =>
-        gig.clientId ? (
-          <Link to={`/clients/${gig.clientId}`} className="gig-client-link">
-            {gig.clientName ?? '–'}
+      sortValue: (g) => g.clientName,
+      filterValue: (g) => g.clientId,
+      filterLabel: (id) => clientNames.get(id) ?? '–',
+      cell: (g) =>
+        g.clientId ? (
+          <Link to={`/clients/${g.clientId}`} className="gig-client-link">
+            {g.clientName ?? '–'}
           </Link>
         ) : (
           '–'
         ),
     },
     {
-      key: 'people',
-      label: t('gigs.columns.people'),
-      className: 'gig-col-people',
-      cell: (gig) => (
-        <>
-          {partnerName(partners, gig.sellerId)} / {partnerName(partners, gig.producerId)}
-        </>
-      ),
+      key: 'status',
+      label: t('gigs.columns.status'),
+      sortValue: (g) => GIG_DISPLAY_STATUSES.indexOf(gigDisplayStatus(g)),
+      filterValue: (g) => gigDisplayStatus(g),
+      filterLabel: (v) => statusLabel(v as GigDisplayStatus),
+      filterCompare: byCodeOrder(GIG_DISPLAY_STATUSES),
+      cell: (g) => <GigStatusTag status={gigDisplayStatus(g)} />,
+    },
+    {
+      key: 'staffing',
+      label: t('gigs.notFullyStaffed'),
+      className: 'gig-col-staffing',
+      sortValue: (g) => (g.notFullyStaffed ? 0 : 1),
+      filterValue: (g) => (g.notFullyStaffed ? 'yes' : 'no'),
+      filterLabel: (v) => t(v === 'yes' ? 'gigs.staffingFilter.yes' : 'gigs.staffingFilter.no'),
+      filterCompare: byCodeOrder(['yes', 'no']),
+      cell: (g) =>
+        g.notFullyStaffed ? <StatusTag tone="warn">{t('gigs.notFullyStaffed')}</StatusTag> : <span aria-hidden="true">–</span>,
+    },
+    {
+      key: 'seller',
+      label: t('gigs.seller'),
+      sortValue: (g) => partnerName(partners, g.sellerId),
+      filterValue: (g) => g.sellerId,
+      filterLabel: (id) => partnerName(partners, id),
+      cell: (g) => partnerName(partners, g.sellerId),
+    },
+    {
+      key: 'producer',
+      label: t('gigs.producer'),
+      sortValue: (g) => partnerName(partners, g.producerId),
+      filterValue: (g) => g.producerId,
+      filterLabel: (id) => partnerName(partners, id),
+      cell: (g) => partnerName(partners, g.producerId),
     },
     {
       key: 'total',
       label: t('gigs.totalPrice'),
       numeric: true,
       className: 'gig-col-total',
-      cell: (gig) => formatMoney(gig.totalPriceCents, lang),
+      sortValue: (g) => g.totalPriceCents,
+      cell: (g) => formatMoney(g.totalPriceCents, lang),
     },
     {
       key: 'budgeted',
       label: t('gigs.budgetedCosts'),
       numeric: true,
-      cell: (gig) => formatMoney(gig.budgetedCostsCents, lang),
+      sortValue: (g) => g.budgetedCostsCents,
+      cell: (g) => formatMoney(g.budgetedCostsCents, lang),
     },
     {
       key: 'actual',
       label: t('gigs.actualCosts'),
       numeric: true,
-      cell: (gig) => formatMoney(gig.actualCostsCents, lang),
+      sortValue: (g) => g.actualCostsCents,
+      cell: (g) => formatMoney(g.actualCostsCents, lang),
     },
     {
       key: 'margin',
       label: t('gigs.marginPct'),
       numeric: true,
-      cell: (gig) => (
-        <>
-          {formatPercent(gig.marginBudgetPct, lang)}
+      sortValue: (g) => g.marginBudgetPct,
+      cell: (g) => (
+        <span>
+          {formatPercent(g.marginBudgetPct, lang)}
           <span className="gig-margin-actual">
-            {t('gigs.actualShort')} {formatPercent(gig.marginActualPct, lang)}
+            {' '}
+            {t('gigs.actualShort')} {formatPercent(g.marginActualPct, lang)}
           </span>
-        </>
+        </span>
       ),
     },
   ];
-  return (
-    <DataTable
-      className="gig-table"
-      caption={t('gigs.listLabel')}
-      columns={columns}
-      rows={gigs}
-      rowKey={(gig) => gig.id}
-      cardsOnPhone={false}
-      rowClassName={(gig) =>
-        [`status-${gigDisplayStatus(gig).toLowerCase()}`, gig.id === firstUpcomingId && FIRST_UPCOMING]
-          .filter(Boolean)
-          .join(' ')
-      }
-    />
+
+  // UC-003 step 1: scroll to the first upcoming gig among the rows shown.
+  const today = todayIso();
+  const visible = useMemo(
+    () => applyTableState(gigs, columns, tableState, gigTieBreak),
+    // `columns` is rebuilt each render; the rows only depend on the data and the state.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [gigs, tableState.sort, tableState.filters],
   );
-}
-
-function GigCards({ gigs, partners, lang, firstUpcomingId }: GigRowsProps & { firstUpcomingId?: string }) {
-  const { t } = useTranslation();
-  const [open, setOpen] = useState<Set<string>>(new Set());
-
-  const toggle = (id: string) =>
-    setOpen((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+  const firstUpcomingId = visible.find((g) => g.startDate >= today)?.id;
+  const containerRef = useScrollToFirstUpcoming(firstUpcomingId);
 
   return (
-    <ul className="gig-cards" aria-label={t('gigs.listLabel')}>
-      {gigs.map((gig) => {
-        const status = gigDisplayStatus(gig);
-        const isOpen = open.has(gig.id);
-        return (
-          <li
-            key={gig.id}
-            className={[
-              'gig-card',
-              `status-${status.toLowerCase()}`,
-              gig.id === firstUpcomingId && FIRST_UPCOMING,
-            ]
-              .filter(Boolean)
-              .join(' ')}
-          >
-            <span className="gig-date">{formatDateRange(gig.startDate, gig.endDate, lang)}</span>
-            <span className="gig-main">
-              <Link to={`/gigs/${gig.id}`} className="gig-link">
-                {gig.lineupName} · {gig.venue}
-              </Link>
-              <GigFlags gig={gig} status={status} />
-            </span>
-            {gig.clientName && (
-              <span className="gig-client">
-                {t('clients.gigColumn')}: {gig.clientName}
-              </span>
-            )}
-            <span className="gig-people">
-              {t('gigs.seller')}: {partnerName(partners, gig.sellerId)} · {t('gigs.producer')}:{' '}
-              {partnerName(partners, gig.producerId)}
-            </span>
-            <span className="gig-card-foot">
-              <span className="gig-total">
-                <span className="gig-cell-label">{t('gigs.totalPrice')}: </span>
-                <span className="gig-total-value">{formatMoney(gig.totalPriceCents, lang)}</span>
-              </span>
-              <Button size="sm" className="gig-econ-toggle" aria-expanded={isOpen} onClick={() => toggle(gig.id)}>
-                {isOpen ? t('gigs.hideEconomics') : t('gigs.showEconomics')}
-              </Button>
-            </span>
-            {isOpen && (
-              <dl className="gig-econ">
-                <div>
-                  <dt className="gig-cell-label">{t('gigs.budgetedCosts')}</dt>
-                  <dd className="num">{formatMoney(gig.budgetedCostsCents, lang)}</dd>
-                </div>
-                <div>
-                  <dt className="gig-cell-label">{t('gigs.actualCosts')}</dt>
-                  <dd className="num">{formatMoney(gig.actualCostsCents, lang)}</dd>
-                </div>
-                <div>
-                  <dt className="gig-cell-label">{t('gigs.marginPct')}</dt>
-                  <dd className="num">
-                    {formatPercent(gig.marginBudgetPct, lang)}
-                    <span className="gig-margin-actual">
-                      {' '}
-                      ({t('gigs.actualShort')} {formatPercent(gig.marginActualPct, lang)})
-                    </span>
-                  </dd>
-                </div>
-              </dl>
-            )}
-          </li>
-        );
-      })}
-    </ul>
+    <div ref={containerRef} className="gig-rows-wrap">
+      <ExcelTable
+        {...tableState}
+        className="gig-table"
+        caption={t('gigs.listLabel')}
+        columns={columns}
+        rows={gigs}
+        rowKey={(g) => g.id}
+        tieBreak={gigTieBreak}
+        emptyFiltered={t('gigs.emptyColumnFiltered')}
+        rowClassName={(g) =>
+          [`status-${gigDisplayStatus(g).toLowerCase()}`, g.id === firstUpcomingId && FIRST_UPCOMING]
+            .filter(Boolean)
+            .join(' ')
+        }
+      />
+    </div>
   );
 }
 
