@@ -74,8 +74,13 @@ function compareTasks(a: { dto: TaskDto; task: Task }, b: { dto: TaskDto; task: 
 export function taskRoutes(app: FastifyInstance, deps: AppDeps): void {
   const { db } = deps;
 
-  const assertOwnerExists = async (ownerId: string) => {
-    const exists = isUuid(ownerId) && (await db.partner.count({ where: { id: ownerId } })) > 0;
+  /**
+   * BR-111: a new owner must be an active partner. `currentOwnerId` (the task's owner when
+   * updating) stays valid even if that partner has been removed since.
+   */
+  const assertOwnerExists = async (ownerId: string, currentOwnerId?: string) => {
+    if (ownerId === currentOwnerId) return;
+    const exists = isUuid(ownerId) && (await db.partner.count({ where: { id: ownerId, active: true } })) > 0;
     if (!exists) throw validationError({ ownerId: 'UNKNOWN_REFERENCE' });
   };
 
@@ -118,8 +123,12 @@ export function taskRoutes(app: FastifyInstance, deps: AppDeps): void {
 
   app.patch<IdParams>('/api/tasks/:id', async (request) => {
     const body = parseInput(updateBody, request.body);
-    if (body.ownerId !== undefined) await assertOwnerExists(body.ownerId);
+    // Unknown owner id → 400 before the task lookup (check order); an inactive one is only
+    // allowed when it is the task's current owner, which needs the task.
+    if (body.ownerId !== undefined && !(isUuid(body.ownerId) && (await db.partner.count({ where: { id: body.ownerId } })) > 0))
+      throw validationError({ ownerId: 'UNKNOWN_REFERENCE' });
     const task = await requireTask(request.params.id);
+    if (body.ownerId !== undefined) await assertOwnerExists(body.ownerId, task.ownerId);
 
     const data: Partial<Pick<Task, 'title' | 'ownerId' | 'dueDate' | 'description' | 'status' | 'completedAt'>> = {};
     if (body.title !== undefined && body.title !== task.title) data.title = body.title;

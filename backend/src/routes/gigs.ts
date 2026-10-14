@@ -169,8 +169,9 @@ export function gigRoutes(app: FastifyInstance, deps: AppDeps): void {
     const partners = await findPartners([body.sellerId, body.producerId]);
     const seller = partners.get(body.sellerId);
     const producer = partners.get(body.producerId);
-    if (!seller) fields.sellerId = 'UNKNOWN_REFERENCE';
-    if (!producer) fields.producerId = 'UNKNOWN_REFERENCE';
+    // BR-111: new seller/producer choices must be active partners.
+    if (!seller?.active) fields.sellerId = 'UNKNOWN_REFERENCE';
+    if (!producer?.active) fields.producerId = 'UNKNOWN_REFERENCE';
     if (body.clientId && !(await findActiveClient(db, body.clientId))) fields.clientId = 'UNKNOWN_REFERENCE';
     throwIfAny(fields);
 
@@ -239,8 +240,11 @@ export function gigRoutes(app: FastifyInstance, deps: AppDeps): void {
     const partners = await findPartners(
       [gig.sellerId, gig.producerId, body.sellerId, body.producerId].filter((p): p is string => p !== undefined),
     );
-    if (body.sellerId !== undefined && !partners.has(body.sellerId)) fields.sellerId = 'UNKNOWN_REFERENCE';
-    if (body.producerId !== undefined && !partners.has(body.producerId)) fields.producerId = 'UNKNOWN_REFERENCE';
+    // BR-111: a changed seller/producer must be an active partner; an unchanged one is kept even if removed since.
+    const isValidChoice = (id: string, current: string) => id === current || partners.get(id)?.active === true;
+    if (body.sellerId !== undefined && !isValidChoice(body.sellerId, gig.sellerId)) fields.sellerId = 'UNKNOWN_REFERENCE';
+    if (body.producerId !== undefined && !isValidChoice(body.producerId, gig.producerId))
+      fields.producerId = 'UNKNOWN_REFERENCE';
     if (body.clientId && body.clientId !== gig.clientId && !(await findActiveClient(db, body.clientId))) {
       fields.clientId = 'UNKNOWN_REFERENCE';
     }

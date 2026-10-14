@@ -244,6 +244,12 @@ async function applySeed(
       // Phone is contact data from the seed: updated when the file gives it.
       if (p.phone !== undefined && p.phone !== existing.phone)
         await tx.partner.update({ where: { id: existing.id }, data: { phone: p.phone } });
+      // Partners listed in the seed are active (the seed file wins, like the person's `active`).
+      if (!existing.active)
+        await tx.partner.update({
+          where: { id: existing.id },
+          data: { active: true, grantedById: null, grantedAt: new Date(), revokedById: null, revokedAt: null },
+        });
       partner = existing;
     } else {
       const unlinked = await tx.person.findFirst({ where: { name: p.name, partner: null } });

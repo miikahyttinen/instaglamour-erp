@@ -24,7 +24,7 @@ The whole file is validated first. If anything is wrong, every problem is printe
 
 | Data | Natural key | On re-run |
 |---|---|---|
-| Partner | `email` (case-insensitive) | Person name updated; `phone` updated when given; `language` only set when created (it is a user preference) |
+| Partner | `email` (case-insensitive) | Person name updated; `phone` updated when given; `language` only set when created (it is a user preference). Seeded partners are **active**: a re-run re-activates a partner removed in the app (UC-032) |
 | Person | `name` | `active` updated |
 | Lineup template | `name` | Roles replaced by the file's roles |
 | Setting | key | Value updated |

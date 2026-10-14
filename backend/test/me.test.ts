@@ -32,6 +32,7 @@ describe('GET /api/me', () => {
       email: 'partner.a@example.com',
       language: 'en',
       selectedYear: currentYear(),
+      active: true,
     });
   });
 });

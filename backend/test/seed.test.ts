@@ -354,6 +354,19 @@ describe('loadSeed', () => {
     expect((await db.setting.findUniqueOrThrow({ where: { key: 'fees.load_in_deduction' } })).valueCents).toBe(2000);
   });
 
+  it('seeded partners are active: new ones, and a re-run re-activates one removed in the app (UC-032)', async () => {
+    await loadSeed(testDb(), example());
+    const db = testDb();
+    expect(await db.partner.count({ where: { active: false } })).toBe(0);
+    await db.partner.update({
+      where: { email: 'partner.b@example.com' },
+      data: { active: false, revokedAt: new Date() },
+    });
+    await loadSeed(db, example());
+    const b = await db.partner.findUniqueOrThrow({ where: { email: 'partner.b@example.com' } });
+    expect(b).toMatchObject({ active: true, revokedAt: null, revokedById: null });
+  });
+
   it('an invalid file changes nothing', async () => {
     await loadSeed(testDb(), example());
     const before = await snapshot();

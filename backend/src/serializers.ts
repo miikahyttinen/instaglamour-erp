@@ -9,6 +9,7 @@ export interface PartnerDto {
   email: string;
   language: 'fi' | 'en';
   selectedYear: number;
+  active: boolean;
 }
 
 export function toPartnerDto(partner: Partner & { person: Person }, now = new Date()): PartnerDto {
@@ -19,15 +20,31 @@ export function toPartnerDto(partner: Partner & { person: Person }, now = new Da
     email: partner.email,
     language: partner.language,
     selectedYear: partner.selectedYear ?? currentYear(now),
+    active: partner.active,
   };
 }
+
+type PersonPartner = { id: string; email: string; active: boolean };
 
 export interface PersonDto {
   id: string;
   name: string;
   active: boolean;
+  /** UC-032: null = never a partner. */
+  partner: PersonPartner | null;
 }
 
-export function toPersonDto(person: Person): PersonDto {
-  return { id: person.id, name: person.name, active: person.active };
+/** Prisma `include` that loads what `toPersonDto` needs. */
+export const personInclude = { partner: { select: { id: true, email: true, active: true } } } as const;
+
+export type PersonWithPartner = Person & { partner: PersonPartner | null };
+
+export function toPersonDto(person: PersonWithPartner): PersonDto {
+  const { partner } = person;
+  return {
+    id: person.id,
+    name: person.name,
+    active: person.active,
+    partner: partner ? { id: partner.id, email: partner.email, active: partner.active } : null,
+  };
 }
