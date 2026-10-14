@@ -17,6 +17,7 @@ import { apiErrorMessage, apiFieldErrors, costTypeLabel } from '../../i18n/label
 import { useLang } from '../../i18n/useLang';
 import { formatMoney } from '../../lib/format';
 import { parseMoneyField } from '../../lib/moneyField';
+import { activePartners } from '../../reference/partners';
 import { useReference } from '../../reference/useReference';
 import { ClientSelect } from '../clients/ClientSelect';
 import { PartnerOptions } from './formParts';
@@ -63,7 +64,10 @@ const FIELD_TO_CONTROL: Record<string, keyof FormState> = {
   notes: 'notes',
 };
 
-/** New gig (UC-002). Seller and producer default to the signed-in partner. */
+/**
+ * New gig (UC-002). Seller and producer default to the signed-in partner; only active partners
+ * are offered (BR-111).
+ */
 export function NewGigPage() {
   const { t } = useTranslation();
   const lang = useLang();
@@ -298,14 +302,14 @@ export function NewGigPage() {
             <Field label={t('gigForm.seller')} error={errors.sellerId}>
               {(p) => (
                 <select {...p} value={form.sellerId} onChange={(e) => set('sellerId', e.target.value)}>
-                  <PartnerOptions partners={reference?.partners} />
+                  <PartnerOptions partners={activePartners(reference?.partners)} />
                 </select>
               )}
             </Field>
             <Field label={t('gigForm.producer')} error={errors.producerId}>
               {(p) => (
                 <select {...p} value={form.producerId} onChange={(e) => set('producerId', e.target.value)}>
-                  <PartnerOptions partners={reference?.partners} />
+                  <PartnerOptions partners={activePartners(reference?.partners)} />
                 </select>
               )}
             </Field>

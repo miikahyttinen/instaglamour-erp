@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import type { Logistics, TechnicalSetup } from '../../api/enums';
 import { gigsApi } from '../../api/endpoints';
-import type { GigDetail, GigUpdate, GigUpdateResponse, Id } from '../../api/types';
+import type { GigDetail, GigUpdate, GigUpdateResponse } from '../../api/types';
 import {
   InlineMoney,
   InlineSelect,
@@ -14,6 +14,7 @@ import { Card } from '../../components/Card';
 import { FieldList } from '../../components/FieldList';
 import { useLang } from '../../i18n/useLang';
 import { formatMoney } from '../../lib/format';
+import { partnerOptions } from '../../reference/partners';
 import { useReference } from '../../reference/useReference';
 import { InlineClientSelect } from '../clients/ClientSelect';
 import { NONE_LABEL, useLogisticsOptions, useTechnicalSetupOptions } from './gigOptions';
@@ -60,11 +61,9 @@ export function GigBasicFields({
   const technicalSetupOptions = useTechnicalSetupOptions(reference);
   const logisticsOptions = useLogisticsOptions(reference);
 
-  const partnerOptions = (current: Id) => {
-    const partners = reference?.partners ?? [];
-    const options = partners.map((p) => ({ value: p.id, label: p.name }));
-    return partners.some((p) => p.id === current) ? options : [{ value: current, label: '–' }, ...options];
-  };
+  // Active partners only (BR-111), plus the gig's current one if removed so it still shows.
+  const sellerOptions = partnerOptions(reference?.partners, gig.sellerId);
+  const producerOptions = partnerOptions(reference?.partners, gig.producerId);
   const savePartner = (body: GigUpdate) => {
     const before = gig;
     return patch(body).then((result) => onPartnerSaved(result, before));
@@ -124,7 +123,7 @@ export function GigBasicFields({
           value={gig.sellerId}
           field="sellerId"
           disabled={readOnly}
-          options={partnerOptions(gig.sellerId)}
+          options={sellerOptions}
           onSave={(sellerId) => savePartner({ sellerId })}
         />
         <InlineSelect
@@ -132,7 +131,7 @@ export function GigBasicFields({
           value={gig.producerId}
           field="producerId"
           disabled={readOnly}
-          options={partnerOptions(gig.producerId)}
+          options={producerOptions}
           onSave={(producerId) => savePartner({ producerId })}
         />
         {!readOnly && <p className="muted small gig-fields-note">{t('gig.sellerChangeHint')}</p>}
