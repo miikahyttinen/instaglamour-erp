@@ -125,7 +125,7 @@
 .column-filter-search {
   position: relative;
 }
-.column-filter-search input {
+.column-filter-search input[type='search'] {
   padding-left: calc(var(--space-3) + var(--icon) + var(--space-2));
 }
 .column-filter-search-icon {
