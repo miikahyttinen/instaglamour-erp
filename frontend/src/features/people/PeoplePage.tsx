@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ChevronRight } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
-import type { PeopleActiveFilter, Person } from '../../api/types';
+import type { PeopleActiveFilter, PeoplePartnerFilter, Person } from '../../api/types';
 import { Button } from '../../components/Button';
 import { DataTable, type DataTableColumn } from '../../components/DataTable';
 import { Notice as NoticeMessage } from '../../components/Notice';
@@ -12,6 +12,8 @@ import { warningMessage } from '../../i18n/labels';
 import { useLang } from '../../i18n/useLang';
 import { NameForm } from './NameForm';
 import { NoticeBox, type Notice } from './Notices';
+import { isPartner } from './partnerRules';
+import { PartnerTag } from './PartnerStatus';
 import { PersonActiveSwitch, PersonNameField } from './PersonFields';
 import { useCreatePerson, usePeopleList } from './queries';
 import './people.css';
@@ -25,6 +27,17 @@ const FILTERS: { value: PeopleActiveFilter; labelKey: string }[] = [
 function parseFilter(value: string | null): PeopleActiveFilter {
   return value === 'false' || value === 'all' ? value : 'true';
 }
+
+/** `?partner=true|false` (UC-032); anything else = everyone. */
+function parsePartnerFilter(value: string | null): PeoplePartnerFilter | undefined {
+  return value === 'true' || value === 'false' ? value : undefined;
+}
+
+const PARTNER_FILTERS: { value: PeoplePartnerFilter | ''; labelKey: string }[] = [
+  { value: '', labelKey: 'people.partner.filters.all' },
+  { value: 'true', labelKey: 'people.partner.filters.partners' },
+  { value: 'false', labelKey: 'people.partner.filters.others' },
+];
 
 /**
  * Accessible names must be unique per row, but duplicate names are allowed (DUPLICATE_NAME is a
@@ -45,20 +58,32 @@ function rowNames(people: readonly Person[]): Map<string, string> {
 
 /**
  * People register (UC-014): list (active by default), add; name and active are edited in place
- * (NFR-8: no Edit buttons, the name saves on blur / Enter, the switch on change).
+ * (NFR-8: no Edit buttons, the name saves on blur / Enter, the switch on change). Partners have an
+ * "Osakas" tag and the list can be filtered by partner status (UC-032, `?partner=`).
  */
 export function PeoplePage() {
   const { t } = useTranslation();
   const lang = useLang();
   const [params, setParams] = useSearchParams();
   const filter = parseFilter(params.get('active'));
-  const list = usePeopleList(filter);
+  const partnerFilter = parsePartnerFilter(params.get('partner'));
+  const list = usePeopleList(filter, partnerFilter);
   const create = useCreatePerson();
   const [notice, setNotice] = useState<Notice | null>(null);
 
-  const setFilter = (value: PeopleActiveFilter) => {
-    setParams(value === 'true' ? {} : { active: value }, { replace: true });
+  const setParam = (key: string, value: string | undefined) => {
+    setParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (value) next.set(key, value);
+        else next.delete(key);
+        return next;
+      },
+      { replace: true },
+    );
   };
+  const setFilter = (value: PeopleActiveFilter) => setParam('active', value === 'true' ? undefined : value);
+  const setPartnerFilter = (value: string) => setParam('partner', parsePartnerFilter(value));
 
   const add = async (name: string) => {
     const result = await create.mutateAsync(name);
@@ -95,6 +120,12 @@ export function PeoplePage() {
           </Link>
         </span>
       ),
+    },
+    {
+      key: 'partner',
+      label: t('people.partner.column'),
+      className: 'people-partner-cell',
+      cell: (person) => (isPartner(person) ? <PartnerTag /> : null),
     },
     {
       key: 'active',
@@ -143,6 +174,16 @@ export function PeoplePage() {
             </button>
           ))}
         </div>
+        <label className="people-partner-filter">
+          <span className="label">{t('people.partner.filterLabel')}</span>
+          <select value={partnerFilter ?? ''} onChange={(e) => setPartnerFilter(e.target.value)}>
+            {PARTNER_FILTERS.map((f) => (
+              <option key={f.value} value={f.value}>
+                {t(f.labelKey)}
+              </option>
+            ))}
+          </select>
+        </label>
         <p className="muted small people-hint">{t('people.inactiveHint')}</p>
       </div>
 

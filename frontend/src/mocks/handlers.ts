@@ -25,7 +25,7 @@ export const authHandlers = [
     const body = (await request.json()) as Partial<DevLoginRequest>;
     const email = body.email?.trim().toLowerCase();
     if (!email) return errorResponse(400, 'VALIDATION_ERROR', 'Email required', { email: 'REQUIRED' });
-    const partner = db.partners.find((p) => p.email.toLowerCase() === email);
+    const partner = db.partners.find((p) => p.active && p.email.toLowerCase() === email);
     if (!partner) return errorResponse(403, 'FORBIDDEN', 'Not a partner');
     setMockSession(partner.id);
     return HttpResponse.json(partner);

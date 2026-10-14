@@ -42,6 +42,8 @@ import type {
   ReferenceUpdate,
   Partner,
   PeopleActiveFilter,
+  PeoplePartnerFilter,
+  PersonPartnerUpdate,
   Person,
   PersonCostLinesResponse,
   PersonCreate,
@@ -147,14 +149,19 @@ export const attachmentsApi = {
 // ---------- People ----------
 
 export const peopleApi = {
-  list: (active: PeopleActiveFilter = 'true') =>
-    apiRequest<Person[]>('/people', { query: { active } }),
+  list: (active: PeopleActiveFilter = 'true', partner?: PeoplePartnerFilter) =>
+    apiRequest<Person[]>('/people', { query: { active, partner } }),
   create: (body: PersonCreate) =>
     apiRequest<PersonWithWarnings>('/people', { method: 'POST', body }),
   update: (id: Id, body: PersonUpdate) =>
     apiRequest<PersonWithWarnings>(`/people/${id}`, { method: 'PATCH', body }),
   costLines: (id: Id, year: number) =>
     apiRequest<PersonCostLinesResponse>(`/people/${id}/cost-lines`, { query: { year } }),
+  /** Makes / keeps the person an active partner with this Google email (UC-032). */
+  setPartner: (id: Id, body: PersonPartnerUpdate) =>
+    apiRequest<Person>(`/people/${id}/partner`, { method: 'PUT', body }),
+  /** Removes partner status: sign-in stops and sessions are revoked (BR-111). */
+  removePartner: (id: Id) => apiRequest<Person>(`/people/${id}/partner`, { method: 'DELETE' }),
 };
 
 // ---------- Clients ----------

@@ -1,6 +1,7 @@
 import type { TFunction } from 'i18next';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import type { ApiError } from '../../api/client';
 import type { FieldCode } from '../../api/enums';
 import { apiErrorMessage, apiFieldErrors, fieldErrorLabel } from '../../i18n/labels';
 
@@ -36,6 +37,12 @@ export interface UseInlineSaveOptions<T, D = T> {
   disabled?: boolean;
   /** When this changes (e.g. the language), an unedited draft is re-formatted from the value. */
   formatKey?: unknown;
+  /**
+   * Field-specific texts for some codes (e.g. DUPLICATE on an email: "already used by another
+   * partner" instead of the generic text). Used for client-side checks and for this field's code
+   * in a VALIDATION_ERROR.
+   */
+  fieldMessages?: Partial<Record<FieldCode, string>>;
 }
 
 export interface InlineSaveState<D> {
@@ -132,15 +139,16 @@ export function useInlineSave<T, D = T>(options: UseInlineSaveOptions<T, D>): In
       pendingRef.current = true;
       return false;
     }
+    const codeMessage = (code: FieldCode) => options.fieldMessages?.[code] ?? fieldErrorLabel(t, code);
     const parsed = parse(d);
     if (!parsed.ok) {
-      fail(fieldErrorLabel(t, parsed.error));
+      fail(codeMessage(parsed.error));
       return false;
     }
     const next = parsed.value;
     const invalid = options.validate?.(next);
     if (invalid) {
-      fail(fieldErrorLabel(t, invalid));
+      fail(codeMessage(invalid));
       return false;
     }
     if (equals(next, savedRef.current)) {
@@ -160,7 +168,11 @@ export function useInlineSave<T, D = T>(options: UseInlineSaveOptions<T, D>): In
       await options.save(next);
       ok = true;
     } catch (e) {
-      if (mountedRef.current) fail(inlineErrorMessage(t, e, options.field));
+      if (mountedRef.current) {
+        const code = options.field ? (e as Partial<ApiError> | null)?.fields?.[options.field] : undefined;
+        const custom = code ? options.fieldMessages?.[code] : undefined;
+        fail(custom ?? inlineErrorMessage(t, e, options.field));
+      }
     } finally {
       savingRef.current = false;
     }

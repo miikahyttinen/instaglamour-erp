@@ -24,6 +24,8 @@ npm run dev:mock
 Open http://localhost:5173 and use the **dev login** form with a synthetic partner:
 `partner.a@example.com`, `partner.b@example.com` (English) or `partner.c@example.com`.
 Any other email shows "no access". The mock session lasts until the browser tab is closed.
+People made partners on a person page (UC-032) can sign in too (mock allowed domain `example.com`);
+a removed partner can't, and their open mock session gets 401 on the next request.
 
 `dev:mock` just sets `VITE_USE_MOCKS=true VITE_DEV_LOGIN=true`. You can instead put these in
 `.env.local` (gitignored; see `.env.example`) and run `npm run dev`.
@@ -48,6 +50,7 @@ Unset or empty means the default.
 |---|---|---|
 | `VITE_API_PROXY_TARGET` | `http://localhost:3000` | Where the dev server proxies `/api` |
 | `VITE_PORT` | `5173` | Dev server port (an invalid value stops the server with an error) |
+| `VITE_AUTH_ALLOWED_DOMAIN` | unset | Optional (any `npm run` script, build time). The backend's `AUTH_ALLOWED_DOMAIN`, used only for the hint and a client-side check on the partner email field; unset = generic hint, the server checks. `dev:mock` sets `example.com`. Put the real domain only in `.env.local` (BR-090). |
 
 ```sh
 VITE_API_PROXY_TARGET=http://localhost:3100 VITE_PORT=5273 npm run dev
@@ -67,12 +70,14 @@ VITE_API_PROXY_TARGET=http://localhost:3100 VITE_PORT=5273 npm run dev
 | `src/auth/` | `me` query, auth guard, sign-in page, `useSignedInPartner()` / `useSelectedYear()` |
 | `src/layout/` | App shell (Layout v2.1): collapsible sidebar, phone drawer, sticky top bar with year selector + language / theme / sign out (desktop), `.page-container` |
 | `src/reference/useReference.ts` | Reference data, loaded once per session and cached |
+| `src/reference/partners.ts` | Partner pickers (UC-032): `activePartners(partners)` for new choices, `partnerOptions(partners, currentId)` = active partners + the record's current (possibly removed) partner by name. `reference.partners` itself keeps everyone, so names on old records still resolve. |
 | `src/i18n/` | `fi.ts` / `en.ts` texts (glossary terms), label helpers for codes and errors |
 | `src/lib/format.ts` | Money (cents), date, hours and percent formatting per language |
 | `src/mocks/` | MSW handlers and synthetic data (browser worker + Node server for tests). All state is in `db` (`data.ts`); `resetMockDb()` resets every store. Gig rules live in `gigStore.ts`, demo gigs in `gigSeed.ts`; tasks, hours and budget in `tasksStore.ts`, `hoursStore.ts`, `budgetStore.ts`; offers (with history, `offers.*` settings and partner phones) in `offerStore.ts` / `offerSeed.ts` (`db.offers`, seeded offers have fixed ids `…000601`–`…000608`). Budget rows (`/api/budget-categories`, `budgetCategoryHandlers` in `budgetHandlers.ts`) live in `db.reference.budgetCategories` (active rows only; removing drops the row there and keeps its amounts in `db.budget`). The year mock is computed from these stores |
 | `src/features/<feature>/` | One folder per feature: `year`, `gigs`, `clients`, `people`, `tasks`, `hours`, `budget`; pages, query hooks and the feature texts in `i18n.ts` (gig texts are still in `src/i18n/fi.ts` / `en.ts`) |
 | `src/features/offers/` | Offers (UC-028, UC-029, UC-031, see "Offers"): list `/offers`, new offer `/offers/new`, offer page `/offers/:id`, convert dialog; plus `OfferPreview` (shared customer view) and the public page `/o/:token` (see "Offer preview") |
 | `src/features/gigs/` | Gig list, new gig, gig page (costs, attachments, history, move/cancel/delete dialogs) |
+| `src/features/people/` | People register (UC-014) + partner status (UC-032): list with "Osakas" tag column and "Osakkuus" filter (`?partner=true\|false`, combines with `?active=`); person page with the Osakas switch (`PartnerStatus.tsx`: on = email dialog → `PUT …/partner`, off = confirmation → `DELETE …/partner`, own switch disabled), inline email, tag in the header. Partner changes invalidate `['people']`, `['reference']` (and `['me']` for oneself). Mock: `mocks/peopleHandlers.ts` (`person.partner` derived from `db.partners`) |
 | `src/features/clients/` | Client register (UC-027): list + search + add, client page (inline name/notes, gigs, offers, delete), `ClientSelect` / `InlineClientSelect` ("–", clients, "New client…") used by the new gig and new offer forms, the gig page and the offer page. Mock: `mocks/clientHandlers.ts`; clients live in `db.gigs` (seed: Client A–C in `gigSeed.ts`), offers in `db.offers` |
 | `src/components/` | Shared UI: `Button`/`IconButton`, `Card`, `StatTile`/`StatGrid`, `MiniBars`, `PageHead`, `SectionLabel`, `StatusTag`, `Notice`, `DataTable`, `ExcelTable` (+ `ColumnFilter`, `excelTableState`), `Dialog`, `Field`, `MoneyInput`, `Logo` (see "Design system") |
 | `src/components/inline/` | Inline (save-on-blur) fields and `useInlineSave` (see "Inline editing") |
@@ -240,7 +245,7 @@ Common props (`InlineBaseProps<T>`):
 
 | Component | Value / extra props | Parsing & checks |
 |---|---|---|
-| `InlineText` | `value: string` with `required`, else `string \| null`; `maxLength?`, `placeholder?`, `autoComplete?` | Trimmed. Empty → `REQUIRED` or `null`. Too long → `TOO_LONG`. |
+| `InlineText` | `value: string` with `required`, else `string \| null`; `maxLength?`, `placeholder?`, `autoComplete?`, `type?: 'text' \| 'email'`, `fieldMessages?: Partial<Record<FieldCode, string>>` (field-specific texts, e.g. DUPLICATE on an email; used for client checks and this `field`'s server code) | Trimmed. Empty → `REQUIRED` or `null`. Too long → `TOO_LONG`. |
 | `InlineTextarea` | as `InlineText` + `rows?` (2; grows with content in Chrome) | Enter = new line; Ctrl/Cmd+Enter or blur saves. |
 | `InlineMoney` | cents: `number` with `required`, else `number \| null`; `placeholder?` | Euro text ↔ cents via `parseMoneyField` / `centsToInput` (FI `1 234,50`, EN `1,234.50`). `NEGATIVE_AMOUNT`, `INVALID_VALUE`, `REQUIRED`. Re-formats on language change. |
 | `InlineHours` | `value: number`; `placeholder?` | `lib/hours.ts`: 0.25…24 in 0.25 steps else `INVALID_HOURS`; empty `REQUIRED`. |
@@ -509,3 +514,16 @@ python3 -m venv /tmp/logo-venv && /tmp/logo-venv/bin/pip install Pillow
 /tmp/logo-venv/bin/python scripts/make-logos.py [source-dir]
 ```
 
+### Partner status (`src/features/people/PartnerStatus.tsx`, UC-032)
+
+**Accessible names (FI / EN; also for e2e).** People list: tag "Osakas" / "Partner" (`.tag`) in the
+"Osakas" / "Partner" column; filter `combobox` "Osakkuus" / "Partner status" with options "Kaikki" /
+"All", "Osakkaat" / "Partners", "Muut" / "Others". Person page: `switch` "Osakas" / "Partner"
+(own record: disabled, description "Et voi poistaa omaa osakkuuttasi." / "You cannot remove your own
+partner status."); header tag "Osakas"; inline `textbox` "Google-sähköposti" / "Google email" (active
+partner). Switch on → `dialog` "Tee osakkaaksi: <name>" / "Make partner: <name>" with the
+"Google-sähköposti" textbox and buttons "Peruuta" / "Cancel", "Tee osakkaaksi" / "Make partner".
+Switch off → `dialog` "Poista osakkuus: <name>" / "Remove partner status: <name>" with "Kirjautuminen
+estyy heti." / "Sign-in stops immediately.", buttons "Peruuta" / "Cancel", "Poista osakkuus" / "Remove
+partner status"; a 409 shows as an `alert` inside the dialog. Success notices: "<name> on nyt osakas." /
+"<name> is now a partner.", "<name> ei ole enää osakas." / "<name> is no longer a partner.".

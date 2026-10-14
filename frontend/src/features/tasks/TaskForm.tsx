@@ -4,6 +4,7 @@ import type { Id, Partner } from '../../api/types';
 import { Button } from '../../components/Button';
 import { Field } from '../../components/fields';
 import { apiErrorMessage, apiFieldErrors } from '../../i18n/labels';
+import { activePartners } from '../../reference/partners';
 import { useCreateTask } from './hooks';
 
 interface Props {
@@ -63,7 +64,7 @@ export function TaskForm({ partners, meId, onDone }: Props) {
       <Field label={t('tasks.field.owner')} error={fieldErrors.ownerId}>
         {(props) => (
           <select {...props} value={ownerId} onChange={(e) => setOwnerId(e.target.value)}>
-            {partners.map((p) => (
+            {activePartners(partners).map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name}
               </option>

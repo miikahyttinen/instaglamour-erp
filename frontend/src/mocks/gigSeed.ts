@@ -1,7 +1,7 @@
 // Synthetic demo gigs for `npm run dev:mock` and tests (BR-090: no real names or numbers).
 // Dates are in the current year so the default gig list shows something.
-import type { LineupTemplate, Partner, Person, Settings } from '../api/types';
-import type { GigState, MockClient, NewGigInput } from './gigStore';
+import type { LineupTemplate, Partner, Settings } from '../api/types';
+import type { GigState, MockClient, MockPerson, NewGigInput } from './gigStore';
 import {
   addAttachment,
   addCostLine,
@@ -18,7 +18,7 @@ export const PERSON_IDS = Array.from(
   (_, i) => `00000000-0000-4000-8000-0000000003${String(i + 1).padStart(2, '0')}`,
 );
 
-export function seedPeople(partners: Partner[]): Person[] {
+export function seedPeople(partners: Partner[]): MockPerson[] {
   return [
     ...partners.map((p) => ({ id: p.personId, name: p.name, active: true })),
     ...PERSON_IDS.map((id, i) => ({ id, name: `Person ${i + 1}`, active: i < 8 })),

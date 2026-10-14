@@ -62,8 +62,11 @@ export interface MockAttachment extends Attachment {
   content: Blob;
 }
 
+/** A stored person; `partner` is derived from `db.partners` when the API returns it (UC-032). */
+export type MockPerson = Omit<Person, 'partner'>;
+
 export interface GigState {
-  people: Person[];
+  people: MockPerson[];
   clients: MockClient[];
   gigs: MockGig[];
   /** Kept in creation order (contract: lines ordered by creation time). */

@@ -90,6 +90,8 @@ const en: Resources = {
     BUDGET_NOT_EMPTY: 'The year already has budget numbers.',
     CLIENT_IN_USE: 'The client is in use: gigs or offers are linked to it.',
     ALREADY_CONVERTED: 'A gig has already been made from this offer.',
+    CANNOT_REMOVE_SELF: 'You cannot remove your own partner status.',
+    LAST_PARTNER: 'The last partner cannot be removed.',
     RATE_LIMITED: 'Too many requests. Wait a moment and try again.',
     FILE_TOO_LARGE: 'The file is too large (max 20 MB).',
     UNSUPPORTED_FILE_TYPE: 'Allowed file types: PDF, DOCX, PNG and JPG.',
