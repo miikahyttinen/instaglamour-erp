@@ -156,18 +156,29 @@ model Person {
 }
 
 model Partner {
-  id           String   @id @default(uuid()) @db.Uuid
-  personId     String   @unique @map("person_id") @db.Uuid
-  email        String   @unique
-  language     Language @default(fi)
+  id           String    @id @default(uuid()) @db.Uuid
+  personId     String    @unique @map("person_id") @db.Uuid
+  email        String    @unique
+  language     Language  @default(fi)
   /// Selected year (BR-081). null = current year.
-  selectedYear Int?     @map("selected_year")
+  selectedYear Int?      @map("selected_year")
   /// Optional; shown on the public offer as the seller's contact (local seed).
   phone        String?
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  /// UC-032 / BR-110..112: only active partners can sign in or be chosen for new records.
+  /// Email is also unique case-insensitively (index "partner_email_lower_key", migration only).
+  active       Boolean   @default(true)
+  grantedById  String?   @map("granted_by") @db.Uuid
+  grantedAt    DateTime? @map("granted_at")
+  revokedById  String?   @map("revoked_by") @db.Uuid
+  revokedAt    DateTime? @map("revoked_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
 
   person              Person       @relation(fields: [personId], references: [id])
+  grantedBy           Partner?     @relation("PartnerGrantedBy", fields: [grantedById], references: [id], onDelete: SetNull)
+  revokedBy           Partner?     @relation("PartnerRevokedBy", fields: [revokedById], references: [id], onDelete: SetNull)
+  granted             Partner[]    @relation("PartnerGrantedBy")
+  revoked             Partner[]    @relation("PartnerRevokedBy")
   soldGigs            Gig[]        @relation("GigSeller")
   producedGigs        Gig[]        @relation("GigProducer")
   deletedGigs         Gig[]        @relation("GigDeletedBy")
@@ -557,21 +568,21 @@ model BudgetYear {
 /// The optional photo is a file in UPLOAD_DIR, stored like attachments: either all four
 /// image_* columns are set or none (check constraint "reference_image_all_or_none").
 model Reference {
-  id               String   @id @default(uuid()) @db.Uuid
-  quoteFi          String   @map("quote_fi")
-  quoteEn          String?  @map("quote_en")
+  id               String    @id @default(uuid()) @db.Uuid
+  quoteFi          String    @map("quote_fi")
+  quoteEn          String?   @map("quote_en")
   author           String
-  sortOrder        Int      @map("sort_order")
-  active           Boolean  @default(true)
+  sortOrder        Int       @map("sort_order")
+  active           Boolean   @default(true)
   /// File name inside UPLOAD_DIR (random UUID); null = no photo.
-  imageStorageKey  String?  @unique @map("image_storage_key")
+  imageStorageKey  String?   @unique @map("image_storage_key")
   /// Sniffed from the file content: image/png, image/jpeg or image/webp.
-  imageContentType String?  @map("image_content_type")
-  imageSizeBytes   Int?     @map("image_size_bytes")
+  imageContentType String?   @map("image_content_type")
+  imageSizeBytes   Int?      @map("image_size_bytes")
   /// When the current photo was uploaded; its epoch milliseconds are the API's `imageVersion`.
   imageUploadedAt  DateTime? @map("image_uploaded_at")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt        DateTime @updatedAt @map("updated_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
 
   @@index([sortOrder])
   @@map("reference")
