@@ -1,6 +1,5 @@
 /* Gig list (GigListPage). Tokens only; scoped under .gig-list-page.
-   Layout v2: everything sits on the page container's left edge; the filters use the same
-   12-column grid and gap as the summary tiles, so their edges line up with the tiles above. */
+   The table is the shared ExcelTable (components/excelTable.css), same look as the offer list. */
 
 /* ---------- Year summary ---------- */
 .gig-list-page .gig-year-summary {
@@ -25,7 +24,8 @@
   margin: var(--space-3) 0 0;
 }
 
-/* ---------- Toolbar: view switch, search, filters ---------- */
+/* ---------- Toolbar: view switch, search (as on the offer list) ---------- */
+/* The column filters live in the table headers (ExcelTable). */
 .gig-list-page .gig-toolbar {
   display: flex;
   flex-direction: column;
@@ -35,22 +35,7 @@
 .gig-list-page .gig-view-switch {
   align-self: flex-start;
 }
-/* 12-column grid like StatGrid. Phones: search full width, selects half each.
-   600–1199 px: search on its own row, selects under the first two summary tiles.
-   ≥ 1200 px: search over four tiles, one select under each of the last two. */
-.gig-list-page .gig-filters {
-  display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  gap: var(--space-3) var(--grid-gap);
-}
-.gig-list-page .gig-filters > * {
-  grid-column: span 6;
-  min-width: 0;
-}
-.gig-list-page .gig-filters > .gig-filter-search {
-  grid-column: span 12;
-}
-.gig-list-page .gig-filters label {
+.gig-list-page .gig-search label {
   margin-top: 0;
 }
 .gig-list-page .gig-search-input {
@@ -66,15 +51,6 @@
 }
 .gig-list-page .gig-search-input input {
   padding-left: calc(var(--space-3) + var(--icon) + var(--space-2));
-}
-.gig-list-page .gig-filter-flags {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-1) var(--space-4);
-}
-.gig-list-page .gig-filter-flags .segmented {
-  margin-right: var(--space-2);
 }
 
 /* ---------- Notices, loading, empty ---------- */
@@ -122,170 +98,45 @@
   text-decoration: none;
   overflow-wrap: anywhere;
 }
-.gig-list-page .gig-link:hover {
+.gig-list-page .gig-link:hover,
+.gig-list-page .gig-client-link:hover {
   text-decoration: underline;
 }
-.gig-list-page .gig-flags {
-  display: inline-flex;
-  flex-wrap: wrap;
-  max-width: 100%;
-  gap: var(--space-1);
-}
-.gig-list-page .gig-cell-label {
-  font-family: var(--font-mono);
-  font-size: var(--fs-meta);
-  letter-spacing: var(--ls-label);
-  text-transform: uppercase;
-  color: var(--label);
+.gig-list-page .gig-client-link {
+  color: var(--text);
+  text-decoration: none;
 }
 .gig-list-page .gig-margin-actual {
   color: var(--text-muted);
   font-size: var(--fs-small);
 }
 
-/* ---------- Cards (below 1200 px: phones, tablets and desktop next to the sidebar) ---------- */
-.gig-list-page .gig-cards {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--grid-gap);
-}
-.gig-list-page .gig-card {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--card-pad);
-  border: var(--hairline) solid var(--border);
-  border-radius: var(--radius);
-  background: var(--surface);
-}
-.gig-list-page .gig-card.status-cancelled {
-  opacity: 0.75;
-}
-.gig-list-page .gig-card .gig-link {
-  font-size: var(--fs-lg);
-}
-.gig-list-page .gig-people {
-  color: var(--text-muted);
-  font-size: var(--fs-small);
-}
-/* Client (UC-027): one small line on cards, a small linked name in the table. */
-.gig-list-page .gig-client {
-  font-size: var(--fs-small);
-  overflow-wrap: anywhere;
-}
-.gig-list-page .gig-card-foot {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: var(--space-2) var(--space-3);
-  margin-top: var(--space-2);
-  padding-top: var(--space-3);
-  border-top: var(--hairline) solid var(--border);
-}
-.gig-list-page .gig-total {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-.gig-list-page .gig-total-value {
-  font-size: var(--fs-lg);
+/* ---------- Table (ExcelTable, same look as the offer list) ---------- */
+.gig-list-page .gig-table td.gig-col-total {
   font-weight: var(--fw-bold);
-  line-height: var(--lh-tight);
-  font-variant-numeric: tabular-nums;
 }
-/* Economics: label left, figure right-aligned, one row each. */
-.gig-list-page .gig-econ {
-  display: grid;
-  gap: var(--space-2);
-  margin: 0;
-  padding-top: var(--space-3);
-  border-top: var(--hairline) solid var(--border);
-}
-.gig-list-page .gig-econ > div {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-3);
-}
-.gig-list-page .gig-econ dd {
-  margin: 0;
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-.gig-list-page .status-cancelled .gig-link,
-.gig-list-page .status-cancelled .gig-total-value {
+.gig-list-page .gig-table td.gig-col-staffing {
   color: var(--text-muted);
 }
-
-/* ---------- Table (≥ 1200 px) ---------- */
-/* Eight columns in ~886 px (1200 px viewport next to the expanded sidebar, F-006): two-word
-   headers may wrap, bottom-aligned so the labels share one baseline above the figures. */
-.gig-list-page .gig-table thead th {
-  white-space: normal;
-  vertical-align: bottom;
+.gig-list-page .gig-table tr.status-cancelled td {
+  color: var(--text-muted);
 }
-/* The outer edges keep --cell-pad-x (first column lines up with the cards and tiles); between
-   columns a smaller gutter, header and body identical, as in the budget table (F-006). */
-.gig-list-page .gig-table th,
-.gig-list-page .gig-table td {
-  padding-left: var(--space-3);
-  padding-right: var(--space-3);
-}
-.gig-list-page .gig-table th:first-child,
-.gig-list-page .gig-table td:first-child {
-  padding-left: var(--cell-pad-x);
-}
-.gig-list-page .gig-table th:last-child,
-.gig-list-page .gig-table td:last-child {
-  padding-right: var(--cell-pad-x);
-}
-/* Date column as wide as its longest value, never breaking inside a date. */
-.gig-list-page .gig-table .gig-col-date {
-  width: 1%;
-  white-space: nowrap;
+.gig-list-page .gig-table tr.status-cancelled .gig-link {
+  color: var(--text-muted);
 }
 .gig-list-page .gig-table .gig-date-part {
   display: inline-block;
   white-space: nowrap;
 }
-/* 1200–1279 px (≈ 886 px box next to the expanded sidebar): a date range wraps after its dash
-   (between the two inline-block parts), so the column is one date wide (F-006). From 1280 px a range stays on one line. */
-@media (max-width: 1279px) {
-  .gig-list-page .gig-table .gig-col-date {
-    white-space: normal;
+/* From 600 px (one line per row, pinned lineup column): mono dates, as on the offer list. */
+@media (min-width: 600px) {
+  .gig-list-page .gig-table td.gig-col-date {
+    font-family: var(--font-mono);
+    font-size: var(--fs-label);
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
   }
-}
-.gig-list-page .gig-table td.gig-col-date {
-  font-family: var(--font-mono);
-  font-size: var(--fs-label);
-  letter-spacing: 0.06em;
-  color: var(--text-muted);
-  font-variant-numeric: tabular-nums;
-}
-.gig-list-page .gig-table td.gig-col-client {
-  font-size: var(--fs-small);
-  overflow-wrap: anywhere;
-}
-.gig-list-page .gig-table .gig-client-link {
-  color: var(--text);
-}
-.gig-list-page .gig-table td.gig-col-people {
-  color: var(--text-muted);
-  font-size: var(--fs-small);
-}
-.gig-list-page .gig-table td.gig-col-total {
-  font-weight: var(--fw-bold);
-}
-.gig-list-page .gig-table td .gig-margin-actual {
-  display: block;
-  margin-top: var(--space-1);
-}
-.gig-list-page .gig-table tr.status-cancelled td {
-  color: var(--text-muted);
 }
 
 /* ---------- Deleted view ---------- */
@@ -330,13 +181,6 @@
   gap: var(--space-2);
 }
 
-/* ---------- ≥ 600 px ---------- */
-@media (min-width: 600px) {
-  .gig-list-page .gig-filters > * {
-    grid-column: span 4;
-  }
-}
-
 /* ---------- ≥ 900 px ---------- */
 @media (min-width: 900px) {
   /* Rows share one column grid (subgrid), so dates, names and buttons line up across rows. */
@@ -363,12 +207,9 @@
   }
 }
 
-/* ---------- ≥ 1200 px ---------- */
-@media (min-width: 1200px) {
-  .gig-list-page .gig-filters > * {
-    grid-column: span 2;
-  }
-  .gig-list-page .gig-filters > .gig-filter-search {
-    grid-column: span 8;
+/* ---------- ≥ 600 px ---------- */
+@media (min-width: 600px) {
+  .gig-list-page .gig-search {
+    max-width: calc(var(--label-w) * 2.5);
   }
 }

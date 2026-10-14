@@ -313,7 +313,7 @@ Shell parts in `src/layout/`: `Sidebar` (rail / drawer), `NavDrawer` (modal draw
 
 ### ExcelTable (`src/components/ExcelTable.tsx`, docs/design.md "Excel-style tables")
 
-The shared Excel-style list (Tarjoukset; Keikat in TASK-144). See it on `/styleguide` → "Excel table".
+The shared Excel-style list (Tarjoukset, Keikat). Keikat opens with a default Tila filter (Myyty + Soitettu) that is not written to the URL until the filters are changed (`useDefaultStatusFilter` in `GigListPage`). See it on `/styleguide` → "Excel table".
 
 - **Header:** title = sort button (`aria-sort`, same icons as `DataTable`) + a **filter icon** on
   filterable columns. The icon is an accent, filled funnel while the column is filtered.

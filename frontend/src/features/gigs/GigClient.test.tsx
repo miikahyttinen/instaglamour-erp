@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { DESKTOP_QUERY, WIDE_QUERY } from '../../lib/useMediaQuery';
+import { DESKTOP_QUERY, TABLET_QUERY, WIDE_QUERY } from '../../lib/useMediaQuery';
 import { db } from '../../mocks/data';
 import { addMockClient, addMockGig, TEST_YEAR } from '../../test/gigFixtures';
 import { installMatchMedia } from '../../test/matchMedia';
@@ -108,16 +108,20 @@ describe('gig client', () => {
     addMockGig({ startDate: `${TEST_YEAR}-03-01`, venue: 'Venue X', clientId: x.id });
     addMockGig({ startDate: `${TEST_YEAR}-04-01`, venue: 'Venue Y' });
 
-    // Cards (below 1200 px).
+    // Cards (phones, < 600 px): the client is a labelled line of the card.
     const first = renderApp('/gigs');
-    const cards = () => within(screen.getByRole('list', { name: 'Keikkalista' })).getAllByRole('listitem');
-    await waitFor(() => expect(cards()).toHaveLength(2));
-    expect(cards()[0]).toHaveTextContent('Asiakas: Client X');
-    expect(cards()[1]).not.toHaveTextContent('Asiakas:');
+    const cardRows = () =>
+      within(screen.getByRole('table', { name: 'Keikkalista' }))
+        .getAllByRole('row')
+        .filter((r) => r.closest('tbody'));
+    const clientCell = (row: HTMLElement) => row.querySelector('td[data-label="Asiakas"]');
+    await waitFor(() => expect(cardRows()).toHaveLength(2));
+    expect(clientCell(cardRows()[0]!)).toHaveTextContent('Client X');
+    expect(clientCell(cardRows()[1]!)).toHaveTextContent('–');
     first.unmount();
 
-    // Table (≥ 1200 px).
-    installMatchMedia({ [DESKTOP_QUERY]: true, [WIDE_QUERY]: true });
+    // Table (from 600 px).
+    installMatchMedia({ [TABLET_QUERY]: true, [DESKTOP_QUERY]: true, [WIDE_QUERY]: true });
     const { user } = renderApp('/gigs');
     const table = await screen.findByRole('table', { name: 'Keikkalista' });
     const rows = () => within(table).getAllByRole('row').filter((r) => r.closest('tbody'));
