@@ -11,7 +11,7 @@ import { Notice } from '../../components/Notice';
 import { StatusTag } from '../../components/StatusTag';
 import { apiErrorMessage, offerStatusLabel } from '../../i18n/labels';
 import type { CopyResult } from './offerOptions';
-import { offerDisplayStatus } from './offerSort';
+import { offerDisplayStatus } from './offerStatus';
 
 const TONE = { OPEN: 'info', EXPIRED: 'warn', ACCEPTED: 'ok', REJECTED: 'muted' } as const;
 

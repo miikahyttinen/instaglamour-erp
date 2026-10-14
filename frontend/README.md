@@ -74,7 +74,7 @@ VITE_API_PROXY_TARGET=http://localhost:3100 VITE_PORT=5273 npm run dev
 | `src/features/offers/` | Offers (UC-028, UC-029, UC-031, see "Offers"): list `/offers`, new offer `/offers/new`, offer page `/offers/:id`, convert dialog; plus `OfferPreview` (shared customer view) and the public page `/o/:token` (see "Offer preview") |
 | `src/features/gigs/` | Gig list, new gig, gig page (costs, attachments, history, move/cancel/delete dialogs) |
 | `src/features/clients/` | Client register (UC-027): list + search + add, client page (inline name/notes, gigs, offers, delete), `ClientSelect` / `InlineClientSelect` ("–", clients, "New client…") used by the new gig and new offer forms, the gig page and the offer page. Mock: `mocks/clientHandlers.ts`; clients live in `db.gigs` (seed: Client A–C in `gigSeed.ts`), offers in `db.offers` |
-| `src/components/` | Shared UI: `Button`/`IconButton`, `Card`, `StatTile`/`StatGrid`, `MiniBars`, `PageHead`, `SectionLabel`, `StatusTag`, `Notice`, `DataTable`, `Dialog`, `Field`, `MoneyInput`, `Logo` (see "Design system") |
+| `src/components/` | Shared UI: `Button`/`IconButton`, `Card`, `StatTile`/`StatGrid`, `MiniBars`, `PageHead`, `SectionLabel`, `StatusTag`, `Notice`, `DataTable`, `ExcelTable` (+ `ColumnFilter`, `excelTableState`), `Dialog`, `Field`, `MoneyInput`, `Logo` (see "Design system") |
 | `src/components/inline/` | Inline (save-on-blur) fields and `useInlineSave` (see "Inline editing") |
 | `src/lib/hours.ts` | Hours input parsing / validation / formatting (shared by the hours feature and `InlineHours`) |
 | `src/styles/` | `tokens.css` (all design tokens, dark + light), `fonts.css` (self-hosted fonts) |
@@ -127,8 +127,8 @@ production builds) and its texts are English on purpose.
 - Breakpoints: phone first; `min-width: 600px` (tablet: dialogs centred, 2-column forms, tables
   instead of cards); `min-width: 900px` (desktop: sidebar instead of the ☰ drawer);
   `min-width: 1200px` (`lg` StatGrid spans).
-  `useMediaQuery(DESKTOP_QUERY)` / `useMediaQuery(WIDE_QUERY)` from `src/lib/useMediaQuery.ts` give
-  the 900 / 1200 px breakpoints in JS (don't write your own copies of the query).
+  `useMediaQuery(TABLET_QUERY)` / `useMediaQuery(DESKTOP_QUERY)` / `useMediaQuery(WIDE_QUERY)` from
+  `src/lib/useMediaQuery.ts` give the 600 / 900 / 1200 px breakpoints in JS (don't write your own copies of the query).
   **Breakpoints are viewport widths, and from 900 px the sidebar takes 232 px (64 collapsed).**
   At 900 px the content column is only about 590 px wide (900 − 232 − 2 × 40), narrower than a
   600 px phone/tablet layout. Check every screen at 900 px with the sidebar expanded.
@@ -184,7 +184,7 @@ production builds) and its texts are English on purpose.
 | Shape / size | `--radius` (2 px, the max), `--hairline` (1 px), `--tap` 44, `--control-h` 44→36, `--inline-pad-x` 8, `--inline-num-trail` (space right of an inline money/hours unit), `--icon` 16, `--icon-nav` 18, `--icon-stroke` |
 | Shell | `--topbar-h` 56, `--sidebar-w` 232, `--sidebar-w-collapsed` 64, `--drawer-w` min(280 px, 85vw), `--nav-item-h` 44→40 |
 | Motion | `--dur` 200 ms, `--ease`. Always add a `prefers-reduced-motion: reduce` override. |
-| Stacking | `--z-topbar` 20, `--z-sidebar` 30, `--z-drawer` 40, `--z-dialog` 50 |
+| Stacking | `--z-topbar` 20, `--z-sidebar` 30, `--z-drawer` 40, `--z-popover` 45 (table filter popover), `--z-dialog` 50 |
 | Grid spans | `--span`, `--span-sm`, `--span-md`, `--span-lg` (registered, not inherited; see `StatGrid`) |
 
 
@@ -206,6 +206,7 @@ production builds) and its texts are English on purpose.
 | `StatusTag` | `tone?: 'info' \| 'ok' \| 'warn' \| 'danger' \| 'muted'` (muted), `children`, `title?` | Gig statuses: use `GigStatusTag` (gigs feature). |
 | `Notice` | `tone?: 'info' \| 'ok' \| 'warn' \| 'danger'` (info), `role?: 'alert' \| 'status' \| 'note'`, `children` | Same as `.notice` / `.notice-*`. |
 | `DataTable<T>` | `columns`, `rows`, `rowKey`, `caption` (required, visually hidden unless `showCaption`), `empty?`, `cardsOnPhone?` (true), `cardsBelow?: 'sm' \| 'lg'` (`sm` = cards below 600 px; `lg` = below 1200 px, for wide tables that would scroll next to the sidebar at 900–1199 px), `rowClassName?`, `footer?` (`<tr>`s), `className?` | Column: `key`, `label`, `cell(row)`, `header?`, `numeric?`, `primary?` (card title on phones), `hideOnPhone?`, `sort?: 'asc' \| 'desc'`, `onSort?` (makes the header a sort button; caller owns the sort state), `className?`. |
+| `ExcelTable<T>` | see "ExcelTable" below | Excel-style list: sort + per-column filter popovers, pinned first column, URL state, phone cards + filter sheet. Use it for the year lists (offers, gigs). |
 | `Dialog` | `title`, `onClose`, `children` | Bottom sheet on phones, centred from 600 px. Put buttons in `<div className="form-actions">`. |
 | `Field` | `label`, `error?`, `hint?`, `children(fieldProps)` | Spread `fieldProps` on the native `input`/`select`/`textarea`; they are styled globally. |
 | `MoneyInput` | `value`, `onChange`, + field props | Euro input; the € sits inside the field, so it ends at the same right edge as other fields. |
@@ -310,6 +311,88 @@ Shell parts in `src/layout/`: `Sidebar` (rail / drawer), `NavDrawer` (modal draw
 `useFocusTrap` from `src/lib/`), `sidebarState.ts`, `navItems.ts` (`NAV_ITEMS`,
 `activeNavItem(pathname)`), `YearSelector`, `ThemeToggle` and `LanguageButtons` (sign-in page).
 
+### ExcelTable (`src/components/ExcelTable.tsx`, docs/design.md "Excel-style tables")
+
+The shared Excel-style list (Tarjoukset; Keikat in TASK-144). See it on `/styleguide` → "Excel table".
+
+- **Header:** title = sort button (`aria-sort`, same icons as `DataTable`) + a **filter icon** on
+  filterable columns. The icon is an accent, filled funnel while the column is filtered.
+- **Filter popover** (≥ 600 px, `ColumnFilterPopover`): a non-modal `dialog` under the icon
+  (`position: fixed`, so the scroll box does not clip it; `--z-popover`). Search box when there are
+  more than 8 values (`FILTER_SEARCH_MIN`), "Valitse kaikki" / "Tyhjennä" (check / uncheck the
+  **visible** values), the checkbox list (distinct values of the rows left by the *other* filters +
+  the selected ones, "(tyhjä)" last), OK / Peruuta. OK with every value checked removes the filter;
+  OK is disabled while nothing is checked. Focus moves in (search or "Valitse kaikki"), Tab stays
+  inside, Enter in the search / on a checkbox = OK, Esc / Peruuta / click outside = no change; focus
+  returns to the icon.
+- **Rows:** filters are client-side, AND across columns, OR inside a column; then the sort (empty
+  values last in both directions, `tieBreak`, then the original order). A row count ("Näytetään 3 / 10")
+  and **"Tyhjennä suodattimet"** appear above the table while a filter is on; when the filters hide
+  every row a message + "Tyhjennä suodattimet" replaces the table.
+- **Layout:** from 600 px one line per row, compact cells, first column sticky (pinned) on horizontal
+  scroll, numeric columns right-aligned tabular. Phones (< 600 px): `DataTable`-style cards and a
+  **"Suodattimet"** button (badge = number of filtered columns) that opens a bottom sheet with the sort
+  (Järjestys / Suunta) and the filterable columns ("Kaikki" / "N valittu"); a column opens the same
+  filter form, OK / Peruuta return to the list.
+- **State** is controlled: `useUrlTableState({ defaultSort?, prefix? })` keeps it in the URL
+  (`?sort=price&dir=desc&f.seller=<id>&f.seller=<id>&f.source=`; one `f.<column key>` per selected
+  value, empty value = "(tyhjä)"; history entries are replaced; other parameters are kept).
+  `useLocalTableState()` is the same in React state (styleguide, embedded tables).
+- Page figures/tiles above the table are not affected (BR-082, BR-106): give them the unfiltered data.
+
+```tsx
+import { ExcelTable } from '../../components/ExcelTable';
+import { useUrlTableState, type ExcelColumn } from '../../components/excelTableState';
+
+const table = useUrlTableState({ defaultSort: { key: 'date', dir: 'asc' } });
+const columns: ExcelColumn<Gig>[] = [
+  { key: 'name', label: t('…'), primary: true, sortValue: (g) => g.name, cell: (g) => <Link …>{g.name}</Link> },
+  { key: 'seller', label: t('…'), sortValue: (g) => sellerName(g), filterValue: (g) => g.sellerId,
+    filterLabel: (id) => partnerName(id), cell: (g) => sellerName(g) },
+  { key: 'status', label: t('…'), sortValue: (g) => STATUS_ORDER.indexOf(g.status), filterValue: (g) => g.status,
+    filterLabel: (code) => t(`gigStatus.${code}`), filterCompare: byOrder(STATUS_ORDER), cell: (g) => <GigStatusTag … /> },
+  { key: 'performers', label: t('…'), filterValue: (g) => g.performerNames /* list: any match */, cell: … },
+  { key: 'price', label: t('…'), numeric: true, sortValue: (g) => g.priceCents, cell: (g) => formatMoney(…) },
+];
+<ExcelTable {...table} caption={t('…')} columns={columns} rows={rows} rowKey={(g) => g.id}
+  tieBreak={(a, b) => a.date.localeCompare(b.date)} footer={(visible) => <tr>…totals of visible…</tr>} />
+```
+
+| `ExcelColumn<T>` | Notes |
+|---|---|
+| `key` | Stable id: React key, sort key, URL filter key (`f.<key>`). |
+| `label` | Header text, phone card label, filter names ("Suodata: <label>"). |
+| `cell(row)` | Cell content. |
+| `header?` | Custom header content (e.g. visually hidden "Actions"). |
+| `numeric?`, `primary?`, `hideOnPhone?`, `className?` | As in `DataTable`. |
+| `sortValue?(row)` | `string \| number \| null \| undefined`. Makes the column sortable. Numbers numeric, strings natural + case-insensitive; empty last. Use a display label for coded values so they sort as they read. |
+| `filterValue?(row)` | `string \| null \| undefined \| string[]`. Makes the column filterable. Return a stable key (id / code); null, '' or [] = blank. A list matches when any value is selected. |
+| `filterLabel?(value)` | Text of a value in the popover (default: the value). |
+| `filterCompare?(a, b)` | Order of the values (default: by label). Blank is always last. |
+
+| `ExcelTable` prop | Notes |
+|---|---|
+| `columns`, `rows`, `rowKey`, `caption` | `rows` = all rows of the view (after the page's own search); `caption` = table name (visually hidden). |
+| `sort`, `onSortChange`, `filters`, `onFiltersChange` | The state: spread `useUrlTableState()` / `useLocalTableState()`. `filters` = `{ [columnKey]: string[] }`, `BLANK` = `''`. |
+| `tieBreak?(a, b)` | Ties in the sorted column, and the order with no sort. |
+| `rowClassName?(row)`, `className?` | Row class; class on the wrapper `.excel-table`. |
+| `footer?(visibleRows)` | `<tr>`s for `<tfoot>` from the filtered rows (totals). |
+| `empty?` | Shown when `rows` is empty. |
+| `emptyFiltered?` | Text when the filters hide every row (default "Ei suodattimia vastaavia rivejä."). |
+
+Pure helpers in `excelTableState.ts` (for pages and tests): `filterRows`, `sortRows`, `applyTableState`,
+`filterOptions`, `activeFilterCount`, `nextSort`, `readTableParams`, `writeFilterParams`.
+
+**Accessible names (FI / EN; also for e2e):** filter icon button "Suodata: <column>" / "Filter: <column>"
+(`aria-haspopup="dialog"`, `aria-expanded`; description "Suodatin käytössä" / "Filter on" while
+active, plus class `is-active`); popover `dialog` with the same name; search box "Hae arvoja" / "Search values";
+buttons "Valitse kaikki" / "Select all", "Tyhjennä" / "Clear", "OK", "Peruuta" / "Cancel"; checkboxes named
+by the value, "(tyhjä)" / "(blank)"; group "Arvot: <column>" / "Values: <column>"; "Tyhjennä
+suodattimet" / "Clear filters"; row count status "Näytetään N / M" / "Showing N / M". Phone: button
+"Suodattimet" / "Filters"; sheet `dialog` "Suodattimet"; selects "Järjestys" / "Sort by" and "Suunta" /
+"Direction" ("Nouseva" / "Laskeva"); one button per filterable column named by its label (description
+"Kaikki" / "N valittu"); "Takaisin" / "Back"; "Valmis" / "Done". Texts: `table.*` in `src/i18n/fi.ts` / `en.ts`.
+
 ### Offer preview (`src/features/offers/OfferPreview.tsx`)
 
 The customer view of an offer (UC-030, BR-104). Used by the public page `/o/:token` and by the
@@ -354,10 +437,12 @@ offer's link is not found there either.
 
 - **Menu:** Tarjoukset / Offers is the first item (`/offers`); `/` stays the year page.
 - **List** (`OfferListPage`): figures of the selected year from `summary` (open value, win rate,
-  BR-106; they ignore the filters), filters (status incl. Expired, seller, disposition, event type,
-  source) and search in the URL, Excel-style `DataTable` sorted on the client (`offerSort.ts`:
-  every column, empty values last, `?sort=&dir=`; default event date ascending). From 600 px the
-  table keeps one line per row and scrolls sideways with the event column pinned; phones get cards.
+  BR-106; they ignore the filters), search (`?q=`, sent to the API) and an `ExcelTable` (see above):
+  every column sortable (default event date ascending; ties by event date, then created), column
+  filters for Asiakas, Paikka / kaupunki, Tila (incl. Vanhentunut; `offerStatus.ts`), Myyjä, Lähde,
+  Tapahtumatyyppi, Lopputulos and Keikka (luotu / ei), all client-side and in the URL
+  (`f.status=EXPIRED`, `f.seller=<partner id>`, `f.source=` = blank, …). No filter dropdowns above the
+  table (UC-028 change 2026-10-14).
   Source / event type / disposition are `InlineSelect`s. Gig column: "Convert to gig" (confirm
   dialog `ConvertDialog`, BR-105 fields) or the "Keikka →" link. Row actions: copy public link
   (fetches the offer for `sharePath`), delete (confirm). Deleted view with Restore.

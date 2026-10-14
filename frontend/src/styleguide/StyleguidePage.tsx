@@ -34,6 +34,7 @@ import { NAV_ITEMS } from '../layout/navItems';
 import { ThemeToggle } from '../layout/ThemeToggle';
 import { formatMoney } from '../lib/format';
 import type { Theme } from '../theme/theme';
+import { ExcelTableShowcase } from './ExcelTableShowcase';
 import { InlineShowcase } from './InlineShowcase';
 import { LayoutShowcase } from './LayoutShowcase';
 import './styleguide.css';
@@ -394,6 +395,13 @@ function Showcase({ theme }: { theme: Theme }) {
       />
       <p className="meta sg-note">Empty state:</p>
       <DataTable caption="Empty" columns={columns} rows={[]} rowKey={(g) => g.id} empty="No gigs this year." />
+
+      <SectionLabel>Excel table (ExcelTable: sort, column filters, pinned first column)</SectionLabel>
+      <p className="meta sg-note">
+        Filter icon = Excel-style value list; accent when filtered. Phone: cards + Filters sheet. Local state here; pages
+        use useUrlTableState().
+      </p>
+      <ExcelTableShowcase />
 
       <SectionLabel>Dialog (bottom sheet on phone)</SectionLabel>
       <Button onClick={() => setDialogOpen(true)}>Open dialog</Button>

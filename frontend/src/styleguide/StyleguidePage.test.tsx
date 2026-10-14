@@ -27,12 +27,14 @@ describe('/styleguide (dev only)', () => {
         'Notices',
         'Stat tiles + mini bars (StatGrid / StatTile)',
         'Data table (DataTable; phone < 600 px = cards)',
+        'Excel table (ExcelTable: sort, column filters, pinned first column)',
         'Dialog (bottom sheet on phone)',
         'Icons (lucide-react, 16 px, stroke 1.5)',
       ]) {
         expect(p.getByRole('heading', { level: 2, name: section })).toBeInTheDocument();
       }
       expect(p.getByRole('table', { name: 'Demo gigs' })).toBeInTheDocument();
+      expect(p.getByRole('table', { name: 'Demo Excel table' })).toBeInTheDocument();
       // Every inline component.
       expect(p.getByRole('textbox', { name: 'InlineText · venue' })).toBeInTheDocument();
       expect(p.getByRole('textbox', { name: 'InlineTextarea · notes' })).toBeInTheDocument();

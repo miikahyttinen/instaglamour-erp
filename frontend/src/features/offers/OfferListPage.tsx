@@ -3,14 +3,16 @@ import { Link2, Plus, Quote, RotateCcw, Search, Trash2 } from 'lucide-react';
 import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
-import type { OfferDisposition, OfferEventType, OfferSource, OfferStatusFilter } from '../../api/enums';
-import { OFFER_DISPOSITIONS, OFFER_EVENT_TYPES, OFFER_SOURCES, OFFER_STATUS_FILTERS } from '../../api/enums';
+import type { OfferDisposition, OfferEventType, OfferSource } from '../../api/enums';
+import { OFFER_DISPOSITIONS, OFFER_EVENT_TYPES, OFFER_SOURCES } from '../../api/enums';
 import { offersApi } from '../../api/endpoints';
 import type { OfferListQuery, OfferSummary, OfferUpdate, OfferYearSummary, Partner } from '../../api/types';
 import { useSelectedYear } from '../../auth/SignedInContext';
 import { Button, IconButton } from '../../components/Button';
 import { buttonClass } from '../../components/buttonClass';
 import { DataTable, type DataTableColumn } from '../../components/DataTable';
+import { ExcelTable } from '../../components/ExcelTable';
+import { useUrlTableState, type ExcelColumn, type ExcelTableState } from '../../components/excelTableState';
 import { InlineSelect } from '../../components/inline';
 import { Notice } from '../../components/Notice';
 import { StatGrid, StatTile } from '../../components/StatTile';
@@ -27,7 +29,7 @@ import { useReference } from '../../reference/useReference';
 import { ConvertDialog } from './ConvertDialog';
 import { copyToClipboard, useOfferOptions, type CopyResult } from './offerOptions';
 import { ConfirmDialog, CopyResultNotice, GigCell, OfferStatusTag } from './offerParts';
-import { DEFAULT_SORT, isOfferSortKey, nextSort, sortOffers, type OfferSortKey, type SortDir } from './offerSort';
+import { OFFER_DISPLAY_STATUSES, offerDisplayStatus, offerTieBreak, type OfferDisplayStatus } from './offerStatus';
 import { offerKeys, publicOfferUrl, useApplyOffer, useOfferList } from './queries';
 import './offers.css';
 
@@ -41,14 +43,26 @@ type PageNotice =
 
 type RowDialog = { kind: 'convert' | 'delete'; offer: OfferSummary } | null;
 
-const pick = <T extends string>(list: readonly T[], value: string | null): T | '' =>
-  value !== null && (list as readonly string[]).includes(value) ? (value as T) : '';
+/** Default order of the offer table (UC-028): event date ascending. */
+const DEFAULT_SORT = { key: 'eventDate', dir: 'asc' } as const;
+
+/** Filter values in the order of a code list (unknown values last). */
+const byCodeOrder =
+  (codes: readonly string[]) =>
+  (a: string, b: string): number => {
+    const ia = codes.indexOf(a);
+    const ib = codes.indexOf(b);
+    return (ia < 0 ? codes.length : ia) - (ib < 0 ? codes.length : ib);
+  };
 
 function partnerName(partners: Partner[] | undefined, id: string): string {
   return partners?.find((p) => p.id === id)?.name ?? '–';
 }
 
-/** Offers of the selected year (UC-028): figures, filters, search, sortable table, Deleted view. */
+/**
+ * Offers of the selected year (UC-028): figures, search, Excel-style table with column filters
+ * (ExcelTable; filters and sort in the URL, client-side), Deleted view.
+ */
 export function OfferListPage() {
   const { t } = useTranslation();
   const lang = useLang();
@@ -61,13 +75,7 @@ export function OfferListPage() {
   const [params, setParams] = useSearchParams();
 
   const deletedView = params.get('view') === 'deleted';
-  const status = pick<OfferStatusFilter>(OFFER_STATUS_FILTERS, params.get('status'));
-  const sellerId = params.get('seller') ?? '';
-  const disposition = pick<OfferDisposition>(OFFER_DISPOSITIONS, params.get('disposition'));
-  const eventType = pick<OfferEventType>(OFFER_EVENT_TYPES, params.get('eventType'));
-  const source = pick<OfferSource>(OFFER_SOURCES, params.get('source'));
-  const sortKey: OfferSortKey = isOfferSortKey(params.get('sort')) ? (params.get('sort') as OfferSortKey) : DEFAULT_SORT.key;
-  const sortDir: SortDir = params.get('dir') === 'desc' ? 'desc' : params.get('sort') ? 'asc' : DEFAULT_SORT.dir;
+  const tableState = useUrlTableState({ defaultSort: DEFAULT_SORT });
   const [search, setSearch] = useState(params.get('q') ?? '');
   const q = useDeferredValue(search.trim());
 
@@ -101,43 +109,10 @@ export function OfferListPage() {
     );
   }, [q, params, setParams]);
 
-  const query: OfferListQuery = deletedView
-    ? { year, deleted: true, q: q || undefined }
-    : {
-        year,
-        q: q || undefined,
-        status: status || undefined,
-        sellerId: sellerId || undefined,
-        disposition: disposition || undefined,
-        eventType: eventType || undefined,
-        source: source || undefined,
-      };
+  // The column filters are client-side (design.md); only the search goes to the API.
+  const query: OfferListQuery = deletedView ? { year, deleted: true, q: q || undefined } : { year, q: q || undefined };
   const list = useOfferList(query);
-  const filtered = Boolean(q || status || sellerId || disposition || eventType || source);
-
-  const sorted = useMemo(
-    () =>
-      sortOffers(list.data?.offers ?? [], sortKey, sortDir, {
-        seller: (o) => partnerName(partners, o.sellerId),
-        source: (o) => (o.source ? offerSourceLabel(t, o.source) : null),
-        eventType: (o) => (o.eventType ? offerEventTypeLabel(t, o.eventType) : null),
-        disposition: (o) => offerDispositionLabel(t, o.disposition),
-      }),
-    [list.data, sortKey, sortDir, partners, t],
-  );
-
-  const onSort = (key: OfferSortKey) => {
-    const next = nextSort({ key: sortKey, dir: sortDir }, key);
-    setParams(
-      (prev) => {
-        const p = new URLSearchParams(prev);
-        p.set('sort', next.key);
-        p.set('dir', next.dir);
-        return p;
-      },
-      { replace: true },
-    );
-  };
+  const deletedRows = useMemo(() => [...(list.data?.offers ?? [])].sort(offerTieBreak), [list.data]);
 
   const patch = async (offer: OfferSummary, body: OfferUpdate) => {
     const updated = await offersApi.update(offer.id, body);
@@ -196,59 +171,18 @@ export function OfferListPage() {
             {t('offers.views.deleted')}
           </button>
         </div>
-        <div className="offers-filters">
-          <div className="offers-filter-search">
-            <label htmlFor="offer-search">{t('offers.search')}</label>
-            <div className="offers-search-input">
-              <Search className="offers-search-icon" />
-              <input
-                id="offer-search"
-                type="search"
-                value={search}
-                placeholder={t('offers.searchPlaceholder')}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
+        <div className="offers-search">
+          <label htmlFor="offer-search">{t('offers.search')}</label>
+          <div className="offers-search-input">
+            <Search className="offers-search-icon" />
+            <input
+              id="offer-search"
+              type="search"
+              value={search}
+              placeholder={t('offers.searchPlaceholder')}
+              onChange={(e) => setSearch(e.target.value)}
+            />
           </div>
-          {!deletedView && (
-            <>
-              <FilterSelect
-                id="offer-status"
-                label={t('offers.columns.status')}
-                value={status}
-                onChange={(v) => setParam('status', v)}
-                options={OFFER_STATUS_FILTERS.map((s) => ({ value: s, label: t(`offers.statusFilter.${s}`) }))}
-              />
-              <FilterSelect
-                id="offer-seller"
-                label={t('offers.columns.seller')}
-                value={sellerId}
-                onChange={(v) => setParam('seller', v)}
-                options={(partners ?? []).map((p) => ({ value: p.id, label: p.name }))}
-              />
-              <FilterSelect
-                id="offer-disposition"
-                label={t('offers.columns.disposition')}
-                value={disposition}
-                onChange={(v) => setParam('disposition', v)}
-                options={OFFER_DISPOSITIONS.map((d) => ({ value: d, label: offerDispositionLabel(t, d) }))}
-              />
-              <FilterSelect
-                id="offer-event-type"
-                label={t('offers.columns.eventType')}
-                value={eventType}
-                onChange={(v) => setParam('eventType', v)}
-                options={OFFER_EVENT_TYPES.map((c) => ({ value: c, label: offerEventTypeLabel(t, c) }))}
-              />
-              <FilterSelect
-                id="offer-source"
-                label={t('offers.columns.source')}
-                value={source}
-                onChange={(v) => setParam('source', v)}
-                options={OFFER_SOURCES.map((c) => ({ value: c, label: offerSourceLabel(t, c) }))}
-              />
-            </>
-          )}
         </div>
       </div>
 
@@ -273,22 +207,20 @@ export function OfferListPage() {
             <p>
               {deletedView
                 ? t('offers.emptyDeleted', { year })
-                : filtered
+                : q
                   ? t('offers.emptyFiltered')
                   : t('offers.empty', { year })}
             </p>
-            {!deletedView && !filtered && newOfferLink}
+            {!deletedView && !q && newOfferLink}
           </div>
         ) : deletedView ? (
-          <DeletedTable offers={sorted} pending={restore.isPending} onRestore={(id) => restore.mutate(id)} />
+          <DeletedTable offers={deletedRows} pending={restore.isPending} onRestore={(id) => restore.mutate(id)} />
         ) : (
           <OfferTable
-            offers={sorted}
+            offers={list.data.offers}
             partners={partners}
             lang={lang}
-            sortKey={sortKey}
-            sortDir={sortDir}
-            onSort={onSort}
+            tableState={tableState}
             onPatch={patch}
             onConvert={(offer) => setDialog({ kind: 'convert', offer })}
             onCopy={(offer) => void copyLink(offer)}
@@ -328,35 +260,6 @@ export function OfferListPage() {
         </ConfirmDialog>
       )}
     </section>
-  );
-}
-
-function FilterSelect({
-  id,
-  label,
-  value,
-  options,
-  onChange,
-}: {
-  id: string;
-  label: string;
-  value: string;
-  options: { value: string; label: string }[];
-  onChange: (value: string | null) => void;
-}) {
-  const { t } = useTranslation();
-  return (
-    <div className="offers-filter-select">
-      <label htmlFor={id}>{label}</label>
-      <select id={id} value={value} onChange={(e) => onChange(e.target.value || null)}>
-        <option value="">{t('offers.any')}</option>
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
-    </div>
   );
 }
 
@@ -426,9 +329,7 @@ interface OfferTableProps {
   offers: OfferSummary[];
   partners: Partner[] | undefined;
   lang: 'fi' | 'en';
-  sortKey: OfferSortKey;
-  sortDir: SortDir;
-  onSort: (key: OfferSortKey) => void;
+  tableState: ExcelTableState;
   onPatch: (offer: OfferSummary, body: OfferUpdate) => Promise<void>;
   onConvert: (offer: OfferSummary) => void;
   onCopy: (offer: OfferSummary) => void;
@@ -436,24 +337,27 @@ interface OfferTableProps {
 }
 
 /**
- * Excel-style table (owner decision): every column sortable, one line per row, horizontal
- * scroll with the event column pinned. Phones (< 600 px): one card per offer.
+ * Excel-style table (UC-028, design.md "Excel-style tables"): every column sortable, filter icons
+ * on the coded / text columns, one line per row, horizontal scroll with the event column pinned.
+ * Phones (< 600 px): one card per offer + the "Suodattimet" sheet.
  */
 function OfferTable(props: OfferTableProps) {
-  const { offers, partners, lang, sortKey, sortDir, onSort, onPatch } = props;
+  const { offers, partners, lang, tableState, onPatch } = props;
   const { t } = useTranslation();
   const options = useOfferOptions();
-  const sortable = (key: OfferSortKey) => ({
-    sort: sortKey === key ? sortDir : undefined,
-    onSort: () => onSort(key),
-  });
-  const columns: DataTableColumn<OfferSummary>[] = [
+  const clientNames = useMemo(() => new Map(offers.map((o) => [o.clientId, o.clientName])), [offers]);
+  const statusLabel = (s: OfferDisplayStatus) => t(`offers.statusFilter.${s}`);
+  const sourceLabel = (o: OfferSummary) => (o.source ? offerSourceLabel(t, o.source) : null);
+  const eventTypeLabel = (o: OfferSummary) => (o.eventType ? offerEventTypeLabel(t, o.eventType) : null);
+  const place = (o: OfferSummary) => [o.venue, o.city].filter(Boolean).join(', ');
+
+  const columns: ExcelColumn<OfferSummary>[] = [
     {
       key: 'event',
       label: t('offers.columns.event'),
       primary: true,
       className: 'offer-col-event',
-      ...sortable('event'),
+      sortValue: (o) => o.eventName,
       cell: (o) => (
         <Link to={`/offers/${o.id}`} className="offer-link">
           {o.eventName}
@@ -463,20 +367,23 @@ function OfferTable(props: OfferTableProps) {
     {
       key: 'client',
       label: t('offers.columns.client'),
-      ...sortable('client'),
+      sortValue: (o) => o.clientName,
+      filterValue: (o) => o.clientId,
+      filterLabel: (id) => clientNames.get(id) ?? '–',
       cell: (o) => <Link to={`/clients/${o.clientId}`} className="offer-client-link">{o.clientName}</Link>,
     },
     {
       key: 'place',
       label: t('offers.columns.place'),
-      ...sortable('place'),
-      cell: (o) => [o.venue, o.city].filter(Boolean).join(', '),
+      sortValue: place,
+      filterValue: place,
+      cell: place,
     },
     {
       key: 'eventDate',
       label: t('offers.columns.eventDate'),
       className: 'offer-col-date',
-      ...sortable('eventDate'),
+      sortValue: (o) => o.eventDate,
       cell: (o) => formatDate(o.eventDate, lang),
     },
     {
@@ -484,33 +391,41 @@ function OfferTable(props: OfferTableProps) {
       label: t('offers.columns.created'),
       className: 'offer-col-date',
       hideOnPhone: true,
-      ...sortable('created'),
+      sortValue: (o) => o.createdAt,
       cell: (o) => formatDate(o.createdAt.slice(0, 10), lang),
     },
     {
       key: 'price',
       label: t('offers.columns.price'),
       numeric: true,
-      ...sortable('price'),
+      sortValue: (o) => o.priceCents,
       cell: (o) => (o.priceCents === null ? '–' : formatMoney(o.priceCents, lang)),
     },
     {
       key: 'status',
       label: t('offers.columns.status'),
-      ...sortable('status'),
+      sortValue: (o) => OFFER_DISPLAY_STATUSES.indexOf(offerDisplayStatus(o)),
+      filterValue: (o) => offerDisplayStatus(o),
+      filterLabel: (v) => statusLabel(v as OfferDisplayStatus),
+      filterCompare: byCodeOrder(OFFER_DISPLAY_STATUSES),
       cell: (o) => <OfferStatusTag offer={o} />,
     },
     {
       key: 'seller',
       label: t('offers.columns.seller'),
-      ...sortable('seller'),
+      sortValue: (o) => partnerName(partners, o.sellerId),
+      filterValue: (o) => o.sellerId,
+      filterLabel: (id) => partnerName(partners, id),
       cell: (o) => partnerName(partners, o.sellerId),
     },
     {
       key: 'source',
       label: t('offers.columns.source'),
       className: 'offer-col-select',
-      ...sortable('source'),
+      sortValue: sourceLabel,
+      filterValue: (o) => o.source,
+      filterLabel: (code) => offerSourceLabel(t, code as OfferSource),
+      filterCompare: byCodeOrder(OFFER_SOURCES),
       cell: (o) => (
         <InlineSelect<OfferSource | null>
           label={`${t('offers.columns.source')}: ${o.eventName}`}
@@ -526,7 +441,10 @@ function OfferTable(props: OfferTableProps) {
       key: 'eventType',
       label: t('offers.columns.eventType'),
       className: 'offer-col-select',
-      ...sortable('eventType'),
+      sortValue: eventTypeLabel,
+      filterValue: (o) => o.eventType,
+      filterLabel: (code) => offerEventTypeLabel(t, code as OfferEventType),
+      filterCompare: byCodeOrder(OFFER_EVENT_TYPES),
       cell: (o) => (
         <InlineSelect<OfferEventType | null>
           label={`${t('offers.columns.eventType')}: ${o.eventName}`}
@@ -542,7 +460,10 @@ function OfferTable(props: OfferTableProps) {
       key: 'disposition',
       label: t('offers.columns.disposition'),
       className: 'offer-col-select',
-      ...sortable('disposition'),
+      sortValue: (o) => offerDispositionLabel(t, o.disposition),
+      filterValue: (o) => o.disposition,
+      filterLabel: (code) => offerDispositionLabel(t, code as OfferDisposition),
+      filterCompare: byCodeOrder(OFFER_DISPOSITIONS),
       cell: (o) => (
         <InlineSelect<OfferDisposition>
           label={`${t('offers.columns.disposition')}: ${o.eventName}`}
@@ -557,7 +478,10 @@ function OfferTable(props: OfferTableProps) {
     {
       key: 'gig',
       label: t('offers.columns.gig'),
-      ...sortable('gig'),
+      sortValue: (o) => (o.gigId ? 1 : 0),
+      filterValue: (o) => (o.gigId ? 'yes' : 'no'),
+      filterLabel: (v) => t(v === 'yes' ? 'offers.gigFilter.yes' : 'offers.gigFilter.no'),
+      filterCompare: byCodeOrder(['yes', 'no']),
       cell: (o) => <GigCell offer={o} onConvert={() => props.onConvert(o)} />,
     },
     {
@@ -581,12 +505,14 @@ function OfferTable(props: OfferTableProps) {
     },
   ];
   return (
-    <DataTable
+    <ExcelTable
+      {...tableState}
       className="offer-table"
       caption={t('offers.listLabel')}
       columns={columns}
       rows={offers}
       rowKey={(o) => o.id}
+      tieBreak={offerTieBreak}
       rowClassName={(o) => `offer-row-${o.status.toLowerCase()}${o.expired ? ' offer-row-expired' : ''}`}
     />
   );

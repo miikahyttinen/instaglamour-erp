@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { formatMoney } from '../../lib/format';
-import { DESKTOP_QUERY } from '../../lib/useMediaQuery';
+import { DESKTOP_QUERY, TABLET_QUERY } from '../../lib/useMediaQuery';
 import { db } from '../../mocks/data';
 import { addMockClient, partnerB, TEST_YEAR } from '../../test/gigFixtures';
 import { installMatchMedia } from '../../test/matchMedia';
@@ -104,31 +104,95 @@ describe('offer list (UC-028)', () => {
     ]);
   });
 
-  it('filters by status (incl. expired), seller and search', async () => {
+  it('filters in the column headers (status incl. expired, seller, outcome), combined with AND and the search', async () => {
     // A past year: the pending offer is expired.
     db.partners[0]!.selectedYear = 2020;
     addMockOffer({ clientId, eventName: 'Expired one', eventDate: '2020-02-01' });
     addMockOffer({ clientId, eventName: 'Lost one', eventDate: '2020-02-15', disposition: 'LOST_OTHER' });
     addMockOffer({ clientId, eventName: 'Won one', eventDate: '2020-03-01', disposition: 'WON', sellerId: partnerB().id });
+    installMatchMedia({ [TABLET_QUERY]: true });
     const { user } = renderApp('/offers');
     await screen.findByRole('table', { name: 'Tarjoukset' });
     expect(eventNames()).toHaveLength(3);
+    // No filter dropdowns above the table any more.
+    expect(screen.queryByRole('combobox', { name: 'Tila' })).not.toBeInTheDocument();
+    for (const column of ['Asiakas', 'Paikka / kaupunki', 'Tila', 'Myyjä', 'Lähde', 'Tapahtumatyyppi', 'Lopputulos', 'Keikka']) {
+      expect(within(table()).getByRole('button', { name: `Suodata: ${column}` })).toBeInTheDocument();
+    }
 
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Tila' }), 'Vanhentunut');
-    await waitFor(() => expect(eventNames()).toEqual(['Expired one']));
+    // Status: only "Vanhentunut".
+    await user.click(within(table()).getByRole('button', { name: 'Suodata: Tila' }));
+    let popover = screen.getByRole('dialog', { name: 'Suodata: Tila' });
+    // Distinct values of the data, in status order.
+    expect(within(popover).getAllByRole('checkbox').map((c) => c.closest('label')!.textContent)).toEqual([
+      'Vanhentunut',
+      'Hyväksytty',
+      'Hylätty',
+    ]);
+    await user.click(within(popover).getByRole('button', { name: 'Tyhjennä' }));
+    await user.click(within(popover).getByRole('checkbox', { name: 'Vanhentunut' }));
+    await user.click(within(popover).getByRole('button', { name: 'OK' }));
+    expect(eventNames()).toEqual(['Expired one']);
     expect(bodyRows()[0]).toHaveTextContent('Vanhentunut');
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Tila' }), 'Hylätty');
-    await waitFor(() => expect(eventNames()).toEqual(['Lost one']));
+    expect(within(table()).getByRole('button', { name: 'Suodata: Tila' })).toHaveClass('is-active');
+    expect(screen.getByText('Näytetään 1 / 3')).toHaveAttribute('role', 'status');
 
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Tila' }), 'Kaikki');
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Myyjä' }), 'Partner B');
-    await waitFor(() => expect(eventNames()).toEqual(['Won one']));
+    await user.click(screen.getByRole('button', { name: 'Tyhjennä suodattimet' }));
+    expect(eventNames()).toHaveLength(3);
 
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Myyjä' }), 'Kaikki');
+    // Seller + outcome combine (AND).
+    await user.click(within(table()).getByRole('button', { name: 'Suodata: Myyjä' }));
+    popover = screen.getByRole('dialog', { name: 'Suodata: Myyjä' });
+    await user.click(within(popover).getByRole('checkbox', { name: 'Partner B' }));
+    await user.click(within(popover).getByRole('button', { name: 'OK' }));
+    expect(eventNames()).toEqual(['Expired one', 'Lost one']);
+    await user.click(within(table()).getByRole('button', { name: 'Suodata: Lopputulos' }));
+    popover = screen.getByRole('dialog', { name: 'Suodata: Lopputulos' });
+    // Only the values left by the other filters are offered (Excel).
+    expect(within(popover).queryByRole('checkbox', { name: 'Voitettu' })).not.toBeInTheDocument();
+    await user.click(within(popover).getByRole('checkbox', { name: 'Odottaa' }));
+    await user.click(within(popover).getByRole('button', { name: 'OK' }));
+    expect(eventNames()).toEqual(['Lost one']);
+
+    // The search still narrows the rows; everything filtered away → message + clear.
     await user.type(screen.getByRole('searchbox', { name: 'Haku' }), 'expired');
+    expect(await screen.findByText('Ei suodattimia vastaavia rivejä.')).toBeInTheDocument();
+    await user.click(screen.getAllByRole('button', { name: 'Tyhjennä suodattimet' })[0]!);
     await waitFor(() => expect(eventNames()).toEqual(['Expired one']));
     await user.type(screen.getByRole('searchbox', { name: 'Haku' }), ' nothing');
     expect(await screen.findByText('Ei hakua vastaavia tarjouksia.')).toBeInTheDocument();
+  });
+
+  it('keeps the column filters and sort in the URL; the year figures ignore them', async () => {
+    addMockOffer({ clientId, eventName: 'Event 1', priceCents: 100000, source: 'INSTAGRAM' });
+    addMockOffer({ clientId, eventName: 'Event 2', priceCents: 200000 });
+    installMatchMedia({ [TABLET_QUERY]: true });
+    const { user } = renderApp('/offers?sort=price&dir=desc&f.source=');
+    await screen.findByRole('table', { name: 'Tarjoukset' });
+    // "(tyhjä)" = offers without a source.
+    expect(eventNames()).toEqual(['Event 2']);
+    expect(text(screen.getByRole('region', { name: 'Avoimet tarjoukset' }))).toContain(fiMoney(300000));
+    expect(within(table()).getByRole('columnheader', { name: /Hinta/ })).toHaveAttribute('aria-sort', 'descending');
+
+    await user.click(within(table()).getByRole('button', { name: 'Suodata: Lähde' }));
+    const popover = screen.getByRole('dialog', { name: 'Suodata: Lähde' });
+    expect(within(popover).getByRole('checkbox', { name: '(tyhjä)' })).toBeChecked();
+    expect(within(popover).getByRole('checkbox', { name: 'Instagram' })).not.toBeChecked();
+    await user.click(within(popover).getByRole('button', { name: 'Valitse kaikki' }));
+    await user.click(within(popover).getByRole('button', { name: 'OK' }));
+    expect(eventNames()).toEqual(['Event 2', 'Event 1']);
+    expect(within(table()).getByRole('button', { name: 'Suodata: Lähde' })).not.toHaveClass('is-active');
+
+    // Only Instagram; the filter survives a trip to the Deleted view (it lives in the URL).
+    await user.click(within(table()).getByRole('button', { name: 'Suodata: Lähde' }));
+    await user.click(within(screen.getByRole('dialog', { name: 'Suodata: Lähde' })).getByRole('checkbox', { name: '(tyhjä)' }));
+    await user.click(screen.getByRole('button', { name: 'OK' }));
+    expect(eventNames()).toEqual(['Event 1']);
+    await user.click(screen.getByRole('button', { name: 'Poistetut' }));
+    expect(await screen.findByText(`Ei poistettuja tarjouksia vuodelle ${TEST_YEAR}.`)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Tarjoukset' }));
+    await screen.findByRole('table', { name: 'Tarjoukset' });
+    expect(eventNames()).toEqual(['Event 1']);
   });
 
   it('shows an empty state with New offer (E1)', async () => {
