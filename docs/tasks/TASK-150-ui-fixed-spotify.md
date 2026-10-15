@@ -1,5 +1,5 @@
 # TASK-150: Remove the Spotify field from offer forms (fixed link)
-- **owner:** ui · **status:** todo · **spec:** api-contract "Offers" + "Public offer" (change 2026-10-15), UC-029, UC-030 · **depends on:** none · **parallel:** TASK-022 (backend), TASK-148/149 (don't touch styles.css, DataTable, gigs/hours/budget)
+- **owner:** ui · **status:** done · **spec:** api-contract "Offers" + "Public offer" (change 2026-10-15), UC-029, UC-030 · **depends on:** none · **parallel:** TASK-022 (backend), TASK-148/149 (don't touch styles.css, DataTable, gigs/hours/budget)
 ## Goal
 The Spotify link is now one fixed link from the backend (`PublicOffer.spotifyUrl`, always set). Partners no longer enter it.
 ## Acceptance criteria

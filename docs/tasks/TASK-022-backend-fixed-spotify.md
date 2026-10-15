@@ -1,5 +1,5 @@
 # TASK-022: Fixed Spotify link for all offers
-- **owner:** backend · **status:** todo · **spec:** api-contract "Offers" + "Public offer" (change 2026-10-15), UC-029, UC-030 · **depends on:** none · **parallel:** TASK-150 (UI)
+- **owner:** backend · **status:** done · **spec:** api-contract "Offers" + "Public offer" (change 2026-10-15), UC-029, UC-030 · **depends on:** none · **parallel:** TASK-150 (UI)
 ## Goal
 The owner wants one hard-coded Spotify link on every offer instead of a per-offer field with a seeded default.
 ## Contract
