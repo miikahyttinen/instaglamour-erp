@@ -64,12 +64,6 @@ const gig = z.strictObject({
   costLines: z.array(costLine).optional(),
 });
 
-const httpUrl = z
-  .string()
-  .trim()
-  .max(500)
-  .refine((v) => /^https?:\/\//i.test(v) && URL.canParse(v), 'must be an http(s) URL');
-
 const offer = z.strictObject({
   client: name,
   eventName: name,
@@ -78,7 +72,8 @@ const offer = z.strictObject({
   city: name.optional(),
   lineup: z.array(name).max(100).default([]),
   includesText: z.string().max(5000).optional(),
-  spotifyUrl: httpUrl.optional(),
+  /** Obsolete (TASK-022: one fixed Spotify link in code). Accepted so older files still load; ignored. */
+  spotifyUrl: z.unknown().optional(),
   showReferences: z.boolean().default(false),
   priceCents: cents.optional(),
   seller: email,

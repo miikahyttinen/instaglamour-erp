@@ -60,7 +60,6 @@
     "fees.production_default": 10000,
     "fees.load_in_deduction": 1000,
     "offers.default_includes": "Placeholder: what is included in the offer.\nSecond placeholder line.",
-    "offers.default_spotify_url": "https://open.spotify.com/",
     "offers.references_fi": "Esimerkkiteksti: referenssit.\nToinen rivi.",
     "offers.references_en": "Placeholder text: references.\nSecond line."
   },

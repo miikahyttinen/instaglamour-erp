@@ -6,6 +6,7 @@ import { createHash } from 'node:crypto';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { todayIso } from '../src/domain/dates.js';
 import { OFFER_SETTING_KEYS } from '../src/domain/enums.js';
+import { SPOTIFY_URL } from '../src/offers/constants.js';
 import { closeTestDb, resetDb, testApp, testDb } from './helpers.js';
 import { call, startSession, UNKNOWN_ID, type Json, type Session } from './gigFixtures.js';
 
@@ -137,7 +138,6 @@ describe('POST /api/offers', () => {
       deletedAt: null,
       lineup: ['Vocals', 'Guitar'],
       includesText: null,
-      spotifyUrl: null,
       showReferences: false,
       sharePath: expect.stringMatching(/^\/o\/[A-Za-z0-9_-]{43}$/),
       preview: {
@@ -148,7 +148,7 @@ describe('POST /api/offers', () => {
         city: 'City A',
         lineup: ['Vocals', 'Guitar'],
         includesText: null,
-        spotifyUrl: null,
+        spotifyUrl: SPOTIFY_URL,
         references: null,
         seller: { name: 'Partner A', email: 'partner.a@example.com', phone: null },
       },
@@ -159,16 +159,23 @@ describe('POST /api/offers', () => {
     ]);
   });
 
-  it('defaults includesText and spotifyUrl from the settings; explicit values (and null) win', async () => {
+  it('defaults includesText from the settings; explicit values (and null) win', async () => {
     await setTextSetting(OFFER_SETTING_KEYS.defaultIncludes, 'Placeholder includes.\nLine 2.');
-    await setTextSetting(OFFER_SETTING_KEYS.defaultSpotifyUrl, 'https://open.spotify.com/');
     const defaulted = await createOffer();
     expect(defaulted.includesText).toBe('Placeholder includes.\nLine 2.');
-    expect(defaulted.spotifyUrl).toBe('https://open.spotify.com/');
-    const explicit = await createOffer({ eventName: 'Event 2', includesText: 'Own text', spotifyUrl: 'https://example.com/x' });
-    expect(explicit).toMatchObject({ includesText: 'Own text', spotifyUrl: 'https://example.com/x' });
-    const cleared = await createOffer({ eventName: 'Event 3', includesText: null, spotifyUrl: '' });
-    expect(cleared).toMatchObject({ includesText: null, spotifyUrl: null });
+    const explicit = await createOffer({ eventName: 'Event 2', includesText: 'Own text' });
+    expect(explicit).toMatchObject({ includesText: 'Own text' });
+    const cleared = await createOffer({ eventName: 'Event 3', includesText: null });
+    expect(cleared).toMatchObject({ includesText: null });
+  });
+
+  it('uses the fixed Spotify link: OfferDetail has no spotifyUrl, the preview always has the constant', async () => {
+    // An old setting row from before TASK-022 is ignored.
+    await setTextSetting('offers.default_spotify_url', 'https://example.com/old');
+    const offer = await createOffer();
+    expect(offer).not.toHaveProperty('spotifyUrl');
+    expect(offer.preview.spotifyUrl).toBe(SPOTIFY_URL);
+    expect((await call(s, 'GET', `/api/offers/${offer.id}`)).json().preview.spotifyUrl).toBe(SPOTIFY_URL);
   });
 
   it('only the four required fields are needed; optional ones default', async () => {
@@ -199,8 +206,9 @@ describe('POST /api/offers', () => {
     ['negative price', { priceCents: -10000 }, { priceCents: 'NEGATIVE_AMOUNT' }],
     ['fractional price', { priceCents: 1000.5 }, { priceCents: 'INVALID_VALUE' }],
     ['bad enums', { source: 'FAX', eventType: 'PARTY' }, { source: 'INVALID_VALUE', eventType: 'INVALID_VALUE' }],
-    ['non-http spotify link', { spotifyUrl: 'javascript:alert(1)' }, { spotifyUrl: 'INVALID_VALUE' }],
-    ['spotify link that is no URL', { spotifyUrl: 'not a url' }, { spotifyUrl: 'INVALID_VALUE' }],
+    ['a spotify link (fixed in code)', { spotifyUrl: 'https://open.spotify.com/x' }, { spotifyUrl: 'INVALID_VALUE' }],
+    ['a null spotify link', { spotifyUrl: null }, { spotifyUrl: 'INVALID_VALUE' }],
+    ['an empty spotify link', { spotifyUrl: '' }, { spotifyUrl: 'INVALID_VALUE' }],
     ['lineup not a list', { lineup: 'Vocals' }, { lineup: 'INVALID_VALUE' }],
     ['lineup with non-strings', { lineup: ['Vocals', 5] }, { lineup: 'INVALID_VALUE' }],
     ['lineup item too long', { lineup: ['x'.repeat(501)] }, { lineup: 'TOO_LONG' }],
@@ -434,7 +442,6 @@ describe('PATCH /api/offers/{id} (BR-103)', () => {
       city: null,
       lineup: ['DJ'],
       includesText: 'Text',
-      spotifyUrl: 'https://example.com/a',
       showReferences: true,
       priceCents: 200000,
       sellerId: s.world.b.id,
@@ -451,7 +458,6 @@ describe('PATCH /api/offers/{id} (BR-103)', () => {
       city: null,
       lineup: ['DJ'],
       includesText: 'Text',
-      spotifyUrl: 'https://example.com/a',
       showReferences: true,
       priceCents: 200000,
       sellerId: s.world.b.id,
@@ -470,7 +476,6 @@ describe('PATCH /api/offers/{id} (BR-103)', () => {
       { field: 'city', from: 'City A', to: null },
       { field: 'lineup', from: ['Vocals', 'Guitar'], to: ['DJ'] },
       { field: 'includesText', from: null, to: 'Text' },
-      { field: 'spotifyUrl', from: null, to: 'https://example.com/a' },
       { field: 'showReferences', from: false, to: true },
       { field: 'priceCents', from: 300000, to: 200000 },
       { field: 'sellerId', from: s.world.a.id, to: s.world.b.id },
@@ -508,6 +513,13 @@ describe('PATCH /api/offers/{id} (BR-103)', () => {
     expect((await patch(offer.id, { disposition: null })).json()).toEqual(validation({ disposition: 'REQUIRED' }));
     expect((await patch(offer.id, { clientId: UNKNOWN_ID })).json()).toEqual(validation({ clientId: 'UNKNOWN_REFERENCE' }));
     expect((await patch(offer.id, { sellerId: UNKNOWN_ID })).json()).toEqual(validation({ sellerId: 'UNKNOWN_REFERENCE' }));
+    // The Spotify link is fixed in code (TASK-022): any value, null included, is rejected; nothing changes.
+    for (const spotifyUrl of ['https://open.spotify.com/x', null, '']) {
+      const res = await patch(offer.id, { venue: 'Venue Y', spotifyUrl });
+      expect(res.statusCode).toBe(400);
+      expect(res.json()).toEqual(validation({ spotifyUrl: 'INVALID_VALUE' }));
+    }
+    expect((await call(s, 'GET', `/api/offers/${offer.id}`)).json().venue).toBe('Venue X');
     expect((await patch(UNKNOWN_ID, { venue: 'Venue Y' })).statusCode).toBe(404);
 
     await action(offer.id, 'delete');
