@@ -283,10 +283,33 @@ describe('<ExcelTable> from 600 px', () => {
   it('shows a message with Clear filters when the filters hide every row', async () => {
     installMatchMedia({ [TABLET_QUERY]: true });
     const { user } = renderDemo('/?f.city=Nowhere');
-    expect(screen.queryByRole('table')).not.toBeInTheDocument();
     expect(screen.getByText('Ei suodattimia vastaavia rivejä.')).toBeInTheDocument();
     await user.click(screen.getAllByRole('button', { name: 'Tyhjennä suodattimet' })[0]!);
     expect(names()).toHaveLength(4);
+  });
+
+  it('keeps the header and its filter buttons when the filters hide every row (F-009)', async () => {
+    installMatchMedia({ [TABLET_QUERY]: true });
+    const { user } = renderDemo('/?f.city=City A&f.tags=');
+    // City A rows have tags, so nothing matches: no data rows, the header stays, message below it.
+    expect(within(table()).queryAllByRole('cell')).toHaveLength(0);
+    expect(within(table()).getAllByRole('columnheader')).toHaveLength(COLUMNS.length);
+    expect(screen.getByText('Ei suodattimia vastaavia rivejä.').closest('.excel-table-wrap')).toContainElement(table());
+
+    // Loosen one filter from its header: the rows come back, the other filter stays.
+    await user.click(within(table()).getByRole('button', { name: 'Suodata: Tags' }));
+    const tags = screen.getByRole('dialog', { name: 'Suodata: Tags' });
+    await user.click(within(tags).getByRole('button', { name: 'Valitse kaikki' }));
+    await user.click(within(tags).getByRole('button', { name: 'OK' }));
+    expect(names()).toEqual(['Gig 10', 'Gig 3']);
+    expect(location()).toBe('?f.city=City A');
+  });
+
+  it('phones: the message replaces the cards; "Suodattimet" stays in the bar', () => {
+    renderDemo('/?f.city=Nowhere');
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    expect(screen.getByText('Ei suodattimia vastaavia rivejä.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Suodattimet/ })).toBeInTheDocument();
   });
 });
 

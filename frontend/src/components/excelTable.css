@@ -46,6 +46,12 @@
 .excel-table-empty p {
   margin: 0;
 }
+/* From 600 px the message sits in the table frame, under the header (F-009). */
+.excel-table-empty.excel-table-empty-inline {
+  padding: var(--space-5) var(--cell-pad-x);
+  border: 0;
+  border-radius: 0;
+}
 
 /* ---------- Header: title (sort) + filter icon ---------- */
 .excel-th {
@@ -306,6 +312,10 @@
      very wide tables (from 1600 px); otherwise it may wrap / hyphenate like the others. */
   .data-table.excel-table-grid .excel-col-fit {
     width: 1%;
+  }
+  /* No rows (filters hide all, F-009): nothing to fit, so the headers share the width normally. */
+  .data-table.excel-table-grid.is-empty .excel-col-fit {
+    width: auto;
   }
   @container excel-table (min-width: 1600px) {
     .data-table.excel-table-grid th.excel-col-fit :is(.th-sort, .excel-th-label) {

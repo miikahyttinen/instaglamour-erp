@@ -129,14 +129,19 @@ export function ExcelTable<T>(props: ExcelTableProps<T>) {
 
       {rows.length === 0 && empty !== undefined ? (
         <div className="table-empty">{empty}</div>
-      ) : rows.length > 0 && visible.length === 0 ? (
+      ) : rows.length > 0 && visible.length === 0 && !wide ? (
+        // Phones: no header to keep; the "Suodattimet" button stays in the bar.
         <div className="excel-table-empty">
           <p>{emptyFiltered ?? t('table.emptyFiltered')}</p>
           {clearButton}
         </div>
       ) : (
         <div className="table-wrap excel-table-wrap">
-          <table className="data-table data-table-cards excel-table-grid">
+          <table
+            className={['data-table data-table-cards excel-table-grid', visible.length === 0 && 'is-empty']
+              .filter(Boolean)
+              .join(' ')}
+          >
             <caption className="visually-hidden">{caption}</caption>
             <thead>
               <tr>
@@ -169,6 +174,14 @@ export function ExcelTable<T>(props: ExcelTableProps<T>) {
             </tbody>
             {footer && <tfoot>{footer(visible)}</tfoot>}
           </table>
+          {/* Filters hide every row (from 600 px): the header and its filter buttons stay, so one
+              filter can be loosened (F-009); the message sits under the header, outside the rows. */}
+          {visible.length === 0 && rows.length > 0 && (
+            <div className="excel-table-empty excel-table-empty-inline">
+              <p>{emptyFiltered ?? t('table.emptyFiltered')}</p>
+              {clearButton}
+            </div>
+          )}
         </div>
       )}
 

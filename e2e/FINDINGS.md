@@ -71,8 +71,8 @@ New findings: F-008 (major), F-009 (minor).
 | F-005 | minor | frontend | Collapsed sidebar: while the CSS tooltip shows (hover / focus), it is added to the item's accessible name ("Vuosi Vuosi") |
 | F-006 | major | frontend | **Fixed (TASK-141).** Gig list: the 8-column table does not fit next to the expanded sidebar at 1200–1263 px; "Kate-%" is cut off and the table scrolls sideways |
 | F-007 | minor | frontend | **Fixed (TASK-141).** Convert to gig: a zero-delay double click on "Luo keikka" sends two requests (server answers 201 + 409; one gig, so AC-3 holds) |
-| F-008 | major | frontend | Gig list: ticking "Peruttu" in the Tila filter (= every status) is not kept in the URL; after a reload or from a shared link the cancelled gigs are hidden again |
-| F-009 | minor | frontend | Excel tables: when the column filters hide every row, the header (and its filter buttons) disappears from 600 px; only "Tyhjennä suodattimet" is left |
+| F-008 | major | frontend | **Fixed (TASK-147).** Gig list: ticking "Peruttu" in the Tila filter (= every status) is not kept in the URL; after a reload or from a shared link the cancelled gigs are hidden again |
+| F-009 | minor | frontend | **Fixed (TASK-147).** Excel tables: when the column filters hide every row, the header (and its filter buttons) disappears from 600 px; only "Tyhjennä suodattimet" is left |
 
 ---
 
@@ -258,6 +258,11 @@ New findings: F-008 (major), F-009 (minor).
   (fails after the reload: 3 rows instead of 4, the cancelled one missing). The main gig list test
   in the same file passes (default view, Tila, Paikka + search, URL state of a narrowed filter,
   clear).
+- **Fixed (TASK-147):** an explicit "every status" choice (ticking the rest, "Valitse kaikki",
+  "Tyhjennä suodattimet") is written as the marker `f.allStatuses=1`; only a URL with neither
+  `f.status` nor the marker gets the default (a plain `/gigs` link). `f.status` stays empty, so the
+  table shows no active Tila filter. The `test.fixme` is now a `test` and passes at 375 / 1280 px;
+  unit tests in `GigListPage.test.tsx`.
 
 ## F-009 — Excel tables: the filter buttons disappear when the filters hide every row
 
@@ -271,6 +276,10 @@ New findings: F-008 (major), F-009 (minor).
 - **Expected (Excel-like):** the header row stays, so one filter can be loosened.
 - **Tests:** none fail; `11-cross-checks` ticks "Peruttu" before searching, and its "fresh visit"
   part uses "Tyhjennä suodattimet".
+- **Fixed (TASK-147):** from 600 px the table and its header (with the filter buttons) stay; the
+  message and "Tyhjennä suodattimet" are shown under the header inside the table frame (not as a
+  data row, so row counts stay 0). Phones unchanged (cards replaced by the message; the
+  "Suodattimet" button stays in the bar). Unit tests in `ExcelTable.test.tsx`.
 
 ---
 
