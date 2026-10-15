@@ -25,6 +25,9 @@ export const BLANK = '';
 export type SortValue = string | number | null | undefined;
 export type FilterValue = string | null | undefined | readonly string[];
 
+/** See `ExcelColumn.priority`. */
+export type ColumnPriority = 1 | 2 | 3;
+
 export interface ExcelColumn<T> {
   /** Stable column id: React key, sort key and URL filter key (`f.<key>`). */
   key: string;
@@ -36,12 +39,19 @@ export interface ExcelColumn<T> {
   cell: (row: T) => ReactNode;
   /** Right-aligned, tabular figures (money, hours, counts). */
   numeric?: boolean;
-  /** Phone cards: the card title. Use on one column (normally the first, pinned one). */
+  /** Phone cards: the card title. Use on one column (normally the first one). */
   primary?: boolean;
   /** Not shown in the phone card layout. */
   hideOnPhone?: boolean;
   /** Header / cell class (e.g. a width). */
   className?: string;
+  /**
+   * Column priority from 600 px (design.md → "Excel-style tables", TASK-147): instead of scrolling
+   * sideways, lower priorities are hidden as the table container narrows. 1 (default) = always
+   * shown; 2 = hidden below 1100 px; 3 = hidden below 1400 px of table container width. Hiding is
+   * CSS only: a hidden column's filter and sort still apply. Phone cards show every column.
+   */
+  priority?: ColumnPriority;
   /**
    * Makes the column sortable. Numbers compare as numbers, strings with a natural, case-insensitive
    * collator. Empty (null / undefined / '') is always last, in both directions.

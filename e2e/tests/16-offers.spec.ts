@@ -381,9 +381,21 @@ test('list: figures = BR-106 from the API; rows of the year; sorting; filters in
   await expect(offerRows(page)).toHaveCount(specs.length);
 });
 
+/**
+ * TASK-147: the offer table hides priority 2 / 3 columns (Lähde, Tapahtumatyyppi, Lopputulos,
+ * Keikka…) on narrower tables. Tests that use those columns on desktop run at 1920 px with the
+ * sidebar collapsed, where every column is shown. Phones show every field in the cards.
+ */
+async function showAllOfferColumns(page: Page, testInfo: Parameters<typeof isMobile>[0]): Promise<void> {
+  if (isMobile(testInfo)) return;
+  await page.addInitScript(() => window.localStorage.setItem('ig-sidebar', 'collapsed'));
+  await page.setViewportSize({ width: 1920, height: 900 });
+}
+
 test('inline source, event type and disposition: saved on change, kept after reload, logged; status follows disposition', async ({ page }, testInfo) => {
   const tag = tagOf(testInfo);
   const year = offerYear(testInfo);
+  await showAllOfferColumns(page, testInfo);
   await signIn(page, PARTNER_A, { selectedYear: year });
   const client = await createClientViaApi(page, `Client ${tag}-${suffix()}-inline`);
   const offer = await createOfferViaApi(page, {
@@ -573,6 +585,7 @@ test('regenerate link, copy link, delete and restore; a deleted offer is read-on
 test('convert to gig: confirm dialog → gig per BR-105, offer WON / ACCEPTED, links both ways, one request on a double click', async ({ page }, testInfo) => {
   const tag = tagOf(testInfo);
   const year = offerYear(testInfo);
+  await showAllOfferColumns(page, testInfo);
   await signIn(page, PARTNER_A, { selectedYear: year });
   const partnerB = await partnerId(page, 'Partner B');
   const client = await createClientViaApi(page, `Client ${tag}-${suffix()}-conv`);

@@ -40,7 +40,13 @@ const ARIA_SORT = { asc: 'ascending', desc: 'descending' } as const;
 
 function cellClass<T>(col: ExcelColumn<T>): string | undefined {
   return (
-    [col.numeric && 'num', col.primary && 'cell-primary', col.hideOnPhone && 'hide-phone', col.className]
+    [
+      col.numeric && 'num',
+      col.primary && 'cell-primary',
+      col.hideOnPhone && 'hide-phone',
+      (col.priority ?? 1) > 1 && `excel-prio-${col.priority}`,
+      col.className,
+    ]
       .filter(Boolean)
       .join(' ') || undefined
   );
@@ -48,8 +54,10 @@ function cellClass<T>(col: ExcelColumn<T>): string | undefined {
 
 /**
  * Excel-style table (docs/design.md → "Excel-style tables"): sortable headers, a filter icon per
- * filterable column with an Excel-like value popover, first column pinned on horizontal scroll,
- * numbers right-aligned. Phones (< 600 px): cards + a "Suodattimet" button that opens the same
+ * filterable column with an Excel-like value popover, numbers right-aligned. From 600 px the table
+ * fills its container and never scrolls sideways: text cells wrap and lower-priority columns
+ * (`ExcelColumn.priority`) are hidden by container queries as the table narrows. Phones
+ * (< 600 px): cards (every column) + a "Suodattimet" button that opens the same
  * filters (and the sort) in a sheet. Controlled: give it the state from `useUrlTableState()` (or
  * `useLocalTableState()`). See frontend/README.md → "ExcelTable".
  */
@@ -121,14 +129,19 @@ export function ExcelTable<T>(props: ExcelTableProps<T>) {
 
       {rows.length === 0 && empty !== undefined ? (
         <div className="table-empty">{empty}</div>
-      ) : rows.length > 0 && visible.length === 0 ? (
+      ) : rows.length > 0 && visible.length === 0 && !wide ? (
+        // Phones: no header to keep; the "Suodattimet" button stays in the bar.
         <div className="excel-table-empty">
           <p>{emptyFiltered ?? t('table.emptyFiltered')}</p>
           {clearButton}
         </div>
       ) : (
         <div className="table-wrap excel-table-wrap">
-          <table className="data-table data-table-cards excel-table-grid">
+          <table
+            className={['data-table data-table-cards excel-table-grid', visible.length === 0 && 'is-empty']
+              .filter(Boolean)
+              .join(' ')}
+          >
             <caption className="visually-hidden">{caption}</caption>
             <thead>
               <tr>
@@ -152,7 +165,7 @@ export function ExcelTable<T>(props: ExcelTableProps<T>) {
               {visible.map((row) => (
                 <tr key={rowKey(row)} className={rowClassName?.(row)}>
                   {columns.map((col) => (
-                    <td key={col.key} className={cellClass(col)} data-label={col.label}>
+                    <td key={col.key} className={cellClass(col)} data-label={col.label} data-priority={col.priority ?? 1}>
                       {col.cell(row)}
                     </td>
                   ))}
@@ -161,6 +174,14 @@ export function ExcelTable<T>(props: ExcelTableProps<T>) {
             </tbody>
             {footer && <tfoot>{footer(visible)}</tfoot>}
           </table>
+          {/* Filters hide every row (from 600 px): the header and its filter buttons stay, so one
+              filter can be loosened (F-009); the message sits under the header, outside the rows. */}
+          {visible.length === 0 && rows.length > 0 && (
+            <div className="excel-table-empty excel-table-empty-inline">
+              <p>{emptyFiltered ?? t('table.emptyFiltered')}</p>
+              {clearButton}
+            </div>
+          )}
         </div>
       )}
 
@@ -214,6 +235,7 @@ function HeaderCell<T>({ column, sortDir, onSort, filterable, filterActive, filt
     <th
       scope="col"
       className={cellClass(column)}
+      data-priority={column.priority ?? 1}
       aria-sort={sortable ? (sortDir ? ARIA_SORT[sortDir] : 'none') : undefined}
     >
       <div className="excel-th">

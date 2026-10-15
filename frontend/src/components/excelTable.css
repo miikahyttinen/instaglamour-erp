@@ -46,6 +46,12 @@
 .excel-table-empty p {
   margin: 0;
 }
+/* From 600 px the message sits in the table frame, under the header (F-009). */
+.excel-table-empty.excel-table-empty-inline {
+  padding: var(--space-5) var(--cell-pad-x);
+  border: 0;
+  border-radius: 0;
+}
 
 /* ---------- Header: title (sort) + filter icon ---------- */
 .excel-th {
@@ -243,35 +249,102 @@
   color: var(--accent);
 }
 
-/* ---------- Table from 600 px: one line per row, compact cells, first column pinned ---------- */
+/* ---------- Table from 600 px: fills the container, never scrolls sideways ----------
+   Text cells wrap; numbers (.num), dates (page classes), tags and the header controls stay on one
+   line. Columns with a lower priority (ExcelColumn.priority → .excel-prio-2 / .excel-prio-3) are
+   hidden as the table container narrows (container queries, so the expanded / collapsed sidebar
+   counts). Hiding is visual only: filters and sort of a hidden column still apply. */
+.excel-table {
+  container: excel-table / inline-size;
+}
 @media (min-width: 600px) {
-  .excel-table-grid {
-    width: max-content;
-    min-width: 100%;
+  .table-wrap.excel-table-wrap {
+    overflow: visible;
   }
-  .excel-table-grid th,
-  .excel-table-grid td {
-    white-space: nowrap;
+  .data-table.excel-table-grid {
+    width: 100%;
+  }
+  .data-table.excel-table-grid th,
+  .data-table.excel-table-grid td {
     padding-left: var(--space-3);
     padding-right: var(--space-3);
   }
-  .excel-table-grid :is(th, td):first-child {
-    position: sticky;
-    left: 0;
-    z-index: 1;
-    max-width: 240px;
-    padding-left: var(--cell-pad-x);
+  .data-table.excel-table-grid td {
     white-space: normal;
-    background: var(--surface);
-    box-shadow: inset calc(-1 * var(--hairline)) 0 0 var(--border);
+    overflow-wrap: break-word;
+    hyphens: auto;
   }
-  .excel-table-grid :is(th, td):last-child {
+  /* Header: the title breaks between words, and is hyphenated (html lang) only when the table has
+     no room left (auto table layout gives every column its max-content width first). The sort
+     icon and the filter button stay on the title's row. */
+  .data-table.excel-table-grid thead th {
+    white-space: normal;
+  }
+  .data-table.excel-table-grid :is(.th-sort, .excel-th-label) {
+    min-width: 0;
+    hyphens: auto;
+  }
+  .excel-th {
+    flex-wrap: nowrap;
+  }
+  .data-table.excel-table-grid .th-sort {
+    text-align: left;
+  }
+  .data-table.excel-table-grid .num .th-sort {
+    text-align: right;
+  }
+  .data-table.excel-table-grid .th-sort-icon {
+    flex: 0 0 auto;
+  }
+  .data-table.excel-table-grid :is(td.num, .tag) {
+    white-space: nowrap;
+    overflow-wrap: normal;
+  }
+  .data-table.excel-table-grid :is(th, td):first-child {
+    padding-left: var(--cell-pad-x);
+  }
+  .data-table.excel-table-grid :is(th, td):last-child {
     padding-right: var(--cell-pad-x);
   }
-  .excel-table-grid thead th:first-child {
-    background: var(--surface-2);
+
+  /* `.excel-col-fit` (column className): as narrow as its one-line content (dates, money, tags,
+     icon buttons), so the spare width goes to the text columns. Its header stays on one line on
+     very wide tables (from 1600 px); otherwise it may wrap / hyphenate like the others. */
+  .data-table.excel-table-grid .excel-col-fit {
+    width: 1%;
   }
-  .excel-table-grid tbody tr:hover td:first-child {
-    background: var(--surface-2);
+  /* No rows (filters hide all, F-009): nothing to fit, so the headers share the width normally. */
+  .data-table.excel-table-grid.is-empty .excel-col-fit {
+    width: auto;
+  }
+  @container excel-table (min-width: 1600px) {
+    .data-table.excel-table-grid th.excel-col-fit :is(.th-sort, .excel-th-label) {
+      white-space: nowrap;
+    }
+  }
+  /* Tighter cells where a priority tier only just fits: narrow tables (priority 1 only, below
+     900 px) and just after priority 2 / 3 comes in (1100–1199 px, 1400–1599 px). */
+  @container excel-table (max-width: 899.98px) or ((min-width: 1100px) and (max-width: 1199.98px)) or ((min-width: 1400px) and (max-width: 1599.98px)) {
+    .data-table.excel-table-grid th,
+    .data-table.excel-table-grid td {
+      padding-left: var(--space-2);
+      padding-right: var(--space-2);
+    }
+    .data-table.excel-table-grid :is(th, td):first-child {
+      padding-left: var(--space-3);
+    }
+    .data-table.excel-table-grid :is(th, td):last-child {
+      padding-right: var(--space-3);
+    }
+  }
+  @container excel-table (max-width: 1399.98px) {
+    .data-table.excel-table-grid .excel-prio-3 {
+      display: none;
+    }
+  }
+  @container excel-table (max-width: 1099.98px) {
+    .data-table.excel-table-grid .excel-prio-2 {
+      display: none;
+    }
   }
 }

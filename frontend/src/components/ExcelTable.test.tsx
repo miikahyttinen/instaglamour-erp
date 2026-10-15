@@ -283,10 +283,82 @@ describe('<ExcelTable> from 600 px', () => {
   it('shows a message with Clear filters when the filters hide every row', async () => {
     installMatchMedia({ [TABLET_QUERY]: true });
     const { user } = renderDemo('/?f.city=Nowhere');
-    expect(screen.queryByRole('table')).not.toBeInTheDocument();
     expect(screen.getByText('Ei suodattimia vastaavia rivejä.')).toBeInTheDocument();
     await user.click(screen.getAllByRole('button', { name: 'Tyhjennä suodattimet' })[0]!);
     expect(names()).toHaveLength(4);
+  });
+
+  it('keeps the header and its filter buttons when the filters hide every row (F-009)', async () => {
+    installMatchMedia({ [TABLET_QUERY]: true });
+    const { user } = renderDemo('/?f.city=City A&f.tags=');
+    // City A rows have tags, so nothing matches: no data rows, the header stays, message below it.
+    expect(within(table()).queryAllByRole('cell')).toHaveLength(0);
+    expect(within(table()).getAllByRole('columnheader')).toHaveLength(COLUMNS.length);
+    expect(screen.getByText('Ei suodattimia vastaavia rivejä.').closest('.excel-table-wrap')).toContainElement(table());
+
+    // Loosen one filter from its header: the rows come back, the other filter stays.
+    await user.click(within(table()).getByRole('button', { name: 'Suodata: Tags' }));
+    const tags = screen.getByRole('dialog', { name: 'Suodata: Tags' });
+    await user.click(within(tags).getByRole('button', { name: 'Valitse kaikki' }));
+    await user.click(within(tags).getByRole('button', { name: 'OK' }));
+    expect(names()).toEqual(['Gig 10', 'Gig 3']);
+    expect(location()).toBe('?f.city=City A');
+  });
+
+  it('phones: the message replaces the cards; "Suodattimet" stays in the bar', () => {
+    renderDemo('/?f.city=Nowhere');
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    expect(screen.getByText('Ei suodattimia vastaavia rivejä.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Suodattimet/ })).toBeInTheDocument();
+  });
+});
+
+// City = priority 3 (hidden below 1400 px of table width), Price = priority 2 (below 1100 px).
+const PRIORITY_COLUMNS: ExcelColumn<Row>[] = COLUMNS.map((c) =>
+  c.key === 'city' ? { ...c, priority: 3 } : c.key === 'price' ? { ...c, priority: 2 } : c,
+);
+
+describe('<ExcelTable> column priorities (TASK-147)', () => {
+  const headerOf = (label: string) => within(table()).getByRole('columnheader', { name: new RegExp(`^${label}`) });
+
+  it('marks header and body cells with the priority (default 1); hiding is CSS only', () => {
+    installMatchMedia({ [TABLET_QUERY]: true });
+    renderDemo('/', { columns: PRIORITY_COLUMNS });
+    expect(headerOf('Name')).toHaveAttribute('data-priority', '1');
+    expect(headerOf('Name')).not.toHaveClass('excel-prio-2', 'excel-prio-3');
+    expect(headerOf('City')).toHaveAttribute('data-priority', '3');
+    expect(headerOf('City')).toHaveClass('excel-prio-3');
+    expect(headerOf('Price')).toHaveAttribute('data-priority', '2');
+    expect(headerOf('Price')).toHaveClass('excel-prio-2', 'num');
+    const firstRow = within(table()).getAllByRole('row')[1]!;
+    const cells = within(firstRow).getAllByRole('cell');
+    expect(cells.map((c) => c.getAttribute('data-priority'))).toEqual(['1', '3', '2', '1']);
+    expect(cells[1]).toHaveClass('excel-prio-3');
+    expect(cells[2]).toHaveClass('excel-prio-2');
+    // Rendered (not removed): the column is hidden by the container query in excelTable.css.
+    expect(within(firstRow).getByText('City A')).toBeInTheDocument();
+  });
+
+  it('applies and clears the filter of a hidden column, and sorts by it', async () => {
+    installMatchMedia({ [TABLET_QUERY]: true });
+    const { user } = renderDemo('/?f.city=City A&sort=price&dir=desc', { columns: PRIORITY_COLUMNS });
+    // Filter on the priority 3 column + sort by the priority 2 column, both from the URL.
+    expect(names()).toEqual(['Gig 10', 'Gig 3']);
+    expect(screen.getByText('Näytetään 2 / 4')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Tyhjennä suodattimet' }));
+    expect(names()).toEqual(['Gig 10', 'Gig 3', 'gig 1', 'Gig 2']);
+    expect(location()).toBe('?sort=price&dir=desc');
+  });
+
+  it('phone cards keep every column (priority hiding is only from 600 px)', () => {
+    renderDemo('/', { columns: PRIORITY_COLUMNS });
+    const firstRow = within(table()).getAllByRole('row')[1]!;
+    expect(within(firstRow).getAllByRole('cell').map((c) => c.getAttribute('data-label'))).toEqual([
+      'Name',
+      'City',
+      'Price',
+      'Tags',
+    ]);
   });
 });
 

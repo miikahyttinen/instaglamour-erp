@@ -212,6 +212,49 @@ test.describe('desktop sidebar', () => {
     }
   });
 
+  // F-006-style check after TASK-147 (responsive Excel tables): Keikat and Tarjoukset use the full
+  // content width and never scroll sideways; lower-priority columns are hidden instead.
+  test('Keikat and Tarjoukset: no page or table horizontal overflow at 1200 / 1440 / 1920 px, the table fills the width', async ({ page }) => {
+    const tableBox = () =>
+      page.evaluate(() => {
+        const wrap = document.querySelector<HTMLElement>('main .table-wrap');
+        const table = wrap?.querySelector('table');
+        const container = document.querySelector<HTMLElement>('main .page-container');
+        if (!wrap || !table || !container) return null;
+        const pad = parseFloat(getComputedStyle(container).paddingLeft) + parseFloat(getComputedStyle(container).paddingRight);
+        return {
+          wrapScroll: wrap.scrollWidth,
+          wrapClient: wrap.clientWidth,
+          table: table.getBoundingClientRect().width,
+          wrap: wrap.getBoundingClientRect().width,
+          content: container.clientWidth - pad,
+        };
+      });
+    for (const mode of ['expanded', 'collapsed'] as const) {
+      await page.addInitScript(([key, value]) => window.localStorage.setItem(key, value), [SIDEBAR_KEY, mode]);
+      for (const [name, path] of [
+        ['Keikat', '/gigs?f.allStatuses=1'],
+        ['Tarjoukset', '/offers'],
+      ] as const) {
+        for (const w of [1200, 1440, 1920]) {
+          const where = `${name}, sidebar ${mode}, ${w} px`;
+          await page.setViewportSize({ width: w, height: 800 });
+          await openLoaded(page, path);
+          if (mode === 'collapsed') await expectCollapsed(page);
+          else await expectExpanded(page);
+          await expect(page.locator('main table').first(), `${where}: table`).toBeVisible();
+          await expectNoHorizontalScroll(page, where);
+          const box = await tableBox();
+          expect(box, `${where}: table measured`).not.toBeNull();
+          expect(box!.wrapScroll, `${where}: table scrolls sideways`).toBeLessThanOrEqual(box!.wrapClient);
+          expect(box!.table, `${where}: table wider than its frame`).toBeLessThanOrEqual(box!.wrap + 1);
+          // Full content width (no --content-max cap on these pages).
+          expect(Math.abs(box!.wrap - box!.content), `${where}: table uses the content width`).toBeLessThanOrEqual(2);
+        }
+      }
+    }
+  });
+
   test.describe('no horizontal scroll in both sidebar states', () => {
     let ids: BusyIds | undefined;
     test.beforeEach(async ({ page }) => {

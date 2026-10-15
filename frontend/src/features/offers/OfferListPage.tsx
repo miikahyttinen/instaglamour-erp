@@ -157,7 +157,7 @@ export function OfferListPage() {
   );
 
   return (
-    <section className="page offers-page">
+    <section className="page page-wide offers-page">
       <PageHead title={t('pages.offers', { year })} actions={headActions} />
 
       {list.data && <YearFigures summary={list.data.summary} />}
@@ -338,7 +338,9 @@ interface OfferTableProps {
 
 /**
  * Excel-style table (UC-028, design.md "Excel-style tables"): every column sortable, filter icons
- * on the coded / text columns, one line per row, horizontal scroll with the event column pinned.
+ * on the coded / text columns. From 600 px it fills the width without scrolling sideways; columns
+ * with priority 2 / 3 are hidden on narrower tables (TASK-147: 1 event, date, client, price,
+ * status, actions · 2 place, seller, disposition, gig · 3 created, source, event type).
  * Phones (< 600 px): one card per offer + the "Suodattimet" sheet.
  */
 function OfferTable(props: OfferTableProps) {
@@ -375,6 +377,7 @@ function OfferTable(props: OfferTableProps) {
     {
       key: 'place',
       label: t('offers.columns.place'),
+      priority: 2,
       sortValue: place,
       filterValue: place,
       cell: place,
@@ -382,14 +385,15 @@ function OfferTable(props: OfferTableProps) {
     {
       key: 'eventDate',
       label: t('offers.columns.eventDate'),
-      className: 'offer-col-date',
+      className: 'offer-col-date excel-col-fit',
       sortValue: (o) => o.eventDate,
       cell: (o) => formatDate(o.eventDate, lang),
     },
     {
       key: 'created',
       label: t('offers.columns.created'),
-      className: 'offer-col-date',
+      priority: 3,
+      className: 'offer-col-date excel-col-fit',
       hideOnPhone: true,
       sortValue: (o) => o.createdAt,
       cell: (o) => formatDate(o.createdAt.slice(0, 10), lang),
@@ -397,6 +401,7 @@ function OfferTable(props: OfferTableProps) {
     {
       key: 'price',
       label: t('offers.columns.price'),
+      className: 'excel-col-fit',
       numeric: true,
       sortValue: (o) => o.priceCents,
       cell: (o) => (o.priceCents === null ? '–' : formatMoney(o.priceCents, lang)),
@@ -404,6 +409,7 @@ function OfferTable(props: OfferTableProps) {
     {
       key: 'status',
       label: t('offers.columns.status'),
+      className: 'excel-col-fit',
       sortValue: (o) => OFFER_DISPLAY_STATUSES.indexOf(offerDisplayStatus(o)),
       filterValue: (o) => offerDisplayStatus(o),
       filterLabel: (v) => statusLabel(v as OfferDisplayStatus),
@@ -413,6 +419,7 @@ function OfferTable(props: OfferTableProps) {
     {
       key: 'seller',
       label: t('offers.columns.seller'),
+      priority: 2,
       sortValue: (o) => partnerName(partners, o.sellerId),
       filterValue: (o) => o.sellerId,
       filterLabel: (id) => partnerName(partners, id),
@@ -421,6 +428,7 @@ function OfferTable(props: OfferTableProps) {
     {
       key: 'source',
       label: t('offers.columns.source'),
+      priority: 3,
       className: 'offer-col-select',
       sortValue: sourceLabel,
       filterValue: (o) => o.source,
@@ -440,6 +448,7 @@ function OfferTable(props: OfferTableProps) {
     {
       key: 'eventType',
       label: t('offers.columns.eventType'),
+      priority: 3,
       className: 'offer-col-select',
       sortValue: eventTypeLabel,
       filterValue: (o) => o.eventType,
@@ -459,6 +468,7 @@ function OfferTable(props: OfferTableProps) {
     {
       key: 'disposition',
       label: t('offers.columns.disposition'),
+      priority: 2,
       className: 'offer-col-select',
       sortValue: (o) => offerDispositionLabel(t, o.disposition),
       filterValue: (o) => o.disposition,
@@ -478,6 +488,8 @@ function OfferTable(props: OfferTableProps) {
     {
       key: 'gig',
       label: t('offers.columns.gig'),
+      className: 'excel-col-fit',
+      priority: 2,
       sortValue: (o) => (o.gigId ? 1 : 0),
       filterValue: (o) => (o.gigId ? 'yes' : 'no'),
       filterLabel: (v) => t(v === 'yes' ? 'offers.gigFilter.yes' : 'offers.gigFilter.no'),
@@ -487,7 +499,7 @@ function OfferTable(props: OfferTableProps) {
     {
       key: 'actions',
       label: t('offers.columns.actions'),
-      className: 'offer-col-actions',
+      className: 'offer-col-actions excel-col-fit',
       cell: (o) => (
         <span className="offer-row-actions">
           <IconButton
