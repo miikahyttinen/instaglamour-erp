@@ -1,5 +1,9 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { App } from '../../App';
+import { createQueryClient } from '../../queryClient';
 import { formatMoney } from '../../lib/format';
 import { DESKTOP_QUERY, TABLET_QUERY, WIDE_QUERY } from '../../lib/useMediaQuery';
 import { db } from '../../mocks/data';
@@ -17,6 +21,23 @@ const gigNames = () =>
 const venues = () => gigNames().map((n) => n.split(' · ')[1]);
 
 const FULL = ['Person 1', 'Person 2', 'Person 3', 'Person 4'];
+
+function UrlProbe() {
+  const { pathname, search } = useLocation();
+  return <output data-testid="url">{decodeURIComponent(pathname + search)}</output>;
+}
+
+/** Like `renderApp`, plus `url()`: the current path + query (decoded), to "reload" with it. */
+function renderAppWithUrl(path: string) {
+  const user = userEvent.setup();
+  const result = render(
+    <MemoryRouter initialEntries={[path]}>
+      <App queryClient={createQueryClient({ retry: false })} />
+      <UrlProbe />
+    </MemoryRouter>,
+  );
+  return { ...result, user, url: () => screen.getByTestId('url').textContent };
+}
 
 describe('gig list (UC-003)', () => {
   beforeEach(() => {
@@ -111,6 +132,57 @@ describe('gig list (UC-003)', () => {
     expect(within(rows()[1]!).getByText('Peruttu')).toHaveClass('tag-danger');
     // Every value selected = no filter.
     expect(within(table()).getByRole('button', { name: 'Suodata: Tila' })).not.toHaveClass('is-active');
+  });
+
+  it('keeps an explicit "every status" Tila choice in the URL, so it survives a reload (F-008)', async () => {
+    signInMock().selectedYear = 2020;
+    addMockGig({ startDate: '2020-02-01', venue: 'Venue Old' });
+    const cancelled = addMockGig({ startDate: '2020-03-01', venue: 'Venue Gone' });
+    cancelled.status = 'CANCELLED';
+    installMatchMedia({ [TABLET_QUERY]: true });
+
+    // Tick "Peruttu" (= every status): the URL gets the "all" marker, the table shows no filter.
+    const first = renderAppWithUrl('/gigs');
+    await waitFor(() => expect(venues()).toEqual(['Venue Old']));
+    await first.user.click(within(table()).getByRole('button', { name: 'Suodata: Tila' }));
+    const popover = screen.getByRole('dialog', { name: 'Suodata: Tila' });
+    await first.user.click(within(popover).getByRole('checkbox', { name: 'Peruttu' }));
+    await first.user.click(within(popover).getByRole('button', { name: 'OK' }));
+    expect(venues()).toEqual(['Venue Old', 'Venue Gone']);
+    expect(first.url()).toBe('/gigs?f.allStatuses=1');
+    expect(screen.queryByRole('button', { name: 'Tyhjennä suodattimet' })).not.toBeInTheDocument();
+    const reloadUrl = first.url();
+    first.unmount();
+
+    // "Reload": the same rows; the Tila filter is not active and no "Clear filters" is offered.
+    const second = renderAppWithUrl(reloadUrl);
+    await waitFor(() => expect(venues()).toEqual(['Venue Old', 'Venue Gone']));
+    expect(within(table()).getByRole('button', { name: 'Suodata: Tila' })).not.toHaveClass('is-active');
+    expect(screen.queryByRole('button', { name: 'Tyhjennä suodattimet' })).not.toBeInTheDocument();
+    second.unmount();
+
+    // "Tyhjennä suodattimet" also shows every status, and so does a reload after it.
+    const third = renderAppWithUrl('/gigs?f.status=CANCELLED');
+    await waitFor(() => expect(venues()).toEqual(['Venue Gone']));
+    await third.user.click(screen.getByRole('button', { name: 'Tyhjennä suodattimet' }));
+    expect(venues()).toEqual(['Venue Old', 'Venue Gone']);
+    const clearedUrl = third.url();
+    expect(clearedUrl).toBe('/gigs?f.allStatuses=1');
+    third.unmount();
+    renderAppWithUrl(clearedUrl);
+    await waitFor(() => expect(venues()).toEqual(['Venue Old', 'Venue Gone']));
+  });
+
+  it('a plain /gigs link still opens with the default Tila filter (F-008)', async () => {
+    signInMock().selectedYear = 2020;
+    addMockGig({ startDate: '2020-02-01', venue: 'Venue Old' });
+    const cancelled = addMockGig({ startDate: '2020-03-01', venue: 'Venue Gone' });
+    cancelled.status = 'CANCELLED';
+    installMatchMedia({ [TABLET_QUERY]: true });
+    const { url } = renderAppWithUrl('/gigs');
+    await waitFor(() => expect(venues()).toEqual(['Venue Old']));
+    expect(within(table()).getByRole('button', { name: 'Suodata: Tila' })).toHaveClass('is-active');
+    expect(url()).toBe('/gigs');
   });
 
   it('filters in the column headers (seller, staffing, client, lineup, venue, producer), AND with the search', async () => {

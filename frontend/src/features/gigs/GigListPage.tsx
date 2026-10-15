@@ -203,23 +203,31 @@ export function GigListPage() {
 }
 
 /**
+ * URL marker `f.allStatuses=1`: the user chose "every status" (no Tila filter). Without it a URL
+ * with no status filter means the default (F-008). Not a column, so the table ignores it.
+ */
+const ALL_STATUSES_KEY = 'allStatuses';
+
+/**
  * UC-003 AC-1: the list opens with the SOLD gigs (Myyty + Soitettu); "Näytä myös perutut" is now
- * the Tila filter. While the URL has no status filter and nobody has changed the filters on this
- * visit, the table shows the default status filter (not written to the URL, so a plain /gigs link
- * stays the default view). After the first filter change the URL alone counts, so "Valitse
- * kaikki" / "Tyhjennä suodattimet" really show every status.
+ * the Tila filter. A URL without a status filter (a plain /gigs link) shows the default status
+ * filter, which is not written to the URL. An explicit choice is always in the URL, so it survives
+ * a reload and a shared link (F-008): narrowed values as `f.status=…` as usual, and "every status"
+ * ("Valitse kaikki", ticking the rest, "Tyhjennä suodattimet") as the marker `f.allStatuses=1`.
+ * The table never sees the marker: for it, "every status" is simply no status filter.
  */
 function useDefaultStatusFilter(state: ExcelTableState): ExcelTableState {
-  const [touched, setTouched] = useState(false);
   const { filters, onFiltersChange } = state;
-  const effective = useMemo(
-    () => (touched || filters.status !== undefined ? filters : { ...filters, status: DEFAULT_STATUS_FILTER }),
-    [touched, filters],
-  );
+  const effective = useMemo(() => {
+    const { [ALL_STATUSES_KEY]: allStatuses, ...rest } = filters;
+    if (rest.status !== undefined || allStatuses !== undefined) return rest;
+    return { ...rest, status: DEFAULT_STATUS_FILTER };
+  }, [filters]);
   const change = useCallback(
     (next: TableFilters) => {
-      setTouched(true);
-      onFiltersChange(next);
+      const { [ALL_STATUSES_KEY]: _marker, ...rest } = next;
+      void _marker;
+      onFiltersChange(rest.status === undefined ? { ...rest, [ALL_STATUSES_KEY]: ['1'] } : rest);
     },
     [onFiltersChange],
   );

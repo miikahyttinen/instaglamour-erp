@@ -158,9 +158,9 @@ test('gig list: cancelled hidden by default, Tila filter shows them, Paikka filt
   if (hasHeaderFilters(page)) await expect(filterButton(page, 'Paikka')).not.toHaveAccessibleDescription('Suodatin käytössä');
 });
 
-// F-008: ticking "Peruttu" checks every status, so the filter is removed from the URL (all values =
-// no filter); after a reload the default status filter applies again and the cancelled gig is gone.
-test.fixme('gig list: a Tila filter that shows every status (cancelled included) survives a reload (F-008)', async ({ page }, testInfo) => {
+// F-008 (fixed): ticking "Peruttu" checks every status; the explicit choice is kept in the URL
+// (`f.allStatuses=1`), so a reload shows the cancelled gig again instead of the default filter.
+test('gig list: a Tila filter that shows every status (cancelled included) survives a reload (F-008)', async ({ page }, testInfo) => {
   const { year, north, south, club } = await setup(page, testInfo);
   const venuesOf = () => rowVenues(page, [north, south, club]);
   await openList(page, year, `?q=${encodeURIComponent(north.split(' ')[1]!)}`);
