@@ -1,4 +1,4 @@
-# E2E findings — TASK-004, TASK-007, TASK-008 … TASK-014, TASK-017
+# E2E findings — TASK-004, TASK-007, TASK-008 … TASK-014, TASK-017, TASK-021
 
 Mismatches and bugs found while running the real frontend against the real backend.
 The e2e suite does not fix `frontend/` or `backend/` code; it records problems here and marks
@@ -57,6 +57,11 @@ database — 6 `test.fixme` (F-005, F-006, F-007, one per project each), 1 by de
 toggle, gig table ≥ 1200 px), 39 viewport-only (21 desktop-sidebar tests at 375 px, 18
 phone-drawer tests at 1280 px). New findings: F-006 (major), F-007 (minor).
 
+Run of 2026-10-15 against `main` at `bad7ee9` (Excel-style gig / offer lists, partner status), see
+[TASK-021](#task-021--excel-style-filters-keikat-tarjoukset-and-partner-status): **183 passed,
+0 failed, 43 skipped** at 375 px and 1280 px from a fresh database (4 `test.fixme`: F-005, F-008).
+New findings: F-008 (major), F-009 (minor).
+
 | Id | Severity | Side to fix | Summary |
 |---|---|---|---|
 | F-001 | minor | frontend | `/api` proxy target and dev port are hard-coded in `vite.config.ts` |
@@ -66,6 +71,8 @@ phone-drawer tests at 1280 px). New findings: F-006 (major), F-007 (minor).
 | F-005 | minor | frontend | Collapsed sidebar: while the CSS tooltip shows (hover / focus), it is added to the item's accessible name ("Vuosi Vuosi") |
 | F-006 | major | frontend | **Fixed (TASK-141).** Gig list: the 8-column table does not fit next to the expanded sidebar at 1200–1263 px; "Kate-%" is cut off and the table scrolls sideways |
 | F-007 | minor | frontend | **Fixed (TASK-141).** Convert to gig: a zero-delay double click on "Luo keikka" sends two requests (server answers 201 + 409; one gig, so AC-3 holds) |
+| F-008 | major | frontend | Gig list: ticking "Peruttu" in the Tila filter (= every status) is not kept in the URL; after a reload or from a shared link the cancelled gigs are hidden again |
+| F-009 | minor | frontend | Excel tables: when the column filters hide every row, the header (and its filter buttons) disappears from 600 px; only "Tyhjennä suodattimet" is left |
 
 ---
 
@@ -227,6 +234,74 @@ phone-drawer tests at 1280 px). New findings: F-006 (major), F-007 (minor).
   `useRef` flag and a `submitting` state in the click handler before `mutation.mutate()`; further
   clicks return early and the button is disabled. The guard is released on error so the user can
   retry. Unit test in `offerParts.test.tsx`; the e2e test is no longer `fixme` and passes.
+
+---
+
+## F-008 — Gig list: "show every status" in the Tila filter does not survive a reload
+
+- **Severity:** major (UC-003 / design.md: filters are kept in the URL; a reload or a shared link
+  silently hides the cancelled gigs the user chose to see)
+- **Where:** `frontend/src/features/gigs/GigListPage.tsx` → `useDefaultStatusFilter()` together
+  with `ColumnFilterPanel.apply()` (`frontend/src/components/ColumnFilter.tsx`), which turns "every
+  value checked" into *no filter* (`undefined`) and so removes `f.status` from the URL.
+- **Steps:** Keikat (default: Myyty + Soitettu) → "Suodata: Tila" → tick "Peruttu" → OK (the
+  cancelled gig appears; every value is checked, so the URL has no `f.status`) → reload.
+- **Expected:** the cancelled gig is still shown (the same rows as before the reload).
+- **Actual:** the URL has no status filter, so the default status filter applies again and the
+  cancelled gig is hidden. The same happens after "Tyhjennä suodattimet" (shows every status, a
+  reload hides the cancelled again). A filter of only "Peruttu" (`f.status=CANCELLED`) survives.
+- **Possible fix:** write an explicit marker when the user's status choice equals "all" while a
+  default exists (e.g. keep `f.status=SOLD&f.status=PLAYED&f.status=CANCELLED`, or `f.status=*`),
+  or let `useDefaultStatusFilter` treat any `f.*` / a "filters touched" URL flag as user-chosen.
+- **Tests:** `e2e/tests/18-gig-list-filters.spec.ts` →
+  `test.fixme('gig list: a Tila filter that shows every status (cancelled included) survives a reload (F-008)')`
+  (fails after the reload: 3 rows instead of 4, the cancelled one missing). The main gig list test
+  in the same file passes (default view, Tila, Paikka + search, URL state of a narrowed filter,
+  clear).
+
+## F-009 — Excel tables: the filter buttons disappear when the filters hide every row
+
+- **Severity:** minor (a workaround exists: "Tyhjennä suodattimet" or the search box)
+- **Where:** `frontend/src/components/ExcelTable.tsx`: when `rows.length > 0 && visible.length
+  === 0`, the empty box with "Tyhjennä suodattimet" replaces the whole `<table>`, including
+  `<thead>` and its "Suodata: <column>" buttons. Phones keep the "Suodattimet" button in the bar.
+- **Steps:** desktop → Keikat → search "venue z" (the seed's cancelled gig): "Ei suodattimia
+  vastaavia keikkoja." — there is no Tila header to tick "Peruttu"; the only way is to clear every
+  filter. Same in the offer list.
+- **Expected (Excel-like):** the header row stays, so one filter can be loosened.
+- **Tests:** none fail; `11-cross-checks` ticks "Peruttu" before searching, and its "fresh visit"
+  part uses "Tyhjennä suodattimet".
+
+---
+
+## TASK-021 — Excel-style filters (Keikat, Tarjoukset) and partner status
+
+Run of 2026-10-15 against `main` at `bad7ee9` (ExcelTable gig / offer lists TASK-143 / 144,
+partner status TASK-020 / 145, gig pickers TASK-146; TASK-147 responsive tables not merged yet),
+fresh database `instaglamour_e2e_t021`, ports 3121 / 5191.
+
+Baseline (partial, stopped at the first failures): the suite still expected the old gig list —
+`03-gig-lifecycle` (card list "Keikkalista"), `10-no-horizontal-scroll` ("Näytä talous" toggle,
+`?cancelled=1`), `11-cross-checks` ("Näytä myös perutut"), `12-layout-v2` (cards below 1200 px,
+headers "Keikka" / "Myyjä / tuottaja"), `15-clients` (card line "Asiakas: …") and `16-offers`
+(filter `<select>`s). Suite problems, not app bugs.
+
+| Change | Files |
+|---|---|
+| Gig list = one table "Keikkalista" at every width (`gigTable()`, `gigListRows()`); `isGigTable()` / `GIG_TABLE_MIN_WIDTH` removed | `tests/gigs.ts`, `tests/helpers.ts`, `03`, `15` |
+| Excel filter helpers (header popover from 600 px, "Suodattimet" sheet below) | new `tests/excel.ts` |
+| Search + Tila "Peruttu" instead of "Näytä myös perutut" | `11-cross-checks` |
+| Economics-toggle no-scroll test removed (cards show every field) | `10-no-horizontal-scroll` |
+| Breakpoint test → one table at 1199 / 1200 / 1440 px with the always-shown columns and filter buttons; the F-006 table-box test removed (superseded by TASK-147: full width, no sideways table scroll) | `12-layout-v2` |
+| Offer list filters: Tila through the popover / sheet and `f.status=` (Avoin = not expired); other columns via `f.<key>=` URLs (they may be hidden after TASK-147); API filters checked separately; clear filters | `16-offers` |
+| New: gig list filters | `18-gig-list-filters` |
+| New: partner status (UC-032) | `19-partner-status` |
+
+Result: **183 passed, 0 failed, 43 skipped** at 375 px and 1280 px from a fresh database —
+4 `test.fixme` (F-005 and F-008, one per project each), 39 viewport-only (21 desktop-sidebar
+tests at 375 px, 18 phone-drawer tests at 1280 px). New findings: F-008 (major), F-009 (minor).
+Not covered: AC-3 "last partner cannot be removed" (`LAST_PARTNER`) — the shared seed always has
+several active partners and removing them would break the other specs; covered by backend tests.
 
 ---
 
