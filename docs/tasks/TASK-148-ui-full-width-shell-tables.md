@@ -1,5 +1,5 @@
 # TASK-148: Full-width pages + responsive DataTable (shell, Clients, People, Year, Tasks)
-- **owner:** ui · **status:** todo · **spec:** docs/design.md → "Full-width, responsive tables everywhere" · **depends on:** TASK-147 · **parallel:** TASK-149 (gig page, hours, budget)
+- **owner:** ui · **status:** done · **spec:** docs/design.md → "Full-width, responsive tables everywhere" · **depends on:** TASK-147 · **parallel:** TASK-149 (gig page, hours, budget)
 ## Goal
 Every page fills the window horizontally and every table fills its page without sideways scrolling. This task owns the shared layout and `DataTable`; TASK-149 does the gig page cost list, hours and budget.
 ## Acceptance criteria
