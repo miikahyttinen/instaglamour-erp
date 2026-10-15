@@ -110,6 +110,15 @@
   color: var(--text-muted);
   font-size: var(--fs-small);
 }
+/* Kate-%: each percentage stays on one line (no-break space before %); on a narrow table the
+   actual one ("tot. 10,0 %") wraps under the budget one (TASK-147). */
+.gig-list-page .gig-table td.gig-col-margin {
+  white-space: normal;
+  overflow-wrap: normal;
+}
+.gig-list-page .gig-margin-budget {
+  white-space: nowrap;
+}
 
 /* ---------- Table (ExcelTable, same look as the offer list) ---------- */
 .gig-list-page .gig-table td.gig-col-total {
@@ -128,7 +137,14 @@
   display: inline-block;
   white-space: nowrap;
 }
-/* From 600 px (one line per row, pinned lineup column): mono dates, as on the offer list. */
+/* The date column fits its content (.excel-col-fit): a range stays on one line unless the table
+   is narrow. */
+@container excel-table (min-width: 900px) {
+  .gig-list-page .gig-table .gig-date-range {
+    white-space: nowrap;
+  }
+}
+/* From 600 px (table rows): mono dates, as on the offer list. */
 @media (min-width: 600px) {
   .gig-list-page .gig-table td.gig-col-date {
     font-family: var(--font-mono);

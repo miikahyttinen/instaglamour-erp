@@ -117,7 +117,7 @@ export function GigListPage() {
   );
 
   return (
-    <section className="page gig-list-page">
+    <section className="page page-wide gig-list-page">
       <PageHead
         title={t('pages.gigs', { year })}
         subtitle={list.data ? <YearSubtitle totals={list.data.yearSummary} /> : undefined}
@@ -313,8 +313,10 @@ function TableDateRange({ start, end, lang }: { start: string; end: string | nul
 
 /**
  * Excel-style table (UC-003 change 2026-10-14, design.md "Excel-style tables"), the same component
- * and look as the offer list: every column sortable, filter icons on the coded / text columns, one
- * line per row from 600 px with the lineup column pinned on horizontal scroll. Phones (< 600 px):
+ * and look as the offer list: every column sortable, filter icons on the coded / text columns. From
+ * 600 px it fills the width without scrolling sideways; columns with priority 2 / 3 are hidden on
+ * narrower tables (TASK-147: 1 lineup, date, venue, status, total, margin · 2 client, seller,
+ * staffing · 3 producer, budgeted, actual costs). Phones (< 600 px):
  * one card per gig + the "Suodattimet" sheet. Scrolls the first upcoming visible gig into view.
  */
 function GigTable({ gigs, partners, lang, tableState }: GigTableProps) {
@@ -344,7 +346,7 @@ function GigTable({ gigs, partners, lang, tableState }: GigTableProps) {
     {
       key: 'date',
       label: t('gigs.columns.date'),
-      className: 'gig-col-date',
+      className: 'gig-col-date excel-col-fit',
       sortValue: (g) => g.startDate,
       cell: (g) => <TableDateRange start={g.startDate} end={g.endDate} lang={lang} />,
     },
@@ -358,6 +360,7 @@ function GigTable({ gigs, partners, lang, tableState }: GigTableProps) {
     {
       key: 'client',
       label: t('clients.gigColumn'),
+      priority: 2,
       sortValue: (g) => g.clientName,
       filterValue: (g) => g.clientId,
       filterLabel: (id) => clientNames.get(id) ?? '–',
@@ -373,6 +376,7 @@ function GigTable({ gigs, partners, lang, tableState }: GigTableProps) {
     {
       key: 'status',
       label: t('gigs.columns.status'),
+      className: 'excel-col-fit',
       sortValue: (g) => GIG_DISPLAY_STATUSES.indexOf(gigDisplayStatus(g)),
       filterValue: (g) => gigDisplayStatus(g),
       filterLabel: (v) => statusLabel(v as GigDisplayStatus),
@@ -382,7 +386,8 @@ function GigTable({ gigs, partners, lang, tableState }: GigTableProps) {
     {
       key: 'staffing',
       label: t('gigs.notFullyStaffed'),
-      className: 'gig-col-staffing',
+      priority: 2,
+      className: 'gig-col-staffing excel-col-fit',
       sortValue: (g) => (g.notFullyStaffed ? 0 : 1),
       filterValue: (g) => (g.notFullyStaffed ? 'yes' : 'no'),
       filterLabel: (v) => t(v === 'yes' ? 'gigs.staffingFilter.yes' : 'gigs.staffingFilter.no'),
@@ -393,6 +398,7 @@ function GigTable({ gigs, partners, lang, tableState }: GigTableProps) {
     {
       key: 'seller',
       label: t('gigs.seller'),
+      priority: 2,
       sortValue: (g) => partnerName(partners, g.sellerId),
       filterValue: (g) => g.sellerId,
       filterLabel: (id) => partnerName(partners, id),
@@ -401,6 +407,7 @@ function GigTable({ gigs, partners, lang, tableState }: GigTableProps) {
     {
       key: 'producer',
       label: t('gigs.producer'),
+      priority: 3,
       sortValue: (g) => partnerName(partners, g.producerId),
       filterValue: (g) => g.producerId,
       filterLabel: (id) => partnerName(partners, id),
@@ -410,13 +417,15 @@ function GigTable({ gigs, partners, lang, tableState }: GigTableProps) {
       key: 'total',
       label: t('gigs.totalPrice'),
       numeric: true,
-      className: 'gig-col-total',
+      className: 'gig-col-total excel-col-fit',
       sortValue: (g) => g.totalPriceCents,
       cell: (g) => formatMoney(g.totalPriceCents, lang),
     },
     {
       key: 'budgeted',
       label: t('gigs.budgetedCosts'),
+      className: 'excel-col-fit',
+      priority: 3,
       numeric: true,
       sortValue: (g) => g.budgetedCostsCents,
       cell: (g) => formatMoney(g.budgetedCostsCents, lang),
@@ -424,6 +433,8 @@ function GigTable({ gigs, partners, lang, tableState }: GigTableProps) {
     {
       key: 'actual',
       label: t('gigs.actualCosts'),
+      className: 'excel-col-fit',
+      priority: 3,
       numeric: true,
       sortValue: (g) => g.actualCostsCents,
       cell: (g) => formatMoney(g.actualCostsCents, lang),
@@ -432,10 +443,12 @@ function GigTable({ gigs, partners, lang, tableState }: GigTableProps) {
       key: 'margin',
       label: t('gigs.marginPct'),
       numeric: true,
+      className: 'gig-col-margin',
       sortValue: (g) => g.marginBudgetPct,
+      // Each percentage stays on one line; on a narrow table the actual one goes under the budget.
       cell: (g) => (
         <span>
-          {formatPercent(g.marginBudgetPct, lang)}
+          <span className="gig-margin-budget">{formatPercent(g.marginBudgetPct, lang)}</span>
           <span className="gig-margin-actual">
             {' '}
             {t('gigs.actualShort')} {formatPercent(g.marginActualPct, lang)}

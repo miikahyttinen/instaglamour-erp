@@ -140,7 +140,7 @@
   color: var(--text-muted);
 }
 
-/* From 600 px (one line per row, pinned event column: ExcelTable): mono dates, room for the
+/* From 600 px (table rows, ExcelTable): mono dates on one line, room for the
    inline selects. */
 @media (min-width: 600px) {
   .offers-page .offer-table td.offer-col-date {
@@ -149,9 +149,22 @@
     letter-spacing: 0.06em;
     color: var(--text-muted);
     font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    overflow-wrap: normal;
+  }
+  /* Deleted view (DataTable, every column shown): headers may wrap so it never scrolls sideways. */
+  .offers-page .offer-deleted-table thead th {
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
   .offers-page .offer-table td.offer-col-select {
     min-width: 150px;
+  }
+  /* Until the table has room for every column at ease, the inline selects give up a little. */
+  @container excel-table (max-width: 1599.98px) {
+    .offers-page .offer-table td.offer-col-select {
+      min-width: 128px;
+    }
   }
 }
 

@@ -211,7 +211,7 @@ production builds) and its texts are English on purpose.
 | `StatusTag` | `tone?: 'info' \| 'ok' \| 'warn' \| 'danger' \| 'muted'` (muted), `children`, `title?` | Gig statuses: use `GigStatusTag` (gigs feature). |
 | `Notice` | `tone?: 'info' \| 'ok' \| 'warn' \| 'danger'` (info), `role?: 'alert' \| 'status' \| 'note'`, `children` | Same as `.notice` / `.notice-*`. |
 | `DataTable<T>` | `columns`, `rows`, `rowKey`, `caption` (required, visually hidden unless `showCaption`), `empty?`, `cardsOnPhone?` (true), `cardsBelow?: 'sm' \| 'lg'` (`sm` = cards below 600 px; `lg` = below 1200 px, for wide tables that would scroll next to the sidebar at 900–1199 px), `rowClassName?`, `footer?` (`<tr>`s), `className?` | Column: `key`, `label`, `cell(row)`, `header?`, `numeric?`, `primary?` (card title on phones), `hideOnPhone?`, `sort?: 'asc' \| 'desc'`, `onSort?` (makes the header a sort button; caller owns the sort state), `className?`. |
-| `ExcelTable<T>` | see "ExcelTable" below | Excel-style list: sort + per-column filter popovers, pinned first column, URL state, phone cards + filter sheet. Use it for the year lists (offers, gigs). |
+| `ExcelTable<T>` | see "ExcelTable" below | Excel-style list: sort + per-column filter popovers, column priorities (no sideways scroll), URL state, phone cards + filter sheet. Use it for the year lists (offers, gigs). |
 | `Dialog` | `title`, `onClose`, `children` | Bottom sheet on phones, centred from 600 px. Put buttons in `<div className="form-actions">`. |
 | `Field` | `label`, `error?`, `hint?`, `children(fieldProps)` | Spread `fieldProps` on the native `input`/`select`/`textarea`; they are styled globally. |
 | `MoneyInput` | `value`, `onChange`, + field props | Euro input; the € sits inside the field, so it ends at the same right edge as other fields. |
@@ -334,8 +334,17 @@ The shared Excel-style list (Tarjoukset, Keikat). Keikat opens with a default Ti
   values last in both directions, `tieBreak`, then the original order). A row count ("Näytetään 3 / 10")
   and **"Tyhjennä suodattimet"** appear above the table while a filter is on; when the filters hide
   every row a message + "Tyhjennä suodattimet" replaces the table.
-- **Layout:** from 600 px one line per row, compact cells, first column sticky (pinned) on horizontal
-  scroll, numeric columns right-aligned tabular. Phones (< 600 px): `DataTable`-style cards and a
+- **Layout:** from 600 px the table is `width: 100%` and never scrolls sideways (no scroll box).
+  Text cells wrap; `.num`, `.tag`, dates (page classes) and the header sort / filter controls stay
+  on one line. Numeric columns right-aligned tabular. **Column priority** (`priority?: 1 | 2 | 3`,
+  default 1 = always shown): priority 3 is hidden below 1400 px and priority 2 below 1100 px of
+  **table container** width (`@container excel-table`, so the expanded / collapsed sidebar counts).
+  Cells get `data-priority` and `.excel-prio-2` / `.excel-prio-3`. Hiding is CSS only: the filter and
+  sort of a hidden column still apply, and "Tyhjennä suodattimet" clears them. A `footer` must add
+  the same classes to its cells. Column className `excel-col-fit` makes a one-line column (date,
+  money, tag, icon buttons) as narrow as its content so the text columns get the spare width;
+  cell padding tightens where a tier only just fits (< 900, 1100–1199, 1400–1599 px). Pages using it add `.page-wide` to their `.page` section to drop
+  the `--content-max` cap (Keikat, Tarjoukset). Phones (< 600 px): `DataTable`-style cards and a
   **"Suodattimet"** button (badge = number of filtered columns) that opens a bottom sheet with the sort
   (Järjestys / Suunta) and the filterable columns ("Kaikki" / "N valittu"); a column opens the same
   filter form, OK / Peruuta return to the list.

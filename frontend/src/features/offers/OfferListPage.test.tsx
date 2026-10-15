@@ -59,6 +59,11 @@ describe('offer list (UC-028)', () => {
       'Keikka',
       'Toiminnot',
     ]);
+    // Column priorities (TASK-147): 2 hidden below 1100 px, 3 below 1400 px of table width.
+    expect(within(table()).getAllByRole('columnheader').map((h) => h.getAttribute('data-priority'))).toEqual([
+      '1', '1', '2', '1', '3', '1', '1', '2', '3', '3', '2', '2', '1',
+    ]);
+    expect(table().closest('.page')).toHaveClass('page-wide');
     expect(eventNames()).toEqual(['Event A', 'Event W', 'Event L', 'Event B']);
     expect(bodyRows()[0]).toHaveTextContent('Venue X, City Y');
     expect(within(table()).getByRole('columnheader', { name: /Tapahtumapäivä/ })).toHaveAttribute(
@@ -254,7 +259,9 @@ describe('offer list (UC-028)', () => {
     expect(await screen.findByText(`Ei tarjouksia vuodelle ${TEST_YEAR}.`)).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Poistetut' }));
-    await screen.findByRole('table', { name: 'Poistetut' });
+    const deleted = await screen.findByRole('table', { name: 'Poistetut' });
+    // Deleted view: every column always shown (no priorities).
+    expect(deleted.querySelector('.excel-prio-2, .excel-prio-3')).toBeNull();
     await user.click(screen.getByRole('button', { name: 'Palauta: Event 1' }));
     expect(await screen.findByText('Tarjous palautettu:')).toBeInTheDocument();
     expect(offer.deletedAt).toBeNull();

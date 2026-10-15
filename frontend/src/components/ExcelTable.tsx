@@ -40,7 +40,13 @@ const ARIA_SORT = { asc: 'ascending', desc: 'descending' } as const;
 
 function cellClass<T>(col: ExcelColumn<T>): string | undefined {
   return (
-    [col.numeric && 'num', col.primary && 'cell-primary', col.hideOnPhone && 'hide-phone', col.className]
+    [
+      col.numeric && 'num',
+      col.primary && 'cell-primary',
+      col.hideOnPhone && 'hide-phone',
+      (col.priority ?? 1) > 1 && `excel-prio-${col.priority}`,
+      col.className,
+    ]
       .filter(Boolean)
       .join(' ') || undefined
   );
@@ -48,8 +54,10 @@ function cellClass<T>(col: ExcelColumn<T>): string | undefined {
 
 /**
  * Excel-style table (docs/design.md → "Excel-style tables"): sortable headers, a filter icon per
- * filterable column with an Excel-like value popover, first column pinned on horizontal scroll,
- * numbers right-aligned. Phones (< 600 px): cards + a "Suodattimet" button that opens the same
+ * filterable column with an Excel-like value popover, numbers right-aligned. From 600 px the table
+ * fills its container and never scrolls sideways: text cells wrap and lower-priority columns
+ * (`ExcelColumn.priority`) are hidden by container queries as the table narrows. Phones
+ * (< 600 px): cards (every column) + a "Suodattimet" button that opens the same
  * filters (and the sort) in a sheet. Controlled: give it the state from `useUrlTableState()` (or
  * `useLocalTableState()`). See frontend/README.md → "ExcelTable".
  */
@@ -152,7 +160,7 @@ export function ExcelTable<T>(props: ExcelTableProps<T>) {
               {visible.map((row) => (
                 <tr key={rowKey(row)} className={rowClassName?.(row)}>
                   {columns.map((col) => (
-                    <td key={col.key} className={cellClass(col)} data-label={col.label}>
+                    <td key={col.key} className={cellClass(col)} data-label={col.label} data-priority={col.priority ?? 1}>
                       {col.cell(row)}
                     </td>
                   ))}
@@ -214,6 +222,7 @@ function HeaderCell<T>({ column, sortDir, onSort, filterable, filterActive, filt
     <th
       scope="col"
       className={cellClass(column)}
+      data-priority={column.priority ?? 1}
       aria-sort={sortable ? (sortDir ? ARIA_SORT[sortDir] : 'none') : undefined}
     >
       <div className="excel-th">

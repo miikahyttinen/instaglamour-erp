@@ -1247,6 +1247,12 @@ label.switch.inline-switch {
   max-width: calc(var(--content-max) + 2 * var(--page-pad));
   padding: var(--space-5) var(--page-pad) var(--space-7);
 }
+/* Wide list pages (Keikat, Tarjoukset: `.page.page-wide`, design.md → "Excel-style tables"): the
+   full content width, no --content-max cap; the page padding stays. */
+.page-container:has(> .page-wide),
+.topbar:has(~ .main .page-wide) .topbar-inner {
+  max-width: none; /* the top bar's right edge follows the content */
+}
 /* Page wrapper: content sits directly on --bg (cards/tables bring their own surface). */
 .page {
   background: transparent;
