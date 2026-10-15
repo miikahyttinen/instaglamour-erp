@@ -1,5 +1,5 @@
 # TASK-147: Responsive Excel tables — full width, no horizontal scroll
-- **owner:** ui · **status:** todo · **spec:** docs/design.md → "Excel-style tables" (responsive 2026-10-15) · **depends on:** TASK-143, TASK-144, TASK-146
+- **owner:** ui · **status:** done · **spec:** docs/design.md → "Excel-style tables" (responsive 2026-10-15) · **depends on:** TASK-143, TASK-144, TASK-146
 ## Goal
 Keikat and Tarjoukset tables currently scroll sideways (`width: max-content`, `nowrap`) and the page is capped at `--content-max`. The owner wants them responsive: use all available width, and fit the screen instead of scrolling.
 ## Contract
