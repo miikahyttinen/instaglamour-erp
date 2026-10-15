@@ -114,3 +114,9 @@ Used by the gig list (Keikat) and the offer list (Tarjoukset); same component, s
 - **Responsive, no horizontal scroll (owner request 2026-10-15):** list pages with an Excel table (Keikat, Tarjoukset) use the **full content width** (no `--content-max`). The table is `width: 100%`; text cells wrap (dates, money, percentages and tags stay on one line). Columns have a priority; as the width shrinks, lower-priority columns are hidden instead of scrolling (see TASK-147 for the order). The table never scrolls sideways from 600 px up; below 600 px it is cards. Numeric columns right-aligned with tabular figures; identical paddings/row height to the offer list.
 - Phone (< 600 px): cards; a "Suodattimet / Filters" button opens the same per-column filters in a sheet.
 - Year figures/tiles above the table ignore filters (unchanged rules BR-082, BR-106).
+
+## Full-width, responsive tables everywhere (owner request 2026-10-15)
+- **Every app page uses the full content width** (sidebar to window edge, page padding kept). The `--content-max` cap is removed from `.page-container` and the top bar; `.page-wide` becomes the default. The public offer page keeps its own `--doc-max`.
+- Forms, notes and single-record field groups keep their own readable max widths (e.g. `--client-form-w`, label columns) — only the page container is uncapped.
+- **Every table** (`DataTable`, hand-written `.data-table`, `ExcelTable`, cost list, hours tables, budget, year page) is `width: 100%` and fills its container; **no horizontal scrolling at ≥ 600 px**. Text cells wrap; numbers, dates, money, % and tags stay on one line. Where a table has too many columns, lower-priority columns hide on narrower widths (same mechanism as ExcelTable `priority`) or the table switches to its card/stacked layout.
+- Numeric columns right-aligned with tabular figures, same paddings as the Excel tables.
