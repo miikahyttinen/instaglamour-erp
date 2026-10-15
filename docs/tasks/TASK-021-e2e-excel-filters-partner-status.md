@@ -1,5 +1,5 @@
 # TASK-021: E2E for Excel-style filters (Keikat, Tarjoukset) and partner status
-- **owner:** backend (integration; `e2e/` only) · **status:** todo · **spec:** docs/design.md "Excel-style tables", UC-003, UC-029, UC-032 · **depends on:** TASK-143, TASK-144, TASK-020, TASK-145
+- **owner:** backend (integration; `e2e/` only) · **status:** done · **spec:** docs/design.md "Excel-style tables", UC-003, UC-029, UC-032 · **depends on:** TASK-143, TASK-144, TASK-020, TASK-145
 ## Goal
 The gig and offer lists moved to `ExcelTable` with header filter popovers (URL state `?sort=&dir=&f.<key>=`), and partner status is now managed in the app. Bring the Playwright suite up to date and cover the new behaviour.
 ## Acceptance criteria
