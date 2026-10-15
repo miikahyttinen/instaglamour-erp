@@ -80,8 +80,6 @@ export async function signIn(
  * (dialog "Päävalikko"). There is no bottom nav and no header nav.
  */
 export const DESKTOP_MIN_WIDTH = 900;
-/** The gig list is a table only from 1200 px (frontend `GIG_TABLE_QUERY`); cards below that. */
-export const GIG_TABLE_MIN_WIDTH = 1200;
 
 export function isWide(page: Page): boolean {
   return (page.viewportSize()?.width ?? 0) >= DESKTOP_MIN_WIDTH;

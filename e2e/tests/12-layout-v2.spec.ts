@@ -1,10 +1,9 @@
 import type { Locator, Page } from '@playwright/test';
-import { costLines, gigListRows } from './gigs';
+import { costLines, gigListRows, gigTable } from './gigs';
 import {
   CURRENT_YEAR,
   expect,
   expectNoHorizontalScroll,
-  GIG_TABLE_MIN_WIDTH,
   isMobile,
   languageButton,
   menuButton,
@@ -19,7 +18,7 @@ import {
 import { busyIds, MAIN_PAGE_NAMES, mainPages, openLoaded, type BusyIds } from './pages';
 
 // Layout v2 (docs/design.md → Layout v2, TASK-125…130): collapsible sidebar on desktop, ☰ drawer
-// on phones, the gig list as a table only from 1200 px, compact cost rows by container width.
+// on phones, the gig list as one Excel-style table (TASK-144), compact cost rows by container width.
 // Read-only flows: nothing here changes the shared database.
 
 // Eight items since TASK-015…139, Asiakkaat after Keikat; Vuosi first, then Tarjoukset (TASK-142).
@@ -34,17 +33,11 @@ const NAV: { label: string; path: string }[] = [
   { label: 'Budjetti', path: '/budget' },
 ];
 const SIDEBAR_KEY = 'ig-sidebar'; // frontend/src/layout/sidebarState.ts
-/** Gig list table columns (FI), the client column since TASK-137. */
-const GIG_COLUMNS = [
-  'Päivä',
-  'Keikka',
-  'Asiakas',
-  'Myyjä / tuottaja',
-  'Kokonaishinta',
-  'Kulut, budjetti',
-  'Kulut, toteuma',
-  'Kate-%',
-];
+/**
+ * Gig list columns that are always shown (TASK-144 ExcelTable; priority 1 in TASK-147, which hides
+ * lower-priority columns on narrower tables). Found by their sort buttons in the header.
+ */
+const GIG_ALWAYS_COLUMNS = ['Kokoonpano', 'Päivä', 'Paikka', 'Tila', 'Kokonaishinta', 'Kate-%'];
 
 function sidebarNav(page: Page): Locator {
   return page.getByRole('navigation', { name: NAV_NAME });
@@ -179,65 +172,22 @@ test.describe('desktop sidebar', () => {
     await expect(third).toHaveAccessibleName(NAV[2]!.label);
   });
 
-  test('gig list: cards below 1200 px, a table from 1200 px (also at 1440 px)', async ({ page }) => {
-    for (const w of [GIG_TABLE_MIN_WIDTH - 1, GIG_TABLE_MIN_WIDTH, 1440]) {
+  test('gig list: one Excel-style table "Keikkalista" at every desktop width (1199, 1200, 1440 px)', async ({ page }) => {
+    // TASK-144: no separate card list any more; below 600 px the same table is laid out as cards.
+    for (const w of [1199, 1200, 1440]) {
       await page.setViewportSize({ width: w, height: 800 });
       await openLoaded(page, '/gigs');
-      const table = page.getByRole('table', { name: 'Keikkalista' });
-      const cards = page.getByRole('list', { name: 'Keikkalista' });
-      if (w < GIG_TABLE_MIN_WIDTH) {
-        await expect(cards, `${w} px: cards`).toBeVisible();
-        await expect(table, `${w} px: no table`).toHaveCount(0);
-      } else {
-        await expect(table, `${w} px: table`).toBeVisible();
-        await expect(cards, `${w} px: no cards`).toHaveCount(0);
-        // Eight columns since the client column (TASK-137).
-        await expect(table.getByRole('columnheader')).toHaveText(GIG_COLUMNS);
+      const table = gigTable(page);
+      await expect(table, `${w} px: table`).toBeVisible();
+      await expect(page.getByRole('list', { name: 'Keikkalista' }), `${w} px: no card list`).toHaveCount(0);
+      for (const column of GIG_ALWAYS_COLUMNS) {
+        await expect(table.getByRole('button', { name: column, exact: true }), `${w} px: "${column}" header`).toBeVisible();
+      }
+      for (const column of ['Kokoonpano', 'Paikka', 'Tila']) {
+        await expect(table.getByRole('button', { name: `Suodata: ${column}`, exact: true }), `${w} px: filter ${column}`).toBeVisible();
       }
       await expect(gigListRows(page).first()).toBeVisible();
       await expectNoHorizontalScroll(page, `gig list at ${w} px`);
-    }
-  });
-
-  test('gig list: the 8-column table fits next to the expanded sidebar from 1200 px, no sideways scroll inside the table (F-006)', async ({ page }) => {
-    // F-006 (fixed in TASK-141): the page itself does not scroll (`.table-wrap` has overflow-x: auto),
-    // so the check above could not see that the table was ~950 px in an ~886 px box at 1200 px. Now
-    // the inner column gutters are narrower and a date range wraps after its dash below 1280 px.
-    for (const mode of ['expanded', 'collapsed'] as const) {
-      await page.addInitScript(([key, value]) => window.localStorage.setItem(key, value), [SIDEBAR_KEY, mode]);
-      for (const w of [GIG_TABLE_MIN_WIDTH, 1280, 1440]) {
-        await page.setViewportSize({ width: w, height: 800 });
-        await openLoaded(page, '/gigs?status=ALL');
-        const table = page.getByRole('table', { name: 'Keikkalista' });
-        await expect(table).toBeVisible();
-        await expect(table.getByRole('columnheader')).toHaveText(GIG_COLUMNS);
-        const box = await table.evaluate((t) => {
-          const wrap = t.parentElement!;
-          return { scroll: wrap.scrollWidth, client: wrap.clientWidth };
-        });
-        expect(box.scroll, `sidebar ${mode}, ${w} px: table ${box.scroll} px in a ${box.client} px box`).toBeLessThanOrEqual(box.client);
-        // Every column header lies fully inside the table's box, and the box inside the viewport,
-        // horizontally. Measured as geometry, not `toBeInViewport()`: the gig list scrolls today's
-        // row to the centre on load (GigListPage), so the header row may be above the viewport
-        // vertically, which says nothing about the width (TASK-019).
-        await table.locator('thead').scrollIntoViewIfNeeded();
-        const fit = await table.evaluate((t) => {
-          const wrap = t.parentElement!.getBoundingClientRect();
-          const ths = [...t.querySelectorAll('thead th')].map((th) => {
-            const r = th.getBoundingClientRect();
-            return { name: th.textContent?.trim() ?? '', left: r.left, right: r.right };
-          });
-          return { wrapLeft: wrap.left, wrapRight: wrap.right, viewport: document.documentElement.clientWidth, ths };
-        });
-        expect(fit.ths, `sidebar ${mode}, ${w} px: column headers`).toHaveLength(GIG_COLUMNS.length);
-        expect(fit.wrapLeft, `sidebar ${mode}, ${w} px: table box starts in the viewport`).toBeGreaterThanOrEqual(0);
-        expect(fit.wrapRight, `sidebar ${mode}, ${w} px: table box ends in the viewport`).toBeLessThanOrEqual(fit.viewport + 0.5);
-        for (const th of fit.ths) {
-          expect(th.left, `sidebar ${mode}, ${w} px: "${th.name}" starts inside the table box`).toBeGreaterThanOrEqual(fit.wrapLeft - 0.5);
-          expect(th.right, `sidebar ${mode}, ${w} px: "${th.name}" ends inside the table box`).toBeLessThanOrEqual(fit.wrapRight + 0.5);
-        }
-        await expectNoHorizontalScroll(page, `gig list, sidebar ${mode}, ${w} px`);
-      }
     }
   });
 
