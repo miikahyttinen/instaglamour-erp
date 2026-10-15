@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { createGigViaApi, gigListRows, isGigTable, suffix } from './gigs';
+import { createGigViaApi, gigListRows, suffix } from './gigs';
 import {
   api,
   editInline,
@@ -250,7 +250,7 @@ test('attach a client to a gig: gig page select, "New client…", new gig form, 
   await expect(page.getByRole('heading', { level: 1, name: `${SEED.templateB.name} · ${venue}` })).toBeVisible();
   await expect(page.getByRole('main').getByLabel('Asiakas', { exact: true }).locator('option:checked')).toHaveText(formClient);
 
-  // Gig list: the client column (table) / line (cards), linking to the client; search by client.
+  // Gig list: the client column (a card line on phones; may be hidden on narrow tables, TASK-147), linking to the client; search by client.
   await page.goto('/gigs');
   await expect(page.getByRole('heading', { level: 1, name: `Keikat ${year}` })).toBeVisible();
   const rows = gigListRows(page);
@@ -258,12 +258,8 @@ test('attach a client to a gig: gig page select, "New client…", new gig form, 
   const rowB = rows.filter({ hasText: venue });
   await expect(rowA).toContainText(fresh);
   await expect(rowB).toContainText(formClient);
-  if (isGigTable(page)) {
-    await expect(page.getByRole('table', { name: 'Keikkalista' }).getByRole('columnheader', { name: 'Asiakas' })).toBeVisible();
-    await expect(rowB.getByRole('link', { name: formClient })).toHaveAttribute('href', `/clients/${formClientId}`);
-  } else {
-    await expect(rowB).toContainText(`Asiakas: ${formClient}`);
-  }
+  // By href, not by role: a hidden low-priority column (TASK-147) is out of the accessibility tree.
+  await expect(rowB.locator(`a[href="/clients/${formClientId}"]`)).toHaveText(formClient);
 
   await page.getByLabel('Haku').fill(`${sfx}-form`);
   await expect(rows).toHaveCount(1);
