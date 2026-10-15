@@ -255,6 +255,64 @@ test.describe('desktop sidebar', () => {
     }
   });
 
+  // TASK-148: every app page is full width (no --content-max cap on .page-container or the top
+  // bar), and the DataTable pages fill it without scrolling sideways at any desktop/tablet width.
+  test('full-width pages: tables fill the content width, no sideways scroll at 600–1920 px', async ({ page }) => {
+    const { clientId, personId } = await busyIds(page);
+    const measure = () =>
+      page.evaluate(() => {
+        const main = document.querySelector<HTMLElement>('main')!;
+        const container = document.querySelector<HTMLElement>('main .page-container')!;
+        const inner = document.querySelector<HTMLElement>('.topbar-inner')!;
+        const cs = getComputedStyle(container);
+        const pad = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+        return {
+          main: main.clientWidth,
+          container: container.getBoundingClientRect().width,
+          topbar: inner.getBoundingClientRect().right,
+          viewport: document.documentElement.clientWidth,
+          content: container.clientWidth - pad,
+          tables: [...document.querySelectorAll<HTMLElement>('main .table-wrap')]
+            .filter((wrap) => wrap.offsetParent !== null)
+            .map((wrap) => ({
+              name: wrap.querySelector('caption')?.textContent ?? '?',
+              scroll: wrap.scrollWidth,
+              client: wrap.clientWidth,
+              wrap: wrap.getBoundingClientRect().width,
+              table: wrap.querySelector('table')!.getBoundingClientRect().width,
+            })),
+        };
+      });
+    const pages: [string, string][] = [
+      ['year page', '/'],
+      ['clients', '/clients'],
+      ['client page', `/clients/${clientId}`],
+      ['people', '/people'],
+      ['person page', `/people/${personId}`],
+      ['tasks', '/tasks'],
+    ];
+    for (const mode of ['expanded', 'collapsed'] as const) {
+      await page.addInitScript(([key, value]) => window.localStorage.setItem(key, value), [SIDEBAR_KEY, mode]);
+      for (const [name, path] of pages) {
+        for (const w of [600, 900, 1200, 1440, 1920]) {
+          const where = `${name}, sidebar ${mode}, ${w} px`;
+          await page.setViewportSize({ width: w, height: 800 });
+          await openLoaded(page, path);
+          await expectNoHorizontalScroll(page, where);
+          const m = await measure();
+          // No cap: the container spans the whole main column and the top bar reaches the window edge.
+          expect(Math.abs(m.container - m.main), `${where}: page container uses the full width`).toBeLessThanOrEqual(1);
+          expect(Math.abs(m.topbar - m.viewport), `${where}: top bar reaches the window edge`).toBeLessThanOrEqual(1);
+          for (const t of m.tables) {
+            expect(t.scroll, `${where}: "${t.name}" scrolls sideways`).toBeLessThanOrEqual(t.client);
+            expect(t.table, `${where}: "${t.name}" wider than its frame`).toBeLessThanOrEqual(t.wrap + 1);
+            expect(t.table, `${where}: "${t.name}" fills its frame`).toBeGreaterThanOrEqual(t.wrap - 4);
+          }
+        }
+      }
+    }
+  });
+
   test.describe('no horizontal scroll in both sidebar states', () => {
     let ids: BusyIds | undefined;
     test.beforeEach(async ({ page }) => {

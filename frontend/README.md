@@ -158,9 +158,11 @@ production builds) and its texts are English on purpose.
   (`useSidebarCollapsed()`, try/catch). When collapsed, labels are visually hidden (they stay the
   accessible names) and appear as a CSS tooltip from `data-tooltip`.
 - **Every route renders inside `.page-container`** (AppShell). It is left-aligned at the sidebar
-  edge, has `--page-pad` on both sides, a content width of at most `--content-max` 1200 px, and
-  `--space-5` / `--space-6` (desktop) above. **Don't add your own max-width or side padding on a
-  page.** Everything shares one left edge.
+  edge, has `--page-pad` on both sides and `--space-5` / `--space-6` (desktop) above, and uses the
+  **full width** up to the window edge (no `--content-max` cap since TASK-148; the top bar spans
+  the same width). **Don't add your own max-width or side padding on a page.** Everything shares
+  one left edge. Forms, notes and single-record field groups keep their own readable max width
+  (e.g. `--client-form-w`, the new offer form, the new gig form grid capped at `--content-max`).
 - Vertical rhythm comes from the components: `PageHead`, `SectionLabel`, `.divider` and
   `StatGrid` use `--section-gap` (32 → 40). Don't add extra margins between sections; if a
   screen needs a different gap, use `--section-gap` / `--grid-gap` / `--space-*`.
@@ -184,7 +186,7 @@ production builds) and its texts are English on purpose.
 | Type size | `--fs-meta` 10, `--fs-label` 10, `--fs-small` 12, `--fs-body` 14, `--fs-lg` 16, `--fs-figure` 20, `--fs-title` 20→22, `--fs-display` 32 (customer document title) (px; → = desktop) |
 | Type other | `--lh-tight` 1.15, `--lh-body` 1.5, `--ls-label` (0.14em), `--ls-title`, `--fw-regular`, `--fw-medium`, `--fw-bold` |
 | Spacing | `--space-1` … `--space-7` = 4/8/12/16/24/32/48 px |
-| Layout | `--page-pad` 16→40, `--section-gap` 32→40, `--card-pad` 16→20, `--grid-gap` 16, `--content-max` 1200, `--label-w` 160, `--doc-max` 880 (customer document width) |
+| Layout | `--page-pad` 16→40, `--section-gap` 32→40, `--card-pad` 16→20, `--grid-gap` 16, `--content-max` 1200 (new gig form grid + styleguide only; pages are uncapped), `--label-w` 160, `--doc-max` 880 (customer document width) |
 | Table | `--row-h` 48, `--cell-pad-y` 12, `--cell-pad-x` (= `--card-pad`) |
 | Shape / size | `--radius` (2 px, the max), `--hairline` (1 px), `--tap` 44, `--control-h` 44→36, `--inline-pad-x` 8, `--inline-num-trail` (space right of an inline money/hours unit), `--icon` 16, `--icon-nav` 18, `--icon-stroke` |
 | Shell | `--topbar-h` 56, `--sidebar-w` 232, `--sidebar-w-collapsed` 64, `--drawer-w` min(280 px, 85vw), `--nav-item-h` 44→40 |
@@ -210,7 +212,7 @@ production builds) and its texts are English on purpose.
 | `MiniBars` | `bars: { label, value, current?, valueText? }[]`, `label` (accessible name), `showLabels?` (true), `height?: number \| string` (48 px; a number is px, a string any CSS length), `compact?` (bar area `--space-6` 32 px, for tiles with a secondary figure) | Bar labels must be unique. Screen readers get a "label: valueText" list. |
 | `StatusTag` | `tone?: 'info' \| 'ok' \| 'warn' \| 'danger' \| 'muted'` (muted), `children`, `title?` | Gig statuses: use `GigStatusTag` (gigs feature). |
 | `Notice` | `tone?: 'info' \| 'ok' \| 'warn' \| 'danger'` (info), `role?: 'alert' \| 'status' \| 'note'`, `children` | Same as `.notice` / `.notice-*`. |
-| `DataTable<T>` | `columns`, `rows`, `rowKey`, `caption` (required, visually hidden unless `showCaption`), `empty?`, `cardsOnPhone?` (true), `cardsBelow?: 'sm' \| 'lg'` (`sm` = cards below 600 px; `lg` = below 1200 px, for wide tables that would scroll next to the sidebar at 900–1199 px), `rowClassName?`, `footer?` (`<tr>`s), `className?` | Column: `key`, `label`, `cell(row)`, `header?`, `numeric?`, `primary?` (card title on phones), `hideOnPhone?`, `sort?: 'asc' \| 'desc'`, `onSort?` (makes the header a sort button; caller owns the sort state), `className?`. |
+| `DataTable<T>` | `columns`, `rows`, `rowKey`, `caption` (required, visually hidden unless `showCaption`), `empty?`, `cardsOnPhone?` (true), `cardsBelow?: 'sm' \| 'lg'` (`sm` = cards below 600 px; `lg` = below 1200 px, for wide tables that would scroll next to the sidebar at 900–1199 px), `rowClassName?`, `footer?` (`<tr>`s), `className?`. From 600 px the table is `width: 100%` and doesn't scroll sideways: text cells and header titles wrap between words (hyphenated only if needed), `.num` and `.tag` stay on one line; give date columns a page class with `white-space: nowrap` | Column: `key`, `label`, `cell(row)`, `header?`, `numeric?`, `primary?` (card title on phones), `hideOnPhone?`, `sort?: 'asc' \| 'desc'`, `onSort?` (makes the header a sort button; caller owns the sort state), `className?`. |
 | `ExcelTable<T>` | see "ExcelTable" below | Excel-style list: sort + per-column filter popovers, column priorities (no sideways scroll), URL state, phone cards + filter sheet. Use it for the year lists (offers, gigs). |
 | `Dialog` | `title`, `onClose`, `children` | Bottom sheet on phones, centred from 600 px. Put buttons in `<div className="form-actions">`. |
 | `Field` | `label`, `error?`, `hint?`, `children(fieldProps)` | Spread `fieldProps` on the native `input`/`select`/`textarea`; they are styled globally. |
@@ -343,8 +345,7 @@ The shared Excel-style list (Tarjoukset, Keikat). Keikat opens with a default Ti
   sort of a hidden column still apply, and "Tyhjennä suodattimet" clears them. A `footer` must add
   the same classes to its cells. Column className `excel-col-fit` makes a one-line column (date,
   money, tag, icon buttons) as narrow as its content so the text columns get the spare width;
-  cell padding tightens where a tier only just fits (< 900, 1100–1199, 1400–1599 px). Pages using it add `.page-wide` to their `.page` section to drop
-  the `--content-max` cap (Keikat, Tarjoukset). Phones (< 600 px): `DataTable`-style cards and a
+  cell padding tightens where a tier only just fits (< 900, 1100–1199, 1400–1599 px). Phones (< 600 px): `DataTable`-style cards and a
   **"Suodattimet"** button (badge = number of filtered columns) that opens a bottom sheet with the sort
   (Järjestys / Suunta) and the filterable columns ("Kaikki" / "N valittu"); a column opens the same
   filter form, OK / Peruuta return to the list.

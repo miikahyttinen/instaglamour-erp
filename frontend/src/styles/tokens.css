@@ -38,7 +38,7 @@
   --section-gap: 32px; /* between page sections: 32 px phone → 40 px desktop */
   --card-pad: 16px; /* inside cards, tiles, table cells (x): 16 px phone → 20 px desktop */
   --grid-gap: 16px; /* between tiles / cards (StatGrid, card grids) */
-  --content-max: 1200px; /* content width inside .page-container (padding not included) */
+  --content-max: 1200px; /* app pages are full width (no cap); max width of the new gig form grid and the styleguide showcase */
   --label-w: 160px; /* label column of FieldList (≥ 600 px) */
   --doc-max: 880px; /* reading width of customer documents (public offer page) */
 

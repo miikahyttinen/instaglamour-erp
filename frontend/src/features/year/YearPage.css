@@ -1,9 +1,12 @@
 /* Year page (UC-022). The sections sit on the same 12-column grid as the gig tiles
-   (--grid-gap columns, --section-gap rows): gigs and upcoming gigs span the width; from 600 px
-   hours | budget sit side by side on the gig tiles' middle line, equally tall.
+   (--grid-gap columns, --section-gap rows): gigs and upcoming gigs span the width; once the
+   layout is at least 880 px wide (container query, so the sidebar state counts) hours | budget
+   sit side by side on the gig tiles' middle line, equally tall. Narrower, they stack, so the
+   budget table (category + two money columns) never scrolls sideways (TASK-148).
    Tokens and shared classes only. */
 
 .year-layout {
+  container: year-layout / inline-size;
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
   gap: var(--section-gap) var(--grid-gap);
@@ -22,7 +25,7 @@
 .year-budget > .table-wrap {
   flex: 1 1 auto;
 }
-@media (min-width: 600px) {
+@container year-layout (min-width: 880px) {
   .year-hours,
   .year-budget {
     grid-column: span 6;
