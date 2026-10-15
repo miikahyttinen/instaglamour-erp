@@ -9,7 +9,7 @@
 Write an offer for a client, internally, in the customer-facing format.
 
 ## Main flow
-1. Partner selects **New offer**; form: client (select + "New client…"), event name, event date, venue, city, seller (default me), lineup (one item per line; can be filled from a lineup template), what's included (default text), Spotify link (default), show references (switch), price (internal), source, event type.
+1. Partner selects **New offer**; form: client (select + "New client…"), event name, event date, venue, city, seller (default me), lineup (one item per line; can be filled from a lineup template), what's included (default text), show references (switch), price (internal), source, event type.
 2. Partner saves → offer page.
 3. **Offer page:** customer-style preview of the offer + internal panel (price, source, event type, disposition, created, history) + actions: Copy public link, Regenerate link, Convert to gig#, Delete. All fields edit in place (save on blur/Enter or on change).
 

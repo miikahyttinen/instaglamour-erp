@@ -230,7 +230,7 @@ No agencies: one client per gig and per offer. Real client names exist only in t
 | city | string | optional |
 | lineup | string[] | one line per item, shown to the customer |
 | includes_text | text | "what's included", shown to the customer; default from setting `offers.default_includes` |
-| spotify_url | string | optional; default from setting `offers.default_spotify_url` |
+| spotify_url | string | **obsolete (2026-10-15)** — unused; the Spotify link is a fixed constant in code. Column kept until a cleanup migration is approved |
 | price_cents | int | optional, excl. VAT, **internal only** |
 | seller_id | → Partner | required, default = creator |
 | show_references | bool | shows the active References (see Reference) |
@@ -250,7 +250,7 @@ No agencies: one client per gig and per offer. Real client names exist only in t
 | phone | string | optional, shown on the public offer as seller contact (local seed) |
 
 ## Settings (additions, local seed)
-`offers.default_includes`, `offers.default_spotify_url` (text). (`offers.references_*` are obsolete — replaced by Reference.)
+`offers.default_includes` (text). (`offers.default_spotify_url` is obsolete — the Spotify link is a constant in code.) (`offers.references_*` are obsolete — replaced by Reference.)
 
 ## Reference (testimonial) — owner request 2026-10-07
 | Field | Type | Notes |
