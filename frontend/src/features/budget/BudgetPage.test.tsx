@@ -324,6 +324,23 @@ describe('budget page', () => {
     ]);
   });
 
+  it('keeps amounts on one line and lets the category column take the rest (TASK-149)', async () => {
+    seedYear();
+    open();
+    const rowA = await findRow('Category A');
+    const table = rowA.closest('table')!;
+    expect(table.closest('.table-wrap')).toHaveClass('budget-table-wrap');
+    // Every amount cell (body, totals and headers but the first) is .num: right-aligned,
+    // tabular, nowrap; the category is the row header without .num.
+    for (const tr of table.querySelectorAll('tr')) {
+      const [first, ...rest] = [...tr.children];
+      expect(first).not.toHaveClass('num');
+      expect(rest).toHaveLength(6);
+      for (const cell of rest) expect(cell).toHaveClass('num');
+    }
+    expect(within(rowA).getByRole('rowheader')).toHaveClass('budget-category');
+  });
+
   it('shows the totals as stat tiles and colours variances by status', async () => {
     seedYear();
     open();
