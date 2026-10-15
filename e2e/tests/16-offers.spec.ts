@@ -40,6 +40,16 @@ import {
   type OfferDetail,
   type OfferSummary,
 } from './offers';
+import {
+  cancelColumnFilter,
+  clearFiltersButton,
+  filterButton,
+  filterColumn,
+  filterValue,
+  hasHeaderFilters,
+  openColumnFilter,
+  urlFilter,
+} from './excel';
 
 // Offers (UC-028, UC-029, UC-031; BR-102…BR-106). Writes go to the project's own year
 // (offerYear: 2038 / 2039), except the figures test, which needs past and future dates around
@@ -284,34 +294,91 @@ test('list: figures = BR-106 from the API; rows of the year; sorting; filters in
   await page.reload();
   await expect.poll(() => rowEvents(page)).toEqual(['Alfa', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot'].map(name));
 
-  // Filters (in the URL), each equal to the API with the same filter; figures ignore them.
-  const filters: [label: string, option: string, query: string, keys: string[]][] = [
-    ['Tila', STATUS_FI.EXPIRED, 'status=EXPIRED', ['Alfa']],
-    ['Tila', STATUS_FI.OPEN, 'status=OPEN', ['Alfa', 'Delta', 'Echo']],
-    ['Tila', STATUS_FI.ACCEPTED, 'status=ACCEPTED', ['Foxtrot']],
-    ['Tila', STATUS_FI.REJECTED, 'status=REJECTED', ['Bravo', 'Charlie']],
-    ['Myyjä', 'Partner B', `sellerId=${partnerB}`, ['Foxtrot']],
-    ['Lopputulos', DISPOSITION_FI.LOST_PRICE, 'disposition=LOST_PRICE', ['Charlie']],
-    ['Tapahtumatyyppi', 'Häät', 'eventType=WEDDING', ['Bravo', 'Delta']],
-    ['Lähde', 'Verkkosivut', 'source=WEBSITE', ['Alfa']],
+  // Column filters (Excel-style header popovers, TASK-143; the sheet on phones): client-side, kept
+  // in the URL as f.<key>=<value>; the figures ignore them. The Tila filter is used through the UI;
+  // the other columns may be hidden on narrower tables (TASK-147), so they are set through the URL.
+  // Display status: "Avoin" = open and not expired, "Vanhentunut" = open and expired (BR-102).
+  const expectFiguresUnchanged = async (what: string) => {
+    await expect(figure(page, 'Avoimet tarjoukset').value, `${what}: figures ignore filters`).toHaveText(fiMoney(expected.openValueCents));
+    await expect(figure(page, 'Voittoprosentti').value).toHaveText(fiPercent(expected.winRatePct));
+  };
+  const statusFilters: [option: string, code: string, keys: string[]][] = [
+    [STATUS_FI.EXPIRED, 'EXPIRED', ['Alfa']],
+    [STATUS_FI.OPEN, 'OPEN', ['Delta', 'Echo']],
+    [STATUS_FI.ACCEPTED, 'ACCEPTED', ['Foxtrot']],
+    [STATUS_FI.REJECTED, 'REJECTED', ['Bravo', 'Charlie']],
   ];
-  for (const [label, option, query, keys] of filters) {
-    const select = page.getByRole('main').getByLabel(label, { exact: true });
-    await select.selectOption({ label: option });
-    await expect.poll(() => rowEvents(page), `${label} = ${option}`).toEqual(keys.map(name));
+  for (const [option, code, keys] of statusFilters) {
+    await filterColumn(page, 'Tila', [option]);
+    await expect(page).toHaveURL(new RegExp(`[?&]f\\.status=${code}(&|$)`));
+    expect(urlFilter(page, 'status'), `Tila = ${option}`).toEqual([code]);
+    await expect.poll(() => rowEvents(page), `Tila = ${option}`).toEqual(keys.map(name));
+    await expectFiguresUnchanged(`Tila = ${option}`);
+  }
+  // Two values in one column = OR.
+  await filterColumn(page, 'Tila', [STATUS_FI.EXPIRED, STATUS_FI.ACCEPTED]);
+  expect(urlFilter(page, 'status')).toEqual(['EXPIRED', 'ACCEPTED']);
+  await expect.poll(() => rowEvents(page)).toEqual(['Alfa', 'Foxtrot'].map(name));
+  // Cancel and Esc keep the filter.
+  let form = await openColumnFilter(page, 'Tila');
+  await filterValue(form, STATUS_FI.OPEN).check();
+  await cancelColumnFilter(page, form);
+  expect(urlFilter(page, 'status')).toEqual(['EXPIRED', 'ACCEPTED']);
+  if (hasHeaderFilters(page)) {
+    form = await openColumnFilter(page, 'Tila');
+    await filterValue(form, STATUS_FI.OPEN).check();
+    await page.keyboard.press('Escape');
+    await expect(form).toBeHidden();
+    await expect(filterButton(page, 'Tila')).toBeFocused();
+    expect(urlFilter(page, 'status')).toEqual(['EXPIRED', 'ACCEPTED']);
+  }
+  await expect.poll(() => rowEvents(page)).toEqual(['Alfa', 'Foxtrot'].map(name));
+
+  // The API keeps its own server-side filters (contract): status=OPEN includes expired offers.
+  const apiFilters: [query: string, keys: string[]][] = [
+    ['status=EXPIRED', ['Alfa']],
+    ['status=OPEN', ['Alfa', 'Delta', 'Echo']],
+    ['status=ACCEPTED', ['Foxtrot']],
+    ['status=REJECTED', ['Bravo', 'Charlie']],
+    [`sellerId=${partnerB}`, ['Foxtrot']],
+    ['disposition=LOST_PRICE', ['Charlie']],
+    ['eventType=WEDDING', ['Bravo', 'Delta']],
+    ['source=WEBSITE', ['Alfa']],
+  ];
+  for (const [query, keys] of apiFilters) {
     const viaApi = await offerList(page, CURRENT_YEAR, `&q=${sfx}&${query}`);
     expect(viaApi.offers.map((o) => o.eventName).sort(), `API ${query}`).toEqual(keys.map(name));
     expect(viaApi.summary, `API ${query}: summary ignores filters`).toEqual(expected);
-    await expect(figure(page, 'Avoimet tarjoukset').value).toHaveText(fiMoney(expected.openValueCents));
-    await expect(figure(page, 'Voittoprosentti').value).toHaveText(fiPercent(expected.winRatePct));
-    await select.selectOption({ label: 'Kaikki' });
   }
-  // Filters and search survive a reload.
-  await page.getByRole('main').getByLabel('Tila', { exact: true }).selectOption({ label: STATUS_FI.EXPIRED });
+
+  // Other columns through the URL (f.<key>, values are codes / ids), combined with AND; sorted by event.
+  const urlFilters: [query: string, keys: string[]][] = [
+    [`f.seller=${partnerB}`, ['Foxtrot']],
+    ['f.disposition=LOST_PRICE', ['Charlie']],
+    ['f.eventType=WEDDING', ['Bravo', 'Delta']],
+    ['f.source=WEBSITE', ['Alfa']],
+    ['f.eventType=WEDDING&f.status=OPEN', ['Delta']],
+  ];
+  for (const [query, keys] of urlFilters) {
+    await openOfferList(page, `?q=${sfx}&sort=event&dir=asc&${query}`);
+    await expect.poll(() => rowEvents(page), query).toEqual(keys.map(name));
+    await expectFiguresUnchanged(query);
+  }
+
+  // Filters and search survive a reload; "Tyhjennä suodattimet" resets the filters, not the search.
+  await openOfferList(page, `?q=${sfx}`);
+  await filterColumn(page, 'Tila', [STATUS_FI.EXPIRED]);
   await page.reload();
-  await expect(page.getByRole('main').getByLabel('Tila', { exact: true }).locator('option:checked')).toHaveText(STATUS_FI.EXPIRED);
+  expect(urlFilter(page, 'status')).toEqual(['EXPIRED']);
   await expect.poll(() => rowEvents(page)).toEqual([name('Alfa')]);
+  if (hasHeaderFilters(page)) {
+    await expect(filterButton(page, 'Tila')).toHaveAccessibleDescription('Suodatin käytössä');
+  }
   await expectNoHorizontalScroll(page, 'offer list filtered');
+  await clearFiltersButton(page).click();
+  await expect.poll(() => urlFilter(page, 'status')).toEqual([]);
+  await expect(page).toHaveURL(new RegExp(`[?&]q=${sfx}`));
+  await expect(offerRows(page)).toHaveCount(specs.length);
 });
 
 test('inline source, event type and disposition: saved on change, kept after reload, logged; status follows disposition', async ({ page }, testInfo) => {

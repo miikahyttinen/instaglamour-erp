@@ -13,6 +13,7 @@ import {
   test,
 } from './helpers';
 import { costField, costLine, createGigViaApi, gigListRows, reference, suffix } from './gigs';
+import { clearFiltersButton, tickColumnValues } from './excel';
 
 // Extra integration checks beyond the nine smoke flows: places where the UI depends on
 // cross-endpoint behaviour of the backend.
@@ -97,17 +98,27 @@ test('hours saved for another year show a notice and are not added to this year'
   expect(next.some((e) => e.comment === comment)).toBe(true);
 });
 
-test('gig list search and the cancelled filter use the backend query', async ({ page }) => {
+test('gig list search and the Tila filter: cancelled gigs only after ticking "Peruttu"', async ({ page }) => {
   await signIn(page);
   await page.goto('/gigs');
-  const rows = gigListRows(page); // table from 900 px, cards below
+  const rows = gigListRows(page); // one table "Keikkalista"; cards below 600 px
+  // "Näytä myös perutut" is gone: the Tila column filter replaces it (TASK-144).
+  await expect(page.getByLabel('Näytä myös perutut')).toHaveCount(0);
+  await tickColumnValues(page, 'Tila', ['Peruttu']);
   await page.getByLabel('Haku').fill('venue z');
-  // Venue Z (seed) is cancelled: hidden until "show cancelled" is on.
-  await expect(page.getByText('Ei hakuehtoja vastaavia keikkoja.')).toBeVisible();
-  const showCancelled = page.getByLabel('Näytä myös perutut');
-  await showCancelled.click(); // URL-driven checkbox: it flips after navigation, so no check()
-  await expect(showCancelled).toBeChecked();
+  await expect(page).toHaveURL(/[?&]q=venue(\+|%20)z/);
   await expect(rows).toHaveCount(1);
   await expect(rows.first()).toContainText('Venue Z');
   await expect(rows.first()).toContainText('Peruttu');
+  // The search goes to the API (q), the Tila filter is client-side over the returned gigs.
+  const viaApi = await api(page).get(`/gigs?year=${CURRENT_YEAR}&status=ALL&q=venue%20z`);
+  expect(viaApi.gigs.map((g: { venue: string; status: string }) => [g.venue, g.status])).toEqual([['Venue Z', 'CANCELLED']]);
+
+  // A fresh visit with the same search: the default Tila filter (Myyty + Soitettu) hides it.
+  await page.goto('/gigs?q=venue%20z');
+  await expect(page.getByText('Ei suodattimia vastaavia keikkoja.')).toBeVisible();
+  await expect(rows).toHaveCount(0);
+  await clearFiltersButton(page).click();
+  await expect(rows).toHaveCount(1);
+  await expect(rows.first()).toContainText('Venue Z');
 });
