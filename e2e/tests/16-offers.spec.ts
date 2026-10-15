@@ -154,7 +154,7 @@ test('new offer: required fields refused, "what\'s included" default applied, no
   const preview = page.getByRole('article', { name: eventName });
   await expect(preview).toContainText('Placeholder: what is included in the offer.');
   await expect(preview).toContainText(fiDateWithWeekday(`${year}-06-12`));
-  await expect(preview.getByRole('link', { name: /Kuuntele Spotifyssa/ })).toHaveAttribute('href', saved.preview.spotifyUrl as string);
+  await expect(preview.getByRole('link', { name: /Kuuntele settilistaa Spotifyssä/ })).toHaveAttribute('href', saved.preview.spotifyUrl as string);
   await expect(page.getByRole('main').getByRole('textbox', { name: /Spotify/ })).toHaveCount(0);
   // References: only presence (their content and shape are being redesigned).
   await expect(preview.getByRole('region', { name: 'Referenssit' })).toBeVisible();

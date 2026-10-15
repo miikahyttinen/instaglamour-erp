@@ -158,7 +158,7 @@ describe('PublicOfferPage /o/:token', () => {
     await screen.findByRole('heading', { level: 1, name: 'Wedding Y' });
     expect(screen.getByText('Venue Z')).toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Referenssit' })).not.toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Kuuntele Spotifyssa/ })).toHaveAttribute('href', MOCK_SPOTIFY_URL);
+    expect(screen.getByRole('link', { name: /Kuuntele settilistaa Spotifyssä/ })).toHaveAttribute('href', MOCK_SPOTIFY_URL);
     expect(screen.queryByText('Puhelin')).not.toBeInTheDocument();
   });
 
