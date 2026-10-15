@@ -19,7 +19,6 @@ export function addMockOffer(overrides: Partial<NewOfferInput> & { clientId: str
       city: null,
       lineup: ['Line 1', 'Line 2'],
       includesText: 'Included 1',
-      spotifyUrl: null,
       showReferences: false,
       priceCents: 100000,
       sellerId: partnerA.id,

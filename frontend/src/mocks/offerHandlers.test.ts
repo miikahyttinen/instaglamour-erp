@@ -4,8 +4,10 @@ import { gigsApi, offersApi, publicOffersApi } from '../api/endpoints';
 import { addMockClient, TEST_YEAR } from '../test/gigFixtures';
 import { addMockOffer } from '../test/offerFixtures';
 import { signInMock } from '../test/renderApp';
+import type { OfferCreate, OfferUpdate } from '../api/types';
 import { db } from './data';
 import { DEMO_OFFER_TOKEN } from './offerSeed';
+import { MOCK_SPOTIFY_URL } from './offerStore';
 
 const tokenOf = (sharePath: string) => sharePath.replace('/o/', '');
 
@@ -53,7 +55,8 @@ describe('offers mock (contract → Offers, BR-102…BR-106)', () => {
   it('create applies setting defaults only when the fields are omitted', async () => {
     const withDefaults = await offersApi.create({ clientId, eventName: 'E', eventDate: `${TEST_YEAR}-05-05`, venue: 'V' });
     expect(withDefaults.includesText).toBe(db.offers.settings.defaultIncludes);
-    expect(withDefaults.spotifyUrl).toBe(db.offers.settings.defaultSpotifyUrl);
+    expect(withDefaults).not.toHaveProperty('spotifyUrl');
+    expect(withDefaults.preview.spotifyUrl).toBe(MOCK_SPOTIFY_URL);
     expect(withDefaults.sellerId).toBe(db.partners[0]!.id);
     const none = await offersApi.create({
       clientId,
@@ -61,12 +64,17 @@ describe('offers mock (contract → Offers, BR-102…BR-106)', () => {
       eventDate: `${TEST_YEAR}-05-05`,
       venue: 'V',
       includesText: '',
-      spotifyUrl: null,
       lineup: [' A ', '', 'B'],
     });
-    expect(none).toMatchObject({ includesText: null, spotifyUrl: null, lineup: ['A', 'B'] });
+    expect(none).toMatchObject({ includesText: null, lineup: ['A', 'B'] });
     const error = await expectApiError(
-      offersApi.create({ clientId: '', eventName: ' ', eventDate: '', venue: 'V', spotifyUrl: 'javascript:alert(1)' }),
+      offersApi.create({
+        clientId: '',
+        eventName: ' ',
+        eventDate: '',
+        venue: 'V',
+        spotifyUrl: 'https://example.com/other',
+      } as OfferCreate),
       400,
       'VALIDATION_ERROR',
     );
@@ -76,6 +84,20 @@ describe('offers mock (contract → Offers, BR-102…BR-106)', () => {
       eventDate: 'REQUIRED',
       spotifyUrl: 'INVALID_VALUE',
     });
+  });
+
+  it('PATCH with spotifyUrl is refused: the link is fixed (contract 2026-10-15)', async () => {
+    const offer = addMockOffer({ clientId });
+    const error = await expectApiError(
+      offersApi.update(offer.id, { spotifyUrl: 'https://example.com/other' } as OfferUpdate),
+      400,
+      'VALIDATION_ERROR',
+    );
+    expect(error.fields).toEqual({ spotifyUrl: 'INVALID_VALUE' });
+    const fetched = await offersApi.get(offer.id);
+    expect(fetched).not.toHaveProperty('spotifyUrl');
+    expect(fetched.preview.spotifyUrl).toBe(MOCK_SPOTIFY_URL);
+    expect((await publicOffersApi.get(tokenOf(fetched.sharePath))).spotifyUrl).toBe(MOCK_SPOTIFY_URL);
   });
 
   it('preview equals the public offer; regenerating the link makes the old token 404 (BR-104)', async () => {

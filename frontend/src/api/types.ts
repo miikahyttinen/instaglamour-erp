@@ -265,7 +265,8 @@ export interface PublicOffer {
   city: string | null;
   lineup: string[];
   includesText: string | null;
-  spotifyUrl: string | null;
+  /** Always set: the one fixed listening link from the backend (not editable per offer). */
+  spotifyUrl: string;
   /** Active references in sort order; `null` when the offer does not show references. */
   references: PublicOfferReference[] | null;
   seller: PublicOfferSeller;
@@ -577,7 +578,6 @@ export interface OfferDetail extends OfferSummary {
   /** One item per line, shown to the customer. */
   lineup: string[];
   includesText: string | null;
-  spotifyUrl: string | null;
   showReferences: boolean;
   /** `/o/<token>`; the UI makes it absolute with the current origin. */
   sharePath: string;
@@ -620,8 +620,6 @@ export interface OfferCreate {
   lineup?: string[];
   /** Omitted → default text from settings; `null` / `""` → none. */
   includesText?: string | null;
-  /** Omitted → default link from settings; `null` / `""` → none. Must be http(s). */
-  spotifyUrl?: string | null;
   showReferences?: boolean;
   priceCents?: Cents | null;
   /** Omitted → me. */

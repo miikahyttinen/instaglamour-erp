@@ -46,7 +46,6 @@ export interface OfferSummary {
 export interface OfferDetail extends OfferSummary {
   lineup: string[];
   includesText: string | null;
-  spotifyUrl: string | null;
   showReferences: boolean;
   sharePath: string;
   preview: Record<string, unknown>;

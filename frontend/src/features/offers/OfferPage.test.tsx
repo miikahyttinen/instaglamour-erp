@@ -1,6 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from '../../mocks/data';
+import { MOCK_SPOTIFY_URL } from '../../mocks/offerStore';
 import { addMockClient, addMockGig, TEST_YEAR } from '../../test/gigFixtures';
 import { addMockOffer } from '../../test/offerFixtures';
 import { renderApp, signInMock } from '../../test/renderApp';
@@ -21,6 +22,12 @@ describe('new offer (UC-029)', () => {
       expect(screen.getByLabelText(name)).toHaveAccessibleDescription('Pakollinen tieto.');
     }
     expect(db.offers.offers.filter((o) => o.clientId === clientId)).toHaveLength(0);
+  });
+
+  it('has no Spotify field: the link is fixed in the backend', async () => {
+    renderApp('/offers/new');
+    await screen.findByRole('button', { name: 'Luo tarjous' });
+    expect(screen.queryByRole('textbox', { name: /Spotify/ })).not.toBeInTheDocument();
   });
 
   it('creates with seller = me, lineup from a template and setting defaults, then opens the offer', async () => {
@@ -48,7 +55,6 @@ describe('new offer (UC-029)', () => {
       sellerId: db.partners[0]!.id,
       lineup: ['Laulu', 'Koskettimet'],
       includesText: db.offers.settings.defaultIncludes,
-      spotifyUrl: db.offers.settings.defaultSpotifyUrl,
       showReferences: true,
       priceCents: 150000,
       source: 'EMAIL',
@@ -74,6 +80,11 @@ describe('offer page (UC-029, UC-031)', () => {
     expect(preview().textContent).not.toMatch(/9\s?876/);
     expect(screen.getByRole('textbox', { name: 'Hinta' })).toHaveDisplayValue(/^9\s?876,00$/);
     expect(screen.getByRole('group', { name: 'Tarjouksen toiminnot' })).toBeInTheDocument();
+    expect(within(preview()).getByRole('link', { name: /Kuuntele Spotifyssa/ })).toHaveAttribute(
+      'href',
+      MOCK_SPOTIFY_URL,
+    );
+    expect(screen.queryByRole('textbox', { name: /Spotify/ })).not.toBeInTheDocument();
   });
 
   it('edits fields in place; the preview and the history follow (AC-2)', async () => {

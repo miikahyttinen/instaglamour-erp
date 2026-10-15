@@ -353,14 +353,6 @@ function OfferDetailFields({ offer, readOnly }: { offer: OfferDetail; readOnly: 
           disabled={readOnly}
           onSave={(includesText) => patch({ includesText })}
         />
-        <InlineText
-          label={t('offer.fields.spotify')}
-          value={offer.spotifyUrl}
-          field="spotifyUrl"
-          placeholder="–"
-          disabled={readOnly}
-          onSave={(spotifyUrl) => patch({ spotifyUrl })}
-        />
         <InlineSwitch
           label={t('offer.fields.showReferences')}
           value={offer.showReferences}

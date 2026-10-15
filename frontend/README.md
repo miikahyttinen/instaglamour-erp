@@ -422,7 +422,8 @@ offer page preview (TASK-138). Presentational only: no fetching, no shell, **nev
 
 Content: logo, "Offer" eyebrow, event name, client, date with weekday (`formatDateWithWeekday`),
 venue + city, lineup (one line per item), what's included (line breaks kept), Spotify button
-(only `http(s)` URLs; opens in a new tab), references (BR-108: one item per entry of the
+(`PublicOffer.spotifyUrl`, always set: one fixed link from the backend, not editable per offer;
+only `http(s)` URLs are rendered; opens in a new tab), references (BR-108: one item per entry of the
 `references` list — `ReferencePhoto` (the photo, or a neutral grey square with the author's initials
 when `imageUrl` is null or fails to load; never an external image), the quote in the page language
 (EN falls back to FI, then `lang="fi"` on the quote; line breaks kept) and the author; photo beside
@@ -442,8 +443,9 @@ browser language (FI/EN switch, not saved), follows the theme like the rest of t
 this browser stored a choice), adds `<meta name="robots" content="noindex, nofollow">`, prints
 in the light theme without the switch, and shows "Offer not found" (no details) for any 404.
 With `npm run dev:mock` open `/o/demo-offer-0123456789abcdefghijklmnopqrstuvwxyzABCDEF` (full)
-or `/o/demo-offer-minimal-0123456789abcdefghijklmnopqrstuvwxyz` (no references / Spotify / phone);
-any other token is not found. The public mock looks the token up in `db.offers` and filters the
+or `/o/demo-offer-minimal-0123456789abcdefghijklmnopqrstuvwxyz` (no references / phone);
+any other token is not found. The mocks return the synthetic placeholder `MOCK_SPOTIFY_URL`
+(`src/mocks/offerStore.ts`) as the fixed Spotify link; the real link lives only in the backend. The public mock looks the token up in `db.offers` and filters the
 fields with `toPublicOffer` (`src/mocks/publicOfferHandlers.ts`), so a regenerated or deleted
 offer's link is not found there either.
 
@@ -461,8 +463,9 @@ offer's link is not found there either.
   dialog `ConvertDialog`, BR-105 fields) or the "Keikka →" link. Row actions: copy public link
   (fetches the offer for `sharePath`), delete (confirm). Deleted view with Restore.
 - **New offer** (`NewOfferPage`): `ClientSelect` with "New client…", lineup textarea (one item per
-  line) filled from a lineup template (role labels), seller = me. "What's included" and Spotify
-  are only sent when filled, so the server applies the setting defaults.
+  line) filled from a lineup template (role labels), seller = me. "What's included" is only sent when filled, so the server applies the setting
+  default. There is no Spotify field: the link is fixed in the backend (contract 2026-10-15), and
+  the mock answers `spotifyUrl` in POST / PATCH with 400 `fields.spotifyUrl = INVALID_VALUE`.
 - **Offer page** (`OfferPage`): `OfferPreview` with `offer.preview` (the same payload as the
   public page) + internal panel: every field inline (NFR-8), price / source / event type /
   disposition, status, created / changed, history (`OfferHistory`). Actions: Copy public link
