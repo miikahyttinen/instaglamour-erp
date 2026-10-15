@@ -80,7 +80,7 @@ describe('offer page (UC-029, UC-031)', () => {
     expect(preview().textContent).not.toMatch(/9\s?876/);
     expect(screen.getByRole('textbox', { name: 'Hinta' })).toHaveDisplayValue(/^9\s?876,00$/);
     expect(screen.getByRole('group', { name: 'Tarjouksen toiminnot' })).toBeInTheDocument();
-    expect(within(preview()).getByRole('link', { name: /Kuuntele Spotifyssa/ })).toHaveAttribute(
+    expect(within(preview()).getByRole('link', { name: /Kuuntele settilistaa Spotifyssä/ })).toHaveAttribute(
       'href',
       MOCK_SPOTIFY_URL,
     );

@@ -43,7 +43,7 @@ describe('OfferPreview', () => {
       'Vocals – Person 1',
       'Drums – Person 2',
     ]);
-    const spotify = within(lineup).getByRole('link', { name: /Kuuntele Spotifyssa/ });
+    const spotify = within(lineup).getByRole('link', { name: /Kuuntele settilistaa Spotifyssä/ });
     expect(spotify).toHaveAttribute('href', 'https://example.com/listen');
     expect(spotify).toHaveAttribute('target', '_blank');
     expect(spotify).toHaveAttribute('rel', 'noopener noreferrer');
@@ -94,7 +94,7 @@ describe('OfferPreview', () => {
     expect(screen.getByRole('article')).toHaveAttribute('lang', 'en');
     expect(screen.getByText('Friday 1 May 2026')).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'References' })).toHaveTextContent('Quote one EN');
-    expect(screen.getByRole('link', { name: /Listen on Spotify/ })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Listen to the setlist on Spotify/ })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Contact' })).toBeInTheDocument();
   });
 

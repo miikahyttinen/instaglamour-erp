@@ -436,7 +436,7 @@ a phone, a full page and an app column. Texts: `offerPreview.*` and `publicOffer
 Accessible names: the `<article>` is named by the event name; regions "Event details"
 (heading visually hidden), "Lineup", "What's included", "References", "Contact" (FI:
 Tapahtuman tiedot, Kokoonpano, Tarjoukseen sisältyy, Referenssit, Yhteystiedot); the logo image
-"Instaglamour"; link "Listen on Spotify (opens in a new tab)".
+"Instaglamour"; link "Listen to the setlist on Spotify (opens in a new tab)".
 
 **Public page `/o/:token`** (`PublicOfferPage.tsx`) is routed in `App.tsx` **outside**
 `AuthProvider` and the shell, so its only request is the public endpoint. It defaults to the

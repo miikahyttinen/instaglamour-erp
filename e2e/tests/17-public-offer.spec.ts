@@ -134,7 +134,7 @@ test('public link without a session: only that offer, no price or internal field
   const json = (await res.json()) as Record<string, unknown>;
   // The fixed Spotify link (contract 2026-10-15): always set, a web link, the same as in the JSON.
   expect(json.spotifyUrl).toMatch(/^https:\/\//);
-  await expect(article.getByRole('link', { name: 'Kuuntele Spotifyssa (avautuu uuteen välilehteen)' })).toHaveAttribute(
+  await expect(article.getByRole('link', { name: 'Kuuntele settilistaa Spotifyssä (avautuu uuteen välilehteen)' })).toHaveAttribute(
     'href',
     json.spotifyUrl as string,
   );
@@ -189,7 +189,7 @@ test('public link without a session: only that offer, no price or internal field
   await expect(article.getByRole('region', { name: 'Lineup' })).toBeVisible();
   await expect(article.getByRole('region', { name: 'References' })).toBeVisible();
   await expect(article.getByRole('region', { name: 'Contact' })).toBeVisible();
-  await expect(article.getByRole('link', { name: 'Listen on Spotify (opens in a new tab)' })).toBeVisible();
+  await expect(article.getByRole('link', { name: 'Listen to the setlist on Spotify (opens in a new tab)' })).toBeVisible();
   await expectNoPrice(anon, 'EN');
   await p.getByRole('group', { name: 'Language' }).getByRole('button', { name: 'Suomi' }).click();
   await expect(article.getByRole('region', { name: 'Kokoonpano' })).toBeVisible();
