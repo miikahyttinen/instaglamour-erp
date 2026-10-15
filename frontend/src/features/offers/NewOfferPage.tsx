@@ -33,7 +33,6 @@ interface FormState {
   sellerId: string;
   lineup: string;
   includesText: string;
-  spotifyUrl: string;
   showReferences: boolean;
   price: string;
   source: OfferSource | '';
@@ -50,7 +49,6 @@ const FIELD_TO_CONTROL: Record<string, keyof FormState> = {
   sellerId: 'sellerId',
   lineup: 'lineup',
   includesText: 'includesText',
-  spotifyUrl: 'spotifyUrl',
   showReferences: 'showReferences',
   priceCents: 'price',
   source: 'source',
@@ -64,9 +62,9 @@ const lines = (text: string) =>
     .filter(Boolean);
 
 /**
- * New offer (UC-029 step 1–2). Seller defaults to me. "What's included" and the Spotify link are
- * sent only when filled: empty means the server applies the setting defaults (contract: omitted
- * → defaults).
+ * New offer (UC-029 step 1–2). Seller defaults to me. "What's included" is sent only when filled:
+ * empty means the server applies the setting default (contract: omitted → default). The Spotify
+ * link is fixed in the backend and not entered here.
  */
 export function NewOfferPage() {
   const { t } = useTranslation();
@@ -85,7 +83,6 @@ export function NewOfferPage() {
     sellerId: me.id,
     lineup: '',
     includesText: '',
-    spotifyUrl: '',
     showReferences: false,
     price: '',
     source: '',
@@ -144,7 +141,6 @@ export function NewOfferPage() {
       eventType: form.eventType || null,
     };
     if (form.includesText.trim()) body.includesText = form.includesText.trim();
-    if (form.spotifyUrl.trim()) body.spotifyUrl = form.spotifyUrl.trim();
     create.mutate(body);
   };
 
@@ -214,18 +210,6 @@ export function NewOfferPage() {
           <Field label={t('offer.fields.includes')} error={errors.includesText} hint={t('newOffer.includesHint')}>
             {(p) => (
               <textarea {...p} rows={4} value={form.includesText} onChange={(e) => set('includesText', e.target.value)} />
-            )}
-          </Field>
-          <Field label={t('offer.fields.spotify')} error={errors.spotifyUrl} hint={t('newOffer.spotifyHint')}>
-            {(p) => (
-              <input
-                {...p}
-                type="text"
-                inputMode="url"
-                autoComplete="off"
-                value={form.spotifyUrl}
-                onChange={(e) => set('spotifyUrl', e.target.value)}
-              />
             )}
           </Field>
           <div className="field">

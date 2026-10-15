@@ -32,14 +32,6 @@ const notFound = () => errorResponse(404, 'NOT_FOUND', 'Offer not found');
 /** Deleted offers are read-only: only GET, history and restore work. */
 const isDeleted = () => errorResponse(409, 'INVALID_STATUS_TRANSITION', 'Offer is deleted');
 const LINEUP_MAX_ITEMS = 100;
-const isHttpUrl = (v: string) => {
-  try {
-    const url = new URL(v);
-    return url.protocol === 'http:' || url.protocol === 'https:';
-  } catch {
-    return false;
-  }
-};
 const detail = (offer: MockOffer, status = 200) =>
   HttpResponse.json(toOfferDetail(db.offers, offer, ctx()), { status });
 
@@ -76,7 +68,7 @@ function parseOfferBody(body: Partial<OfferUpdate>, create: boolean): { patch: O
     else if (v.trim().length > STRING_MAX) fields[key] = 'TOO_LONG';
     else patch[key] = v.trim();
   };
-  const optionalString = (key: 'city' | 'includesText' | 'spotifyUrl', max: number) => {
+  const optionalString = (key: 'city' | 'includesText', max: number) => {
     const v = body[key];
     if (v === undefined) return;
     if (v !== null && typeof v !== 'string') fields[key] = 'INVALID_VALUE';
@@ -99,8 +91,8 @@ function parseOfferBody(body: Partial<OfferUpdate>, create: boolean): { patch: O
   }
   optionalString('city', STRING_MAX);
   optionalString('includesText', TEXT_MAX);
-  optionalString('spotifyUrl', STRING_MAX);
-  if (patch.spotifyUrl && !isHttpUrl(patch.spotifyUrl)) fields.spotifyUrl = 'INVALID_VALUE';
+  // Contract 2026-10-15: the Spotify link is fixed in code; sending it at all is refused.
+  if ('spotifyUrl' in body) fields.spotifyUrl = 'INVALID_VALUE';
   if (body.lineup !== undefined) {
     const lines = Array.isArray(body.lineup) ? body.lineup : null;
     if (!lines || lines.some((l) => typeof l !== 'string')) fields.lineup = 'INVALID_VALUE';
@@ -191,7 +183,6 @@ export const offerHandlers = [
         city: patch.city ?? null,
         lineup: patch.lineup ?? [],
         includesText: patch.includesText === undefined ? settings.defaultIncludes : patch.includesText,
-        spotifyUrl: patch.spotifyUrl === undefined ? settings.defaultSpotifyUrl : patch.spotifyUrl,
         showReferences: patch.showReferences ?? false,
         priceCents: patch.priceCents ?? null,
         sellerId: patch.sellerId ?? me.id,

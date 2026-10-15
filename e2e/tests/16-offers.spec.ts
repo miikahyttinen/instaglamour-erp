@@ -75,7 +75,7 @@ async function publicStatus(page: Page, sharePath: string): Promise<number> {
   return res.status();
 }
 
-test('new offer: required fields refused, defaults applied when "what\'s included" and Spotify are empty', async ({ page }, testInfo) => {
+test('new offer: required fields refused, "what\'s included" default applied, no Spotify field (fixed link)', async ({ page }, testInfo) => {
   const tag = tagOf(testInfo);
   const year = offerYear(testInfo);
   const me = await signIn(page, PARTNER_A, { selectedYear: year });
@@ -94,6 +94,8 @@ test('new offer: required fields refused, defaults applied when "what\'s include
   await page.getByRole('main').getByRole('link', { name: 'Uusi tarjous' }).first().click();
   await expect(page.getByRole('heading', { level: 1, name: 'Uusi tarjous' })).toBeVisible();
   await expectNoHorizontalScroll(page, 'new offer');
+  // The Spotify link is fixed in the backend (contract 2026-10-15): no field to enter it.
+  await expect(page.getByRole('main').getByRole('textbox', { name: /Spotify/ })).toHaveCount(0);
 
   // E1: client, event, date and venue are required; nothing is sent.
   const writes = trackWrites(page);
@@ -143,7 +145,8 @@ test('new offer: required fields refused, defaults applied when "what\'s include
   await expect(page.getByRole('heading', { level: 1, name: eventName })).toBeVisible();
   const saved = (await api(page).get(`/offers/${offer.id}`)) as OfferDetail;
   expect(saved.includesText).toBe('Placeholder: what is included in the offer.\nSecond placeholder line.');
-  expect(saved.spotifyUrl).toBe('https://open.spotify.com/');
+  expect(saved, 'offers have no own Spotify link').not.toHaveProperty('spotifyUrl');
+  expect(saved.preview.spotifyUrl, 'the fixed link is in the preview').toMatch(/^https:\/\//);
   expect(saved).toMatchObject({ disposition: 'PENDING', status: 'OPEN', expired: false, gigId: null, sellerId: me.id });
   expect(saved.sharePath).toMatch(/^\/o\/[A-Za-z0-9_-]{43,}$/); // ≥ 32 random bytes, URL-safe (BR-104)
 
@@ -151,6 +154,8 @@ test('new offer: required fields refused, defaults applied when "what\'s include
   const preview = page.getByRole('article', { name: eventName });
   await expect(preview).toContainText('Placeholder: what is included in the offer.');
   await expect(preview).toContainText(fiDateWithWeekday(`${year}-06-12`));
+  await expect(preview.getByRole('link', { name: /Kuuntele Spotifyssa/ })).toHaveAttribute('href', saved.preview.spotifyUrl as string);
+  await expect(page.getByRole('main').getByRole('textbox', { name: /Spotify/ })).toHaveCount(0);
   // References: only presence (their content and shape are being redesigned).
   await expect(preview.getByRole('region', { name: 'Referenssit' })).toBeVisible();
   await expect(preview).not.toContainText(fiMoney(300000));
@@ -170,15 +175,18 @@ test('new offer: required fields refused, defaults applied when "what\'s include
   await expect(preview).toBeVisible();
   await expect(preview.getByRole('region', { name: 'Referenssit' })).toHaveCount(0);
 
-  // API: the same rules (UC-029 E1), and a non-http Spotify link is refused.
+  // API: the same rules (UC-029 E1), and any spotifyUrl is refused (fixed link, contract 2026-10-15).
   const bad = await page.request.post('/api/offers', { data: { eventName: '', eventDate: 'x', venue: '' } });
   expect(bad.status()).toBe(400);
   expect((await bad.json()).error.fields).toMatchObject({ clientId: 'REQUIRED', eventName: 'REQUIRED', venue: 'REQUIRED' });
   const spotify = await page.request.post('/api/offers', {
-    data: { clientId: client.id, eventName, eventDate: `${year}-06-12`, venue: 'Venue Q', spotifyUrl: 'javascript:alert(1)' },
+    data: { clientId: client.id, eventName, eventDate: `${year}-06-12`, venue: 'Venue Q', spotifyUrl: 'https://example.com/listen' },
   });
   expect(spotify.status()).toBe(400);
   expect((await spotify.json()).error.fields).toEqual({ spotifyUrl: 'INVALID_VALUE' });
+  const spotifyPatch = await page.request.patch(`/api/offers/${offer.id}`, { data: { spotifyUrl: 'https://example.com/listen' } });
+  expect(spotifyPatch.status()).toBe(400);
+  expect((await spotifyPatch.json()).error.fields).toEqual({ spotifyUrl: 'INVALID_VALUE' });
 
   // The list of the year shows it.
   await openOfferList(page);

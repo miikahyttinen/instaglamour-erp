@@ -28,7 +28,6 @@ export interface MockOffer {
   city: string | null;
   lineup: string[];
   includesText: string | null;
-  spotifyUrl: string | null;
   showReferences: boolean;
   priceCents: number | null;
   sellerId: Id;
@@ -47,7 +46,6 @@ export interface MockOffer {
 /** Settings `offers.*` (local seed in the real app) and the partners' phone numbers. */
 export interface OfferSettings {
   defaultIncludes: string;
-  defaultSpotifyUrl: string;
   /** Partner id → phone shown as seller contact (domain model: Partner.phone). */
   partnerPhones: Record<Id, string | null>;
 }
@@ -57,6 +55,12 @@ export interface OfferState {
   events: OfferEvent[];
   settings: OfferSettings;
 }
+
+/**
+ * The fixed listening link of every offer (contract 2026-10-15: one constant in backend code).
+ * Synthetic placeholder in the mock; the real link lives only in the backend.
+ */
+export const MOCK_SPOTIFY_URL = 'https://example.com/listen/demo-band';
 
 /** What the store needs from the rest of the mock backend. */
 export interface OfferContext {
@@ -113,7 +117,7 @@ export function toPublicView(state: OfferState, offer: MockOffer, ctx: OfferCont
     city: offer.city,
     lineup: [...offer.lineup],
     includesText: offer.includesText,
-    spotifyUrl: offer.spotifyUrl,
+    spotifyUrl: MOCK_SPOTIFY_URL,
     references: offer.showReferences
       ? ctx.references
         ? publicReferences(ctx.references, offer.shareToken)
@@ -155,7 +159,6 @@ export function toOfferDetail(state: OfferState, offer: MockOffer, ctx: OfferCon
     ...toOfferSummary(offer, ctx),
     lineup: [...offer.lineup],
     includesText: offer.includesText,
-    spotifyUrl: offer.spotifyUrl,
     showReferences: offer.showReferences,
     sharePath: `/o/${offer.shareToken}`,
     preview: toPublicOffer(toPublicView(state, offer, ctx)),
@@ -209,7 +212,6 @@ export interface NewOfferInput {
   city: string | null;
   lineup: string[];
   includesText: string | null;
-  spotifyUrl: string | null;
   showReferences: boolean;
   priceCents: number | null;
   sellerId: Id;
@@ -233,7 +235,6 @@ export function createOffer(state: OfferState, input: NewOfferInput, actorId: Id
     city: input.city,
     lineup: [...input.lineup],
     includesText: input.includesText,
-    spotifyUrl: input.spotifyUrl,
     showReferences: input.showReferences,
     priceCents: input.priceCents,
     sellerId: input.sellerId,
@@ -260,7 +261,6 @@ export const OFFER_PATCH_FIELDS = [
   'city',
   'lineup',
   'includesText',
-  'spotifyUrl',
   'showReferences',
   'priceCents',
   'sellerId',

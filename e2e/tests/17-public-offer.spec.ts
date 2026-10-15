@@ -122,9 +122,11 @@ test('public link without a session: only that offer, no price or internal field
   const contact = article.getByRole('region', { name: 'Yhteystiedot' });
   await expect(contact).toContainText(me.name);
   await expect(contact.getByRole('link', { name: 'partner.a@example.com' })).toHaveAttribute('href', 'mailto:partner.a@example.com');
+  // The fixed Spotify link (contract 2026-10-15): always set, a web link, the same as in the JSON.
+  expect(json.spotifyUrl).toMatch(/^https:\/\//);
   await expect(article.getByRole('link', { name: 'Kuuntele Spotifyssa (avautuu uuteen välilehteen)' })).toHaveAttribute(
     'href',
-    'https://open.spotify.com/',
+    json.spotifyUrl as string,
   );
   // No app shell: no navigation, no year, no sign-out.
   await expect(p.getByRole('navigation')).toHaveCount(0);
