@@ -358,6 +358,25 @@ describe('hours totals (UC-019)', () => {
     expect(screen.getAllByRole('table')).toHaveLength(1);
   });
 
+  it('marks every cell with its column, so dates and hours stay on one line and text wraps (TASK-149)', async () => {
+    signInForYear();
+    renderApp('/hours/totals');
+    const table = await allTable();
+    await waitFor(() => expect(bodyRows(table)).toHaveLength(5));
+    const columns = ['hours-col-date', 'hours-col-partner', 'hours-col-comment', 'hours-col-hours', 'hours-col-actions'];
+    for (const tr of table.querySelectorAll('thead tr, tbody tr')) {
+      const cells = [...tr.children];
+      expect(cells.map((c) => columns.find((col) => c.classList.contains(col)))).toEqual(columns);
+      // Hours: right-aligned, tabular, nowrap (shared .num); the comment is not .num.
+      expect(cells[3]).toHaveClass('num');
+      expect(cells[2]).not.toHaveClass('num');
+    }
+    // Others' (read-only) comments are plain wrapping text, not inputs.
+    const other = within(table).getByText('Sound check');
+    expect(other.tagName).toBe('SPAN');
+    expect(other).toHaveClass('pre-wrap');
+  });
+
   it('lists all partners with one GET per partner (parallel), no other endpoint', async () => {
     const urls: string[] = [];
     server.events.on('request:start', ({ request }) => {

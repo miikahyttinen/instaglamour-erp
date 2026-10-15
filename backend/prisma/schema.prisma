@@ -337,6 +337,8 @@ model Offer {
   /// Shown to the customer, one item per line.
   lineup         String[]         @default([])
   includesText   String?          @map("includes_text")
+  /// OBSOLETE (TASK-022): no longer read or written; the public offer always uses SPOTIFY_URL
+  /// (src/offers/constants.ts). Column kept so existing data is not dropped.
   spotifyUrl     String?          @map("spotify_url")
   /// Internal only, excl. VAT; never shown on the public page (BR-104).
   priceCents     Int?             @map("price_cents")

@@ -1,5 +1,5 @@
 # TASK-149: Responsive full-width tables on the gig page (costs), Hours and Budget
-- **owner:** ui · **status:** todo · **spec:** docs/design.md → "Full-width, responsive tables everywhere" · **depends on:** TASK-147 · **parallel:** TASK-148 (shell + DataTable)
+- **owner:** ui · **status:** done · **spec:** docs/design.md → "Full-width, responsive tables everywhere" · **depends on:** TASK-147 · **parallel:** TASK-148 (shell + DataTable)
 ## Goal
 Make the gig page cost list, the hours tables and the budget table fill the page width and never scroll sideways. TASK-148 removes the page width cap globally in parallel; this task only touches these features' own components and CSS.
 ## Acceptance criteria

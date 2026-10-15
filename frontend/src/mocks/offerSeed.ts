@@ -6,9 +6,9 @@ import { CLIENT_IDS } from './gigSeed';
 import { nowTs, type GigState } from './gigStore';
 import { createOffer, logOfferEvent, markConverted, type OfferState } from './offerStore';
 
-/** Full demo offer: references, Spotify, seller phone. Open `/o/<this>` with `npm run dev:mock`. */
+/** Full demo offer: references, seller phone. Open `/o/<this>` with `npm run dev:mock`. */
 export const DEMO_OFFER_TOKEN = 'demo-offer-0123456789abcdefghijklmnopqrstuvwxyzABCDEF';
-/** Minimal demo offer: no references, no Spotify, no phone, one lineup line. */
+/** Minimal demo offer: no references, no phone, one lineup line. */
 export const MINIMAL_OFFER_TOKEN = 'demo-offer-minimal-0123456789abcdefghijklmnopqrstuvwxyz';
 
 /** Fixed ids of the seeded offers (`/offers/<id>` keeps working after a reload in dev:mock). */
@@ -21,7 +21,6 @@ export function emptyOfferState(partners: Partner[]): OfferState {
     events: [],
     settings: {
       defaultIncludes: 'Two 60-minute sets\nSound system and lights for up to 200 guests\nTravel within the region',
-      defaultSpotifyUrl: 'https://example.com/listen/demo-band',
       partnerPhones: {
         ...(a ? { [a.id]: '+358 40 000 0001' } : {}),
         ...(b ? { [b.id]: null } : {}),
@@ -40,7 +39,6 @@ export function seedOffers(gigs: GigState, partners: Partner[], year = new Date(
     city: null,
     lineup: ['Vocals – Person 1', 'Guitar – Person 2', 'Bass – Person 3', 'Drums – Person 4'],
     includesText: settings.defaultIncludes,
-    spotifyUrl: settings.defaultSpotifyUrl,
     showReferences: true,
     priceCents: 100000,
     sellerId: a.id,
@@ -76,7 +74,6 @@ export function seedOffers(gigs: GigState, partners: Partner[], year = new Date(
       venue: 'Venue Z',
       lineup: ['Duo – Person 1 & Person 2'],
       includesText: null,
-      spotifyUrl: null,
       showReferences: false,
       priceCents: null,
       sellerId: b.id,

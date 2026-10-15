@@ -63,8 +63,7 @@ Partners, templates, people, clients and budget categories are referenced by ema
     "fees.sales_default": 10000,
     "fees.production_default": 10000,
     "fees.load_in_deduction": 1000,
-    "offers.default_includes": "…",   // optional texts (line breaks with \n): default "what's included" of a new offer,
-    "offers.default_spotify_url": "https://…"   // default Spotify link
+    "offers.default_includes": "…"    // optional text (line breaks with \n): default "what's included" of a new offer
   },
   "budgetCategories": [               // the yearly budget rows; new rows are added after existing ones, in listed order
     { "name": "Category A" },                                   // one name (both languages); unique, case-insensitive
@@ -106,7 +105,7 @@ Partners, templates, people, clients and budget categories are referenced by ema
       "eventName": "Event 1", "eventDate": "2026-11-14", "venue": "Venue X",  // required
       "city": "City A",                                     // optional
       "lineup": ["Vocals", "Guitar"],                       // optional, one item per line
-      "includesText": "…", "spotifyUrl": "https://…",       // optional; default from the offers.* settings
+      "includesText": "…",                                  // optional; default from offers.default_includes
       "showReferences": true,                               // optional, default false
       "priceCents": 300000,                                 // optional, internal only
       "seller": "partner.a@example.com",                    // required
@@ -183,6 +182,13 @@ Photos: keep them outside git like the local seed (e.g. next to `seed.local.json
 check `git status`) and give the path relative to the seed file. Every photo is checked before anything is
 loaded (exists, ≤ 10 MB, PNG/JPG/WebP by content); the seed command copies them into `UPLOAD_DIR`
 (`.env`, default `../../instaglamour-uploads`).
+
+### Spotify link is fixed (TASK-022)
+
+Every offer now shows the same Spotify link, a constant in code (`src/offers/constants.ts`); offers have
+no Spotify field any more. Older files still load: the setting `offers.default_spotify_url` and a per-offer
+`spotifyUrl` are accepted and ignored (not stored). You can delete them from your local seed. Existing
+setting rows and the `offer.spotify_url` column stay in the database, unused.
 
 ## Making your local seed
 

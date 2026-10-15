@@ -2,6 +2,7 @@ import { act, screen, within } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEMO_OFFER_TOKEN, MINIMAL_OFFER_TOKEN } from '../../mocks/publicOfferHandlers';
+import { MOCK_SPOTIFY_URL } from '../../mocks/offerStore';
 import { server } from '../../mocks/server';
 import { renderApp, signInMock } from '../../test/renderApp';
 
@@ -70,7 +71,7 @@ describe('PublicOfferPage /o/:token', () => {
           city: null,
           lineup: ['Person 1'],
           includesText: null,
-          spotifyUrl: null,
+          spotifyUrl: 'https://example.com/listen',
           references: null,
           seller: { name: 'Partner A', email: 'partner.a@example.com', phone: null },
           priceCents: 987650,
@@ -152,12 +153,12 @@ describe('PublicOfferPage /o/:token', () => {
     expect(requests).toEqual([`GET /api/public/offers/${DEMO_OFFER_TOKEN}`]);
   });
 
-  it('hides absent optional parts (minimal offer)', async () => {
+  it('hides absent optional parts (minimal offer) but always shows the fixed Spotify link', async () => {
     renderApp(`/o/${MINIMAL_OFFER_TOKEN}`);
     await screen.findByRole('heading', { level: 1, name: 'Wedding Y' });
     expect(screen.getByText('Venue Z')).toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Referenssit' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: /Spotify/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Kuuntele Spotifyssa/ })).toHaveAttribute('href', MOCK_SPOTIFY_URL);
     expect(screen.queryByText('Puhelin')).not.toBeInTheDocument();
   });
 

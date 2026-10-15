@@ -1,6 +1,7 @@
 /* Hours feature (UC-018, UC-019). Mobile-first; tablet ≥ 600 px, desktop ≥ 900 px. Tokens only.
    Both tabs show one flat spreadsheet-style table (shared .data-table look): no grouping, no
-   collapsing, no charts. Phones keep the table; it scrolls sideways inside its own frame. */
+   collapsing, no charts. Full width, never scrolls sideways: from 600 px a real table whose
+   comment wraps (dates and hours stay on one line); phones get compact two-line rows. */
 
 /* ---------- Tabs (My hours / Totals) under the page head ---------- */
 .hours-page .hours-tabs {
@@ -78,10 +79,14 @@
   white-space: normal;
   overflow-wrap: anywhere;
 }
-/* Comment: never narrower than a readable column (the frame scrolls on phones instead). */
+/* Comment: takes the width the fixed columns leave and wraps; it never forces the table wider
+   than its frame (design.md "Full-width, responsive tables everywhere": no sideways scroll). */
+.hours-page .hours-table td.hours-col-comment {
+  min-width: 0;
+}
 .hours-page .hours-table td.hours-col-comment > * {
   display: block;
-  min-width: calc(var(--label-w) * 1.1);
+  min-width: 0;
   overflow-wrap: anywhere;
 }
 .hours-page .hours-table td.hours-col-date .inline-field {
@@ -136,6 +141,29 @@
 @media (min-width: 600px) {
   .hours-page .hours-filter {
     flex: 0 1 calc(var(--label-w) * 2);
+  }
+  /* Same rule as the budget table: the outer edges keep --cell-pad-x, between columns a smaller
+     gutter (header and body identical), so all columns fit next to the expanded sidebar
+     (~590 px content at 900 px) without sideways scrolling. */
+  .hours-page .hours-table th,
+  .hours-page .hours-table td {
+    padding-left: var(--space-3);
+    padding-right: var(--space-3);
+  }
+  .hours-page .hours-table tr > :first-child {
+    padding-left: var(--cell-pad-x);
+  }
+  .hours-page .hours-table tr > :last-child {
+    padding-right: var(--cell-pad-x);
+  }
+  .hours-page .hours-table thead th.hours-col-hours {
+    padding-right: calc(var(--space-3) + var(--hours-state-slot));
+  }
+  .hours-page .hours-table thead th.hours-col-hours:last-child {
+    padding-right: calc(var(--cell-pad-x) + var(--hours-state-slot));
+  }
+  .hours-page .hours-table td.hours-col-actions {
+    padding-left: 0;
   }
 }
 

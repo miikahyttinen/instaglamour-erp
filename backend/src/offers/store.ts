@@ -10,6 +10,7 @@ import { isUuid, logEvent, type Tx } from '../gigs/store.js';
 import { AppError, notFound } from '../http/errors.js';
 import { imageVersion, publicReferenceImageUrl, type PublicReferenceSource } from '../references/store.js';
 import type { FeeSettings } from '../routes/reference.js';
+import { SPOTIFY_URL } from './constants.js';
 import { sharePath } from './shareToken.js';
 
 /** What the offer serializers need: client name, converted gig id and the seller's public contact. */
@@ -77,7 +78,8 @@ export interface PublicOfferDto {
   city: string | null;
   lineup: string[];
   includesText: string | null;
-  spotifyUrl: string | null;
+  /** Always SPOTIFY_URL (one fixed link for all offers). */
+  spotifyUrl: string;
   references: PublicReferenceDto[] | null;
   seller: { name: string; email: string; phone: string | null };
 }
@@ -103,7 +105,7 @@ export function toPublicOfferDto(offer: OfferWithRefs, references: readonly Publ
     city: offer.city,
     lineup: [...offer.lineup],
     includesText: offer.includesText,
-    spotifyUrl: offer.spotifyUrl,
+    spotifyUrl: SPOTIFY_URL,
     references: offer.showReferences
       ? references.map((r) => {
           const version = r.imageStorageKey ? imageVersion(r) : null;
@@ -124,7 +126,6 @@ export function toOfferDetailDto(offer: OfferWithRefs, today: string, references
     ...toOfferSummaryDto(offer, today),
     lineup: [...offer.lineup],
     includesText: offer.includesText,
-    spotifyUrl: offer.spotifyUrl,
     showReferences: offer.showReferences,
     sharePath: sharePath(offer.shareToken),
     preview: toPublicOfferDto(offer, references),
@@ -179,7 +180,6 @@ export async function logOfferEvent(
 
 export interface OfferSettings {
   defaultIncludes: string | null;
-  defaultSpotifyUrl: string | null;
 }
 
 /** Current offer text settings; a missing or blank key is null. */
@@ -192,7 +192,6 @@ export async function loadOfferSettings(db: Tx): Promise<OfferSettings> {
   };
   return {
     defaultIncludes: value(OFFER_SETTING_KEYS.defaultIncludes),
-    defaultSpotifyUrl: value(OFFER_SETTING_KEYS.defaultSpotifyUrl),
   };
 }
 

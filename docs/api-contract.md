@@ -332,12 +332,12 @@ Duplicate = case-insensitive exact name match with another person.
 
 ## Offers (UC-028, UC-029, UC-031)
 `OfferSummary = { id, clientId, clientName, eventName, eventDate, venue, city, priceCents|null, sellerId, source|null, eventType|null, disposition, status: OPEN|ACCEPTED|REJECTED, expired: bool, gigId|null, createdAt, updatedAt, deletedAt|null }`
-`OfferDetail = OfferSummary + { lineup: string[], includesText, spotifyUrl, showReferences, sharePath: "/o/<token>", preview: PublicOffer }` — `preview` is exactly what `GET /api/public/offers/{token}` returns for this offer (incl. the references list and seller phone), so the internal page shows the same view as the customer.
+`OfferDetail = OfferSummary + { lineup: string[], includesText, showReferences, sharePath: "/o/<token>", preview: PublicOffer }` — `preview` is exactly what `GET /api/public/offers/{token}` returns for this offer (incl. the references list and seller phone), so the internal page shows the same view as the customer.
 
 | Method & path | Request | Response |
 |---|---|---|
 | `GET /api/offers` | `year` (required), `q`, `status`, `sellerId`, `disposition`, `eventType`, `source`, `deleted=true` | 200 `{ offers: [OfferSummary], summary: { openValueCents, winRatePct|null, wonCount, decidedCount } }` — summary ignores filters except year (BR-106) |
-| `POST /api/offers` | `{ clientId, eventName, eventDate, venue, city?, lineup?, includesText?, spotifyUrl?, showReferences?, priceCents?, sellerId?, source?, eventType? }` | 201 `OfferDetail` (defaults from settings; seller default me) |
+| `POST /api/offers` | `{ clientId, eventName, eventDate, venue, city?, lineup?, includesText?, showReferences?, priceCents?, sellerId?, source?, eventType? }` | 201 `OfferDetail` (defaults from settings; seller default me) |
 | `GET /api/offers/{id}` | — | 200 `OfferDetail` |
 | `PATCH /api/offers/{id}` | any editable field incl. `disposition` | 200 `OfferDetail`; logged |
 | `POST /api/offers/{id}/regenerate-link` | — | 200 `OfferDetail` (new `sharePath`) |
@@ -347,11 +347,11 @@ Duplicate = case-insensitive exact name match with another person.
 
 - `status` filter: `OPEN` (incl. expired) · `ACCEPTED` · `REJECTED` · `EXPIRED` (open and past).
 - Deleted offers: GET and history work; PATCH, regenerate-link, convert, delete → 409 `INVALID_STATUS_TRANSITION`; restore of a non-deleted offer → same.
-- Create: omitted `includesText`/`spotifyUrl` → setting defaults; `null`/`""` → none. `spotifyUrl` must be http(s) (`INVALID_VALUE`). Lineup items trimmed, blanks dropped, ≤ 100 items × 500 chars.
+- Create: omitted `includesText` → setting default; `null`/`""` → none. **Spotify (changed 2026-10-15):** the Spotify link is one fixed link in code for all offers; offers have no `spotifyUrl` field. `spotifyUrl` in POST/PATCH → 400 `VALIDATION_ERROR` with `fields.spotifyUrl = INVALID_VALUE`. Lineup items trimmed, blanks dropped, ≤ 100 items × 500 chars.
 - `OfferEvent = { id, offerId, type, partnerId, at, details }`; details: `UPDATED {changes:[{field,from,to}]}`, `DISPOSITION_CHANGED {from,to}`, `CONVERTED {gigId}`, others `{}`.
 
 ## Public offer (UC-030) — no authentication
-`GET /api/public/offers/{token}` → 200 `PublicOffer = { eventName, clientName, eventDate, venue, city|null, lineup: string[], includesText|null, spotifyUrl|null, references: [{ id, quote: { fi, en|null }, author, imageUrl: string|null }] | null (active references in order; null when the offer hides references; `imageUrl` = `/api/public/offers/{token}/references/{id}/image?v=<imageVersion>`), seller: { name, email, phone|null } }` — nothing else. Unknown/regenerated/deleted → 404 `NOT_FOUND`. Response header `X-Robots-Tag: noindex`. This is the only `/api` route besides `/api/auth/*` reachable without a session.
+`GET /api/public/offers/{token}` → 200 `PublicOffer = { eventName, clientName, eventDate, venue, city|null, lineup: string[], includesText|null, spotifyUrl: string (always the fixed Instaglamour playlist link, constant in backend code), references: [{ id, quote: { fi, en|null }, author, imageUrl: string|null }] | null (active references in order; null when the offer hides references; `imageUrl` = `/api/public/offers/{token}/references/{id}/image?v=<imageVersion>`), seller: { name, email, phone|null } }` — nothing else. Unknown/regenerated/deleted → 404 `NOT_FOUND`. Response header `X-Robots-Tag: noindex`. This is the only `/api` route besides `/api/auth/*` reachable without a session.
 
 ## References (owner request 2026-10-07)
 `Reference = { id, quoteFi, quoteEn|null, author, hasImage, imageVersion: string|null, sortOrder, active }` — `imageVersion` changes on every upload/remove (e.g. the upload timestamp); image URLs carry it as `?v=<imageVersion>` (servers ignore unknown query params) so replaced photos are never served from cache.
@@ -382,6 +382,7 @@ Duplicate = case-insensitive exact name match with another person.
 - 2026-10-14 – Partner status clarifications (404, ?partner, email change, inactive person, seed insert-only, convert with removed seller) (PM)
 - 2026-10-14 – Partner status managed in the app (UC-032): person.partner, PUT/DELETE /api/people/{id}/partner, partner.active, CANNOT_REMOVE_SELF, LAST_PARTNER (PM)
 - 2026-10-07 – Reference.imageVersion + `?v=` cache busting; reorder validation; reference upload error texts (PM)
+- 2026-10-15 – Spotify link is a fixed constant in code: `spotifyUrl` removed from offer create/patch/detail; PublicOffer.spotifyUrl always the constant (PM)
 - 2026-10-07 – References entity + endpoints; PublicOffer.references becomes a list with photos (owner request, breaking for references) (PM)
 - 2026-10-07 – Offers clarifications from TASK-016: RATE_LIMITED, status filter values, deleted-offer behaviour, create defaults/validation, OfferEvent shape (PM)
 - 2026-10-07 – OfferDetail.preview (= PublicOffer); PublicOffer nullability and references as plain text (PM)

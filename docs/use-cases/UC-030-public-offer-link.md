@@ -10,7 +10,7 @@ Let the customer read their offer without signing in.
 
 ## Main flow
 1. Customer opens `/o/<token>`.
-2. System shows **only that offer**: logo, event name, client name, event date (weekday), venue, city, lineup, what's included, Spotify button, references (if enabled), seller's name, email and phone. FI/EN switch. **No price, no internal fields.**
+2. System shows **only that offer**: logo, event name, client name, event date (weekday), venue, city, lineup, what's included, Spotify button (fixed playlist link, same on every offer), references (if enabled), seller's name, email and phone. FI/EN switch. **No price, no internal fields.**
 
 ## Alternative flows
 - **A1 – Print** via the browser (clean print style).

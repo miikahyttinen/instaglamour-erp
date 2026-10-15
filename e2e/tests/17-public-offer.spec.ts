@@ -122,10 +122,6 @@ test('public link without a session: only that offer, no price or internal field
   const contact = article.getByRole('region', { name: 'Yhteystiedot' });
   await expect(contact).toContainText(me.name);
   await expect(contact.getByRole('link', { name: 'partner.a@example.com' })).toHaveAttribute('href', 'mailto:partner.a@example.com');
-  await expect(article.getByRole('link', { name: 'Kuuntele Spotifyssa (avautuu uuteen välilehteen)' })).toHaveAttribute(
-    'href',
-    'https://open.spotify.com/',
-  );
   // No app shell: no navigation, no year, no sign-out.
   await expect(p.getByRole('navigation')).toHaveCount(0);
   await expect(p.getByRole('button', { name: /Kirjaudu ulos|Valikko/ })).toHaveCount(0);
@@ -136,6 +132,12 @@ test('public link without a session: only that offer, no price or internal field
   expect(res.headers()['x-robots-tag']).toMatch(/noindex/);
   expect(res.headers()['set-cookie']).toBeUndefined();
   const json = (await res.json()) as Record<string, unknown>;
+  // The fixed Spotify link (contract 2026-10-15): always set, a web link, the same as in the JSON.
+  expect(json.spotifyUrl).toMatch(/^https:\/\//);
+  await expect(article.getByRole('link', { name: 'Kuuntele Spotifyssa (avautuu uuteen välilehteen)' })).toHaveAttribute(
+    'href',
+    json.spotifyUrl as string,
+  );
   expect(Object.keys(json).sort()).toEqual([...PUBLIC_KEYS].sort());
   expect(Object.keys(json.seller as object).sort()).toEqual(['email', 'name', 'phone']);
   expect(json).toMatchObject({ eventName: offer.eventName, clientName: client.name, eventDate: `${year}-06-12`, venue: 'Venue Q', city: 'City Q' });

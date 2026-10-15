@@ -456,6 +456,28 @@
   }
 }
 
+/* Full table on a wide, uncapped page (design.md "Full-width, responsive tables everywhere"): the
+   table fills the width, but inline controls keep readable widths instead of stretching across
+   a 1920 px screen; the actual amount stays next to its paid-by line under the "Actual" header. */
+@media (min-width: 600px) {
+  @container cost-list (min-width: 1120px) {
+    .gig-page .cost-table .cost-description {
+      max-width: calc(var(--label-w) * 2);
+    }
+    .gig-page .cost-table td.cost-person .inline-field,
+    .gig-page .cost-table td.cost-person .person-create {
+      max-width: calc(var(--label-w) * 1.5);
+    }
+    .gig-page .cost-table td.cost-budget .inline-field {
+      max-width: var(--label-w);
+      margin-left: auto;
+    }
+    .gig-page .cost-table .cost-paid-edit {
+      max-width: calc(var(--label-w) * 1.25);
+    }
+  }
+}
+
 /* Compact rows (≥ 600 px viewport, but the list narrower than the full table, ~1120 px; e.g.
    600–1439 px with the sidebar expanded). Each line keeps the table surface and hairlines, on
    three equal columns: type + actions, then person · budget · actual with their own small

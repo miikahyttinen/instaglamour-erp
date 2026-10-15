@@ -84,16 +84,17 @@ export const ALL_SETTING_KEYS = Object.values(SETTING_KEYS);
 /** Text settings for offers (domain-model.md "Settings (additions)"); optional in the seed. */
 export const OFFER_SETTING_KEYS = {
   defaultIncludes: 'offers.default_includes',
-  defaultSpotifyUrl: 'offers.default_spotify_url',
 } as const;
 
 export const ALL_OFFER_SETTING_KEYS = Object.values(OFFER_SETTING_KEYS);
 
 /**
- * Former reference texts, replaced by the Reference table (TASK-018, BR-108). Older seed files may
- * still contain them: they are accepted and ignored. Existing rows are left in the database unused.
+ * Former offer settings: the reference texts (replaced by the Reference table, TASK-018, BR-108) and
+ * the default Spotify link (replaced by the fixed SPOTIFY_URL in offers/constants.ts, TASK-022).
+ * Older seed files may still contain them: they are accepted and ignored. Existing rows are left in
+ * the database unused.
  */
-export const LEGACY_OFFER_SETTING_KEYS = ['offers.references_fi', 'offers.references_en'] as const;
+export const LEGACY_OFFER_SETTING_KEYS = ['offers.references_fi', 'offers.references_en', 'offers.default_spotify_url'] as const;
 
 /** Offer fixed lists (domain-model.md "Offer"). */
 export const OFFER_SOURCES = ['EMAIL', 'WEBSITE', 'INSTAGRAM', 'OTHER'] as const satisfies readonly OfferSource[];

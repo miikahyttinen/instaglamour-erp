@@ -470,13 +470,26 @@ describe('validateSeed: offers (TASK-016)', () => {
     const data = example();
     const offers = data.offers as Offers;
     offers[0]!.disposition = 'MAYBE';
-    offers[1]!.spotifyUrl = 'javascript:alert(1)';
+    offers[1]!.priceCents = -1;
     offers[2]!.unknownKey = 1;
     const result = validateSeed(data);
     const errors = result.ok ? [] : result.errors;
     expect(errors.some((e) => e.startsWith('offers.0.disposition'))).toBe(true);
-    expect(errors.some((e) => e.startsWith('offers.1.spotifyUrl'))).toBe(true);
+    expect(errors.some((e) => e.startsWith('offers.1.priceCents'))).toBe(true);
     expect(errors.some((e) => e.startsWith('offers.2'))).toBe(true);
+  });
+
+  it('older seed files with Spotify links load: the setting and per-offer spotifyUrl are accepted and ignored (TASK-022)', async () => {
+    const old = example();
+    old.settings = { ...(old.settings as object), 'offers.default_spotify_url': 'https://example.com/default' };
+    const offers = old.offers as Offers;
+    offers[0]!.spotifyUrl = 'https://example.com/own';
+    offers[1]!.spotifyUrl = 'not even a url';
+    const result = validateSeed(old);
+    expect(result.ok ? [] : result.errors).toEqual([]);
+    await loadSeed(testDb(), old);
+    expect(await testDb().setting.count({ where: { key: 'offers.default_spotify_url' } })).toBe(0);
+    expect(await testDb().offer.count({ where: { spotifyUrl: { not: null } } })).toBe(0);
   });
 });
 
