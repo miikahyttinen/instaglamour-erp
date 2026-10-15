@@ -278,7 +278,8 @@ async function applySeed(
 
   // Settings
   for (const [key, value] of Object.entries(data.settings)) {
-    // Former reference texts (replaced by `references`): accepted in older files, not stored.
+    // Former reference texts (replaced by `references`) and default Spotify link (now a constant):
+    // accepted in older files, not stored.
     if ((LEGACY_OFFER_SETTING_KEYS as readonly string[]).includes(key)) continue;
     const values = typeof value === 'number' ? { valueCents: value, valueText: null } : { valueCents: null, valueText: value };
     await tx.setting.upsert({ where: { key }, create: { key, ...values }, update: values });
@@ -387,7 +388,6 @@ async function applySeed(
 
   // Offers (insert only; natural key client + eventName + eventDate, deleted offers count too)
   const defaultIncludes = await textSetting(OFFER_SETTING_KEYS.defaultIncludes);
-  const defaultSpotifyUrl = await textSetting(OFFER_SETTING_KEYS.defaultSpotifyUrl);
   for (const o of data.offers) {
     const clientId = clientIdByKey.get(clientNameKey(o.client))!;
     const eventDate = dateFromIso(o.eventDate);
@@ -403,7 +403,6 @@ async function applySeed(
         city: o.city ?? null,
         lineup: o.lineup,
         includesText: o.includesText ?? defaultIncludes,
-        spotifyUrl: o.spotifyUrl ?? defaultSpotifyUrl,
         showReferences: o.showReferences,
         priceCents: o.priceCents ?? null,
         sellerId,

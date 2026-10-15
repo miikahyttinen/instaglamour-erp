@@ -55,17 +55,11 @@ const lineup = z.unknown().transform((value, ctx): string[] => {
   return items;
 });
 
-/** Only http(s) links: the URL is rendered as a button on the public page. */
-function isHttpUrl(value: string): boolean {
-  try {
-    const url = new URL(value);
-    return url.protocol === 'https:' || url.protocol === 'http:';
-  } catch {
-    return false;
-  }
-}
-
-const spotifyUrl = optionalText().refine((v) => v === null || v === undefined || isHttpUrl(v), { message: 'INVALID_VALUE' });
+/**
+ * The Spotify link is a fixed constant (offers/constants.ts); offers have no such field. Sending it
+ * (any value, null included) is rejected rather than silently ignored, so outdated clients notice.
+ */
+const spotifyUrl = z.never({ message: 'INVALID_VALUE' }).optional();
 
 const reference = z.string().min(1);
 const source = z.enum(OFFER_SOURCES, { message: 'INVALID_VALUE' }).nullable();
@@ -114,7 +108,6 @@ const UPDATE_FIELDS = [
   'city',
   'lineup',
   'includesText',
-  'spotifyUrl',
   'showReferences',
   'priceCents',
   'sellerId',
@@ -210,7 +203,6 @@ export function offerRoutes(app: FastifyInstance, deps: AppDeps): void {
           lineup: body.lineup ?? [],
           // Omitted → default from settings; an explicit null / blank stays empty.
           includesText: body.includesText === undefined ? settings.defaultIncludes : body.includesText,
-          spotifyUrl: body.spotifyUrl === undefined ? settings.defaultSpotifyUrl : body.spotifyUrl,
           showReferences: body.showReferences ?? false,
           priceCents: body.priceCents ?? null,
           sellerId,
@@ -261,7 +253,6 @@ export function offerRoutes(app: FastifyInstance, deps: AppDeps): void {
       city: offer.city,
       lineup: offer.lineup,
       includesText: offer.includesText,
-      spotifyUrl: offer.spotifyUrl,
       showReferences: offer.showReferences,
       priceCents: offer.priceCents,
       sellerId: offer.sellerId,

@@ -8,6 +8,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { FixedWindowRateLimiter } from '../src/http/rateLimit.js';
+import { SPOTIFY_URL } from '../src/offers/constants.js';
 import { PUBLIC_OFFER_RATE_LIMIT } from '../src/routes/publicOffers.js';
 import { closeTestDb, resetDb, testDb } from './helpers.js';
 import { call, startSession, UNKNOWN_ID, type Json, type Session } from './gigFixtures.js';
@@ -46,7 +47,6 @@ beforeEach(async () => {
     city: 'City A',
     lineup: ['Vocals', 'Guitar'],
     includesText: 'Included 1\nIncluded 2',
-    spotifyUrl: 'https://open.spotify.com/',
     showReferences: true,
     priceCents: PRICE,
     source: 'INSTAGRAM',
@@ -84,7 +84,7 @@ const expected = () => ({
   city: 'City A',
   lineup: ['Vocals', 'Guitar'],
   includesText: 'Included 1\nIncluded 2',
-  spotifyUrl: 'https://open.spotify.com/',
+  spotifyUrl: SPOTIFY_URL,
   references: [
     { id: withImage.id, quote: { fi: 'Viite 1\nRivi 2', en: 'Reference 1\nLine 2' }, author: '— Person 1', imageUrl: withImageUrl },
     { id: noImage.id, quote: { fi: 'Viite 2', en: null }, author: '— Person 2', imageUrl: null },
@@ -161,15 +161,25 @@ describe('GET /api/public/offers/{token}', () => {
     expect(body).not.toMatch(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
   });
 
+  it('always returns the fixed Spotify link, ignoring an old per-offer value in the database', async () => {
+    await testDb().offer.update({ where: { id: offer.id as string }, data: { spotifyUrl: 'https://example.com/old' } });
+    expect((await anon(token)).json().spotifyUrl).toBe(SPOTIFY_URL);
+    const detail = (await call(s, 'GET', `/api/offers/${offer.id}`)).json();
+    expect(detail.preview.spotifyUrl).toBe(SPOTIFY_URL);
+    expect(detail).not.toHaveProperty('spotifyUrl');
+  });
+
   it('OfferDetail.preview deep-equals the public response', async () => {
     const detail = (await call(s, 'GET', `/api/offers/${offer.id}`)).json();
     expect(detail.preview).toStrictEqual((await anon(token)).json());
 
     // Also without references and with empty optional fields.
-    await call(s, 'PATCH', `/api/offers/${offer.id}`, { showReferences: false, city: null, includesText: null, spotifyUrl: null });
+    const cleared = await call(s, 'PATCH', `/api/offers/${offer.id}`, { showReferences: false, city: null, includesText: null });
+    expect(cleared.statusCode).toBe(200);
     await testDb().partner.update({ where: { id: s.world.a.id }, data: { phone: null } });
     const pub = (await anon(token)).json();
-    expect(pub).toMatchObject({ references: null, city: null, includesText: null, spotifyUrl: null, seller: { phone: null } });
+    // The Spotify link is fixed in code (TASK-022), never empty.
+    expect(pub).toMatchObject({ references: null, city: null, includesText: null, spotifyUrl: SPOTIFY_URL, seller: { phone: null } });
     expect((await call(s, 'GET', `/api/offers/${offer.id}`)).json().preview).toStrictEqual(pub);
 
     // After a link regeneration the preview's photo URLs use the new token, like the public page.
