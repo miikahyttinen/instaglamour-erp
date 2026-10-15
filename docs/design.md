@@ -106,11 +106,11 @@ Line-height body 1.5.
 - **Sidebar bottom:** only the collapse/expand toggle remains, bottom-left; **no divider line** above it.
 - **Phone (< 900 px):** top bar stays ☰ · logo · year (no room for three more icons); language, theme and sign out stay at the bottom of the drawer.
 
-## Excel-style tables (owner request 2026-10-14)
+## Excel-style tables (owner request 2026-10-14, responsive 2026-10-15)
 Used by the gig list (Keikat) and the offer list (Tarjoukset); same component, same look.
 - Header: column title + sort toggle (`aria-sort`) + **filter icon** for filterable columns. The icon is highlighted (accent) when the column is filtered.
 - Filter popover (like Excel): search box (when > 8 values), "Valitse kaikki / Select all", "Tyhjennä / Clear", checkbox list of the column's distinct values in the current data (incl. "(tyhjä) / (blank)"), OK / Cancel. Keyboard accessible; Esc closes.
 - Filters are client-side over the selected year's rows, combine with AND, and are kept in the URL; a "Tyhjennä suodattimet / Clear filters" button resets all. Search box above the table stays.
-- First column pinned on horizontal scroll; numeric columns right-aligned with tabular figures; identical paddings/row height to the offer list.
+- **Responsive, no horizontal scroll (owner request 2026-10-15):** list pages with an Excel table (Keikat, Tarjoukset) use the **full content width** (no `--content-max`). The table is `width: 100%`; text cells wrap (dates, money, percentages and tags stay on one line). Columns have a priority; as the width shrinks, lower-priority columns are hidden instead of scrolling (see TASK-147 for the order). The table never scrolls sideways from 600 px up; below 600 px it is cards. Numeric columns right-aligned with tabular figures; identical paddings/row height to the offer list.
 - Phone (< 600 px): cards; a "Suodattimet / Filters" button opens the same per-column filters in a sheet.
 - Year figures/tiles above the table ignore filters (unchanged rules BR-082, BR-106).
