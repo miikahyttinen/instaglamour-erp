@@ -63,7 +63,6 @@ describe('offer list (UC-028)', () => {
     expect(within(table()).getAllByRole('columnheader').map((h) => h.getAttribute('data-priority'))).toEqual([
       '1', '1', '2', '1', '3', '1', '1', '2', '3', '3', '2', '2', '1',
     ]);
-    expect(table().closest('.page')).toHaveClass('page-wide');
     expect(eventNames()).toEqual(['Event A', 'Event W', 'Event L', 'Event B']);
     expect(bodyRows()[0]).toHaveTextContent('Venue X, City Y');
     expect(within(table()).getByRole('columnheader', { name: /Tapahtumapäivä/ })).toHaveAttribute(

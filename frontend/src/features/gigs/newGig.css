@@ -22,8 +22,11 @@
   color: var(--text);
 }
 
-/* ---------- Grid ---------- */
+/* ---------- Grid ----------
+   The page container is full width (TASK-148); the form's grid keeps at most the former content
+   width, so on wide screens the 8-column form stays at a readable ~790 px. */
 .new-gig-page .new-gig-form {
+  max-width: var(--content-max);
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
   column-gap: var(--grid-gap);

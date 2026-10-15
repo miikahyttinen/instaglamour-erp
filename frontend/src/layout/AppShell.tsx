@@ -23,7 +23,7 @@ import { YearSelector } from './YearSelector';
  * top bar (section · year · language · theme · sign out).
  * Phone: sticky top bar (☰, logo, year); ☰ opens the sidebar as a drawer, with language /
  * theme / sign out at its bottom. Every route renders
- * inside `.page-container` (one left edge, max width, page padding).
+ * inside `.page-container` (one left edge, full width, page padding).
  */
 export function AppShell() {
   const { t } = useTranslation();

@@ -157,7 +157,7 @@ export function OfferListPage() {
   );
 
   return (
-    <section className="page page-wide offers-page">
+    <section className="page offers-page">
       <PageHead title={t('pages.offers', { year })} actions={headActions} />
 
       {list.data && <YearFigures summary={list.data.summary} />}

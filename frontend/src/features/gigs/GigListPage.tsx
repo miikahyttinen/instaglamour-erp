@@ -117,7 +117,7 @@ export function GigListPage() {
   );
 
   return (
-    <section className="page page-wide gig-list-page">
+    <section className="page gig-list-page">
       <PageHead
         title={t('pages.gigs', { year })}
         subtitle={list.data ? <YearSubtitle totals={list.data.yearSummary} /> : undefined}

@@ -78,8 +78,6 @@ describe('gig list (UC-003)', () => {
     expect(within(rows()[0]!).getAllByRole('cell').map((c) => c.getAttribute('data-priority'))).toEqual([
       '1', '1', '1', '2', '1', '2', '2', '3', '1', '3', '3', '1',
     ]);
-    // Full content width (no --content-max cap on this page).
-    expect(table().closest('.page')).toHaveClass('page-wide');
     expect(within(table()).getByRole('columnheader', { name: /Päivä/ })).toHaveAttribute('aria-sort', 'ascending');
     expect(rows()[0]).toHaveTextContent(fi(110000));
     expect(rows()[0]).not.toHaveTextContent('Miehitys kesken');

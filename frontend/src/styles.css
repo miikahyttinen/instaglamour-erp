@@ -1120,7 +1120,6 @@ label.switch.inline-switch {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  max-width: calc(var(--content-max) + 2 * var(--page-pad));
   min-height: var(--topbar-h);
   /* Phones: ☰ and the year arrows bring their own touch padding. */
   padding: 0 var(--space-1);
@@ -1241,17 +1240,12 @@ label.switch.inline-switch {
 .main {
   flex: 1 0 auto;
 }
-/* The one content container: every route renders in it (AppShell). Left-aligned to the
-   sidebar edge, page padding on both sides, content max --content-max. */
+/* The one content container: every route renders in it (AppShell). The full width from the
+   sidebar edge to the window edge, page padding on both sides; no max width (design.md →
+   "Full-width, responsive tables everywhere"). Forms, notes and field groups keep their own
+   readable max widths. The top bar spans the same width. */
 .page-container {
-  max-width: calc(var(--content-max) + 2 * var(--page-pad));
   padding: var(--space-5) var(--page-pad) var(--space-7);
-}
-/* Wide list pages (Keikat, Tarjoukset: `.page.page-wide`, design.md → "Excel-style tables"): the
-   full content width, no --content-max cap; the page padding stays. */
-.page-container:has(> .page-wide),
-.topbar:has(~ .main .page-wide) .topbar-inner {
-  max-width: none; /* the top bar's right edge follows the content */
 }
 /* Page wrapper: content sits directly on --bg (cards/tables bring their own surface). */
 .page {
@@ -1566,6 +1560,37 @@ label.switch.inline-switch {
 .table-empty {
   padding: var(--space-5) 0;
   color: var(--text-muted);
+}
+
+/* From 600 px every table fills its container and does not scroll sideways (design.md →
+   "Full-width, responsive tables everywhere"): text cells and header titles wrap between words
+   (hyphenated per html lang only when a word can't fit); numbers (.num), tags and page-specific
+   date classes stay on one line. Auto table layout gives each column its one-line width first,
+   so nothing wraps while there is room. `.table-wrap` keeps `overflow-x: auto` only as a safety
+   net. ExcelTable (excelTable.css) builds on the same rules. */
+@media (min-width: 600px) {
+  .data-table td,
+  .data-table tbody th {
+    overflow-wrap: break-word;
+    hyphens: auto;
+  }
+  .data-table thead th {
+    white-space: normal;
+  }
+  .data-table .th-sort {
+    text-align: left;
+  }
+  .data-table .num .th-sort {
+    text-align: right;
+  }
+  .data-table .th-sort-icon {
+    flex: 0 0 auto;
+  }
+  .data-table :is(.num, .tag) {
+    white-space: nowrap;
+    overflow-wrap: normal;
+    hyphens: manual;
+  }
 }
 
 /* Phone: rows become cards of label/value pairs. */
