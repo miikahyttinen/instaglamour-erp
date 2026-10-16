@@ -1,5 +1,5 @@
 # TASK-024: E2E for purchase orders (UC-033, UC-034)
-- **owner:** backend (integration; `e2e/` only) · **status:** todo · **spec:** UC-033, UC-034, BR-113…BR-119, api-contract "Purchase orders" · **depends on:** TASK-023, TASK-151, TASK-152
+- **owner:** backend (integration; `e2e/` only) · **status:** done · **spec:** UC-033, UC-034, BR-113…BR-119, api-contract "Purchase orders" · **depends on:** TASK-023, TASK-151, TASK-152
 ## Goal
 Cover the real end-to-end flow against the real backend: freelancer link → create PO → partner marks paid → gig cost lines paid, and the guards around it.
 ## Acceptance criteria
