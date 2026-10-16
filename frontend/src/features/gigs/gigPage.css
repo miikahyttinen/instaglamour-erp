@@ -291,8 +291,8 @@
 }
 .gig-page .cost-table .cost-po-hint {
   display: inline-block;
-  max-width: 16ch;
-  white-space: normal;
+  white-space: nowrap;
+  hyphens: none;
 }
 .gig-page .cost-actions-inner {
   display: flex;

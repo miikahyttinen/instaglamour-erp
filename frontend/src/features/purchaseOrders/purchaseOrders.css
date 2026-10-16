@@ -108,6 +108,11 @@
     white-space: nowrap;
     overflow-wrap: normal;
   }
+  .purchase-orders-page .po-table th.po-col-total {
+    white-space: nowrap;
+    overflow-wrap: normal;
+    hyphens: none;
+  }
   .purchase-orders-page .po-table td.po-col-number {
     white-space: nowrap;
   }

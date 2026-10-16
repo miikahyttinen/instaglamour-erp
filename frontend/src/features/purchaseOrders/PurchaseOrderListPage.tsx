@@ -171,7 +171,7 @@ function PurchaseOrderTable({
       key: 'total',
       label: t('purchaseOrders.columns.total'),
       numeric: true,
-      className: 'excel-col-fit',
+      className: 'po-col-total excel-col-fit',
       sortValue: (po) => po.totalCents,
       cell: (po) => formatMoney(po.totalCents, lang),
     },
