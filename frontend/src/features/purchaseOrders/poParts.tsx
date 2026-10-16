@@ -1,5 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
 import { CircleCheck } from 'lucide-react';
+import { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { isApiError } from '../../api/client';
@@ -13,6 +14,28 @@ import { formatDate, formatTime } from '../../lib/format';
 import { useReference } from '../../reference/useReference';
 import { poActorName, poDateTime, poErrorMessage, poEventText } from './poText';
 import { useApplyPurchaseOrder } from './queries';
+
+/**
+ * A PO number that may wrap after its dashes (F-010): long freelancer names make long numbers
+ * (`PERSON-WITH-A-LONG-NAME-0001`). `<wbr>` keeps the text (and accessible name) unchanged.
+ */
+export function PoNumber({ number }: { number: string }) {
+  const parts = number.split('-');
+  return (
+    <>
+      {parts.map((part, i) => (
+        <Fragment key={i}>
+          {part}
+          {i < parts.length - 1 && (
+            <>
+              -<wbr />
+            </>
+          )}
+        </Fragment>
+      ))}
+    </>
+  );
+}
 
 /** PAID → green "Maksettu <date> klo <time>"; CANCELLED → grey "Peruttu"; OPEN → "Avoin". */
 export function PurchaseOrderStatusTag({ po }: { po: PurchaseOrder }) {
@@ -103,7 +126,7 @@ export function PurchaseOrderEventTable({
             className: 'po-col-number',
             cell: (e: PurchaseOrderEvent) => (
               <Link to={`/purchase-orders/${e.purchaseOrderId}`} className="po-link">
-                {e.number}
+                <PoNumber number={e.number} />
               </Link>
             ),
           },

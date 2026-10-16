@@ -77,7 +77,7 @@ and 1280 px from a fresh database (`instaglamour_e2e_t024`). New finding: F-010 
 | F-007 | minor | frontend | **Fixed (TASK-141).** Convert to gig: a zero-delay double click on "Luo keikka" sends two requests (server answers 201 + 409; one gig, so AC-3 holds) |
 | F-008 | major | frontend | **Fixed (TASK-147).** Gig list: ticking "Peruttu" in the Tila filter (= every status) is not kept in the URL; after a reload or from a shared link the cancelled gigs are hidden again |
 | F-009 | minor | frontend | **Fixed (TASK-147).** Excel tables: when the column filters hide every row, the header (and its filter buttons) disappears from 600 px; only "Tyhjennä suodattimet" is left |
-| F-010 | minor | frontend | Purchase order list: a long PO number (long freelancer name) does not wrap; at 900 px with the sidebar expanded the page scrolls sideways |
+| F-010 | minor | frontend | **Fixed (fix-f010).** Purchase order list: a long PO number (long freelancer name) does not wrap; at 900 px with the sidebar expanded the page scrolls sideways |
 
 ---
 
@@ -301,9 +301,10 @@ and 1280 px from a fresh database (`instaglamour_e2e_t024`). New finding: F-010 
   (1112 px with four POs). 1280 px and phones (cards) are fine.
 - **Expected (NFR-1, TASK-147 rule for Excel tables):** no sideways scroll from 600 px; the number
   wraps (e.g. at the hyphens) or the column is capped.
-- **Tests:** `20-purchase-orders` "F-010: a long PO number …" is `test.fixme` (desktop only).
-  The regular PO layout test uses a normal-length name, so `12-layout-v2` (which sees the mobile
-  run's POs in the desktop run) stays green.
+- **Fix:** the number cell wraps (`overflow-wrap: anywhere`; `PoNumber` inserts `<wbr>` after each
+  dash, so it breaks at the dashes first); the Freelancer column and the log cells wrap too.
+- **Tests:** `20-purchase-orders` "F-010: a long PO number …" (desktop only) now runs and checks
+  600 / 900 / 1200 / 1440 px with the sidebar expanded.
 
 ---
 

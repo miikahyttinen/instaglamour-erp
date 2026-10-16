@@ -14,7 +14,7 @@ import { SectionLabel } from '../../components/SectionLabel';
 import { apiErrorMessage } from '../../i18n/labels';
 import { useLang } from '../../i18n/useLang';
 import { formatDate, formatMoney } from '../../lib/format';
-import { PurchaseOrderEventTable, PurchaseOrderStatusCell } from './poParts';
+import { PoNumber, PurchaseOrderEventTable, PurchaseOrderStatusCell } from './poParts';
 import { poDateTime } from './poText';
 import { usePurchaseOrderEvents, usePurchaseOrderList } from './queries';
 import './purchaseOrders.css';
@@ -139,13 +139,14 @@ function PurchaseOrderTable({
       sortValue: (po) => po.number,
       cell: (po) => (
         <Link to={`/purchase-orders/${po.id}`} className="po-link">
-          {po.number}
+          <PoNumber number={po.number} />
         </Link>
       ),
     },
     {
       key: 'freelancer',
       label: t('purchaseOrders.columns.freelancer'),
+      className: 'po-col-freelancer',
       sortValue: (po) => po.personName,
       filterValue: (po) => po.personId,
       filterLabel: (id) => names.get(id) ?? '–',

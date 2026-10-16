@@ -420,18 +420,21 @@ test('no horizontal scroll: purchase order list, PO page and freelancer page', a
   await anon.context.close();
 });
 
-// F-010: a long PO number (long freelancer name) does not wrap in the list (`td.po-col-number`
-// is `white-space: nowrap`), so at 900 px next to the expanded sidebar the Tila column and its
-// "Merkitse maksetuksi" button are pushed out and the page scrolls sideways (1112 px in 900 px).
-test('F-010: a long PO number does not push the list wider than the page at 900 px (sidebar expanded)', async ({ page, request }, testInfo) => {
+// F-010 (fixed): a long PO number (long freelancer name) wraps after its dashes in the list, so
+// next to the expanded sidebar the Tila column and its "Merkitse maksetuksi" button stay on the
+// page — no sideways scroll at 600 / 900 / 1200 / 1440 px.
+test('F-010: a long PO number does not push the list wider than the page (600–1440 px, sidebar expanded)', async ({ page, request }, testInfo) => {
   test.skip(isMobile(testInfo), 'Desktop sidebar widths only; phones show the list as cards.');
-  test.fixme(true, 'F-010 — long PO numbers do not wrap in the purchase order list');
   await signIn(page);
   const setup = await personWithPlayedFee(page, testInfo, 'PO Layout With A Rather Long Freelancer Name', { month: '08' });
   const po = await createPoPublic(request, setup.sharePath, [setup.lineId]);
-  await page.setViewportSize({ width: 900, height: 800 });
-  await page.goto('/purchase-orders');
-  await expect(poRow(page, po.number)).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Pienennä valikko', exact: true })).toBeVisible();
-  await expectNoHorizontalScroll(page, 'purchase order list with a long number, 900 px');
+  for (const width of [600, 900, 1200, 1440]) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto('/purchase-orders');
+    await expect(poRow(page, po.number)).toBeVisible();
+    // From 900 px the sidebar is shown expanded next to the list.
+    if (width >= 900) await expect(page.getByRole('button', { name: 'Pienennä valikko', exact: true })).toBeVisible();
+    await expect(poRow(page, po.number).getByRole('button', { name: /Merkitse maksetuksi/ })).toBeInViewport();
+    await expectNoHorizontalScroll(page, `purchase order list with a long number, ${width} px`);
+  }
 });

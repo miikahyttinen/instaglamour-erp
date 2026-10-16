@@ -74,6 +74,18 @@
 .purchase-orders-page .po-link:hover {
   text-decoration: underline;
 }
+/* F-010: long numbers / names (long freelancer names) wrap instead of widening the table; the
+   number breaks after its dashes (<wbr>, PoNumber), then anywhere as a last resort. */
+.purchase-orders-page .po-table td.po-col-number,
+.purchase-orders-page .po-table td.po-col-freelancer,
+.purchase-orders-page .po-event-table td {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.po-page .page-title {
+  overflow-wrap: anywhere;
+}
 .purchase-orders-page .po-status-tag {
   white-space: nowrap;
 }
@@ -112,9 +124,6 @@
     white-space: nowrap;
     overflow-wrap: normal;
     hyphens: none;
-  }
-  .purchase-orders-page .po-table td.po-col-number {
-    white-space: nowrap;
   }
 }
 
