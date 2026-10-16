@@ -1,4 +1,4 @@
-# E2E findings — TASK-004, TASK-007, TASK-008 … TASK-014, TASK-017, TASK-021
+# E2E findings — TASK-004, TASK-007, TASK-008 … TASK-014, TASK-017, TASK-021, TASK-024
 
 Mismatches and bugs found while running the real frontend against the real backend.
 The e2e suite does not fix `frontend/` or `backend/` code; it records problems here and marks
@@ -62,6 +62,10 @@ Run of 2026-10-15 against `main` at `bad7ee9` (Excel-style gig / offer lists, pa
 0 failed, 43 skipped** at 375 px and 1280 px from a fresh database (4 `test.fixme`: F-005, F-008).
 New findings: F-008 (major), F-009 (minor).
 
+Run of 2026-10-16 against `main` at `79a9e26` (purchase orders, TASK-023 / 151 / 152), see
+[TASK-024](#task-024--purchase-orders-end-to-end): **199 passed, 0 failed, 47 skipped** at 375 px
+and 1280 px from a fresh database (`instaglamour_e2e_t024`). New finding: F-010 (minor).
+
 | Id | Severity | Side to fix | Summary |
 |---|---|---|---|
 | F-001 | minor | frontend | `/api` proxy target and dev port are hard-coded in `vite.config.ts` |
@@ -73,6 +77,7 @@ New findings: F-008 (major), F-009 (minor).
 | F-007 | minor | frontend | **Fixed (TASK-141).** Convert to gig: a zero-delay double click on "Luo keikka" sends two requests (server answers 201 + 409; one gig, so AC-3 holds) |
 | F-008 | major | frontend | **Fixed (TASK-147).** Gig list: ticking "Peruttu" in the Tila filter (= every status) is not kept in the URL; after a reload or from a shared link the cancelled gigs are hidden again |
 | F-009 | minor | frontend | **Fixed (TASK-147).** Excel tables: when the column filters hide every row, the header (and its filter buttons) disappears from 600 px; only "Tyhjennä suodattimet" is left |
+| F-010 | minor | frontend | Purchase order list: a long PO number (long freelancer name) does not wrap; at 900 px with the sidebar expanded the page scrolls sideways |
 
 ---
 
@@ -283,6 +288,25 @@ New findings: F-008 (major), F-009 (minor).
 
 ---
 
+## F-010 — Purchase order list: a long PO number does not wrap and pushes the table wider than the page
+
+- **Severity:** minor (only with long freelancer names; the page scrolls sideways, nothing is lost)
+- **Where:** `frontend/src/features/purchaseOrders/purchaseOrders.css`: inside the table container
+  query, `.po-table td.po-col-number { white-space: nowrap; }` overrides the link's
+  `overflow-wrap: anywhere`. The number column grows to the full number, so the Tila column (with
+  "Merkitse maksetuksi") is pushed past the table box.
+- **Steps:** a person named "PO Layout With A Rather Long Freelancer Name M-xxxxx" (number
+  `PO-LAYOUT-WITH-A-RATHER-LONG-FREELANCER-NAME-M-XXXXX-0001`, 57 characters) creates a PO →
+  desktop, sidebar expanded, 900 px → Ostotilaukset: the page is 1064 px wide in a 900 px viewport
+  (1112 px with four POs). 1280 px and phones (cards) are fine.
+- **Expected (NFR-1, TASK-147 rule for Excel tables):** no sideways scroll from 600 px; the number
+  wraps (e.g. at the hyphens) or the column is capped.
+- **Tests:** `20-purchase-orders` "F-010: a long PO number …" is `test.fixme` (desktop only).
+  The regular PO layout test uses a normal-length name, so `12-layout-v2` (which sees the mobile
+  run's POs in the desktop run) stays green.
+
+---
+
 ## TASK-021 — Excel-style filters (Keikat, Tarjoukset) and partner status
 
 Run of 2026-10-15 against `main` at `bad7ee9` (ExcelTable gig / offer lists TASK-143 / 144,
@@ -452,6 +476,29 @@ none was removed or loosened.
 | 09 language/year (desktop) | From 900 px the header has a language icon button ("Vaihda kieleksi English") and no menu; the signed-in name is the sign-out button's description | Desktop branch: icon button, its new name ("Change language to Suomi") instead of `aria-pressed`, and `toHaveAccessibleDescription(/Kirjautuneena: Partner C/)`; phone branch unchanged |
 | 11 BR-027 (both) | Cost line `list/listitem` → named `<tbody>` | `costLine()` |
 | 11 search filter (desktop) | Gig list is a table "Keikkalista" from 900 px (cards below) | `gigListRows()` picks table rows or list items by viewport |
+
+---
+
+## TASK-024 — Purchase orders end to end
+
+Run of 2026-10-16 against `main` at `79a9e26`, fresh database `instaglamour_e2e_t024`, ports
+3324 / 5324.
+
+- **Baseline:** `12-layout-v2` still expected eight menu items; the menu now has nine
+  ("Ostotilaukset" after "Keikat", TASK-152) — a suite problem, fixed in the test's `NAV` list.
+  `tests/pages.ts` now includes the Ostotilaukset list, so `10-no-horizontal-scroll` and the
+  `12-layout-v2` sidebar / drawer checks cover it too.
+- **New:** `tests/20-purchase-orders.spec.ts` (helpers in `tests/po.ts`): the full freelancer →
+  partner flow, parallel creates (201 + 409), the gig-cancel guard and the layout checks. One
+  PO is backdated three years straight in the e2e database (`backdatePo()`, `psql` in the
+  `db-test` container) because the API always creates POs "now" and the cross-year search needs
+  one from another year.
+- **Result:** 199 passed, 0 failed, 47 skipped — 2 `test.fixme` (F-005 and F-010, desktop),
+  1 by design, the rest viewport-only (incl. F-010 at 375 px). New finding F-010 (minor,
+  frontend). No backend bugs found: the lock (409 `COST_LINE_ON_PURCHASE_ORDER` with
+  `purchaseOrderNumber`), the parallel-create guard, the FreelancerView shape and its privacy
+  (no price, client, notes, other people or partners in DOM or JSON) and the PO log all match the
+  contract.
 
 ---
 

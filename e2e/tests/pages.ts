@@ -40,6 +40,7 @@ export function mainPages(ids: BusyIds): [string, string][] {
     ['gig list, deleted view', '/gigs?view=deleted'],
     ['new gig', '/gigs/new'],
     ['gig page', `/gigs/${ids.gigId}`],
+    ['purchase orders', '/purchase-orders'],
     ['clients', '/clients'],
     ['client page', `/clients/${ids.clientId}`],
     ['people', '/people'],

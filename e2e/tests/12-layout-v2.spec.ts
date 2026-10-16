@@ -21,11 +21,13 @@ import { busyIds, MAIN_PAGE_NAMES, mainPages, openLoaded, type BusyIds } from '.
 // on phones, the gig list as one Excel-style table (TASK-144), compact cost rows by container width.
 // Read-only flows: nothing here changes the shared database.
 
-// Eight items since TASK-015…139, Asiakkaat after Keikat; Vuosi first, then Tarjoukset (TASK-142).
+// Nine items: Asiakkaat after Keikat (TASK-015…139); Vuosi first, then Tarjoukset (TASK-142);
+// Ostotilaukset after Keikat (TASK-152).
 const NAV: { label: string; path: string }[] = [
   { label: 'Vuosi', path: '/' },
   { label: 'Tarjoukset', path: '/offers' },
   { label: 'Keikat', path: '/gigs' },
+  { label: 'Ostotilaukset', path: '/purchase-orders' },
   { label: 'Asiakkaat', path: '/clients' },
   { label: 'Henkilöt', path: '/people' },
   { label: 'Tehtävät', path: '/tasks' },
