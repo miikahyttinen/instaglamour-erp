@@ -37,6 +37,8 @@ export interface ApiErrorBody {
     /** English, for logs only. Never shown to users. */
     message: string;
     fields?: Record<string, FieldCode>;
+    /** Extra data of some codes (e.g. `costLineIds`, `purchaseOrderNumber`). */
+    details?: Record<string, unknown>;
   };
 }
 
@@ -686,3 +688,7 @@ export interface ReferenceCreate {
 
 /** `PATCH /api/references/{id}`. */
 export type ReferenceUpdate = Partial<Pick<Reference, 'quoteFi' | 'quoteEn' | 'author' | 'active'>>;
+
+// ---------- Purchase orders (UC-033, UC-034) ----------
+
+export * from './purchaseOrderTypes';

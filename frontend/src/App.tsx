@@ -7,6 +7,7 @@ import { RequireAuth } from './auth/RequireAuth';
 import { SignInPage } from './auth/SignInPage';
 import { BudgetPage } from './features/budget/BudgetPage';
 import { ClientsRoutes } from './features/clients/ClientsRoutes';
+import { FreelancerPage } from './features/freelancer/FreelancerPage';
 import { GigsRoutes } from './features/gigs/GigsRoutes';
 import { HoursRoutes } from './features/hours/HoursRoutes';
 import { OffersRoutes } from './features/offers/OffersRoutes';
@@ -69,6 +70,8 @@ export function App({ queryClient }: { queryClient: QueryClient }) {
           {/* Public offer link (UC-030): outside the auth provider and the shell, so it never
               calls an authenticated endpoint (not even /api/me). */}
           <Route path="/o/:token" element={<PublicOfferPage />} />
+          {/* Freelancer link (UC-033): same rules, no auth provider and no shell. */}
+          <Route path="/f/:token" element={<FreelancerPage />} />
           <Route
             path="*"
             element={
