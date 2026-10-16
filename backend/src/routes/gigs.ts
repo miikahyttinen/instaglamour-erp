@@ -30,6 +30,7 @@ import {
   requireGigDetail,
 } from '../gigs/store.js';
 import { findActiveClient } from '../clients/store.js';
+import { assertCostLineNotOnPurchaseOrder, assertGigHasNoOpenPurchaseOrder } from '../purchaseOrders/lock.js';
 import { loadFeeSettings } from './reference.js';
 
 type IdParams = { Params: { id: string } };
@@ -273,7 +274,15 @@ export function gigRoutes(app: FastifyInstance, deps: AppDeps): void {
       const oldPersonId = partners.get(oldPartnerId)?.personId;
       const newPersonId = partners.get(newPartnerId)!.personId;
       const ids = orderedLines
-        .filter((l) => l.type === type && l.paidAt === null && l.personId !== null && l.personId === oldPersonId)
+        // BR-118: a line on an OPEN/PAID PO keeps its person.
+        .filter(
+          (l) =>
+            l.type === type &&
+            l.paidAt === null &&
+            l.personId !== null &&
+            l.personId === oldPersonId &&
+            l.purchaseOrderLines.length === 0,
+        )
         .map((l) => l.id);
       if (ids.length > 0) moves.push({ ids, personId: newPersonId });
     }
@@ -284,6 +293,8 @@ export function gigRoutes(app: FastifyInstance, deps: AppDeps): void {
       await inTransaction(db, async (tx) => {
         await tx.gig.update({ where: { id: gig.id }, data: data });
         for (const move of moves) {
+          // Race guard (BR-118): a line put on a PO since it was read above keeps its person → 409.
+          for (const id of move.ids) await assertCostLineNotOnPurchaseOrder(tx, id);
           await tx.costLine.updateMany({ where: { id: { in: move.ids } }, data: { personId: move.personId } });
         }
         await logEvent(tx, {
@@ -340,6 +351,8 @@ export function gigRoutes(app: FastifyInstance, deps: AppDeps): void {
         throw new AppError('INVALID_STATUS_TRANSITION', `Gig is ${gig.status}, expected ${fromStatus}`);
       }
       await inTransaction(db, async (tx) => {
+        // BR-118: no cancelling while a line is on an OPEN PO (uncancel is never blocked).
+        if (toStatus === 'CANCELLED') await assertGigHasNoOpenPurchaseOrder(tx, gig.id);
         await tx.gig.update({ where: { id: gig.id }, data: { status: toStatus } });
         await logEvent(tx, {
           gigId: gig.id,
@@ -361,6 +374,7 @@ export function gigRoutes(app: FastifyInstance, deps: AppDeps): void {
     const gig = await requireGigDetail(db, request.params.id);
     assertNotDeleted(gig);
     await inTransaction(db, async (tx) => {
+      await assertGigHasNoOpenPurchaseOrder(tx, gig.id); // BR-118
       await tx.gig.update({ where: { id: gig.id }, data: { deletedAt: new Date(), deletedById: me.id } });
       await logEvent(tx, { gigId: gig.id, type: 'DELETED', partnerId: me.id, reason });
     });
