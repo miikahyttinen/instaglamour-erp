@@ -23,8 +23,9 @@
 
 ### Error format
 ```json
-{ "error": { "code": "VALIDATION_ERROR", "message": "Human-readable (English, for logs)", "fields": { "venue": "REQUIRED" } } }
+{ "error": { "code": "VALIDATION_ERROR", "message": "Human-readable (English, for logs)", "fields": { "venue": "REQUIRED" }, "details": { } } }
 ```
+`fields` (400 only) and `details` (extra machine-readable data for some 409s, e.g. `costLineIds`, `purchaseOrderNumber`) are optional.
 The UI translates `code` and the field codes; it never shows `message` to users.
 
 | HTTP | `code` | When |
@@ -397,7 +398,7 @@ Duplicate = case-insensitive exact name match with another person.
 | `POST /api/purchase-orders/{id}/cancel` | `{ reason }` (required, ≤ 500) | 200 `PurchaseOrder` — OPEN → CANCELLED. Not OPEN → 409 `INVALID_STATUS_TRANSITION`. |
 | `GET /api/purchase-orders/{id}/history` | — | 200 `[PurchaseOrderEvent]` newest first |
 | `GET /api/purchase-orders/events` | `limit` (1…200, default 50) | 200 `[PurchaseOrderEvent]` newest first, all POs |
-| `GET /api/people/{id}/freelancer-link` | — | 200 `{ sharePath: "/f/<token>" }` |
+| `GET /api/people/{id}/freelancer-link` | — | 200 `{ sharePath: "/f/<token>" }` — every person always has a token (backfilled by migration, created with the person). Unknown person → 404. Inactive person → 200 (link exists but the public page returns 404 until the person is active again). |
 | `POST /api/people/{id}/freelancer-link/regenerate` | — | 200 `{ sharePath }` (old token → 404) |
 
 **Lock (BR-118):** while a cost line has `purchaseOrder != null`: `PATCH /api/cost-lines/{id}` with `personId`, `budgetedCents` or `joinsLoadIn`, `DELETE`, `/pay`, `/unpay` → 409 `COST_LINE_ON_PURCHASE_ORDER` (`details.purchaseOrderNumber`); `description` stays editable. Gig cancel / delete while any line is on an **OPEN** PO → same 409.
@@ -412,9 +413,11 @@ Duplicate = case-insensitive exact name match with another person.
 - `FreelancerLine = { costLineId, gigStartDate, gigEndDate|null, venue, type, description|null, amountCents, state: SELECTABLE|UPCOMING|ON_PO|PAID, purchaseOrderNumber|null }` — only the person's lines with `budgetedCents > 0` on non-deleted SOLD gigs (cancelled gigs are not shown). `amountCents` = PO snapshot when ON_PO, actual when PAID, else budgeted. `UPCOMING` = gig not played yet. A line paid through a PO is `PAID` with its `purchaseOrderNumber`.
 - `PublicPurchaseOrder = { number, status, totalCents, createdAt, paidAt|null, lines: [{ gigStartDate, venue, type, description|null, amountCents }] }` — no ids, partner names or cancel reason.
 - Unknown/regenerated token or inactive person → 404 `NOT_FOUND`.
+- `FUEL` lines are never shown to the freelancer and never eligible (they can't be paid). Unmarking a PAID PO also unpays lines on gigs cancelled/deleted after payment.
 - Concurrency: creation locks the person's lines (e.g. `pg_advisory_xact_lock` on person id) so two requests can't put a line on two POs. Number per BR-116 (global DB sequence).
 
 ## Change log
+- 2026-10-16 – Error format: optional `details`; freelancer-link for unknown/inactive person (PM)
 - 2026-10-16 – Purchase orders (UC-033, UC-034): freelancer link, public freelancer view + create PO, PO list/search/pay/unpay/cancel/log, CostLine.purchaseOrder, COST_LINE_ON_PURCHASE_ORDER, COST_LINE_NOT_ELIGIBLE (PM)
 - 2026-10-14 – Partner status clarifications (404, ?partner, email change, inactive person, seed insert-only, convert with removed seller) (PM)
 - 2026-10-14 – Partner status managed in the app (UC-032): person.partner, PUT/DELETE /api/people/{id}/partner, partner.active, CANNOT_REMOVE_SELF, LAST_PARTNER (PM)

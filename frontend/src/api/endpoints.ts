@@ -63,6 +63,12 @@ import type {
   UpdateMeRequest,
   YearPage,
 } from './types';
+import type {
+  FreelancerLink,
+  FreelancerView,
+  PublicPurchaseOrder,
+  PublicPurchaseOrderCreate,
+} from './purchaseOrderTypes';
 
 // ---------- Auth & me ----------
 
@@ -86,6 +92,19 @@ export const meApi = {
 export const publicOffersApi = {
   get: (token: string, signal?: AbortSignal) =>
     apiRequest<PublicOffer>(`/public/offers/${encodeURIComponent(token)}`, { signal }),
+};
+
+// ---------- Public freelancer page (UC-033) ----------
+
+/** The only calls of the freelancer page `/f/:token`. Work without a session. */
+export const publicFreelancersApi = {
+  get: (token: string, signal?: AbortSignal) =>
+    apiRequest<FreelancerView>(`/public/freelancers/${encodeURIComponent(token)}`, { signal }),
+  createPurchaseOrder: (token: string, body: PublicPurchaseOrderCreate) =>
+    apiRequest<PublicPurchaseOrder>(`/public/freelancers/${encodeURIComponent(token)}/purchase-orders`, {
+      method: 'POST',
+      body,
+    }),
 };
 
 // ---------- Reference & year ----------
@@ -166,6 +185,11 @@ export const peopleApi = {
     apiRequest<Person>(`/people/${id}/partner`, { method: 'PUT', body }),
   /** Removes partner status: sign-in stops and sessions are revoked (BR-111). */
   removePartner: (id: Id) => apiRequest<Person>(`/people/${id}/partner`, { method: 'DELETE' }),
+  /** The person's public freelancer link `/f/<token>` (UC-034 A4). */
+  freelancerLink: (id: Id) => apiRequest<FreelancerLink>(`/people/${id}/freelancer-link`),
+  /** New token; the old link stops working (404). */
+  regenerateFreelancerLink: (id: Id) =>
+    apiRequest<FreelancerLink>(`/people/${id}/freelancer-link/regenerate`, { method: 'POST' }),
 };
 
 // ---------- Clients ----------

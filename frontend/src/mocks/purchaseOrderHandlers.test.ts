@@ -3,11 +3,11 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { ApiError } from '../api/client';
 import { costLinesApi, gigsApi, purchaseOrdersApi } from '../api/endpoints';
-import { partnerA, TEST_YEAR } from '../test/gigFixtures';
+import { addMockGig, partnerA, person, staffMockGig, TEST_YEAR } from '../test/gigFixtures';
 import { addMockPurchaseOrder, clearPurchaseOrders, localTs } from '../test/purchaseOrderFixtures';
 import { signInMock } from '../test/renderApp';
 import { db, resetMockDb } from './data';
-import { purchaseOrderNumber, purchaseOrderSlug } from './purchaseOrderStore';
+import { createPurchaseOrder, purchaseOrderNumber, purchaseOrderSlug } from './freelancerStore';
 
 async function expectError(promise: Promise<unknown>): Promise<ApiError> {
   try {
@@ -38,9 +38,9 @@ describe('purchase order mocks', () => {
 
   it('seeds synthetic POs in every status, lines on them carry purchaseOrder', () => {
     resetMockDb();
-    const statuses = new Set(db.purchaseOrders.orders.map((po) => po.status));
+    const statuses = new Set(db.freelancer.purchaseOrders.map((po) => po.status));
     expect(statuses).toEqual(new Set(['OPEN', 'PAID', 'CANCELLED']));
-    for (const po of db.purchaseOrders.orders) {
+    for (const po of db.freelancer.purchaseOrders) {
       expect(po.personName).toMatch(/^Person \d$/);
       for (const line of po.lines) {
         const onPo = costLine(line.costLineId).purchaseOrder;
@@ -148,5 +148,19 @@ describe('purchase order mocks', () => {
     const { gig } = addMockPurchaseOrder({ status: 'PAID' });
     const cancelled = await gigsApi.cancel(gig.id, { reason: 'Called off.' });
     expect(cancelled.status).toBe('CANCELLED');
+  });
+
+  it('a PO made by the freelancer puts the line on it; cancelling frees it (one PO store)', async () => {
+    const gig = addMockGig({ startDate: '2020-05-01' }); // played
+    staffMockGig(gig, ['Person 1']);
+    const lineId = db.gigs.costLines.find((l) => l.gigId === gig.id && l.type === 'VOC')!.id;
+    const person1 = db.gigs.people.find((p) => p.id === person('Person 1').id)!;
+    const result = createPurchaseOrder(db.freelancer, db.gigs, person1, [lineId]);
+    if (!result.ok) throw new Error('not created');
+    const po = result.purchaseOrder;
+    expect(costLine(lineId).purchaseOrder).toEqual({ id: po.id, number: po.number, status: 'OPEN' });
+    expect((await purchaseOrdersApi.list({ q: po.number })).purchaseOrders.map((p) => p.id)).toEqual([po.id]);
+    await purchaseOrdersApi.cancel(po.id, { reason: 'Wrong fee.' });
+    expect(costLine(lineId).purchaseOrder).toBeNull();
   });
 });

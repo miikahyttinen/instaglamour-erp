@@ -98,7 +98,7 @@ describe('purchase order page (UC-034)', () => {
     const { po } = addMockPurchaseOrder();
     const { user } = renderApp(`/purchase-orders/${po.id}`);
     await screen.findByRole('heading', { level: 1, name: po.number });
-    db.purchaseOrders.orders.find((p) => p.id === po.id)!.status = 'CANCELLED';
+    db.freelancer.purchaseOrders.find((p) => p.id === po.id)!.status = 'CANCELLED';
     await user.click(screen.getByRole('button', { name: 'Merkitse maksetuksi' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Ostotilauksen tila on jo muuttunut');
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Merkitse maksetuksi' })).not.toBeInTheDocument());

@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { formatMoney } from '../../lib/format';
 import { DESKTOP_QUERY, TABLET_QUERY } from '../../lib/useMediaQuery';
 import { db } from '../../mocks/data';
-import { createPurchaseOrder } from '../../mocks/purchaseOrderStore';
+import { addPurchaseOrder } from '../../mocks/purchaseOrderStore';
 import { server } from '../../mocks/server';
 import { addMockGig, partnerB, person, staffMockGig, TEST_YEAR } from '../../test/gigFixtures';
 import { installMatchMedia } from '../../test/matchMedia';
@@ -34,7 +34,7 @@ describe('purchase order list (UC-034)', () => {
     staffMockGig(second, ['Person 1']);
     const lineIds = [gig, second].map((g) => db.gigs.costLines.find((l) => l.gigId === g.id && l.type === 'VOC')!.id);
     // One PO with two gigs, made through the store like the freelancer would.
-    const two = createPurchaseOrder(db.purchaseOrders, db.gigs, person('Person 1').id, lineIds, localTs(TEST_YEAR, 8, 1, 9, 5));
+    const two = addPurchaseOrder(db.freelancer, db.gigs, person('Person 1').id, lineIds, localTs(TEST_YEAR, 8, 1, 9, 5));
     const paid = addMockPurchaseOrder({ personName: 'Person 2', status: 'PAID', paidAt: localTs(TEST_YEAR, 10, 16, 14, 32) }).po;
     addMockPurchaseOrder({ personName: 'Person 3', createdAt: localTs(TEST_YEAR + 1, 1, 2) }); // next year
 

@@ -3,12 +3,7 @@ import type { PurchaseOrder } from '../api/types';
 import { db } from '../mocks/data';
 import type { MockGig } from '../mocks/gigStore';
 import { linesOf } from '../mocks/gigStore';
-import {
-  cancelPurchaseOrder,
-  createPurchaseOrder,
-  emptyPurchaseOrderState,
-  payPurchaseOrder,
-} from '../mocks/purchaseOrderStore';
+import { addPurchaseOrder, cancelPurchaseOrder, payPurchaseOrder } from '../mocks/purchaseOrderStore';
 import { addMockGig, partnerA, person, staffMockGig, TEST_YEAR } from './gigFixtures';
 
 /** Local time → ISO timestamp (so the UI shows exactly `day.month.year hh.mm`). */
@@ -17,7 +12,8 @@ export const localTs = (y: number, m: number, d: number, hh = 12, mm = 0) =>
 
 /** Removes the seeded purchase orders, so a test sees only its own. */
 export function clearPurchaseOrders(): void {
-  db.purchaseOrders = emptyPurchaseOrderState();
+  db.freelancer.purchaseOrders = [];
+  db.freelancer.events = [];
   for (const line of db.gigs.costLines) line.purchaseOrder = null;
 }
 
@@ -38,18 +34,18 @@ export function addMockPurchaseOrder(options: MockPoOptions = {}): { po: Purchas
   if (!options.gig) staffMockGig(gig, [name]);
   const line = linesOf(db.gigs, gig.id).find((l) => l.personId === person(name).id);
   if (!line) throw new Error(`${name} has no line on the gig`);
-  const po = createPurchaseOrder(
-    db.purchaseOrders,
+  const po = addPurchaseOrder(
+    db.freelancer,
     db.gigs,
     person(name).id,
     [line.id],
     options.createdAt ?? localTs(TEST_YEAR, 6, 5, 9, 0),
   );
   if (options.status === 'PAID') {
-    payPurchaseOrder(db.purchaseOrders, db.gigs, po, partnerA().id, options.paidAt ?? localTs(TEST_YEAR, 6, 10, 14, 32));
+    payPurchaseOrder(db.freelancer, db.gigs, po, partnerA().id, options.paidAt ?? localTs(TEST_YEAR, 6, 10, 14, 32));
   }
   if (options.status === 'CANCELLED') {
-    cancelPurchaseOrder(db.purchaseOrders, db.gigs, po, partnerA().id, 'Wrong fee.', localTs(TEST_YEAR, 6, 6));
+    cancelPurchaseOrder(db.freelancer, db.gigs, po, partnerA().id, 'Wrong fee.', localTs(TEST_YEAR, 6, 6));
   }
   return { po, gig };
 }

@@ -20,7 +20,7 @@ const badTransition = () =>
   errorResponse(409, 'INVALID_STATUS_TRANSITION', 'Not possible in this status');
 
 const findPo = (id: unknown): PurchaseOrder | undefined =>
-  db.purchaseOrders.orders.find((po) => po.id === id);
+  db.freelancer.purchaseOrders.find((po) => po.id === id);
 
 const newestFirst = <T extends { createdAt: string } | { at: string }>(a: T, b: T) => {
   const ta = 'createdAt' in a ? a.createdAt : a.at;
@@ -48,7 +48,7 @@ export const purchaseOrderHandlers = [
       return validationError({ status: 'INVALID_VALUE' });
     }
     const year = Number(yearParam);
-    const orders = db.purchaseOrders.orders
+    const orders = db.freelancer.purchaseOrders
       // With q: every year (BR-119); otherwise the year of creation.
       .filter((po) =>
         q
@@ -68,7 +68,7 @@ export const purchaseOrderHandlers = [
     const raw = new URL(request.url).searchParams.get('limit');
     const limit = raw === null ? 50 : Number(raw);
     if (!Number.isInteger(limit) || limit < 1 || limit > 200) return validationError({ limit: 'INVALID_VALUE' });
-    return HttpResponse.json([...db.purchaseOrders.events].sort(newestFirst).slice(0, limit));
+    return HttpResponse.json([...db.freelancer.events].sort(newestFirst).slice(0, limit));
   }),
 
   http.get('/api/purchase-orders/:id', ({ params }) => {
@@ -80,7 +80,7 @@ export const purchaseOrderHandlers = [
   http.get('/api/purchase-orders/:id/history', ({ params }) => {
     if (!currentPartner()) return unauthenticated();
     if (!findPo(params.id)) return notFound();
-    const events = db.purchaseOrders.events.filter((e) => e.purchaseOrderId === params.id).sort(newestFirst);
+    const events = db.freelancer.events.filter((e) => e.purchaseOrderId === params.id).sort(newestFirst);
     return HttpResponse.json(events);
   }),
 
@@ -90,7 +90,7 @@ export const purchaseOrderHandlers = [
     const po = findPo(params.id);
     if (!po) return notFound();
     if (po.status !== 'OPEN') return badTransition();
-    payPurchaseOrder(db.purchaseOrders, db.gigs, po, me.id);
+    payPurchaseOrder(db.freelancer, db.gigs, po, me.id);
     return HttpResponse.json(toPurchaseOrder(po));
   }),
 
@@ -100,7 +100,7 @@ export const purchaseOrderHandlers = [
     const po = findPo(params.id);
     if (!po) return notFound();
     if (po.status !== 'PAID') return badTransition();
-    unpayPurchaseOrder(db.purchaseOrders, db.gigs, po, me.id);
+    unpayPurchaseOrder(db.freelancer, db.gigs, po, me.id);
     return HttpResponse.json(toPurchaseOrder(po));
   }),
 
@@ -117,7 +117,7 @@ export const purchaseOrderHandlers = [
     const po = findPo(params.id);
     if (!po) return notFound();
     if (po.status !== 'OPEN') return badTransition();
-    cancelPurchaseOrder(db.purchaseOrders, db.gigs, po, me.id, reason);
+    cancelPurchaseOrder(db.freelancer, db.gigs, po, me.id, reason);
     return HttpResponse.json(toPurchaseOrder(po));
   }),
 ];

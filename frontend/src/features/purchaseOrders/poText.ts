@@ -21,7 +21,10 @@ export function poErrorMessage(t: TFunction, error: unknown): string {
 
 /** Event text of the log (BR-119): Luotu freelancerin linkillä / … / Peruttu: <reason>. */
 export function poEventText(t: TFunction, event: PurchaseOrderEvent): string {
-  if (event.type === 'CANCELLED') return t('purchaseOrders.log.CANCELLED', { reason: event.details.reason });
+  if (event.type === 'CANCELLED') {
+    const { reason } = event.details as { reason?: string };
+    return t('purchaseOrders.log.CANCELLED', { reason: reason ?? '–' });
+  }
   return t(`purchaseOrders.log.${event.type}`);
 }
 

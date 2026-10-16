@@ -11,7 +11,7 @@ export class ApiError extends Error {
   readonly status: number;
   readonly code: ErrorCode | 'UNKNOWN' | 'NETWORK_ERROR';
   readonly fields: Partial<Record<string, FieldCode>>;
-  /** `error.details` of the body (e.g. `purchaseOrderNumber`, `costLineIds`), else `{}`. */
+  /** Extra data of some codes, e.g. `costLineIds` (COST_LINE_NOT_ELIGIBLE). Empty when absent. */
   readonly details: Record<string, unknown>;
 
   constructor(

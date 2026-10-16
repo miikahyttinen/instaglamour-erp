@@ -15,6 +15,7 @@ import { StatusTag } from '../../components/StatusTag';
 import { costTypeLabel } from '../../i18n/labels';
 import { useLang } from '../../i18n/useLang';
 import { formatDate, formatMoney } from '../../lib/format';
+import { FreelancerLinkSection } from '../freelancer/FreelancerLinkSection';
 import { GigStatusTag } from '../gigs/GigStatusTag';
 import { NoticeBox, type Notice } from './Notices';
 import { isPartner } from './partnerRules';
@@ -78,6 +79,7 @@ export function PersonPage() {
             <PartnerStatus person={person} onNotice={setNotice} />
           </FieldList>
           <NoticeBox notice={notice} onDismiss={() => setNotice(null)} />
+          <FreelancerLinkSection personId={person.id} active={person.active} />
           <CostLines personId={person.id} />
         </>
       )}

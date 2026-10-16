@@ -5,6 +5,7 @@ import type { DevLoginRequest, ReferenceData, UpdateMeRequest } from '../api/typ
 import { budgetCategoryHandlers, budgetHandlers } from './budgetHandlers';
 import { clientHandlers } from './clientHandlers';
 import { db, setMockSession } from './data';
+import { freelancerHandlers } from './freelancerHandlers';
 import { attachmentHandlers, costLineHandlers, gigHandlers } from './gigHandlers';
 import { hoursHandlers } from './hoursHandlers';
 import { offerHandlers } from './offerHandlers';
@@ -73,6 +74,7 @@ export const referenceHandlers = [
 export const handlers = [
   ...authHandlers,
   ...publicOfferHandlers,
+  ...freelancerHandlers,
   ...referenceHandlers,
   ...offerHandlers,
   ...referencesHandlers,

@@ -1,0 +1,187 @@
+/* Public freelancer page /f/:token (UC-033). No app shell; full content width with the page
+   padding (design.md "Full-width, responsive tables everywhere"). Tokens only. */
+
+.freelancer-page {
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  padding: var(--space-4) var(--page-pad) var(--space-7);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.freelancer-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.freelancer-page .freelancer-logo {
+  height: var(--space-5);
+  width: auto;
+}
+
+.freelancer-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.freelancer-head p {
+  margin: 0;
+}
+.freelancer-title {
+  margin: 0;
+  font-size: var(--fs-title);
+  font-weight: var(--fw-bold);
+  text-transform: uppercase;
+  letter-spacing: var(--ls-title);
+  overflow-wrap: anywhere;
+}
+.freelancer-intro {
+  max-width: 70ch;
+}
+
+.freelancer-state {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+.freelancer-state p {
+  margin: 0;
+}
+
+.freelancer-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.freelancer-section > .section-label {
+  margin: 0;
+}
+
+/* Fees table */
+.freelancer-fees .freelancer-select {
+  width: 1%;
+}
+.freelancer-fees input[type='checkbox'] {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.freelancer-fees tr.is-selected td {
+  background: var(--surface-2);
+}
+.freelancer-fees .nowrap,
+.freelancer-order-lines .nowrap {
+  white-space: nowrap;
+}
+.freelancer-paid {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+/* Selected count + total + create button. Sticky at the bottom so it stays in reach while
+   ticking fees on a long list. */
+.freelancer-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  background: var(--bg);
+  border-top: var(--hairline) solid var(--border);
+}
+.freelancer-actions p {
+  margin: 0;
+}
+.freelancer-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: baseline;
+}
+
+/* Purchase orders */
+.freelancer-orders {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.freelancer-order {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.freelancer-order.is-new {
+  border-color: var(--ok-fg);
+  box-shadow: inset 3px 0 0 var(--ok-fg);
+}
+.freelancer-order.is-cancelled .freelancer-order-number {
+  color: var(--text-muted);
+}
+.freelancer-order p {
+  margin: 0;
+}
+.freelancer-order-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+.freelancer-order-number {
+  margin: 0;
+  font-size: var(--fs-lg);
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+.freelancer-order-head .btn {
+  margin-left: auto;
+}
+.freelancer-order-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-6);
+  margin: 0;
+}
+.freelancer-order-facts dd {
+  margin: var(--space-1) 0 0;
+}
+
+@media (max-width: 599px) {
+  /* Cards: hide the empty select cell of rows that can't be selected. */
+  .freelancer-fees td.freelancer-select:empty {
+    display: none;
+  }
+  .freelancer-fees td.freelancer-select {
+    width: auto;
+    align-items: center;
+  }
+  /* Fee rows inside a PO card: flat, separated by hairlines instead of nested cards. */
+  .freelancer-order-lines.data-table-cards tr {
+    margin: 0;
+    padding: var(--space-2) 0;
+    background: transparent;
+    border: 0;
+    border-top: var(--hairline) solid var(--border);
+    border-radius: 0;
+  }
+}
+
+@media (min-width: 900px) {
+  .freelancer-page {
+    padding-top: var(--space-6);
+  }
+}
