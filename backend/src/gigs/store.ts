@@ -5,7 +5,7 @@ import { isMusicianRole, MUSICIAN_ROLES } from '../domain/enums.js';
 import { yearGigSummary, type YearGigSummary } from '../domain/gigEconomics.js';
 import type { GigEventType, Prisma } from '../generated/prisma/client.js';
 import { AppError, notFound } from '../http/errors.js';
-import type { GigWithDetail, GigWithLines } from './serialize.js';
+import { costLinePurchaseOrderInclude, type GigWithDetail, type GigWithLines } from './serialize.js';
 
 export type Tx = Prisma.TransactionClient | Db;
 
@@ -23,6 +23,7 @@ export const gigSummaryInclude = {
 
 export const gigDetailInclude = {
   ...gigSummaryInclude,
+  costLines: { include: costLinePurchaseOrderInclude },
   attachments: { where: { deletedAt: null } },
 } as const satisfies Prisma.GigInclude;
 

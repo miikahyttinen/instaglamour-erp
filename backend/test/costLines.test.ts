@@ -44,6 +44,7 @@ describe('POST /api/gigs/{id}/cost-lines', () => {
       actualCents: null,
       paidAt: null,
       paidBy: null,
+      purchaseOrder: null,
     });
     expect(body.gig.budgetedCostsCents).toBe(gig.budgetedCostsCents + 20000);
     expect(body.gig.costLines.slice(0, -1)).toEqual(gig.costLines);

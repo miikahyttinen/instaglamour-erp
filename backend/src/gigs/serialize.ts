@@ -1,7 +1,22 @@
 /** Gig rows → contract JSON (docs/api-contract.md: GigSummary, GigDetail, CostLine, Attachment, GigEvent). */
 import { isoFromDate } from '../domain/dates.js';
 import { gigEconomics, isNotFullyStaffed, isPlayed } from '../domain/gigEconomics.js';
-import type { Attachment, CostLine, Gig, GigEvent } from '../generated/prisma/client.js';
+import type { Attachment, CostLine, Gig, GigEvent, Prisma, PurchaseOrderStatus } from '../generated/prisma/client.js';
+
+/**
+ * Prisma include for a cost line's OPEN/PAID purchase order (CostLine.purchaseOrder). A line is on
+ * at most one active PO line (partial unique index), so the list has 0 or 1 entries.
+ */
+export const costLinePurchaseOrderInclude = {
+  purchaseOrderLines: {
+    where: { active: true },
+    select: { purchaseOrder: { select: { id: true, number: true, status: true } } },
+  },
+} as const satisfies Prisma.CostLineInclude;
+
+export type CostLineWithPurchaseOrder = CostLine & {
+  purchaseOrderLines: { purchaseOrder: { id: string; number: string; status: PurchaseOrderStatus } }[];
+};
 
 export interface CostLineDto {
   id: string;
@@ -15,9 +30,11 @@ export interface CostLineDto {
   actualCents: number | null;
   paidAt: string | null;
   paidBy: string | null;
+  purchaseOrder: { id: string; number: string; status: PurchaseOrderStatus } | null;
 }
 
-export function toCostLineDto(line: CostLine): CostLineDto {
+export function toCostLineDto(line: CostLineWithPurchaseOrder): CostLineDto {
+  const po = line.purchaseOrderLines[0]?.purchaseOrder;
   return {
     id: line.id,
     gigId: line.gigId,
@@ -30,6 +47,7 @@ export function toCostLineDto(line: CostLine): CostLineDto {
     actualCents: line.actualCents,
     paidAt: line.paidAt?.toISOString() ?? null,
     paidBy: line.paidById,
+    purchaseOrder: po ? { id: po.id, number: po.number, status: po.status } : null,
   };
 }
 
@@ -64,7 +82,10 @@ export function compareCostLines(a: CostLine, b: CostLine): number {
 
 /** A gig as the serializers need it: its cost lines and the name of its client (BR-100). */
 export type GigWithLines = Gig & { costLines: CostLine[]; client: { name: string } | null };
-export type GigWithDetail = GigWithLines & { attachments: Attachment[] };
+export type GigWithDetail = Omit<GigWithLines, 'costLines'> & {
+  costLines: CostLineWithPurchaseOrder[];
+  attachments: Attachment[];
+};
 
 export function toGigSummaryDto(gig: GigWithLines, today: string) {
   const startDate = isoFromDate(gig.startDate);

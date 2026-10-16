@@ -18,6 +18,7 @@ import {
   requireGigDetail,
   type Warning,
 } from '../gigs/store.js';
+import { assertCostLineNotOnPurchaseOrder } from '../purchaseOrders/lock.js';
 import { loadFeeSettings } from './reference.js';
 
 type IdParams = { Params: { id: string } };
@@ -137,8 +138,12 @@ export function costLineRoutes(app: FastifyInstance, deps: AppDeps): void {
     track('budgetedCents', line.budgetedCents, budgetedCents);
     track('joinsLoadIn', line.joinsLoadIn, joinsLoadIn);
 
+    // BR-118: person, amount and load-in switch are locked while the line is on an OPEN/PAID PO;
+    // the description stays editable. Only an actual change counts (sending the same value is fine).
+    const lockedChange = changes.some((c) => c.field !== 'description');
     if (changes.length > 0) {
       await inTransaction(db, async (tx) => {
+        if (lockedChange) await assertCostLineNotOnPurchaseOrder(tx, line.id);
         await tx.costLine.update({
           where: { id: line.id },
           data: { personId, description, budgetedCents, joinsLoadIn, loadInDeductionAppliedCents },
@@ -161,6 +166,7 @@ export function costLineRoutes(app: FastifyInstance, deps: AppDeps): void {
     const me = request.requirePartner();
     const line = await requireMutableLine(request.params.id);
     await inTransaction(db, async (tx) => {
+      await assertCostLineNotOnPurchaseOrder(tx, line.id);
       await tx.costLine.delete({ where: { id: line.id } });
       await logEvent(tx, {
         gigId: line.gigId,
@@ -181,6 +187,7 @@ export function costLineRoutes(app: FastifyInstance, deps: AppDeps): void {
 
     const actualCents = body.actualCents ?? line.budgetedCents;
     await inTransaction(db, async (tx) => {
+      await assertCostLineNotOnPurchaseOrder(tx, line.id);
       await tx.costLine.update({
         where: { id: line.id },
         // Already paid: only the amount changes; the original payment time and partner stay.
@@ -199,8 +206,10 @@ export function costLineRoutes(app: FastifyInstance, deps: AppDeps): void {
   app.post<IdParams>('/api/cost-lines/:id/unpay', async (request) => {
     const me = request.requirePartner();
     const line = await requireMutableLine(request.params.id);
-    if (line.paidAt) {
-      await inTransaction(db, async (tx) => {
+    // The lock check runs even when the line is unpaid (a line on an OPEN PO is unpaid): 409, not a no-op.
+    await inTransaction(db, async (tx) => {
+      await assertCostLineNotOnPurchaseOrder(tx, line.id);
+      if (line.paidAt) {
         await tx.costLine.update({ where: { id: line.id }, data: { actualCents: null, paidAt: null, paidById: null } });
         await logEvent(tx, {
           gigId: line.gigId,
@@ -208,8 +217,8 @@ export function costLineRoutes(app: FastifyInstance, deps: AppDeps): void {
           partnerId: me.id,
           details: { costLineId: line.id, type: line.type, previousActualCents: line.actualCents },
         });
-      });
-    }
+      }
+    });
     return result(line.gigId);
   });
 }

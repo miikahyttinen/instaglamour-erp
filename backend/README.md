@@ -75,13 +75,39 @@ partner's email also ends its sessions (except the requester's own). The email m
 `partner_email_lower_key`). New seller/producer/owner choices must be active partners.
 
 Every `/api/*` route except `/api/auth/*` and the exact public routes
-`GET /api/public/offers/{token}` and `GET /api/public/offers/{token}/references/{id}/image` returns
-401 without a session.
+`GET /api/public/offers/{token}`, `GET /api/public/offers/{token}/references/{id}/image`,
+`GET /api/public/freelancers/{token}` and `POST /api/public/freelancers/{token}/purchase-orders`
+returns 401 without a session (`PUBLIC_ROUTES` in `src/app.ts`).
 
-The public offer and public reference photo rate limits (60 requests/min per IP each, separate
-budgets) key on `request.ip`. The app sets `trustProxy: true`, so that IP comes
+Public rate limits: 60 requests/min per IP. The public offer page and the freelancer endpoints share
+one budget; public reference photos have their own. They key on `request.ip`. The app sets `trustProxy: true`, so that IP comes
 from `X-Forwarded-For`: only expose the server behind a proxy that sets it (otherwise a client can
 spoof it and bypass the limit).
+
+## Purchase orders (UC-033, UC-034)
+
+- **Freelancer link** `/f/<token>`: `person.freelancer_token` (32 random bytes, base64url, unique).
+  Existing people were backfilled by migration `20261016120000_purchase_orders` (column default built
+  from `gen_random_uuid()` + `sha256`, no extension needed); regenerate uses the Node CSPRNG. An
+  inactive person's link is 404. The public view whitelists fields (FreelancerView / PublicPurchaseOrder).
+- **Creating a PO** (public POST) runs in one transaction: `pg_advisory_xact_lock` per person, then
+  `SELECT … FOR UPDATE` on the cost lines and `FOR SHARE` on their gigs, then the BR-114 check for every
+  id — all or nothing (409 `COST_LINE_NOT_ELIGIBLE`, `details.costLineIds`). FUEL lines are never
+  eligible (and not shown) because they can't be paid. Numbers: name slug + `purchase_order_seq`
+  (global, never reused; gaps are possible after a failed request).
+- **One active PO per cost line:** `purchase_order_line.active` is true while the PO is OPEN/PAID; the
+  partial unique index `purchase_order_line_active_cost_line_key` backs the code check. Line snapshots
+  (`cost_line_ref`, gig, type, description, amount) keep cancelled POs intact if a freed cost line is
+  deleted later (`cost_line_id` is then null).
+- **Lock (BR-118, `src/purchaseOrders/lock.ts`):** checked inside the mutating transaction after a row
+  lock on the cost line / gig, so it can't race PO creation. PATCH counts as locked only if person,
+  amount or load-in would actually change (description, or re-sending the same values, is allowed).
+  Changing a gig's seller/producer doesn't move SALES/PRODUCTION lines that are on a PO (BR-027).
+- **Pay / unpay** update the cost lines and write gig events `COST_PAID` / `COST_UNPAID` with
+  `details.purchaseOrderNumber`. Every PO change appends a `purchase_order_event` (CREATED has
+  `partner_id` null = the freelancer).
+- **List year** = year of `created_at` in Europe/Helsinki; `q` (number or current person name,
+  case-insensitive) searches all years.
 
 ## Layout
 
@@ -104,6 +130,12 @@ src/offers/        offers (routes/offers.ts): derived status/expired (BR-102), y
 src/routes/publicOffers.ts  GET /api/public/offers/{token} and its token-scoped reference photos
                    (BR-108): the only non-auth routes besides /api/auth/*; noindex, 60 requests/min per IP
                    each (in-memory, 429 RATE_LIMITED); every photo miss is the same 404
+src/purchaseOrders/ purchase orders (UC-033/034, BR-113…119): number slug + global sequence (number.ts),
+                   freelancer link tokens (token.ts; the DB column default gives every new person one),
+                   create / pay / unpay / cancel + serializers (store.ts), BR-118 lock checks (lock.ts)
+src/routes/purchaseOrders.ts  partner PO endpoints + /api/people/{id}/freelancer-link(/regenerate)
+src/routes/publicFreelancers.ts  public freelancer view + create PO (no session; noindex; shared limiter)
+src/http/publicGuard.ts  noindex/no-store headers + per-IP limit for all public routes
 src/partners/      partner status grant/revoke (UC-032): advisory-locked transaction, session revocation
 src/references/    references/testimonials (routes/references.ts, BR-108): serializer, active list for
                    PublicOffer, photo responses (private; ?v=imageVersion cached a year, else no-cache + ETag;

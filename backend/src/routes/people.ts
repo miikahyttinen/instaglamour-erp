@@ -5,7 +5,7 @@ import type { AppDeps } from '../app.js';
 import { isoFromDate } from '../domain/dates.js';
 import { notFound, parseInput, validationError } from '../http/errors.js';
 import { requiredText, yearString } from '../gigs/schemas.js';
-import { compareCostLines, toCostLineDto } from '../gigs/serialize.js';
+import { compareCostLines, costLinePurchaseOrderInclude, toCostLineDto } from '../gigs/serialize.js';
 import { isUuid, yearDateRange } from '../gigs/store.js';
 import { currentSessionTokenHash } from '../auth/session.js';
 import { grantPartner, isInAllowedDomain, normalizeEmail, revokePartner } from '../partners/store.js';
@@ -106,7 +106,7 @@ export function peopleRoutes(app: FastifyInstance, deps: AppDeps): void {
     const person = await requirePerson(request.params.id);
     const lines = await db.costLine.findMany({
       where: { personId: person.id, gig: { deletedAt: null, startDate: yearDateRange(year) } },
-      include: { gig: true },
+      include: { gig: true, ...costLinePurchaseOrderInclude },
     });
     lines.sort(
       (a, b) =>

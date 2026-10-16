@@ -6,17 +6,19 @@
  *   offer ever existed).
  * - Lookup by the SHA-256 of the token, then a constant-time comparison of the token itself.
  * - `X-Robots-Tag: noindex` and `Referrer-Policy: no-referrer` on every response (incl. errors).
- * - Rate limited per client IP (PUBLIC_OFFER_RATE_LIMIT per minute) → 429 RATE_LIMITED.
+ * - Rate limited per client IP (PUBLIC_OFFER_RATE_LIMIT per minute) → 429 RATE_LIMITED. The page
+ *   limiter is shared with the freelancer endpoints (routes/publicFreelancers.ts).
  *
  * Reference photos (BR-108) are served ONLY through PUBLIC_REFERENCE_IMAGE_ROUTE, and only when the
  * token is valid, the offer is not deleted and shows references, and the reference is active and
  * has a photo whose file exists. Every other case is the same 404. The photo route has its own
  * limiter with the same limit, so a page with several photos doesn't use up the page's budget.
  */
-import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import type { FastifyInstance } from 'fastify';
 import type { AppDeps } from '../app.js';
-import { AppError, notFound } from '../http/errors.js';
-import { FixedWindowRateLimiter } from '../http/rateLimit.js';
+import { notFound } from '../http/errors.js';
+import { newPublicRateLimiter, PUBLIC_RATE_LIMIT, publicGuard } from '../http/publicGuard.js';
+import type { FixedWindowRateLimiter } from '../http/rateLimit.js';
 import type { Db } from '../db.js';
 import { hashShareToken, isWellFormedShareToken, sameToken } from '../offers/shareToken.js';
 import { offerInclude, toPublicOfferDto, type OfferWithRefs } from '../offers/store.js';
@@ -28,11 +30,10 @@ import { UploadDir } from '../fileStore/uploadDir.js';
 export const PUBLIC_OFFER_ROUTE = '/api/public/offers/:token';
 /** Token-scoped reference photo (BR-108); also let through by the auth gate, nothing else is. */
 export const PUBLIC_REFERENCE_IMAGE_ROUTE = '/api/public/offers/:token/references/:id/image';
-/** The only route patterns reachable without a session besides /api/auth/*. */
-export const PUBLIC_ROUTES: ReadonlySet<string> = new Set([PUBLIC_OFFER_ROUTE, PUBLIC_REFERENCE_IMAGE_ROUTE]);
+/** The public offer route patterns reachable without a session (see also routes/publicFreelancers.ts). */
+export const PUBLIC_OFFER_ROUTES: readonly string[] = [PUBLIC_OFFER_ROUTE, PUBLIC_REFERENCE_IMAGE_ROUTE];
 
-export const PUBLIC_OFFER_RATE_LIMIT = 60;
-const RATE_WINDOW_MS = 60_000;
+export const PUBLIC_OFFER_RATE_LIMIT = PUBLIC_RATE_LIMIT;
 
 /** The non-deleted offer this exact token belongs to, else null (callers answer a uniform 404). */
 async function findOfferByToken(db: Db, token: string): Promise<OfferWithRefs | null> {
@@ -42,24 +43,15 @@ async function findOfferByToken(db: Db, token: string): Promise<OfferWithRefs | 
   return offer;
 }
 
-export function publicOfferRoutes(app: FastifyInstance, deps: AppDeps): void {
+/** `pageLimiter`: the per-IP limiter shared with the freelancer endpoints. */
+export function publicOfferRoutes(app: FastifyInstance, deps: AppDeps, pageLimiter: FixedWindowRateLimiter): void {
   const { db, config } = deps;
   const uploads = new UploadDir(config.uploadDir);
-  const limiter = new FixedWindowRateLimiter(PUBLIC_OFFER_RATE_LIMIT, RATE_WINDOW_MS);
-  const imageLimiter = new FixedWindowRateLimiter(PUBLIC_OFFER_RATE_LIMIT, RATE_WINDOW_MS);
+  const limiter = pageLimiter;
+  const imageLimiter = newPublicRateLimiter();
   const offerNotFound = () => notFound('Offer not found');
 
-  /** Headers for every public response, then the per-IP limit. */
-  const guard = (request: FastifyRequest, reply: FastifyReply, rateLimiter: FixedWindowRateLimiter) => {
-    reply.header('X-Robots-Tag', 'noindex');
-    reply.header('Cache-Control', 'no-store'); // overridden by a successful photo response
-    reply.header('Referrer-Policy', 'no-referrer');
-    const limit = rateLimiter.hit(request.ip);
-    if (!limit.allowed) {
-      reply.header('Retry-After', String(limit.retryAfterSeconds));
-      throw new AppError('RATE_LIMITED', 'Too many requests');
-    }
-  };
+  const guard = publicGuard;
 
   app.get<{ Params: { token: string } }>(PUBLIC_OFFER_ROUTE, async (request, reply) => {
     guard(request, reply, limiter);
