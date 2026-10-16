@@ -1,5 +1,5 @@
 # TASK-151: Freelancer public page + person-page link
-- **owner:** ui · **status:** todo · **spec:** UC-033, UC-034 A4, BR-113…BR-116, api-contract "Purchase orders" · **depends on:** none · **parallel:** TASK-023 (backend), TASK-152 (PO pages — owns `features/purchaseOrders/` and the gig page tag; you own `features/freelancer/` and the person page)
+- **owner:** ui · **status:** done · **spec:** UC-033, UC-034 A4, BR-113…BR-116, api-contract "Purchase orders" · **depends on:** none · **parallel:** TASK-023 (backend), TASK-152 (PO pages — owns `features/purchaseOrders/` and the gig page tag; you own `features/freelancer/` and the person page)
 ## Goal
 Public page `/f/<token>` where a freelancer sees their fees and creates a purchase order number; partners copy/regenerate the link on the person page.
 ## Acceptance criteria

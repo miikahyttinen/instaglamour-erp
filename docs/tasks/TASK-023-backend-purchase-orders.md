@@ -1,5 +1,5 @@
 # TASK-023: Purchase orders — backend
-- **owner:** backend · **status:** todo · **spec:** UC-033, UC-034, BR-113…BR-119, api-contract "Purchase orders", domain-model "Purchase orders" · **depends on:** none · **parallel:** TASK-151, TASK-152 (UI, against MSW)
+- **owner:** backend · **status:** done · **spec:** UC-033, UC-034, BR-113…BR-119, api-contract "Purchase orders", domain-model "Purchase orders" · **depends on:** none · **parallel:** TASK-151, TASK-152 (UI, against MSW)
 ## Goal
 Freelancers create purchase orders from their unpaid, played fees through a secret public link; partners list, search, mark paid / unmark / cancel them, with a full log.
 ## Contract
