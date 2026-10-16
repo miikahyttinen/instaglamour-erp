@@ -128,6 +128,21 @@ enum OfferDisposition {
 }
 
 /// Offer history (BR-103).
+/// Purchase order status (BR-117): OPEN -> PAID -> OPEN, OPEN -> CANCELLED (final).
+enum PurchaseOrderStatus {
+  OPEN
+  PAID
+  CANCELLED
+}
+
+/// Purchase order history (BR-119).
+enum PurchaseOrderEventType {
+  CREATED
+  PAID
+  UNPAID
+  CANCELLED
+}
+
 enum OfferEventType {
   CREATED
   UPDATED
@@ -143,14 +158,18 @@ enum OfferEventType {
 // ---------------------------------------------------------------------------
 
 model Person {
-  id        String   @id @default(uuid()) @db.Uuid
-  name      String
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id              String   @id @default(uuid()) @db.Uuid
+  name            String
+  active          Boolean  @default(true)
+  /// Secret freelancer link token (BR-113): 32 CSPRNG bytes, base64url (43 chars). The DB default
+  /// gives every new row one (also seed rows); regenerate replaces it (src/purchaseOrders/token.ts).
+  freelancerToken String   @unique @default(dbgenerated("translate(rtrim(encode(sha256(convert_to(gen_random_uuid()::text || gen_random_uuid()::text || gen_random_uuid()::text, 'UTF8')), 'base64'), '='), '+/', '-_')")) @map("freelancer_token")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
 
-  partner   Partner?
-  costLines CostLine[]
+  partner        Partner?
+  costLines      CostLine[]
+  purchaseOrders PurchaseOrder[]
 
   @@map("person")
 }
@@ -174,22 +193,25 @@ model Partner {
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
 
-  person              Person       @relation(fields: [personId], references: [id])
-  grantedBy           Partner?     @relation("PartnerGrantedBy", fields: [grantedById], references: [id], onDelete: SetNull)
-  revokedBy           Partner?     @relation("PartnerRevokedBy", fields: [revokedById], references: [id], onDelete: SetNull)
-  granted             Partner[]    @relation("PartnerGrantedBy")
-  revoked             Partner[]    @relation("PartnerRevokedBy")
-  soldGigs            Gig[]        @relation("GigSeller")
-  producedGigs        Gig[]        @relation("GigProducer")
-  deletedGigs         Gig[]        @relation("GigDeletedBy")
-  paidCostLines       CostLine[]   @relation("CostLinePaidBy")
-  uploadedAttachments Attachment[]
-  gigEvents           GigEvent[]
-  tasks               Task[]
-  hourEntries         HourEntry[]
-  sessions            Session[]
-  soldOffers          Offer[]      @relation("OfferSeller")
-  offerEvents         OfferEvent[]
+  person                  Person               @relation(fields: [personId], references: [id])
+  grantedBy               Partner?             @relation("PartnerGrantedBy", fields: [grantedById], references: [id], onDelete: SetNull)
+  revokedBy               Partner?             @relation("PartnerRevokedBy", fields: [revokedById], references: [id], onDelete: SetNull)
+  granted                 Partner[]            @relation("PartnerGrantedBy")
+  revoked                 Partner[]            @relation("PartnerRevokedBy")
+  soldGigs                Gig[]                @relation("GigSeller")
+  producedGigs            Gig[]                @relation("GigProducer")
+  deletedGigs             Gig[]                @relation("GigDeletedBy")
+  paidCostLines           CostLine[]           @relation("CostLinePaidBy")
+  uploadedAttachments     Attachment[]
+  gigEvents               GigEvent[]
+  tasks                   Task[]
+  hourEntries             HourEntry[]
+  sessions                Session[]
+  soldOffers              Offer[]              @relation("OfferSeller")
+  offerEvents             OfferEvent[]
+  paidPurchaseOrders      PurchaseOrder[]      @relation("PurchaseOrderPaidBy")
+  cancelledPurchaseOrders PurchaseOrder[]      @relation("PurchaseOrderCancelledBy")
+  purchaseOrderEvents     PurchaseOrderEvent[]
 
   @@map("partner")
 }
@@ -283,15 +305,16 @@ model Gig {
   createdAt                  DateTime        @default(now()) @map("created_at")
   updatedAt                  DateTime        @updatedAt @map("updated_at")
 
-  lineupTemplate LineupTemplate? @relation(fields: [lineupTemplateId], references: [id])
-  seller         Partner         @relation("GigSeller", fields: [sellerId], references: [id])
-  producer       Partner         @relation("GigProducer", fields: [producerId], references: [id])
-  deletedBy      Partner?        @relation("GigDeletedBy", fields: [deletedById], references: [id])
-  client         Client?         @relation(fields: [clientId], references: [id], onDelete: Restrict)
-  offer          Offer?          @relation(fields: [offerId], references: [id], onDelete: Restrict)
-  costLines      CostLine[]
-  attachments    Attachment[]
-  events         GigEvent[]
+  lineupTemplate     LineupTemplate?     @relation(fields: [lineupTemplateId], references: [id])
+  seller             Partner             @relation("GigSeller", fields: [sellerId], references: [id])
+  producer           Partner             @relation("GigProducer", fields: [producerId], references: [id])
+  deletedBy          Partner?            @relation("GigDeletedBy", fields: [deletedById], references: [id])
+  client             Client?             @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  offer              Offer?              @relation(fields: [offerId], references: [id], onDelete: Restrict)
+  costLines          CostLine[]
+  attachments        Attachment[]
+  events             GigEvent[]
+  purchaseOrderLines PurchaseOrderLine[]
 
   technicalSetupLegacy GigTechnicalSetupLegacy?
 
@@ -413,9 +436,10 @@ model CostLine {
   createdAt                   DateTime  @default(now()) @map("created_at")
   updatedAt                   DateTime  @updatedAt @map("updated_at")
 
-  gig    Gig      @relation(fields: [gigId], references: [id], onDelete: Cascade)
-  person Person?  @relation(fields: [personId], references: [id])
-  paidBy Partner? @relation("CostLinePaidBy", fields: [paidById], references: [id])
+  gig                Gig                 @relation(fields: [gigId], references: [id], onDelete: Cascade)
+  person             Person?             @relation(fields: [personId], references: [id])
+  paidBy             Partner?            @relation("CostLinePaidBy", fields: [paidById], references: [id])
+  purchaseOrderLines PurchaseOrderLine[]
 
   @@index([gigId])
   @@index([personId])
@@ -588,4 +612,86 @@ model Reference {
 
   @@index([sortOrder])
   @@map("reference")
+}
+
+// ---------------------------------------------------------------------------
+// Purchase orders (UC-033, UC-034, BR-113…BR-119)
+// ---------------------------------------------------------------------------
+
+/// A purchase order created by a freelancer through their link. `number` = name slug + global
+/// running number `seq` (DB sequence "purchase_order_seq", BR-116).
+model PurchaseOrder {
+  id            String              @id @default(uuid()) @db.Uuid
+  number        String              @unique
+  seq           Int                 @unique
+  personId      String              @map("person_id") @db.Uuid
+  status        PurchaseOrderStatus @default(OPEN)
+  totalCents    Int                 @map("total_cents")
+  paidAt        DateTime?           @map("paid_at")
+  paidById      String?             @map("paid_by") @db.Uuid
+  cancelledAt   DateTime?           @map("cancelled_at")
+  cancelledById String?             @map("cancelled_by") @db.Uuid
+  cancelReason  String?             @map("cancel_reason")
+  createdAt     DateTime            @default(now()) @map("created_at")
+  updatedAt     DateTime            @updatedAt @map("updated_at")
+
+  person      Person               @relation(fields: [personId], references: [id])
+  paidBy      Partner?             @relation("PurchaseOrderPaidBy", fields: [paidById], references: [id])
+  cancelledBy Partner?             @relation("PurchaseOrderCancelledBy", fields: [cancelledById], references: [id])
+  lines       PurchaseOrderLine[]
+  events      PurchaseOrderEvent[]
+
+  @@index([personId])
+  @@index([createdAt])
+  @@map("purchase_order")
+}
+
+/// One fee on a purchase order, with the amount snapshot (BR-115). `active` is true while the PO
+/// is OPEN or PAID; a cost line is on at most one active line (partial unique index
+/// "purchase_order_line_active_cost_line_key", migration only). `costLineRef` always keeps the
+/// original cost line id; `costLineId` (the FK) becomes null if the cost line is deleted after
+/// the PO was cancelled. gig/type/description are snapshots for that case.
+model PurchaseOrderLine {
+  id              String   @id @default(uuid()) @db.Uuid
+  purchaseOrderId String   @map("purchase_order_id") @db.Uuid
+  costLineId      String?  @map("cost_line_id") @db.Uuid
+  costLineRef     String   @map("cost_line_ref") @db.Uuid
+  gigId           String   @map("gig_id") @db.Uuid
+  type            CostType
+  description     String?
+  amountCents     Int      @map("amount_cents")
+  active          Boolean  @default(true)
+  position        Int
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  costLine      CostLine?     @relation(fields: [costLineId], references: [id], onDelete: SetNull)
+  gig           Gig           @relation(fields: [gigId], references: [id], onDelete: Restrict)
+
+  @@unique([purchaseOrderId, position])
+  @@index([costLineId])
+  @@index([gigId])
+  @@map("purchase_order_line")
+}
+
+/// Append-only purchase order history (BR-119). partner_id null = the freelancer via the link.
+model PurchaseOrderEvent {
+  id              String                 @id @default(uuid()) @db.Uuid
+  purchaseOrderId String                 @map("purchase_order_id") @db.Uuid
+  type            PurchaseOrderEventType
+  partnerId       String?                @map("partner_id") @db.Uuid
+  at              DateTime               @default(now())
+  details         Json                   @default("{}")
+  /// Insertion order; breaks ties between events with the same `at` (newest first).
+  seq             BigInt                 @default(autoincrement())
+  createdAt       DateTime               @default(now()) @map("created_at")
+  updatedAt       DateTime               @updatedAt @map("updated_at")
+
+  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  partner       Partner?      @relation(fields: [partnerId], references: [id], onDelete: Restrict)
+
+  @@index([purchaseOrderId, at])
+  @@index([at])
+  @@map("purchase_order_event")
 }

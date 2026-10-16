@@ -82,6 +82,9 @@ export function readSeedFile(file: string): unknown {
 /** Delete all application data (keeps the schema). Order respects foreign keys. */
 export async function emptyDatabase(tx: Tx): Promise<void> {
   await tx.session.deleteMany();
+  await tx.purchaseOrderEvent.deleteMany();
+  await tx.purchaseOrderLine.deleteMany();
+  await tx.purchaseOrder.deleteMany();
   await tx.reference.deleteMany();
   await tx.offerEvent.deleteMany();
   await tx.gigEvent.deleteMany();
