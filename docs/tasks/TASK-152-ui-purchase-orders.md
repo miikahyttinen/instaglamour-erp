@@ -1,5 +1,5 @@
 # TASK-152: Purchase orders pages (partners) + gig cost line tag
-- **owner:** ui · **status:** todo · **spec:** UC-034, BR-117…BR-119, api-contract "Purchase orders", docs/design.md "Excel-style tables" · **depends on:** none · **parallel:** TASK-023 (backend), TASK-151 (freelancer page + person page — don't edit `features/freelancer/` or `features/people/`)
+- **owner:** ui · **status:** done · **spec:** UC-034, BR-117…BR-119, api-contract "Purchase orders", docs/design.md "Excel-style tables" · **depends on:** none · **parallel:** TASK-023 (backend), TASK-151 (freelancer page + person page — don't edit `features/freelancer/` or `features/people/`)
 ## Goal
 Partners see, search and settle purchase orders; gig cost lines show their PO.
 ## Acceptance criteria

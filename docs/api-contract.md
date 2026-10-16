@@ -413,6 +413,7 @@ Duplicate = case-insensitive exact name match with another person.
 - `FreelancerLine = { costLineId, gigStartDate, gigEndDate|null, venue, type, description|null, amountCents, state: SELECTABLE|UPCOMING|ON_PO|PAID, purchaseOrderNumber|null }` — only the person's lines with `budgetedCents > 0` on non-deleted SOLD gigs (cancelled gigs are not shown). `amountCents` = PO snapshot when ON_PO, actual when PAID, else budgeted. `UPCOMING` = gig not played yet. A line paid through a PO is `PAID` with its `purchaseOrderNumber`.
 - `PublicPurchaseOrder = { number, status, totalCents, createdAt, paidAt|null, lines: [{ gigStartDate, venue, type, description|null, amountCents }] }` — no ids, partner names or cancel reason.
 - Unknown/regenerated token or inactive person → 404 `NOT_FOUND`.
+- Seller/producer change (BR-027) does not move SALES/PRODUCTION lines that are on an OPEN/PAID PO.
 - `FUEL` lines are never shown to the freelancer and never eligible (they can't be paid). Unmarking a PAID PO also unpays lines on gigs cancelled/deleted after payment.
 - Concurrency: creation locks the person's lines (e.g. `pg_advisory_xact_lock` on person id) so two requests can't put a line on two POs. Number per BR-116 (global DB sequence).
 
