@@ -17,7 +17,10 @@ import { hourRoutes } from './routes/hours.js';
 import { meRoutes } from './routes/me.js';
 import { offerRoutes } from './routes/offers.js';
 import { peopleRoutes } from './routes/people.js';
-import { PUBLIC_ROUTES, publicOfferRoutes } from './routes/publicOffers.js';
+import { newPublicRateLimiter } from './http/publicGuard.js';
+import { PUBLIC_FREELANCER_ROUTES, publicFreelancerRoutes } from './routes/publicFreelancers.js';
+import { PUBLIC_OFFER_ROUTES, publicOfferRoutes } from './routes/publicOffers.js';
+import { purchaseOrderRoutes } from './routes/purchaseOrders.js';
 import { referenceRoutes } from './routes/reference.js';
 import { referencesRoutes } from './routes/references.js';
 import { taskRoutes } from './routes/tasks.js';
@@ -39,6 +42,9 @@ declare module 'fastify' {
 }
 
 const PUBLIC_PREFIX = '/api/auth/';
+
+/** The only route patterns reachable without a session besides /api/auth/*. */
+export const PUBLIC_ROUTES: ReadonlySet<string> = new Set([...PUBLIC_OFFER_ROUTES, ...PUBLIC_FREELANCER_ROUTES]);
 
 export interface BuildAppOptions {
   db: Db;
@@ -70,8 +76,8 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
   // Global auth gate: every /api route except /api/auth/* and the public offer route needs a
   // session — including unknown routes, so the API surface isn't discoverable without signing in.
   app.addHook('onRequest', async (request, reply) => {
-    // Public offer (UC-030) and its token-scoped reference photos (BR-108): only these exact matched
-    // route patterns; other /api/public/* paths need a session.
+    // Public offer (UC-030), its token-scoped reference photos (BR-108) and the freelancer link
+    // (UC-033): only these exact matched route patterns; other /api/public/* paths need a session.
     if (request.routeOptions.url !== undefined && PUBLIC_ROUTES.has(request.routeOptions.url)) return;
     // Decide by the matched route pattern when there is one (not the raw URL), else by the path.
     const path = request.routeOptions.url ?? request.url.split('?', 1)[0] ?? '';
@@ -96,7 +102,11 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
   clientRoutes(app, deps);
   offerRoutes(app, deps);
   referencesRoutes(app, deps);
-  publicOfferRoutes(app, deps);
+  purchaseOrderRoutes(app, deps);
+  // One per-IP budget for the public offer page and the freelancer endpoints (contract).
+  const publicPageLimiter = newPublicRateLimiter();
+  publicOfferRoutes(app, deps, publicPageLimiter);
+  publicFreelancerRoutes(app, deps, publicPageLimiter);
 
   return app;
 }
