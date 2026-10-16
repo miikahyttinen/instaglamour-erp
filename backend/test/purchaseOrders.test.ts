@@ -108,6 +108,15 @@ describe('freelancer link (BR-113)', () => {
     expect(JSON.stringify(res.json())).not.toContain(token);
   });
 
+  it('an inactive person still has a link (200); its public page is 404 until active again', async () => {
+    const token = await tokenOf(s.world.p1.id);
+    await call(s, 'PATCH', `/api/people/${s.world.p1.id}`, { active: false });
+    expect(await tokenOf(s.world.p1.id)).toBe(token);
+    expect((await anon('GET', `/api/public/freelancers/${token}`)).statusCode).toBe(404);
+    await call(s, 'PATCH', `/api/people/${s.world.p1.id}`, { active: true });
+    expect((await anon('GET', `/api/public/freelancers/${token}`)).statusCode).toBe(200);
+  });
+
   it('404 for unknown or malformed person ids; 401 without a session', async () => {
     for (const id of [UNKNOWN_ID, 'nope']) {
       expect((await call(s, 'GET', `/api/people/${id}/freelancer-link`)).statusCode).toBe(404);
