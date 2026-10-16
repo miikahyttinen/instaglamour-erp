@@ -1,0 +1,31 @@
+/* "Freelancer-linkki" section on the person page (UC-034 A4). */
+
+.freelancer-link {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: var(--space-5) 0;
+}
+.freelancer-link > .section-label,
+.freelancer-link p {
+  margin: 0;
+}
+.freelancer-link-hint {
+  max-width: 70ch;
+}
+.freelancer-link-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.freelancer-link-url {
+  flex: 1 1 320px;
+  min-width: 0;
+  font-size: var(--fs-meta);
+}
+.freelancer-link-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}

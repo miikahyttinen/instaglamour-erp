@@ -540,3 +540,34 @@ Switch off → `dialog` "Poista osakkuus: <name>" / "Remove partner status: <nam
 estyy heti." / "Sign-in stops immediately.", buttons "Peruuta" / "Cancel", "Poista osakkuus" / "Remove
 partner status"; a 409 shows as an `alert` inside the dialog. Success notices: "<name> on nyt osakas." /
 "<name> is now a partner.", "<name> ei ole enää osakas." / "<name> is no longer a partner.".
+
+### Freelancer link (`src/features/freelancer/`, UC-033 / UC-034 A4, BR-113…BR-116)
+
+- **Public page** `/f/:token` (`FreelancerPage`): outside the auth provider and the shell (like
+  `/o/:token`); its only requests are `GET /api/public/freelancers/{token}` and
+  `POST …/purchase-orders`. `<meta name="robots" content="noindex, nofollow">`. Logo, person name,
+  FI/EN switch — default **Finnish**, the choice is remembered in `localStorage`
+  (`ig-freelancer-lang`, `freelancerLanguage.ts`, try/catch for blocked storage). Theme follows the OS
+  (`initTheme`).
+- **Fees** (`DataTable`, full width, cards < 600 px): date, venue, role (type label; description for
+  `OTHER` / `OTHER_ROLE`), fee, state. SELECTABLE rows have a checkbox (+ "Valitse kaikki" in the
+  header); UPCOMING "Keikka ei ole vielä soitettu"; ON_PO tag "Ostotilaus <number>"; PAID tag
+  "Maksettu" (+ PO number). Order as the API sends it (newest gig first).
+- Sticky bar: "Valittu: n", "Yhteensä <sum>", **Luo ostotilausnumero** (disabled with nothing
+  selected; double-click guarded by a ref). 201 → the PO goes to the top of **Ostotilaukset** (class
+  `is-new`, tag "Uusi"), its fees show "Ostotilaus <number>" at once, then the view is refetched. 409
+  `COST_LINE_NOT_ELIGIBLE` → warning, refetch; the ids in `details.costLineIds` are unselected and the
+  other valid selections stay. 429 → "Liian monta pyyntöä…". 404 → "Linkkiä ei löydy" page.
+- **Purchase orders**: one card per PO — number (mono; button "Kopioi numero <number>" → "Kopioitu"),
+  Luotu, Summa, Tila tag (Avoin `info` / "Maksettu 16.10.2026 klo 14.32" `ok` / Peruttu `muted`) and
+  its fees table ("Ostotilauksen <number> palkkiot").
+- **Person page**: section **Freelancer-linkki** (`FreelancerLinkSection`): full URL in a read-only
+  field, **Kopioi linkki** and **Luo uusi linkki** (confirm dialog; the old link stops working).
+- `ApiError.details` carries the error body's `details` (e.g. `costLineIds`).
+- Types: `src/api/purchaseOrderTypes.ts` (all PO shapes of the contract, re-exported from `types.ts`).
+- Texts: `src/features/freelancer/i18n.ts` (`freelancer`, `freelancerLink`).
+- **Mock:** `mocks/freelancerStore.ts` (`db.freelancer`: tokens, POs, events, running number) over
+  the gig store's cost lines — BR-114 eligibility, all-or-nothing creation, BR-116 number
+  (`PERSON-1-0001`); handlers in `mocks/freelancerHandlers.ts`. Demo link (Person 1, a paid and a
+  cancelled PO): `/f/demo-person-1-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa`. Rate limiting is not
+  simulated (tests override the handler for 429).

@@ -1,6 +1,7 @@
 // English UI texts. Must have exactly the same keys as fi.ts (checked by i18n.test.ts).
 import { en as budgetEn } from '../features/budget/i18n';
 import { en as clientsEn } from '../features/clients/i18n';
+import { en as freelancerEn } from '../features/freelancer/i18n';
 import { en as hoursEn } from '../features/hours/i18n';
 import { en as offersEn } from '../features/offers/i18n';
 import { en as offerPreviewEn } from '../features/offers/offerPreviewI18n';
@@ -92,6 +93,8 @@ const en: Resources = {
     ALREADY_CONVERTED: 'A gig has already been made from this offer.',
     CANNOT_REMOVE_SELF: 'You cannot remove your own partner status.',
     LAST_PARTNER: 'The last partner cannot be removed.',
+    COST_LINE_ON_PURCHASE_ORDER: 'The line is on a purchase order. Change the purchase order first.',
+    COST_LINE_NOT_ELIGIBLE: 'Some of the fees can no longer be selected.',
     RATE_LIMITED: 'Too many requests. Wait a moment and try again.',
     FILE_TOO_LARGE: 'The file is too large (max 20 MB).',
     UNSUPPORTED_FILE_TYPE: 'Allowed file types: PDF, DOCX, PNG and JPG.',
@@ -457,6 +460,7 @@ const en: Resources = {
   year: yearEn,
   ...clientsEn,
   ...peopleEn,
+  ...freelancerEn,
   ...tasksEn,
   ...hoursEn,
   budget: budgetEn,

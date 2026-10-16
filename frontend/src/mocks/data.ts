@@ -8,6 +8,7 @@ import {
 } from '../api/enums';
 import type { Partner, ReferenceData } from '../api/types';
 import { seedBudget, type BudgetState } from './budgetStore';
+import { seedFreelancer, type FreelancerState } from './freelancerStore';
 import { seedGigState } from './gigSeed';
 import { emptyGigState, type GigState } from './gigStore';
 import { seedHours, type HoursState } from './hoursStore';
@@ -30,6 +31,8 @@ export interface MockDb {
   tasks: TasksState;
   hours: HoursState;
   budget: BudgetState;
+  /** Freelancer link tokens and purchase orders (UC-033, UC-034). */
+  freelancer: FreelancerState;
 }
 
 const SESSION_KEY = 'mock-session-partner-id';
@@ -140,6 +143,7 @@ export const db: MockDb = {
   tasks: seedTasks(),
   hours: seedHours(startPartners),
   budget: seedBudget(startReference.budgetCategories),
+  freelancer: seedFreelancer(startGigs, startPartners[0]?.id),
 };
 
 /** Sets the mock session; kept in sessionStorage so a browser reload stays signed in. */
@@ -163,5 +167,6 @@ export function resetMockDb(): void {
   db.tasks = seedTasks();
   db.hours = seedHours(db.partners);
   db.budget = seedBudget(db.reference.budgetCategories);
+  db.freelancer = seedFreelancer(db.gigs, db.partners[0]?.id);
   setMockSession(null);
 }
