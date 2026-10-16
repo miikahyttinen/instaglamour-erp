@@ -5,6 +5,7 @@ import { en as hoursEn } from '../features/hours/i18n';
 import { en as offersEn } from '../features/offers/i18n';
 import { en as offerPreviewEn } from '../features/offers/offerPreviewI18n';
 import { en as referencesEn } from '../features/offers/referencesI18n';
+import { en as purchaseOrdersEn } from '../features/purchaseOrders/i18n';
 import { en as peopleEn } from '../features/people/i18n';
 import { en as tasksEn } from '../features/tasks/i18n';
 import { en as yearEn } from '../features/year/i18n';
@@ -22,6 +23,7 @@ const en: Resources = {
     offers: 'Offers',
     year: 'Year',
     gigs: 'Gigs',
+    purchaseOrders: 'Purchase orders',
     clients: 'Clients',
     people: 'People',
     tasks: 'Tasks',
@@ -71,6 +73,7 @@ const en: Resources = {
     offers: 'Offers {{year}}',
     year: 'Year {{year}}',
     gigs: 'Gigs {{year}}',
+    purchaseOrders: 'Purchase orders {{year}}',
     clients: 'Clients',
     people: 'People',
     tasks: 'Tasks',
@@ -92,6 +95,8 @@ const en: Resources = {
     ALREADY_CONVERTED: 'A gig has already been made from this offer.',
     CANNOT_REMOVE_SELF: 'You cannot remove your own partner status.',
     LAST_PARTNER: 'The last partner cannot be removed.',
+    COST_LINE_ON_PURCHASE_ORDER: 'The line is on a purchase order. Change the purchase order first (unmark paid or cancel it).',
+    COST_LINE_NOT_ELIGIBLE: 'Some of the selected fees can no longer be selected.',
     RATE_LIMITED: 'Too many requests. Wait a moment and try again.',
     FILE_TOO_LARGE: 'The file is too large (max 20 MB).',
     UNSUPPORTED_FILE_TYPE: 'Allowed file types: PDF, DOCX, PNG and JPG.',
@@ -455,6 +460,7 @@ const en: Resources = {
   ...offersEn,
   ...referencesEn,
   year: yearEn,
+  ...purchaseOrdersEn,
   ...clientsEn,
   ...peopleEn,
   ...tasksEn,

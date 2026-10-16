@@ -131,6 +131,16 @@ const gigDeleted = () => errorResponse(409, 'GIG_DELETED', 'Gig is deleted');
 const badTransition = () =>
   errorResponse(409, 'INVALID_STATUS_TRANSITION', 'Not possible in this status');
 
+/** 409 COST_LINE_ON_PURCHASE_ORDER (BR-118) with the PO number. */
+export const onPurchaseOrder = (number: string) =>
+  errorResponse(409, 'COST_LINE_ON_PURCHASE_ORDER', 'Cost line is on a purchase order', undefined, {
+    purchaseOrderNumber: number,
+  });
+
+/** First line of the gig on an OPEN purchase order (blocks cancel / delete, BR-118). */
+const openPurchaseOrderOf = (gig: MockGig) =>
+  linesOf(db.gigs, gig.id).find((l) => l.purchaseOrder?.status === 'OPEN')?.purchaseOrder;
+
 const findGig = (id: unknown): MockGig | undefined => db.gigs.gigs.find((g) => g.id === id);
 const findLine = (id: unknown): CostLine | undefined =>
   db.gigs.costLines.find((l) => l.id === id);
@@ -347,6 +357,8 @@ export const gigHandlers = [
       if (gig.status !== required) return badTransition();
       const reason = reasonOf(await readJson<ReasonRequest>(request));
       if (!reason) return validationError({ reason: 'REQUIRED' });
+      const openPo = action === 'cancel' ? openPurchaseOrderOf(gig) : undefined;
+      if (openPo) return onPurchaseOrder(openPo.number);
       gig.status = action === 'cancel' ? 'CANCELLED' : 'SOLD';
       touch(gig);
       logEvent(db.gigs, gig.id, action === 'cancel' ? 'CANCELLED' : 'UNCANCELLED', me.id, {}, reason);
@@ -362,6 +374,8 @@ export const gigHandlers = [
     if (gig.deletedAt) return gigDeleted();
     const reason = reasonOf(await readJson<ReasonRequest>(request));
     if (!reason) return validationError({ reason: 'REQUIRED' });
+    const openPo = openPurchaseOrderOf(gig);
+    if (openPo) return onPurchaseOrder(openPo.number);
     gig.deletedAt = nowTs();
     logEvent(db.gigs, gig.id, 'DELETED', me.id, {}, reason);
     return new HttpResponse(null, { status: 204 });
@@ -460,6 +474,9 @@ export const costLineHandlers = [
       }
     }
     if (Object.keys(fields).length > 0) return validationError(fields);
+    const locked =
+      body.personId !== undefined || body.budgetedCents !== undefined || body.joinsLoadIn !== undefined;
+    if (line.purchaseOrder && locked) return onPurchaseOrder(line.purchaseOrder.number);
 
     const personChanged = body.personId !== undefined && body.personId !== line.personId;
     updateCostLine(
@@ -484,6 +501,7 @@ export const costLineHandlers = [
     if (!me) return unauthenticated();
     const found = lineWithGig(params.id);
     if (found instanceof Response) return found;
+    if (found.line.purchaseOrder) return onPurchaseOrder(found.line.purchaseOrder.number);
     removeCostLine(db.gigs, found.line, me.id);
     touch(found.gig);
     return withWarnings(found.gig);
@@ -500,6 +518,7 @@ export const costLineHandlers = [
     const fields: Fields = {};
     checkMoney(fields, 'actualCents', body.actualCents, false);
     if (Object.keys(fields).length > 0) return validationError(fields);
+    if (line.purchaseOrder) return onPurchaseOrder(line.purchaseOrder.number);
     payCostLine(db.gigs, line, body.actualCents ?? line.budgetedCents, me.id);
     touch(gig);
     return withWarnings(gig);
@@ -510,6 +529,7 @@ export const costLineHandlers = [
     if (!me) return unauthenticated();
     const found = lineWithGig(params.id);
     if (found instanceof Response) return found;
+    if (found.line.purchaseOrder) return onPurchaseOrder(found.line.purchaseOrder.number);
     unpayCostLine(db.gigs, found.line, me.id);
     touch(found.gig);
     return withWarnings(found.gig);

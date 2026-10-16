@@ -94,6 +94,8 @@ export const ERROR_CODES = [
   'ALREADY_CONVERTED',
   'CANNOT_REMOVE_SELF',
   'LAST_PARTNER',
+  'COST_LINE_ON_PURCHASE_ORDER',
+  'COST_LINE_NOT_ELIGIBLE',
   'FILE_TOO_LARGE',
   'UNSUPPORTED_FILE_TYPE',
   'RATE_LIMITED',
@@ -169,3 +171,10 @@ export function isMusicianRole(type: CostType): type is MusicianRole {
 export function isSignInErrorCode(value: string | null): value is SignInErrorCode {
   return value !== null && (SIGN_IN_ERROR_CODES as readonly string[]).includes(value);
 }
+
+export {
+  PURCHASE_ORDER_EVENT_TYPES,
+  PURCHASE_ORDER_STATUSES,
+  type PurchaseOrderEventType,
+  type PurchaseOrderStatus,
+} from './purchaseOrderTypes';

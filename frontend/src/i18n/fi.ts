@@ -8,6 +8,7 @@ import { fi as hoursFi } from '../features/hours/i18n';
 import { fi as offersFi } from '../features/offers/i18n';
 import { fi as offerPreviewFi } from '../features/offers/offerPreviewI18n';
 import { fi as referencesFi } from '../features/offers/referencesI18n';
+import { fi as purchaseOrdersFi } from '../features/purchaseOrders/i18n';
 import { fi as peopleFi } from '../features/people/i18n';
 import { fi as tasksFi } from '../features/tasks/i18n';
 import { fi as yearFi } from '../features/year/i18n';
@@ -24,6 +25,7 @@ const fi = {
     offers: 'Tarjoukset',
     year: 'Vuosi',
     gigs: 'Keikat',
+    purchaseOrders: 'Ostotilaukset',
     clients: 'Asiakkaat',
     people: 'Henkilöt',
     tasks: 'Tehtävät',
@@ -73,6 +75,7 @@ const fi = {
     offers: 'Tarjoukset {{year}}',
     year: 'Vuosi {{year}}',
     gigs: 'Keikat {{year}}',
+    purchaseOrders: 'Ostotilaukset {{year}}',
     clients: 'Asiakkaat',
     people: 'Henkilöt',
     tasks: 'Tehtävät',
@@ -94,6 +97,8 @@ const fi = {
     ALREADY_CONVERTED: 'Tarjouksesta on jo tehty keikka.',
     CANNOT_REMOVE_SELF: 'Et voi poistaa omaa osakkuuttasi.',
     LAST_PARTNER: 'Viimeistä osakasta ei voi poistaa.',
+    COST_LINE_ON_PURCHASE_ORDER: 'Rivi on ostotilauksella. Muuta ensin ostotilausta (peru maksu tai peru ostotilaus).',
+    COST_LINE_NOT_ELIGIBLE: 'Kaikki valitut palkkiot eivät ole enää valittavissa.',
     RATE_LIMITED: 'Liian monta pyyntöä. Odota hetki ja yritä uudelleen.',
     FILE_TOO_LARGE: 'Tiedosto on liian suuri (enintään 20 Mt).',
     UNSUPPORTED_FILE_TYPE: 'Sallitut tiedostotyypit: PDF, DOCX, PNG ja JPG.',
@@ -458,6 +463,7 @@ const fi = {
   ...offersFi,
   ...referencesFi,
   year: yearFi,
+  ...purchaseOrdersFi,
   ...clientsFi,
   ...peopleFi,
   ...tasksFi,

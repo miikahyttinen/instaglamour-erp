@@ -11,18 +11,22 @@ export class ApiError extends Error {
   readonly status: number;
   readonly code: ErrorCode | 'UNKNOWN' | 'NETWORK_ERROR';
   readonly fields: Partial<Record<string, FieldCode>>;
+  /** `error.details` of the body (e.g. `purchaseOrderNumber`, `costLineIds`), else `{}`. */
+  readonly details: Record<string, unknown>;
 
   constructor(
     status: number,
     code: ApiError['code'],
     message: string,
     fields: Partial<Record<string, FieldCode>> = {},
+    details: Record<string, unknown> = {},
   ) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
     this.code = code;
     this.fields = fields;
+    this.details = details;
   }
 }
 
@@ -121,6 +125,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
       code,
       parsed?.message ?? `HTTP ${response.status}`,
       parsed?.fields ?? {},
+      parsed?.details ?? {},
     );
     if (response.status === 401) {
       unauthenticatedListeners.forEach((listener) => listener());

@@ -135,6 +135,9 @@ export function describeEvent(
           amount: formatMoney(event.details.actualCents, lang),
         }),
       );
+      if (event.details.purchaseOrderNumber) {
+        lines.push(t('purchaseOrders.historyNumber', { number: event.details.purchaseOrderNumber }));
+      }
       break;
     case 'COST_UNPAID':
       lines.push(
@@ -143,6 +146,9 @@ export function describeEvent(
           amount: formatMoney(event.details.previousActualCents, lang),
         }),
       );
+      if (event.details.purchaseOrderNumber) {
+        lines.push(t('purchaseOrders.historyNumber', { number: event.details.purchaseOrderNumber }));
+      }
       break;
     case 'ATTACHMENT_ADDED':
     case 'ATTACHMENT_REMOVED':
