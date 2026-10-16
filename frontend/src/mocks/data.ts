@@ -14,6 +14,7 @@ import { emptyGigState, type GigState } from './gigStore';
 import { seedHours, type HoursState } from './hoursStore';
 import { seedOffers } from './offerSeed';
 import type { OfferState } from './offerStore';
+import { seedPartnerPurchaseOrders } from './purchaseOrderStore';
 import { seedReferences, type ReferencesState } from './referencesStore';
 import { seedTasks, type TasksState } from './tasksStore';
 
@@ -123,6 +124,17 @@ function readStoredSession(): string | null {
   }
 }
 
+/** Freelancer links + POs (UC-033) and the extra partner-page demo POs (UC-034): one PO store. */
+function seedFreelancerAndPurchaseOrders(
+  gigs: GigState,
+  partners: Partner[],
+  reference: MockDb['reference'],
+): FreelancerState {
+  const state = seedFreelancer(gigs, partners[0]?.id);
+  seedPartnerPurchaseOrders(state, gigs, partners, reference);
+  return state;
+}
+
 function initialGigs(partners: Partner[], reference: MockDb['reference']): GigState {
   const state = emptyGigState();
   seedGigState(state, partners, reference);
@@ -143,7 +155,7 @@ export const db: MockDb = {
   tasks: seedTasks(),
   hours: seedHours(startPartners),
   budget: seedBudget(startReference.budgetCategories),
-  freelancer: seedFreelancer(startGigs, startPartners[0]?.id),
+  freelancer: seedFreelancerAndPurchaseOrders(startGigs, startPartners, startReference),
 };
 
 /** Sets the mock session; kept in sessionStorage so a browser reload stays signed in. */
@@ -167,6 +179,6 @@ export function resetMockDb(): void {
   db.tasks = seedTasks();
   db.hours = seedHours(db.partners);
   db.budget = seedBudget(db.reference.budgetCategories);
-  db.freelancer = seedFreelancer(db.gigs, db.partners[0]?.id);
+  db.freelancer = seedFreelancerAndPurchaseOrders(db.gigs, db.partners, db.reference);
   setMockSession(null);
 }

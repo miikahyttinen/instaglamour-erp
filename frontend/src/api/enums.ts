@@ -171,3 +171,10 @@ export function isMusicianRole(type: CostType): type is MusicianRole {
 export function isSignInErrorCode(value: string | null): value is SignInErrorCode {
   return value !== null && (SIGN_IN_ERROR_CODES as readonly string[]).includes(value);
 }
+
+export {
+  PURCHASE_ORDER_EVENT_TYPES,
+  PURCHASE_ORDER_STATUSES,
+  type PurchaseOrderEventType,
+  type PurchaseOrderStatus,
+} from './purchaseOrderTypes';

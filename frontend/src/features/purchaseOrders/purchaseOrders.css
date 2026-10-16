@@ -1,0 +1,181 @@
+/* Purchase orders (UC-034): list, log and PO page. Full content width (design.md → "Full-width,
+   responsive tables everywhere"); same paddings as the offer list via ExcelTable / DataTable. */
+
+.purchase-orders-page .po-back {
+  margin: 0 0 var(--space-2);
+}
+.purchase-orders-page .po-back a {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  color: var(--text-muted);
+  text-decoration: none;
+}
+.purchase-orders-page .po-back a:hover {
+  color: var(--text);
+}
+.purchase-orders-page .po-notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-5);
+}
+.purchase-orders-page .po-notice p {
+  margin: 0;
+}
+
+/* ---------- Toolbar: search ---------- */
+.purchase-orders-page .po-toolbar {
+  margin: 0 0 var(--space-6);
+}
+.purchase-orders-page .po-search label {
+  margin-top: 0;
+}
+.purchase-orders-page .po-search-input {
+  position: relative;
+}
+.purchase-orders-page .po-search-icon {
+  position: absolute;
+  top: 50%;
+  left: var(--space-3);
+  transform: translateY(-50%);
+  color: var(--label);
+  pointer-events: none;
+}
+.purchase-orders-page .po-search-input input {
+  padding-left: calc(var(--space-3) + var(--icon) + var(--space-2));
+}
+.purchase-orders-page .po-search-hint {
+  margin: var(--space-2) 0 0;
+}
+.purchase-orders-page .po-empty {
+  padding: var(--space-6) var(--card-pad);
+  border: var(--hairline) dashed var(--border);
+  border-radius: var(--radius);
+  color: var(--text-muted);
+}
+.purchase-orders-page .po-empty p {
+  margin: 0;
+}
+
+/* ---------- Table ---------- */
+.purchase-orders-page .po-link {
+  color: var(--text);
+  font-weight: var(--fw-bold);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+.purchase-orders-page .po-link:hover {
+  text-decoration: underline;
+}
+.purchase-orders-page .po-status-tag {
+  white-space: nowrap;
+}
+.purchase-orders-page .po-status-cell {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+}
+.purchase-orders-page .po-status-error {
+  white-space: normal;
+}
+.purchase-orders-page .po-row-cancelled td:not(.po-col-status) {
+  color: var(--text-muted);
+}
+.purchase-orders-page .po-col-date,
+.purchase-orders-page .po-col-time {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (min-width: 600px) {
+  .purchase-orders-page .po-search {
+    max-width: calc(var(--label-w) * 2.5);
+  }
+  .purchase-orders-page .po-table td.po-col-date,
+  .purchase-orders-page .po-event-table td.po-col-time,
+  .purchase-orders-page .po-lines-table td.po-col-date {
+    font-family: var(--font-mono);
+    font-size: var(--fs-label);
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow-wrap: normal;
+  }
+  .purchase-orders-page .po-table th.po-col-total {
+    white-space: nowrap;
+    overflow-wrap: normal;
+    hyphens: none;
+  }
+  .purchase-orders-page .po-table td.po-col-number {
+    white-space: nowrap;
+  }
+}
+
+/* ---------- Log ---------- */
+.purchase-orders-page .po-log {
+  margin-top: var(--section-gap);
+}
+
+/* ---------- PO page ---------- */
+.po-page .po-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.po-page .po-layout {
+  display: flex;
+  flex-direction: column;
+  gap: var(--section-gap);
+  min-width: 0;
+}
+.po-page .po-facts {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+}
+.po-page .po-facts > div {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.po-page .po-facts dt {
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  color: var(--label);
+}
+.po-page .po-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.po-page .po-facts dd.num {
+  text-align: left;
+  font-variant-numeric: tabular-nums;
+}
+.po-page .po-total {
+  font-weight: var(--fw-bold);
+}
+.po-page .po-lines-total td {
+  font-weight: var(--fw-bold);
+}
+.po-page .po-dialog-intro {
+  margin: 0 0 var(--space-4);
+}
+
+@media (min-width: 600px) {
+  .po-page .po-facts > div {
+    display: grid;
+    grid-template-columns: var(--label-w) minmax(0, 1fr);
+    column-gap: var(--space-4);
+    align-items: baseline;
+  }
+}

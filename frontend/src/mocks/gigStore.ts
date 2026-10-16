@@ -291,6 +291,7 @@ function newLine(gigId: Id, type: CostType, personId: Id | null, budgetedCents: 
     actualCents: null,
     paidAt: null,
     paidBy: null,
+    purchaseOrder: null,
   };
 }
 
@@ -508,7 +509,8 @@ export function updateGig(
     const fromPerson = partnerPersonId(partners, fromPartner);
     const toPerson = partnerPersonId(partners, toPartner);
     for (const line of linesOf(state, gig.id)) {
-      if (line.type !== type || line.paidAt !== null || line.personId !== fromPerson) continue;
+      // Lines on a purchase order keep their person (BR-118).
+      if (line.type !== type || line.paidAt !== null || line.purchaseOrder || line.personId !== fromPerson) continue;
       line.personId = toPerson;
       movedCostLineIds.push(line.id);
     }

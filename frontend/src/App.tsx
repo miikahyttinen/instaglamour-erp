@@ -13,6 +13,7 @@ import { HoursRoutes } from './features/hours/HoursRoutes';
 import { OffersRoutes } from './features/offers/OffersRoutes';
 import { PublicOfferPage } from './features/offers/PublicOfferPage';
 import { PeopleRoutes } from './features/people/PeopleRoutes';
+import { PurchaseOrdersRoutes } from './features/purchaseOrders/PurchaseOrdersRoutes';
 import { TasksPage } from './features/tasks/TasksPage';
 import { YearPage } from './features/year/YearPage';
 import { AppShell } from './layout/AppShell';
@@ -49,6 +50,7 @@ export function AppRoutes() {
         <Route path="offers/*" element={<OffersRoutes />} />
         <Route index element={<YearPage />} />
         <Route path="gigs/*" element={<GigsRoutes />} />
+        <Route path="purchase-orders/*" element={<PurchaseOrdersRoutes />} />
         <Route path="clients/*" element={<ClientsRoutes />} />
         <Route path="people/*" element={<PeopleRoutes />} />
         <Route path="tasks/*" element={<TasksPage />} />

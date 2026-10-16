@@ -16,6 +16,8 @@ export const rootKeys = {
   clients: ['clients'],
   /** Offer lists, offer pages and offer history: ['offers', …] (UC-028). */
   offers: ['offers'],
+  /** Purchase order lists, pages, history and the log: ['purchase-orders', …] (UC-034). */
+  purchaseOrders: ['purchase-orders'],
   /** Hour entries and totals: ['hours', …]. */
   hours: ['hours'],
   /** Budget: ['budget', year]. */

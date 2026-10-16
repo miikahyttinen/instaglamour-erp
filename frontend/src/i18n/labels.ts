@@ -49,6 +49,11 @@ export function gigDisplayStatus(gig: Pick<GigSummary, 'status' | 'played'>): Gi
 /** User-facing text for an API error. Never shows the server's English `message`. */
 export function apiErrorMessage(t: TFunction, error: unknown): string {
   const code = (error as Partial<ApiError> | null)?.code;
+  const poNumber = (error as Partial<ApiError> | null)?.details?.purchaseOrderNumber;
+  if (code === 'COST_LINE_ON_PURCHASE_ORDER' && typeof poNumber === 'string') {
+    // BR-118: say which PO locks the line / gig.
+    return t('purchaseOrders.lockedError', { number: poNumber });
+  }
   if (typeof code === 'string' && t(`errors.${code}`, { defaultValue: '' })) {
     return t(`errors.${code}`);
   }

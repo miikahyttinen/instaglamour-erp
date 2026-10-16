@@ -5,6 +5,7 @@ import {
   FileText,
   ListChecks,
   Music,
+  Receipt,
   Users,
   Wallet,
   type LucideIcon,
@@ -12,7 +13,7 @@ import {
 
 export interface NavItem {
   to: string;
-  labelKey: `nav.${'offers' | 'year' | 'gigs' | 'clients' | 'people' | 'tasks' | 'hours' | 'budget'}`;
+  labelKey: `nav.${'offers' | 'year' | 'gigs' | 'purchaseOrders' | 'clients' | 'people' | 'tasks' | 'hours' | 'budget'}`;
   icon: LucideIcon;
   end?: boolean;
 }
@@ -22,6 +23,7 @@ export const NAV_ITEMS: NavItem[] = [
   { to: '/', labelKey: 'nav.year', icon: CalendarDays, end: true },
   { to: '/offers', labelKey: 'nav.offers', icon: FileText },
   { to: '/gigs', labelKey: 'nav.gigs', icon: Music },
+  { to: '/purchase-orders', labelKey: 'nav.purchaseOrders', icon: Receipt },
   { to: '/clients', labelKey: 'nav.clients', icon: Contact },
   { to: '/people', labelKey: 'nav.people', icon: Users },
   { to: '/tasks', labelKey: 'nav.tasks', icon: ListChecks },

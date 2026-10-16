@@ -137,4 +137,19 @@ describe('history descriptions (UC-013)', () => {
     expect(types('attachments')).toEqual(['ATTACHMENT_ADDED', 'ATTACHMENT_REMOVED']);
     expect(types('all')).toHaveLength(events.length);
   });
+
+  it('names the purchase order of a payment made through one (UC-034)', () => {
+    const paid: GigEvent = {
+      ...base,
+      type: 'COST_PAID',
+      details: { costLineId: 'l', type: 'VOC', actualCents: 10000, purchaseOrderNumber: 'PERSON-1-0001' },
+    };
+    expect(describeEvent(i18n.getFixedT('fi'), 'fi', paid, ctx).lines[1]).toBe('Ostotilaus PERSON-1-0001');
+    const unpaid: GigEvent = {
+      ...base,
+      type: 'COST_UNPAID',
+      details: { costLineId: 'l', type: 'VOC', previousActualCents: 10000, purchaseOrderNumber: 'PERSON-1-0001' },
+    };
+    expect(describeEvent(i18n.getFixedT('en'), 'en', unpaid, ctx).lines[1]).toBe('Purchase order PERSON-1-0001');
+  });
 });

@@ -6,6 +6,7 @@ import { en as hoursEn } from '../features/hours/i18n';
 import { en as offersEn } from '../features/offers/i18n';
 import { en as offerPreviewEn } from '../features/offers/offerPreviewI18n';
 import { en as referencesEn } from '../features/offers/referencesI18n';
+import { en as purchaseOrdersEn } from '../features/purchaseOrders/i18n';
 import { en as peopleEn } from '../features/people/i18n';
 import { en as tasksEn } from '../features/tasks/i18n';
 import { en as yearEn } from '../features/year/i18n';
@@ -23,6 +24,7 @@ const en: Resources = {
     offers: 'Offers',
     year: 'Year',
     gigs: 'Gigs',
+    purchaseOrders: 'Purchase orders',
     clients: 'Clients',
     people: 'People',
     tasks: 'Tasks',
@@ -72,6 +74,7 @@ const en: Resources = {
     offers: 'Offers {{year}}',
     year: 'Year {{year}}',
     gigs: 'Gigs {{year}}',
+    purchaseOrders: 'Purchase orders {{year}}',
     clients: 'Clients',
     people: 'People',
     tasks: 'Tasks',
@@ -458,6 +461,7 @@ const en: Resources = {
   ...offersEn,
   ...referencesEn,
   year: yearEn,
+  ...purchaseOrdersEn,
   ...clientsEn,
   ...peopleEn,
   ...freelancerEn,

@@ -571,3 +571,42 @@ partner status"; a 409 shows as an `alert` inside the dialog. Success notices: "
   (`PERSON-1-0001`); handlers in `mocks/freelancerHandlers.ts`. Demo link (Person 1, a paid and a
   cancelled PO): `/f/demo-person-1-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa`. Rate limiting is not
   simulated (tests override the handler for 429).
+
+### Purchase orders (`src/features/purchaseOrders/`, UC-034, BR-117…BR-119)
+
+- **Nav:** "Ostotilaukset / Purchase orders" (icon `Receipt`) after Keikat; routes `/purchase-orders`
+  and `/purchase-orders/:id` (`PurchaseOrdersRoutes`).
+- **List** (`PurchaseOrderListPage`, `ExcelTable`, full width, cards < 600 px): Numero (link, card
+  title), Freelancer, Luotu (date + time), Keikat (gig dates, comma-separated), Summa, Tila. Luotu and
+  Keikat are priority 2. Filters on Freelancer and Tila (client-side, `f.*` in the URL). Selected
+  year = year of `createdAt` (server side). Default sort: Luotu, newest first.
+- **Tila cell** (`PurchaseOrderStatusCell`): OPEN → **Merkitse maksetuksi** (one click; accessible
+  name "Merkitse maksetuksi: <number>"; error under it, role `alert`); PAID → green tag
+  "Maksettu 16.10.2026 klo 14.32" / "Paid 16 Oct 2026 14:32"; CANCELLED → grey tag "Peruttu". A 409
+  `INVALID_STATUS_TRANSITION` says "Ostotilauksen tila on jo muuttunut" and refetches.
+- **Search** ("Haku", `?q=` in the URL): sends only `q` (no `year`) → all years; hint "Haetaan
+  kaikilta vuosilta" and the title drops the year while searching.
+- **Log** ("Loki", table "Ostotilausten tapahtumat"): `GET /api/purchase-orders/events?limit=50` — time,
+  number (link), event (Luotu freelancerin linkillä / Merkitty maksetuksi / Maksu peruttu / Peruttu:
+  <reason>), actor (partner name, or "Freelancer" when `partnerId` is null).
+- **PO page** (`PurchaseOrderPage`): number + status tag, actions (OPEN: Merkitse maksetuksi, Peru
+  ostotilaus — dialog with required reason ≤ 500; PAID: Peru maksu — confirm dialog), facts
+  (freelancer link to `/people/:id`, created, fee count, total, paid / cancelled info and reason), fee
+  lines ("Ostotilauksen palkkiot": gig date, venue, lineup, role, amount, "Avaa keikka") with a total
+  row, and the PO history ("Historia").
+- **Gig page cost list:** a line with `purchaseOrder` shows the tag link "PO <number>" (accessible name
+  "Ostotilaus <number>"); person, budget, load-in switch, paid amount and pay / unpay / remove are
+  disabled or hidden, with "Ostotilauksella <number>" (hint + `title`). The description stays
+  editable. 409 `COST_LINE_ON_PURCHASE_ORDER` (line edits, gig cancel / delete) → "Rivi on
+  ostotilauksella <number>. Muuta ensin ostotilausta…" (`apiErrorMessage` reads
+  `details.purchaseOrderNumber`). Gig history lines of PO payments add "Ostotilaus <number>".
+- After pay / unpay / cancel (`useApplyPurchaseOrder`): the PO is put in the detail and list caches,
+  then every `['purchase-orders']` query, the gig pages and the year data are refetched.
+- Texts: `src/features/purchaseOrders/i18n.ts` (`purchaseOrders`); `formatTime` in `lib/format.ts`.
+- **Mock:** one PO store, `db.freelancer` (`mocks/freelancerStore.ts`; creation there sets
+  `CostLine.purchaseOrder`). Partner mutations in `mocks/purchaseOrderStore.ts` (pay: lines paid with
+  the snapshot, `COST_PAID` with `purchaseOrderNumber`; unpay; cancel frees the lines) and handlers in
+  `mocks/purchaseOrderHandlers.ts`. The cost line / gig handlers return 409
+  `COST_LINE_ON_PURCHASE_ORDER` per BR-118. Extra demo POs (Person 2 paid, Person 3 cancelled + open
+  on a 20 March gig, Person 4 paid in the previous year) come from `seedPartnerPurchaseOrders`. Test
+  helpers: `src/test/purchaseOrderFixtures.ts`.

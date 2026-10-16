@@ -2,6 +2,7 @@ import { useMutation } from '@tanstack/react-query';
 import { CircleCheck, Trash2 } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import type { CostType } from '../../api/enums';
 import { isMusicianRole } from '../../api/enums';
 import { costLinesApi } from '../../api/endpoints';
@@ -134,6 +135,10 @@ function CostLineItem({ line, people, readOnly, columnCount, onResult }: LinePro
   const label = line.description ? `${typeLabel} (${line.description})` : typeLabel;
   const paid = line.paidAt !== null;
   const musician = isMusicianRole(line.type);
+  // BR-118: on an open / paid purchase order the person, amounts, load-in and paid state are
+  // locked (change the PO first); the description stays editable.
+  const po = line.purchaseOrder;
+  const lockedHint = po ? t('purchaseOrders.lockedHint', { number: po.number }) : undefined;
 
   // Pay / unpay / remove are actions; the fields below save themselves (NFR-8).
   const mutation = useMutation({
@@ -152,6 +157,16 @@ function CostLineItem({ line, people, readOnly, columnCount, onResult }: LinePro
       <tr>
         <td className="cell-primary cost-type">
           <span className="cost-type-name">{typeLabel}</span>
+          {po && (
+            <Link
+              to={`/purchase-orders/${po.id}`}
+              className="tag tag-info cost-po-tag"
+              title={lockedHint}
+              aria-label={t('purchaseOrders.tagLabel', { number: po.number })}
+            >
+              {t('purchaseOrders.tag', { number: po.number })}
+            </Link>
+          )}
           {readOnly ? (
             line.description && <span className="cost-type-description"> · {line.description}</span>
           ) : (
@@ -171,7 +186,7 @@ function CostLineItem({ line, people, readOnly, columnCount, onResult }: LinePro
           )}
         </td>
 
-        <td className="cost-person" data-label={t('costs.person')}>
+        <td className="cost-person" data-label={t('costs.person')} title={lockedHint}>
           {readOnly ? (
             <span>{personName(people, line.personId) ?? t('costs.noPersonShort')}</span>
           ) : (
@@ -179,25 +194,26 @@ function CostLineItem({ line, people, readOnly, columnCount, onResult }: LinePro
               label={`${t('costs.person')}: ${label}`}
               value={line.personId}
               people={people}
+              disabled={po !== null}
               onSave={(personId) => update({ personId })}
             />
           )}
         </td>
 
-        <td className={musician ? 'cost-loadin' : 'cost-loadin is-empty'}>
+        <td className={musician ? 'cost-loadin' : 'cost-loadin is-empty'} title={musician ? lockedHint : undefined}>
           {musician && (
             <InlineSwitch
               label={t('costs.loadIn')}
               className="cost-loadin-switch"
               value={line.joinsLoadIn === true}
-              disabled={readOnly}
+              disabled={readOnly || po !== null}
               field="joinsLoadIn"
               onSave={(joinsLoadIn) => update({ joinsLoadIn })}
             />
           )}
         </td>
 
-        <td className="num cost-budget" data-label={t('costs.budgeted')}>
+        <td className="num cost-budget" data-label={t('costs.budgeted')} title={lockedHint}>
           {readOnly ? (
             formatMoney(line.budgetedCents, lang)
           ) : (
@@ -206,14 +222,15 @@ function CostLineItem({ line, people, readOnly, columnCount, onResult }: LinePro
               hideLabel
               required
               value={line.budgetedCents}
+              disabled={po !== null}
               field="budgetedCents"
               onSave={(budgetedCents) => update({ budgetedCents })}
             />
           )}
         </td>
 
-        <td className="cost-paid" data-label={t('gig.actual')}>
-          {paid && !readOnly ? (
+        <td className="cost-paid" data-label={t('gig.actual')} title={lockedHint}>
+          {paid && !readOnly && !po ? (
             // Paid: the amount stays editable (POST pay on a paid line updates the amount only).
             <div className="cost-paid-edit">
               <InlineMoney
@@ -251,7 +268,8 @@ function CostLineItem({ line, people, readOnly, columnCount, onResult }: LinePro
 
         {!readOnly && (
           <td className="cost-actions">
-            {mode !== 'pay' && (
+            {po && <span className="cost-hint cost-po-hint">{lockedHint}</span>}
+            {mode !== 'pay' && !po && (
               <div className="cost-actions-inner">
                 {paid ? (
                   <Button

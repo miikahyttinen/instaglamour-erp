@@ -18,7 +18,7 @@ describe('client list (UC-027)', () => {
     signInMock().selectedYear = TEST_YEAR;
   });
 
-  it('is in the menu after Gigs and lists clients by name with gig and offer counts', async () => {
+  it('is in the menu after Gigs and Purchase orders and lists clients by name with gig and offer counts', async () => {
     const x = addMockClient('Client X');
     addMockGig({ clientId: x.id });
     addMockGig({ clientId: x.id, startDate: `${TEST_YEAR + 1}-02-01` }); // all years count
@@ -30,7 +30,9 @@ describe('client list (UC-027)', () => {
     const { user } = renderApp('/');
     const nav = await screen.findByRole('navigation', { name: 'Päävalikko' });
     const labels = within(nav).getAllByRole('link').map((l) => l.textContent);
-    expect(labels.indexOf('Asiakkaat')).toBe(labels.indexOf('Keikat') + 1);
+    // Purchase orders (TASK-152) sits between Gigs and Clients.
+    expect(labels.indexOf('Ostotilaukset')).toBe(labels.indexOf('Keikat') + 1);
+    expect(labels.indexOf('Asiakkaat')).toBe(labels.indexOf('Keikat') + 2);
     await user.click(within(nav).getByRole('link', { name: 'Asiakkaat' }));
 
     expect(await screen.findByRole('heading', { name: 'Asiakkaat', level: 1 })).toBeInTheDocument();

@@ -21,6 +21,7 @@ import type {
   TechnicalSetup,
   Logistics,
 } from './enums';
+import type { CostLinePurchaseOrder } from './purchaseOrderTypes';
 
 export type Id = string;
 /** `YYYY-MM-DD` */
@@ -137,6 +138,8 @@ export interface CostLine {
   paidAt: IsoTimestamp | null;
   /** Partner id */
   paidBy: Id | null;
+  /** OPEN or PAID purchase order the line is on, else null. Locks person/amount/paid (BR-118). */
+  purchaseOrder: CostLinePurchaseOrder | null;
 }
 
 export interface Attachment {
@@ -188,8 +191,14 @@ export type GigEvent =
       { costLineId: Id; type: CostType; personId: Id | null; budgetedCents: Cents }
     >
   | GigEventBase<'COST_UPDATED', { costLineId: Id; type: CostType; changes: FieldChange[] }>
-  | GigEventBase<'COST_PAID', { costLineId: Id; type: CostType; actualCents: Cents }>
-  | GigEventBase<'COST_UNPAID', { costLineId: Id; type: CostType; previousActualCents: Cents }>
+  | GigEventBase<
+      'COST_PAID',
+      { costLineId: Id; type: CostType; actualCents: Cents; purchaseOrderNumber?: string }
+    >
+  | GigEventBase<
+      'COST_UNPAID',
+      { costLineId: Id; type: CostType; previousActualCents: Cents; purchaseOrderNumber?: string }
+    >
   | GigEventBase<'ATTACHMENT_ADDED' | 'ATTACHMENT_REMOVED', { attachmentId: Id; filename: string }>;
 
 export interface Task {

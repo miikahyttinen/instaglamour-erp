@@ -9,8 +9,11 @@ export function errorResponse(
   code: ErrorCode,
   message: string,
   fields?: Record<string, FieldCode>,
+  details?: Record<string, unknown>,
 ) {
-  const body: ApiErrorBody = { error: { code, message, ...(fields ? { fields } : {}) } };
+  const body: ApiErrorBody = {
+    error: { code, message, ...(fields ? { fields } : {}), ...(details ? { details } : {}) },
+  };
   return HttpResponse.json(body, { status });
 }
 

@@ -50,6 +50,10 @@ import type {
   PersonUpdate,
   PersonWithWarnings,
   PublicOffer,
+  PurchaseOrder,
+  PurchaseOrderEvent,
+  PurchaseOrderListQuery,
+  PurchaseOrderListResponse,
   ReasonRequest,
   ReferenceData,
   Task,
@@ -279,4 +283,23 @@ export const referencesApi = {
   imageUrl: (id: Id, imageVersion: string | null) =>
     buildUrl(`/references/${id}/image`, { v: imageVersion }),
   remove: (id: Id) => apiRequest<void>(`/references/${id}`, { method: 'DELETE' }),
+};
+
+// ---------- Purchase orders (UC-034) ----------
+
+export const purchaseOrdersApi = {
+  /** With `q`, the server ignores `year` and searches all years (BR-119). */
+  list: (query: PurchaseOrderListQuery) =>
+    apiRequest<PurchaseOrderListResponse>('/purchase-orders', {
+      query: { year: query.q ? undefined : query.year, q: query.q || undefined, status: query.status },
+    }),
+  get: (id: Id) => apiRequest<PurchaseOrder>(`/purchase-orders/${id}`),
+  pay: (id: Id) => apiRequest<PurchaseOrder>(`/purchase-orders/${id}/pay`, { method: 'POST' }),
+  unpay: (id: Id) => apiRequest<PurchaseOrder>(`/purchase-orders/${id}/unpay`, { method: 'POST' }),
+  cancel: (id: Id, body: ReasonRequest) =>
+    apiRequest<PurchaseOrder>(`/purchase-orders/${id}/cancel`, { method: 'POST', body }),
+  history: (id: Id) => apiRequest<PurchaseOrderEvent[]>(`/purchase-orders/${id}/history`),
+  /** Recent events of every PO, newest first (`limit` 1…200, default 50). */
+  events: (limit?: number) =>
+    apiRequest<PurchaseOrderEvent[]>('/purchase-orders/events', { query: { limit } }),
 };

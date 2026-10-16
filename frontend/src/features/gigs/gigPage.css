@@ -279,6 +279,21 @@
   font-size: var(--fs-small);
   color: var(--text-muted);
 }
+/* BR-118: "PO <number>" tag next to the type, linking to the purchase order. */
+.gig-page .cost-table .cost-po-tag {
+  margin-left: var(--space-2);
+  white-space: nowrap;
+  text-decoration: none;
+  vertical-align: middle;
+}
+.gig-page .cost-table .cost-po-tag:hover {
+  text-decoration: underline;
+}
+.gig-page .cost-table .cost-po-hint {
+  display: inline-block;
+  white-space: nowrap;
+  hyphens: none;
+}
 .gig-page .cost-actions-inner {
   display: flex;
   align-items: center;

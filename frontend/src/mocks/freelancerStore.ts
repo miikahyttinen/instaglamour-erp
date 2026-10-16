@@ -81,7 +81,7 @@ export function activePurchaseOrderOf(state: FreelancerState, costLineId: Id): P
   );
 }
 
-interface FeeLine {
+export interface FeeLine {
   line: CostLine;
   gig: MockGig;
 }
@@ -164,7 +164,8 @@ export function freelancerView(
 
 export type CreateResult = { ok: true; purchaseOrder: PurchaseOrder } | { ok: false; notEligible: Id[] };
 
-function newPurchaseOrder(
+/** Creates an OPEN PO (no eligibility check) and puts the lines on it (`CostLine.purchaseOrder`). */
+export function newPurchaseOrder(
   state: FreelancerState,
   person: MockPerson,
   fees: FeeLine[],
@@ -198,6 +199,7 @@ function newPurchaseOrder(
   };
   state.nextSeq += 1;
   state.purchaseOrders.push(po);
+  for (const fee of fees) fee.line.purchaseOrder = { id: po.id, number: po.number, status: 'OPEN' };
   logPurchaseOrderEvent(state, po, 'CREATED', null, {}, createdAt);
   return po;
 }
@@ -264,6 +266,7 @@ export function seedFreelancer(gigs: GigState, partnerId: Id | undefined): Freel
     po.status = 'PAID';
     po.paidAt = at(paid.gig.startDate, 9, '11:32:00.000Z');
     po.paidBy = partnerId ?? null;
+    paid.line.purchaseOrder = { id: po.id, number: po.number, status: 'PAID' };
     logPurchaseOrderEvent(state, po, 'PAID', po.paidBy, { totalCents: po.totalCents }, po.paidAt);
   }
   const open = fees.find((f) => f.line.paidAt === null && f.gig.startDate < today);
@@ -274,6 +277,7 @@ export function seedFreelancer(gigs: GigState, partnerId: Id | undefined): Freel
     po.cancelledAt = at(open.gig.startDate, 1, '15:00:00.000Z');
     po.cancelledBy = partnerId ?? null;
     po.cancelReason = 'Wrong fee selected.';
+    open.line.purchaseOrder = null;
     logPurchaseOrderEvent(state, po, 'CANCELLED', po.cancelledBy, { reason: po.cancelReason }, po.cancelledAt);
   }
   return state;

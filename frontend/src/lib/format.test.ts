@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  formatTime,
   centsToInput,
   formatDate,
   formatDateRange,
@@ -91,6 +92,16 @@ describe('formatDate', () => {
     expect(formatDateRange('2026-05-01', null, 'fi')).toBe('1.5.2026');
     expect(formatDateRange('2026-05-01', '2026-05-03', 'fi')).toBe('1.5.2026–3.5.2026');
     expect(formatDateRange('2026-05-01', '2026-05-03', 'en')).toBe('1 May 2026–3 May 2026');
+  });
+});
+
+describe('formatTime', () => {
+  it('formats the local time: FI with a dot, EN with a colon', () => {
+    const ts = new Date(2030, 9, 16, 14, 32).toISOString();
+    expect(formatTime(ts, 'fi')).toBe('14.32');
+    expect(formatTime(ts, 'en')).toBe('14:32');
+    expect(formatTime(null, 'fi')).toBe('–');
+    expect(formatTime('nope', 'en')).toBe('–');
   });
 });
 

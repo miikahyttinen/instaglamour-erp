@@ -28,6 +28,7 @@ describe('app shell', () => {
     for (const [label, heading] of [
       ['Tarjoukset', 'Tarjoukset 2030'],
       ['Keikat', 'Keikat 2030'],
+      ['Ostotilaukset', 'Ostotilaukset 2030'],
       ['Asiakkaat', 'Asiakkaat'],
       ['Henkilöt', 'Henkilöt'],
       ['Tehtävät', 'Tehtävät'],
@@ -322,6 +323,7 @@ describe('app shell', () => {
         'Vuosi',
         'Tarjoukset',
         'Keikat',
+        'Ostotilaukset',
         'Asiakkaat',
         'Henkilöt',
         'Tehtävät',

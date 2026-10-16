@@ -102,6 +102,16 @@ export function formatDateRange(start: string, end: string | null, lang: Languag
   return `${formatDate(start, lang)}–${formatDate(end, lang)}`;
 }
 
+/** Time of a timestamp: FI `14.05`, EN `14:05` (local time). Invalid / empty → `–`. */
+export function formatTime(value: string | null | undefined, lang: Language): string {
+  if (!value) return '–';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '–';
+  const hh = String(date.getHours()).padStart(2, '0');
+  const mm = String(date.getMinutes()).padStart(2, '0');
+  return `${hh}${lang === 'fi' ? '.' : ':'}${mm}`;
+}
+
 /** Timestamp with time: FI `1.5.2026 14.05`, EN `1 May 2026 14:05` (local time). */
 export function formatDateTime(value: string | null | undefined, lang: Language): string {
   if (!value) return '–';
