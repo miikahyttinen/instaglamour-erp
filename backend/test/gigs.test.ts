@@ -77,6 +77,7 @@ describe('POST /api/gigs', () => {
       actualCents: null,
       paidAt: null,
       paidBy: null,
+      purchaseOrder: null,
     });
     expect(bass).toMatchObject({ budgetedCents: 20000, joinsLoadIn: true, personId: null });
     expect(office).toMatchObject({ budgetedCents: FEES.office, personId: null, joinsLoadIn: null });
