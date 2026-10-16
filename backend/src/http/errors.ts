@@ -18,6 +18,8 @@ export type ErrorCode =
   | 'ALREADY_CONVERTED'
   | 'CANNOT_REMOVE_SELF'
   | 'LAST_PARTNER'
+  | 'COST_LINE_ON_PURCHASE_ORDER'
+  | 'COST_LINE_NOT_ELIGIBLE'
   | 'RATE_LIMITED'
   | 'FILE_TOO_LARGE'
   | 'UNSUPPORTED_FILE_TYPE'
@@ -52,6 +54,8 @@ const STATUS_BY_CODE: Record<ErrorCode, number> = {
   ALREADY_CONVERTED: 409,
   CANNOT_REMOVE_SELF: 409,
   LAST_PARTNER: 409,
+  COST_LINE_ON_PURCHASE_ORDER: 409,
+  COST_LINE_NOT_ELIGIBLE: 409,
   RATE_LIMITED: 429,
   FILE_TOO_LARGE: 413,
   UNSUPPORTED_FILE_TYPE: 415,
@@ -64,6 +68,8 @@ export class AppError extends Error {
     readonly code: ErrorCode,
     message: string,
     readonly fields?: Record<string, FieldCode>,
+    /** Extra machine-readable data for the UI (e.g. `purchaseOrderNumber`, `costLineIds`). */
+    readonly details?: Record<string, unknown>,
   ) {
     super(message);
     this.name = 'AppError';
@@ -77,8 +83,13 @@ export const notFound = (message = 'Not found') => new AppError('NOT_FOUND', mes
 export const validationError = (fields: Record<string, FieldCode>, message = 'Invalid input') =>
   new AppError('VALIDATION_ERROR', message, fields);
 
-export function errorBody(code: ErrorCode, message: string, fields?: Record<string, FieldCode>) {
-  return { error: fields ? { code, message, fields } : { code, message } };
+export function errorBody(
+  code: ErrorCode,
+  message: string,
+  fields?: Record<string, FieldCode>,
+  details?: Record<string, unknown>,
+) {
+  return { error: { code, message, ...(fields && { fields }), ...(details && { details }) } };
 }
 
 /** Map a single zod issue to a contract field code. Schemas may set `message` to a field code directly. */
@@ -118,7 +129,7 @@ export function parseInput<S extends z.ZodType>(schema: S, input: unknown): z.ou
 export function registerErrorHandling(app: FastifyInstance): void {
   app.setErrorHandler((err: FastifyError | AppError, request, reply) => {
     if (err instanceof AppError) {
-      return reply.status(err.statusCode).send(errorBody(err.code, err.message, err.fields));
+      return reply.status(err.statusCode).send(errorBody(err.code, err.message, err.fields, err.details));
     }
     const status = err.statusCode ?? 500;
     if (status === 413) return reply.status(413).send(errorBody('FILE_TOO_LARGE', err.message));
