@@ -33,6 +33,9 @@ Actor is a signed-in partner unless stated.
 | UC-030 | View offer via public link | A |
 | UC-031 | Convert offer to gig | A |
 | UC-032 | Manage partner status | A |
+| **Purchase orders** ||
+| UC-033 | Freelancer link: see own gigs, create purchase order | Freelancer |
+| UC-034 | Manage purchase orders (list, search, mark paid, log) | Partner |
 | **Development** ||
 | UC-024 | Load local seed data | A |
 

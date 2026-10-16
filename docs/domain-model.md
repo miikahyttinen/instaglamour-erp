@@ -268,3 +268,32 @@ Replaces settings `offers.references_fi/_en`. Real quotes, authors and photos ex
 ## Partner management (owner request 2026-10-14)
 Partner gains: `active` (bool, default true), `granted_by` / `granted_at`, `revoked_by` / `revoked_at`.
 A Person is a partner when an **active** Partner links to it. Partners are now created/removed in the app (UC-032), not only via seed.
+
+## Purchase orders (owner request 2026-10-16)
+### Person (addition)
+| Field | Type | Notes |
+|---|---|---|
+| freelancer_token | string | unique, ≥ 32 random bytes base64url; created for every person (backfilled); regenerate replaces it |
+
+### PurchaseOrder
+| Field | Type | Notes |
+|---|---|---|
+| id | id | |
+| number | string | unique, BR-116 |
+| seq | int | global running number (DB sequence) |
+| person_id | → Person | the freelancer |
+| status | enum | `OPEN`, `PAID`, `CANCELLED` |
+| total_cents | int | Σ line amounts |
+| created_at | datetime | created via the freelancer link |
+| paid_at, paid_by | datetime, → Partner | set on Mark paid, cleared on unmark |
+| cancelled_at, cancelled_by, cancel_reason | | |
+
+### PurchaseOrderLine
+| Field | Type | Notes |
+|---|---|---|
+| purchase_order_id | → PurchaseOrder | |
+| cost_line_id | → CostLine | a cost line is on at most one OPEN/PAID PO |
+| amount_cents | int | snapshot of `budgeted_cents` at creation |
+
+### PurchaseOrderEvent (history, append-only)
+`id, purchase_order_id, type (CREATED | PAID | UNPAID | CANCELLED), partner_id (null = freelancer via link), at, details`

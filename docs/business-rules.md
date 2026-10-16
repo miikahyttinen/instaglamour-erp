@@ -100,3 +100,14 @@ Rules only — concrete values are seeded settings (`domain-model.md`).
 | BR-110 | **Partner status** is set on the person page. Making a person a partner requires a Google email in `AUTH_ALLOWED_DOMAIN`, unique among partners (case-insensitive); it creates (or re-activates) the Partner linked to the person. |
 | BR-111 | Removing partner status deactivates the Partner: sign-in is refused (BR-070 requires an **active** partner) and **all its sessions are revoked immediately**. Name stays on existing gigs, offers, tasks, hours and history. Inactive partners are not offered for new seller/producer/owner choices. |
 | BR-112 | A partner cannot remove their own partner status (409 `CANNOT_REMOVE_SELF`), and the last active partner cannot be removed (409 `LAST_PARTNER`). Grant/revoke records who and when. |
+
+## Purchase orders (2026-10-16)
+| ID | Rule |
+|---|---|
+| BR-113 | **Freelancer link:** every person has one unguessable link `/f/<token>` (≥ 32 random bytes, URL-safe), usable without sign-in. It shows only that person's own fee lines (amount > 0) on non-deleted SOLD gigs — gig date, venue, role/description, own fee, paid state — and their purchase orders. Never client, gig price, other people, notes or internal data. Regenerating invalidates the old link; an inactive person's link → 404. `noindex`, rate-limited like the public offer. |
+| BR-114 | **Eligible fee:** line person = the freelancer, gig SOLD and played (start date < today), not deleted, line unpaid, amount > 0, and not on an OPEN or PAID purchase order. |
+| BR-115 | **Create PO:** the freelancer selects ≥ 1 eligible fee from any number of gigs; one PO is created with a snapshot of each line's amount; total = Σ snapshots. All-or-nothing: if any line isn't eligible, nothing is created. |
+| BR-116 | **PO number** = name slug + `-` + running number (≥ 4 digits, zero-padded), e.g. `MATTI-VIRTANEN-0042`. Slug: person's name at creation, accents removed, upper case, non-letters/digits → `-`. The running number is global, so numbers are always unique and never reused. |
+| BR-117 | **PO status:** `OPEN → PAID` (Mark paid: every line paid with its snapshot amount, now, by the partner — BR-025, logged on the gig with the PO number); `PAID → OPEN` (Unmark: lines unpaid); `OPEN → CANCELLED` (reason required; lines freed). Cancelled is final. |
+| BR-118 | **Lock:** while a line is on an OPEN or PAID PO, its person, amount, load-in switch and paid state can't be changed and it can't be deleted; the gig can't be cancelled or deleted while it has lines on an OPEN PO. Change the PO first (unmark / cancel). Description stays editable. |
+| BR-119 | **Everything is logged** per PO: created (by the freelancer via link), paid, unpaid, cancelled (with reason) — actor and time. The PO list year = year of creation; search by number/name covers all years. |

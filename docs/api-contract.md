@@ -40,7 +40,9 @@ The UI translates `code` and the field codes; it never shows `message` to users.
 | 409 | `CLIENT_IN_USE` | Deleting a client that gigs/offers link to |
 | 409 | `ALREADY_CONVERTED` | Converting an offer that already has a gig |
 | 409 | `CANNOT_REMOVE_SELF` / `LAST_PARTNER` | Removing own partner status / the last active partner |
-| 429 | `RATE_LIMITED` | Public offer endpoint: > 60 requests/min/IP (`Retry-After` header) |
+| 409 | `COST_LINE_ON_PURCHASE_ORDER` | Changing person/amount/paid state of, or deleting, a cost line on an open/paid PO; cancelling/deleting a gig with lines on an open PO |
+| 409 | `COST_LINE_NOT_ELIGIBLE` | Creating a PO with a fee that is not eligible (BR-114); `details.costLineIds` |
+| 429 | `RATE_LIMITED` | Public offer and freelancer endpoints: > 60 requests/min/IP (`Retry-After` header) |
 | 413 | `FILE_TOO_LARGE` | Upload too large (attachments > 20 MB; reference photos > 10 MB) |
 | 415 | `UNSUPPORTED_FILE_TYPE` | Wrong type (attachments: PDF/DOCX/PNG/JPG; reference photos: PNG/JPG/WebP) |
 
@@ -378,7 +380,42 @@ Duplicate = case-insensitive exact name match with another person.
 - The seed never reactivates or changes existing partners (insert-only), so a removal in the app is permanent until re-granted in the app.
 - Convert offer → gig: if the offer's seller is no longer an active partner, the converting partner becomes seller and producer. Sign-in (Google and dev login) requires an **active** partner; an inactive partner's existing session → 401 on the next request.
 
+## Purchase orders (UC-033, UC-034) — owner request 2026-10-16
+**Shapes**
+- `CostLine` gains `purchaseOrder: { id, number, status } | null` — the OPEN or PAID PO the line is on (cancelled POs don't count).
+- `PurchaseOrderLine = { costLineId, gigId, gigStartDate, gigVenue, gigLineupName, type, description|null, amountCents }`
+- `PurchaseOrder = { id, number, personId, personName, status: OPEN|PAID|CANCELLED, totalCents, createdAt, paidAt|null, paidBy|null, cancelledAt|null, cancelledBy|null, cancelReason|null, lines: [PurchaseOrderLine] }` (`paidBy`/`cancelledBy` = partner id)
+- `PurchaseOrderEvent = { id, purchaseOrderId, number, type: CREATED|PAID|UNPAID|CANCELLED, partnerId|null (null = freelancer via link), at, details }`; details: `CANCELLED {reason}`, `PAID {totalCents}`, others `{}`.
+
+**Partner endpoints (signed in)**
+| Method & path | Request | Response |
+|---|---|---|
+| `GET /api/purchase-orders` | `year` (required unless `q`), `q` (substring of number or person name, case-insensitive; **when `q` is given, `year` is ignored and all years are searched**), `status` | 200 `{ purchaseOrders: [PurchaseOrder] }` newest first. Year = year of `createdAt`. |
+| `GET /api/purchase-orders/{id}` | — | 200 `PurchaseOrder` |
+| `POST /api/purchase-orders/{id}/pay` | — | 200 `PurchaseOrder` — OPEN → PAID; every line's cost line: `actualCents` = line `amountCents`, `paidAt` = now, `paidBy` = me, GigEvent `COST_PAID` with `details.purchaseOrderNumber`. Not OPEN → 409 `INVALID_STATUS_TRANSITION`. |
+| `POST /api/purchase-orders/{id}/unpay` | — | 200 `PurchaseOrder` — PAID → OPEN; lines unpaid, GigEvent `COST_UNPAID` with `details.purchaseOrderNumber`. Not PAID → 409 `INVALID_STATUS_TRANSITION`. |
+| `POST /api/purchase-orders/{id}/cancel` | `{ reason }` (required, ≤ 500) | 200 `PurchaseOrder` — OPEN → CANCELLED. Not OPEN → 409 `INVALID_STATUS_TRANSITION`. |
+| `GET /api/purchase-orders/{id}/history` | — | 200 `[PurchaseOrderEvent]` newest first |
+| `GET /api/purchase-orders/events` | `limit` (1…200, default 50) | 200 `[PurchaseOrderEvent]` newest first, all POs |
+| `GET /api/people/{id}/freelancer-link` | — | 200 `{ sharePath: "/f/<token>" }` |
+| `POST /api/people/{id}/freelancer-link/regenerate` | — | 200 `{ sharePath }` (old token → 404) |
+
+**Lock (BR-118):** while a cost line has `purchaseOrder != null`: `PATCH /api/cost-lines/{id}` with `personId`, `budgetedCents` or `joinsLoadIn`, `DELETE`, `/pay`, `/unpay` → 409 `COST_LINE_ON_PURCHASE_ORDER` (`details.purchaseOrderNumber`); `description` stays editable. Gig cancel / delete while any line is on an **OPEN** PO → same 409.
+
+**Public endpoints (no session, `X-Robots-Tag: noindex`, rate limit 60/min/IP shared with public offers → 429 `RATE_LIMITED`)**
+| Method & path | Request | Response |
+|---|---|---|
+| `GET /api/public/freelancers/{token}` | — | 200 `FreelancerView` |
+| `POST /api/public/freelancers/{token}/purchase-orders` | `{ costLineIds: [id] }` (1…200, unique; else 400 `costLineIds: INVALID_VALUE`) | 201 `PublicPurchaseOrder`. Any id not eligible (BR-114) or not this person's → 409 `COST_LINE_NOT_ELIGIBLE` with `details.costLineIds` (the offending ids); nothing created. |
+
+- `FreelancerView = { name, lines: [FreelancerLine], purchaseOrders: [PublicPurchaseOrder] }` — lines newest gig first; POs newest first (incl. cancelled).
+- `FreelancerLine = { costLineId, gigStartDate, gigEndDate|null, venue, type, description|null, amountCents, state: SELECTABLE|UPCOMING|ON_PO|PAID, purchaseOrderNumber|null }` — only the person's lines with `budgetedCents > 0` on non-deleted SOLD gigs (cancelled gigs are not shown). `amountCents` = PO snapshot when ON_PO, actual when PAID, else budgeted. `UPCOMING` = gig not played yet. A line paid through a PO is `PAID` with its `purchaseOrderNumber`.
+- `PublicPurchaseOrder = { number, status, totalCents, createdAt, paidAt|null, lines: [{ gigStartDate, venue, type, description|null, amountCents }] }` — no ids, partner names or cancel reason.
+- Unknown/regenerated token or inactive person → 404 `NOT_FOUND`.
+- Concurrency: creation locks the person's lines (e.g. `pg_advisory_xact_lock` on person id) so two requests can't put a line on two POs. Number per BR-116 (global DB sequence).
+
 ## Change log
+- 2026-10-16 – Purchase orders (UC-033, UC-034): freelancer link, public freelancer view + create PO, PO list/search/pay/unpay/cancel/log, CostLine.purchaseOrder, COST_LINE_ON_PURCHASE_ORDER, COST_LINE_NOT_ELIGIBLE (PM)
 - 2026-10-14 – Partner status clarifications (404, ?partner, email change, inactive person, seed insert-only, convert with removed seller) (PM)
 - 2026-10-14 – Partner status managed in the app (UC-032): person.partner, PUT/DELETE /api/people/{id}/partner, partner.active, CANNOT_REMOVE_SELF, LAST_PARTNER (PM)
 - 2026-10-07 – Reference.imageVersion + `?v=` cache busting; reorder validation; reference upload error texts (PM)
