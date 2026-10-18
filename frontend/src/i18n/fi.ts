@@ -100,6 +100,7 @@ const fi = {
     LAST_PARTNER: 'Viimeistä osakasta ei voi poistaa.',
     COST_LINE_ON_PURCHASE_ORDER: 'Rivi on ostotilauksella. Muuta ostotilausta ensin.',
     COST_LINE_NOT_ELIGIBLE: 'Osa palkkioista ei ole enää valittavissa.',
+    PERSON_IS_PARTNER: 'Osakkailla ei ole freelancer-linkkiä.',
     RATE_LIMITED: 'Liian monta pyyntöä. Odota hetki ja yritä uudelleen.',
     FILE_TOO_LARGE: 'Tiedosto on liian suuri (enintään 20 Mt).',
     UNSUPPORTED_FILE_TYPE: 'Sallitut tiedostotyypit: PDF, DOCX, PNG ja JPG.',

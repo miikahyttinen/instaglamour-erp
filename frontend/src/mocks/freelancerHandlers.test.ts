@@ -125,6 +125,30 @@ describe('public freelancer mock', () => {
     expect(a).toEqual({ sharePath: `/f/${fx.token}` });
   });
 
+  it('BR-113: active partners have no link (409) and their public link is 404 until removed', async () => {
+    signInMock();
+    db.partners.push({
+      id: 'partner-x',
+      personId: fx.person.id,
+      name: fx.person.name,
+      email: 'partner-x@example.com',
+      language: 'fi',
+      selectedYear: 2026,
+      active: true,
+    });
+    const link = await fetch(`${base}/people/${fx.person.id}/freelancer-link`);
+    expect(link.status).toBe(409);
+    expect(((await link.json()) as { error: { code: string } }).error.code).toBe('PERSON_IS_PARTNER');
+    const regen = await fetch(`${base}/people/${fx.person.id}/freelancer-link/regenerate`, { method: 'POST' });
+    expect(regen.status).toBe(409);
+    expect((await getView(fx.token)).status).toBe(404);
+    expect((await create(fx.token, [fx.lines.played1.id])).status).toBe(404);
+
+    db.partners.at(-1)!.active = false;
+    expect((await getView(fx.token)).status).toBe(200);
+    expect((await fetch(`${base}/people/${fx.person.id}/freelancer-link`)).status).toBe(200);
+  });
+
   it('seeds a demo link for Person 1 with a paid and a cancelled PO', async () => {
     const view = (await (await getView(DEMO_FREELANCER_TOKEN)).json()) as FreelancerView;
     expect(view.name).toBe('Person 1');

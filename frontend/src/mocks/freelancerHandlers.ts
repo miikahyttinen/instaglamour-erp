@@ -22,6 +22,17 @@ const NOINDEX = { 'X-Robots-Tag': 'noindex' };
 const MAX_IDS = 200;
 
 const notFound = () => errorResponse(404, 'NOT_FOUND', 'Not found');
+const personIsPartner = () =>
+  errorResponse(409, 'PERSON_IS_PARTNER', 'Partners have no freelancer link');
+
+/** BR-113: active partners have no freelancer link. */
+const isActivePartner = (personId: Id) => db.partners.some((p) => p.personId === personId && p.active);
+
+/** The person behind a public token; unknown, inactive or active partner → undefined (404). */
+function publicPerson(token: string) {
+  const person = personByToken(db.freelancer, db.gigs, token);
+  return person && !isActivePartner(person.id) ? person : undefined;
+}
 
 /** 1…200 unique strings, else null. */
 function checkIds(value: unknown): Id[] | null {
@@ -35,7 +46,7 @@ const linkBody = (token: string): FreelancerLink => ({ sharePath: `/f/${token}` 
 
 export const freelancerHandlers = [
   http.get('/api/public/freelancers/:token', ({ params }) => {
-    const person = personByToken(db.freelancer, db.gigs, String(params.token));
+    const person = publicPerson(String(params.token));
     if (!person) return notFound();
     return HttpResponse.json(freelancerView(db.freelancer, db.gigs, person), { headers: NOINDEX });
   }),
@@ -44,7 +55,7 @@ export const freelancerHandlers = [
     const body = (await request.json().catch(() => null)) as { costLineIds?: unknown } | null;
     const ids = checkIds(body?.costLineIds);
     if (!ids) return validationError({ costLineIds: 'INVALID_VALUE' });
-    const person = personByToken(db.freelancer, db.gigs, String(params.token));
+    const person = publicPerson(String(params.token));
     if (!person) return notFound();
     const result = createPurchaseOrder(db.freelancer, db.gigs, person, ids);
     if (!result.ok) {
@@ -64,6 +75,7 @@ export const freelancerHandlers = [
     if (!currentPartner()) return unauthenticated();
     const person = db.gigs.people.find((p) => p.id === params.id);
     if (!person) return notFound();
+    if (isActivePartner(person.id)) return personIsPartner();
     return HttpResponse.json(linkBody(freelancerToken(db.freelancer, person.id)));
   }),
 
@@ -71,6 +83,7 @@ export const freelancerHandlers = [
     if (!currentPartner()) return unauthenticated();
     const person = db.gigs.people.find((p) => p.id === params.id);
     if (!person) return notFound();
+    if (isActivePartner(person.id)) return personIsPartner();
     return HttpResponse.json(linkBody(regenerateFreelancerToken(db.freelancer, person.id)));
   }),
 ];

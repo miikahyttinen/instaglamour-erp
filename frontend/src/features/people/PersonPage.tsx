@@ -79,7 +79,8 @@ export function PersonPage() {
             <PartnerStatus person={person} onNotice={setNotice} />
           </FieldList>
           <NoticeBox notice={notice} onDismiss={() => setNotice(null)} />
-          <FreelancerLinkSection personId={person.id} active={person.active} />
+          {/* BR-113: active partners have no freelancer link. */}
+          {!isPartner(person) && <FreelancerLinkSection personId={person.id} active={person.active} />}
           <CostLines personId={person.id} />
         </>
       )}
