@@ -19,7 +19,7 @@ Partners see purchase orders created by freelancers, find one by number, and mar
 - **A1 – Mark paid** (list or PO page): every fee line on the PO is marked paid with its PO amount, now, by me (same as BR-025, logged on the gig with the PO number).
 - **A2 – Unmark paid** (PO page, confirmation): PO back to open; its fee lines back to unpaid.
 - **A3 – Cancel** an open PO (PO page, reason required): its fees become selectable again for the freelancer.
-- **A4 – Person page:** partner copies the person's freelancer link, or regenerates it (old link stops working).
+- **A4 – Person page** (not for active partners — they have no freelancer link): partner copies the person's freelancer link, or regenerates it (old link stops working).
 - **A5 – Gig page:** a fee line on a PO shows a "PO <number>" tag linking to it; its person, amount and paid state can't be changed while the PO is open or paid.
 
 ## Acceptance criteria

@@ -42,6 +42,7 @@ The UI translates `code` and the field codes; it never shows `message` to users.
 | 409 | `ALREADY_CONVERTED` | Converting an offer that already has a gig |
 | 409 | `CANNOT_REMOVE_SELF` / `LAST_PARTNER` | Removing own partner status / the last active partner |
 | 409 | `COST_LINE_ON_PURCHASE_ORDER` | Changing person/amount/paid state of, or deleting, a cost line on an open/paid PO; cancelling/deleting a gig with lines on an open PO |
+| 409 | `PERSON_IS_PARTNER` | Freelancer link of an active partner (partners have no freelancer link) |
 | 409 | `COST_LINE_NOT_ELIGIBLE` | Creating a PO with a fee that is not eligible (BR-114); `details.costLineIds` |
 | 429 | `RATE_LIMITED` | Public offer and freelancer endpoints: > 60 requests/min/IP (`Retry-After` header) |
 | 413 | `FILE_TOO_LARGE` | Upload too large (attachments > 20 MB; reference photos > 10 MB) |
@@ -398,7 +399,7 @@ Duplicate = case-insensitive exact name match with another person.
 | `POST /api/purchase-orders/{id}/cancel` | `{ reason }` (required, ≤ 500) | 200 `PurchaseOrder` — OPEN → CANCELLED. Not OPEN → 409 `INVALID_STATUS_TRANSITION`. |
 | `GET /api/purchase-orders/{id}/history` | — | 200 `[PurchaseOrderEvent]` newest first |
 | `GET /api/purchase-orders/events` | `limit` (1…200, default 50) | 200 `[PurchaseOrderEvent]` newest first, all POs |
-| `GET /api/people/{id}/freelancer-link` | — | 200 `{ sharePath: "/f/<token>" }` — every person always has a token (backfilled by migration, created with the person). Unknown person → 404. Inactive person → 200 (link exists but the public page returns 404 until the person is active again). |
+| `GET /api/people/{id}/freelancer-link` | — | 200 `{ sharePath: "/f/<token>" }` — every person always has a token (backfilled by migration, created with the person). Unknown person → 404. Inactive person → 200 (link exists but the public page returns 404 until the person is active again). **Active partner → 409 `PERSON_IS_PARTNER`** (same for regenerate). |
 | `POST /api/people/{id}/freelancer-link/regenerate` | — | 200 `{ sharePath }` (old token → 404) |
 
 **Lock (BR-118):** while a cost line has `purchaseOrder != null`: `PATCH /api/cost-lines/{id}` with `personId`, `budgetedCents` or `joinsLoadIn`, `DELETE`, `/pay`, `/unpay` → 409 `COST_LINE_ON_PURCHASE_ORDER` (`details.purchaseOrderNumber`); `description` stays editable. Gig cancel / delete while any line is on an **OPEN** PO → same 409.
@@ -412,12 +413,13 @@ Duplicate = case-insensitive exact name match with another person.
 - `FreelancerView = { name, lines: [FreelancerLine], purchaseOrders: [PublicPurchaseOrder] }` — lines newest gig first; POs newest first (incl. cancelled).
 - `FreelancerLine = { costLineId, gigStartDate, gigEndDate|null, venue, type, description|null, amountCents, state: SELECTABLE|UPCOMING|ON_PO|PAID, purchaseOrderNumber|null }` — only the person's lines with `budgetedCents > 0` on non-deleted SOLD gigs (cancelled gigs are not shown). `amountCents` = PO snapshot when ON_PO, actual when PAID, else budgeted. `UPCOMING` = gig not played yet. A line paid through a PO is `PAID` with its `purchaseOrderNumber`.
 - `PublicPurchaseOrder = { number, status, totalCents, createdAt, paidAt|null, lines: [{ gigStartDate, venue, type, description|null, amountCents }] }` — no ids, partner names or cancel reason.
-- Unknown/regenerated token or inactive person → 404 `NOT_FOUND`.
+- Unknown/regenerated token, inactive person or **active partner** (`partner.active`) → 404 `NOT_FOUND` (GET and POST).
 - Seller/producer change (BR-027) does not move SALES/PRODUCTION lines that are on an OPEN/PAID PO.
 - `FUEL` lines are never shown to the freelancer and never eligible (they can't be paid). Unmarking a PAID PO also unpays lines on gigs cancelled/deleted after payment.
 - Concurrency: creation locks the person's lines (e.g. `pg_advisory_xact_lock` on person id) so two requests can't put a line on two POs. Number per BR-116 (global DB sequence).
 
 ## Change log
+- 2026-10-18 – Active partners have no freelancer link: public 404, link endpoints 409 `PERSON_IS_PARTNER` (PM)
 - 2026-10-16 – Error format: optional `details`; freelancer-link for unknown/inactive person (PM)
 - 2026-10-16 – Purchase orders (UC-033, UC-034): freelancer link, public freelancer view + create PO, PO list/search/pay/unpay/cancel/log, CostLine.purchaseOrder, COST_LINE_ON_PURCHASE_ORDER, COST_LINE_NOT_ELIGIBLE (PM)
 - 2026-10-14 – Partner status clarifications (404, ?partner, email change, inactive person, seed insert-only, convert with removed seller) (PM)
