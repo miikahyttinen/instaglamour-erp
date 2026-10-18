@@ -3,6 +3,7 @@ import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 're
 import { useTranslation } from 'react-i18next';
 import { useFocusTrap } from '../lib/useFocusTrap';
 import { Button } from './Button';
+import { placeColumnFilterPopover, type PopoverPlacement } from './columnFilterPlacement';
 import type { FilterOption } from './excelTableState';
 
 /** Search box appears when a column has more values than this (docs/design.md). */
@@ -121,29 +122,26 @@ export interface ColumnFilterPopoverProps extends ColumnFilterPanelProps {
   anchor: HTMLElement;
 }
 
-const POPOVER_W = 280;
-const GAP = 4;
-const EDGE = 8;
-
 /**
- * Header popover (≥ 600 px): a non-modal dialog under the filter icon, named "Suodata: <column>".
+ * Header popover (≥ 600 px): a non-modal dialog under the filter icon (above it when there is more
+ * room there; always within the viewport, see `placeColumnFilterPopover`), named "Suodata: <column>".
  * Focus moves in and is kept inside; Esc, Cancel or a click outside closes it without changes, and
  * focus returns to the filter button. Position: fixed, so the table's scroll box does not clip it.
  */
 export function ColumnFilterPopover({ anchor, ...panel }: ColumnFilterPopoverProps) {
   const { t } = useTranslation();
   const ref = useRef<HTMLDivElement>(null);
-  const [pos, setPos] = useState<{ top: number; left: number; maxHeight: number } | null>(null);
+  const [pos, setPos] = useState<PopoverPlacement | null>(null);
   const { onCancel } = panel;
 
   useLayoutEffect(() => {
     const place = () => {
-      const r = anchor.getBoundingClientRect();
-      const vw = document.documentElement.clientWidth || window.innerWidth;
-      const vh = window.innerHeight;
-      const left = Math.max(EDGE, Math.min(r.left, vw - POPOVER_W - EDGE));
-      const top = r.bottom + GAP;
-      setPos({ top, left, maxHeight: Math.max(240, vh - top - EDGE) });
+      setPos(
+        placeColumnFilterPopover(anchor.getBoundingClientRect(), {
+          width: document.documentElement.clientWidth || window.innerWidth,
+          height: document.documentElement.clientHeight || window.innerHeight,
+        }),
+      );
     };
     place();
     window.addEventListener('resize', place);
@@ -179,7 +177,8 @@ export function ColumnFilterPopover({ anchor, ...panel }: ColumnFilterPopoverPro
       className="column-filter-popover"
       role="dialog"
       aria-label={t('table.filterColumn', { column: panel.columnLabel })}
-      style={pos ? { top: pos.top, left: pos.left, maxHeight: pos.maxHeight } : undefined}
+      data-placement={pos ? (pos.bottom !== undefined ? 'above' : 'below') : undefined}
+      style={pos ? { top: pos.top, bottom: pos.bottom, left: pos.left, maxHeight: pos.maxHeight } : undefined}
       onKeyDown={(e) => {
         if (e.key === 'Escape') {
           e.stopPropagation();
