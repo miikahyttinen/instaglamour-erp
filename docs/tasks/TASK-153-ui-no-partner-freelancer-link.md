@@ -1,5 +1,5 @@
 # TASK-153: Hide the freelancer link for partners
-- **owner:** ui · **status:** todo · **spec:** BR-113 (2026-10-18), UC-034 A4, api-contract "Purchase orders" · **depends on:** TASK-151 · **parallel:** TASK-025
+- **owner:** ui · **status:** done · **spec:** BR-113 (2026-10-18), UC-034 A4, api-contract "Purchase orders" · **depends on:** TASK-151 · **parallel:** TASK-025
 ## Acceptance criteria
 - [ ] Person page: no "Freelancer-linkki" section (and no link request) when `person.partner?.active`. Granting partner status hides it immediately; removing shows it again.
 - [ ] Handle 409 `PERSON_IS_PARTNER` (FI/EN text) gracefully if it happens anyway.
