@@ -7,11 +7,15 @@ import type { Id } from '../../api/types';
 import { Button } from '../../components/Button';
 import { Notice } from '../../components/Notice';
 import { SectionLabel } from '../../components/SectionLabel';
+import { isApiError } from '../../api/client';
 import { apiErrorMessage } from '../../i18n/labels';
 import { ConfirmDialog } from '../offers/offerParts';
 import { copyToClipboard } from '../offers/offerOptions';
 import { freelancerKeys, freelancerUrl, useFreelancerLink } from './queries';
 import './freelancerLink.css';
+
+/** BR-113: 409 when the person is an active partner (the page normally hides the section). */
+const isPersonIsPartner = (error: unknown) => isApiError(error) && error.code === 'PERSON_IS_PARTNER';
 
 type LinkNotice = { kind: 'copied' } | { kind: 'copyFailed' } | { kind: 'regenerated' };
 
@@ -34,7 +38,10 @@ export function FreelancerLinkSection({ personId, active }: { personId: Id; acti
       <p className="muted small freelancer-link-hint">{t('freelancerLink.hint')}</p>
       {!active && <p className="small">{t('freelancerLink.inactive')}</p>}
       {query.isPending && <p className="muted">{t('app.loading')}</p>}
-      {query.isError && (
+      {query.isError && isPersonIsPartner(query.error) && (
+        <p className="muted small">{t('errors.PERSON_IS_PARTNER')}</p>
+      )}
+      {query.isError && !isPersonIsPartner(query.error) && (
         <Notice tone="danger" role="alert">
           <p>{apiErrorMessage(t, query.error)}</p>
           <Button size="sm" onClick={() => void query.refetch()}>

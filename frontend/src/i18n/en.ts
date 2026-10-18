@@ -98,6 +98,7 @@ const en: Resources = {
     LAST_PARTNER: 'The last partner cannot be removed.',
     COST_LINE_ON_PURCHASE_ORDER: 'The line is on a purchase order. Change the purchase order first.',
     COST_LINE_NOT_ELIGIBLE: 'Some of the fees can no longer be selected.',
+    PERSON_IS_PARTNER: 'Partners have no freelancer link.',
     RATE_LIMITED: 'Too many requests. Wait a moment and try again.',
     FILE_TOO_LARGE: 'The file is too large (max 20 MB).',
     UNSUPPORTED_FILE_TYPE: 'Allowed file types: PDF, DOCX, PNG and JPG.',
