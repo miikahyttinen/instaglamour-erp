@@ -194,18 +194,25 @@ async function lockPerson(tx: Tx, personId: string): Promise<void> {
   await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`purchase_order:person:${personId}`}, 0))`;
 }
 
+/** The person fields that decide whether their freelancer link works. */
+export type LinkPerson = { active: boolean; freelancerToken: string; partner: { active: boolean } | null };
+
+/** BR-113: the link works for active people who are not active partners (a removed partner's works again). */
+export const isLinkUsable = (person: { active: boolean; partner: { active: boolean } | null }): boolean =>
+  person.active && !person.partner?.active;
+
 const uuidList = (ids: readonly string[]) => Prisma.join(ids.map((id) => Prisma.sql`${id}::uuid`));
 
 /**
  * Create one PO from the given cost lines, all or nothing. `isCurrent` re-checks inside the lock
- * that the link is still valid (person active, token not regenerated meanwhile).
+ * that the link is still valid (person active, not an active partner, token not regenerated meanwhile).
  */
 export async function createPurchaseOrder(
   db: Db,
   input: {
     personId: string;
     costLineIds: readonly string[];
-    isCurrent: (person: { active: boolean; freelancerToken: string }) => boolean;
+    isCurrent: (person: LinkPerson) => boolean;
     today?: string;
   },
 ): Promise<PurchaseOrderWithLines> {
@@ -213,7 +220,10 @@ export async function createPurchaseOrder(
   const ids = [...input.costLineIds];
   return db.$transaction(async (tx) => {
     await lockPerson(tx, input.personId);
-    const person = await tx.person.findUnique({ where: { id: input.personId } });
+    const person = await tx.person.findUnique({
+      where: { id: input.personId },
+      include: { partner: { select: { active: true } } },
+    });
     if (!person || !input.isCurrent(person)) throw notFound('Not found');
 
     // Same lock order everywhere: cost lines, then gigs (see purchaseOrders/lock.ts).

@@ -6,7 +6,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import type { AppDeps } from '../app.js';
 import type { Prisma } from '../generated/prisma/client.js';
-import { notFound, parseInput, validationError } from '../http/errors.js';
+import { AppError, notFound, parseInput, validationError } from '../http/errors.js';
 import { requiredText, SHORT_TEXT_MAX, yearString } from '../gigs/schemas.js';
 import { isUuid } from '../gigs/store.js';
 import {
@@ -117,8 +117,15 @@ export function purchaseOrderRoutes(app: FastifyInstance, deps: AppDeps): void {
 
   // ---------------------------------------------------------------- freelancer link (BR-113)
   const requirePersonId = async (id: string) => {
-    const person = isUuid(id) ? await db.person.findUnique({ where: { id }, select: { id: true, freelancerToken: true } }) : null;
+    const person = isUuid(id)
+      ? await db.person.findUnique({
+          where: { id },
+          select: { id: true, freelancerToken: true, partner: { select: { active: true } } },
+        })
+      : null;
     if (!person) throw notFound('Person not found');
+    // BR-113 (2026-10-18): active partners have no freelancer link; removed partners get it back.
+    if (person.partner?.active) throw new AppError('PERSON_IS_PARTNER', 'Partners have no freelancer link');
     return person;
   };
 
