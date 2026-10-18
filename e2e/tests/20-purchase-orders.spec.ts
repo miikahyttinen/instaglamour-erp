@@ -438,3 +438,51 @@ test('F-010: a long PO number does not push the list wider than the page (600–
     await expectNoHorizontalScroll(page, `purchase order list with a long number, ${width} px`);
   }
 });
+
+// BR-113 (2026-10-18, TASK-025 / TASK-153): active partners have no freelancer link. The person
+// page shows no link section, the link endpoints answer 409 PERSON_IS_PARTNER and the old /f/ link
+// is "not found"; removing partner status brings the same link back.
+test('BR-113: an active partner has no freelancer link; removing partner status restores it', async ({ page, browser, baseURL }, testInfo) => {
+  await signIn(page);
+  const tag = tagOf(testInfo);
+  const s = suffix();
+  const { person, sharePath } = await personWithPlayedFee(page, testInfo, 'PO Partner');
+  const anon = await anonymous(browser, testInfo, baseURL!);
+  expect((await openFreelancer(anon, sharePath)).status()).toBe(200);
+
+  await api(page).put(`/people/${person.id}/partner`, { email: `partner.po${tag.toLowerCase()}${s}@example.com` });
+
+  // Person page: no link section and no link request.
+  const linkRequests: string[] = [];
+  page.on('request', (r) => {
+    if (r.url().includes('/freelancer-link')) linkRequests.push(r.url());
+  });
+  await page.goto(`/people/${person.id}`);
+  await expect(page.getByRole('heading', { level: 1, name: person.name })).toBeVisible();
+  await expect(page.getByRole('switch', { name: 'Osakas', exact: true })).toBeChecked();
+  await expect(page.getByText('Freelancer-linkki', { exact: true })).toHaveCount(0);
+  await expect(page.getByRole('textbox', { name: 'Freelancer-linkki', exact: true })).toHaveCount(0);
+  expect(linkRequests).toEqual([]);
+
+  // API: link and regenerate → 409 PERSON_IS_PARTNER.
+  for (const res of [
+    await page.request.get(`/api/people/${person.id}/freelancer-link`),
+    await page.request.post(`/api/people/${person.id}/freelancer-link/regenerate`),
+  ]) {
+    expect(res.status()).toBe(409);
+    expect((await res.json()).error.code).toBe('PERSON_IS_PARTNER');
+  }
+
+  // The old public link → not found.
+  expect((await openFreelancer(anon, sharePath)).status()).toBe(404);
+  await expect(anon.page.getByRole('heading', { level: 1, name: 'Linkkiä ei löydy' })).toBeVisible();
+
+  // Remove partner status → the same link works again and the section is back.
+  expect((await page.request.delete(`/api/people/${person.id}/partner`)).status()).toBe(200);
+  expect((await openFreelancer(anon, sharePath)).status()).toBe(200);
+  await expect(anon.page.getByRole('heading', { level: 1, name: person.name })).toBeVisible();
+  await page.reload();
+  const origin = new URL(page.url()).origin;
+  await expect(page.getByRole('textbox', { name: 'Freelancer-linkki', exact: true })).toHaveValue(`${origin}${sharePath}`);
+  await anon.context.close();
+});
