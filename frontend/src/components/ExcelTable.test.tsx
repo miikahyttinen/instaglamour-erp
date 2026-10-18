@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { TABLET_QUERY } from '../lib/useMediaQuery';
 import { installMatchMedia } from '../test/matchMedia';
+import { placeColumnFilterPopover } from './columnFilterPlacement';
 import { ExcelTable } from './ExcelTable';
 import {
   BLANK,
@@ -310,6 +311,65 @@ describe('<ExcelTable> from 600 px', () => {
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
     expect(screen.getByText('Ei suodattimia vastaavia rivejä.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Suodattimet/ })).toBeInTheDocument();
+  });
+});
+
+describe('filter popover placement: always inside the viewport', () => {
+  const VIEW = { width: 1280, height: 800 };
+  const rect = (top: number, left = 900) => ({ top, bottom: top + 24, left });
+  /** The popover's box for a placement and a content height (fixed position). */
+  const box = (p: ReturnType<typeof placeColumnFilterPopover>, contentH: number) => {
+    const h = Math.min(contentH, p.maxHeight);
+    const top = p.top ?? VIEW.height - p.bottom! - h;
+    return { top, bottom: top + h };
+  };
+
+  it('opens under the icon when there is room', () => {
+    const p = placeColumnFilterPopover(rect(100), VIEW);
+    expect(p.top).toBe(128);
+    expect(p.bottom).toBeUndefined();
+    expect(p.top! + p.maxHeight).toBeLessThanOrEqual(VIEW.height - 8);
+  });
+
+  it('opens above the icon, upwards, when the icon is low (header near the bottom edge)', () => {
+    // The e2e case: the header row at ~645 px of an 800 px window.
+    const p = placeColumnFilterPopover(rect(621), VIEW);
+    expect(p.top).toBeUndefined();
+    expect(p.bottom).toBe(800 - 621 + 4);
+    for (const contentH of [200, 400, 1000]) {
+      const b = box(p, contentH);
+      expect(b.top).toBeGreaterThanOrEqual(8);
+      expect(b.bottom).toBeLessThanOrEqual(621);
+    }
+  });
+
+  it('keeps the whole popover on screen even when the icon is scrolled out of view', () => {
+    for (const top of [-200, 790, 1200]) {
+      const p = placeColumnFilterPopover(rect(top), VIEW);
+      const b = box(p, 1000);
+      expect(b.top, `icon at ${top}`).toBeGreaterThanOrEqual(8);
+      expect(b.bottom, `icon at ${top}`).toBeLessThanOrEqual(VIEW.height - 8);
+    }
+  });
+
+  it('stays inside the width and caps the height to a short window', () => {
+    const p = placeColumnFilterPopover(rect(100, 1200), { width: 1280, height: 300 });
+    expect(p.left).toBe(1280 - 280 - 8);
+    expect(p.maxHeight).toBeLessThanOrEqual(300 - 16);
+  });
+
+  it('the rendered popover flips above a low filter icon', async () => {
+    installMatchMedia({ [TABLET_QUERY]: true });
+    const { user } = renderDemo();
+    const button = within(table()).getByRole('button', { name: 'Suodata: City' });
+    const h = window.innerHeight;
+    button.getBoundingClientRect = () => ({ top: h - 60, bottom: h - 36, left: 200, right: 224, width: 24, height: 24, x: 200, y: h - 60, toJSON: () => ({}) });
+    await user.click(button);
+    const popover = screen.getByRole('dialog', { name: 'Suodata: City' });
+    expect(popover).toHaveAttribute('data-placement', 'above');
+    expect(popover.style.top).toBe('');
+    expect(popover.style.bottom).toBe('64px');
+    expect(parseFloat(popover.style.maxHeight)).toBeLessThanOrEqual(h - 60 - 4 - 8);
   });
 });
 

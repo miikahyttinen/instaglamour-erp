@@ -125,6 +125,11 @@
   gap: var(--space-3);
   min-height: 0;
 }
+/* A short popover (little room above / below the icon): only the value list shrinks and scrolls;
+   search, bulk buttons and OK / Peruuta stay whole. */
+.column-filter-popover :is(.column-filter-search, .column-filter-bulk, .column-filter-actions) {
+  flex-shrink: 0;
+}
 .column-filter-popover .column-filter {
   flex: 1 1 auto;
 }
