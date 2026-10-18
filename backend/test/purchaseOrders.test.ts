@@ -127,6 +127,74 @@ describe('freelancer link (BR-113)', () => {
   });
 });
 
+// ======================================================================== partners (BR-113, 2026-10-18)
+describe('active partners have no freelancer link (BR-113)', () => {
+  const makePartner = (personId: string) => call(s, 'PUT', `/api/people/${personId}/partner`, { email: 'person.1@example.com' });
+  const removePartner = (personId: string) => call(s, 'DELETE', `/api/people/${personId}/partner`);
+
+  it('link endpoints: 409 PERSON_IS_PARTNER for an active partner; regenerate changes nothing', async () => {
+    for (const p of [s.world.a, s.world.b]) {
+      for (const [method, path] of [
+        ['GET', ''],
+        ['POST', '/regenerate'],
+      ] as const) {
+        const res = await call(s, method, `/api/people/${p.personId}/freelancer-link${path}`);
+        expect(res.statusCode).toBe(409);
+        expect(res.json()).toEqual({ error: { code: 'PERSON_IS_PARTNER', message: expect.any(String) } });
+      }
+    }
+    const after = await testDb().person.findUniqueOrThrow({ where: { id: s.world.b.personId } });
+    expect(after.freelancerToken).toBe(s.world.b.person.freelancerToken);
+  });
+
+  it('unknown person is still 404 (checked first)', async () => {
+    expect((await call(s, 'GET', `/api/people/${UNKNOWN_ID}/freelancer-link`)).statusCode).toBe(404);
+  });
+
+  it('public GET/POST are 404 for an active partner; removing partner status restores the same link', async () => {
+    const gig = await gigWithPeople(PAST);
+    const voc = lineOf(gig, 'VOC');
+    const token = await tokenOf(s.world.p1.id);
+
+    expect((await makePartner(s.world.p1.id)).statusCode).toBe(200);
+    const get = await anon('GET', `/api/public/freelancers/${token}`);
+    expect(get.statusCode).toBe(404);
+    expect(get.json().error.code).toBe('NOT_FOUND');
+    const post = await anon('POST', `/api/public/freelancers/${token}/purchase-orders`, { costLineIds: [voc.id] });
+    expect(post.statusCode).toBe(404);
+    expect(post.json().error.code).toBe('NOT_FOUND');
+    expect(await testDb().purchaseOrder.count()).toBe(0);
+    expect((await call(s, 'GET', `/api/people/${s.world.p1.id}/freelancer-link`)).statusCode).toBe(409);
+
+    expect((await removePartner(s.world.p1.id)).statusCode).toBe(200);
+    expect(await tokenOf(s.world.p1.id)).toBe(token);
+    expect((await view(token)).name).toBe('Person 1');
+    await createPo(token, [voc.id]);
+  });
+
+  it('a seeded partner has a 404 public link too', async () => {
+    expect((await anon('GET', `/api/public/freelancers/${s.world.c.person.freelancerToken}`)).statusCode).toBe(404);
+  });
+
+  it('POs of a person who becomes a partner stay manageable (list, pay, unpay, cancel)', async () => {
+    const g1 = await gigWithPeople(PAST);
+    const g2 = await gigWithPeople(PAST_2);
+    const token = await tokenOf(s.world.p1.id);
+    const first = await createPo(token, [lineOf(g1, 'VOC').id]);
+    const second = await createPo(token, [lineOf(g2, 'VOC').id]);
+    expect((await makePartner(s.world.p1.id)).statusCode).toBe(200);
+
+    const po1 = await poByNumber(first.number);
+    const po2 = await poByNumber(second.number);
+    expect(po1.status).toBe('OPEN');
+    expect((await call(s, 'GET', `/api/purchase-orders/${po1.id}`)).statusCode).toBe(200);
+    expect((await call(s, 'POST', `/api/purchase-orders/${po1.id}/pay`)).json().status).toBe('PAID');
+    expect((await call(s, 'POST', `/api/purchase-orders/${po1.id}/unpay`)).json().status).toBe('OPEN');
+    const cancelled = await call(s, 'POST', `/api/purchase-orders/${po2.id}/cancel`, { reason: 'Reason 1' });
+    expect(cancelled.json().status).toBe('CANCELLED');
+  });
+});
+
 // ======================================================================== public view
 describe('GET /api/public/freelancers/{token} (UC-033)', () => {
   it('shows only own fee lines with their states, newest gig first (BR-113, BR-114)', async () => {
@@ -738,13 +806,17 @@ describe('lock (BR-118)', () => {
   });
 
   it('changing the seller does not move a SALES line that is on a PO (BR-027 + BR-118)', async () => {
-    const gig = await createGig(s, { startDate: PAST });
+    const { c } = s.world;
+    const gig = await createGig(s, { startDate: PAST, sellerId: c.id });
     const sales = lineOf(gig, 'SALES');
-    expect(sales.personId).toBe(s.world.a.personId);
-    const created = await createPo(await tokenOf(s.world.a.personId), [sales.id]);
-    const res = await call(s, 'PATCH', `/api/gigs/${gig.id}`, { sellerId: s.world.c.id });
+    expect(sales.personId).toBe(c.personId);
+    // Active partners have no freelancer link (BR-113): the PO is made while C is not a partner.
+    expect((await call(s, 'DELETE', `/api/people/${c.personId}/partner`)).statusCode).toBe(200);
+    const created = await createPo(await tokenOf(c.personId), [sales.id]);
+    expect((await call(s, 'PUT', `/api/people/${c.personId}/partner`, { email: c.email })).statusCode).toBe(200);
+    const res = await call(s, 'PATCH', `/api/gigs/${gig.id}`, { sellerId: s.world.a.id });
     expect(res.statusCode).toBe(200);
     expect(res.json().movedCostLineIds).toEqual([]);
-    expect(lineOf(res.json().gig, 'SALES')).toMatchObject({ personId: s.world.a.personId, purchaseOrder: { number: created.number } });
+    expect(lineOf(res.json().gig, 'SALES')).toMatchObject({ personId: c.personId, purchaseOrder: { number: created.number } });
   });
 });

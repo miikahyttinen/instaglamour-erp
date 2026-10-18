@@ -4,7 +4,8 @@
  *
  * - Responses are exactly the FreelancerView / PublicPurchaseOrder whitelists: never client, gig
  *   price, other people, notes, ids of other records, partner data or cancel reasons.
- * - Unknown, malformed, regenerated tokens and inactive people all give the same 404.
+ * - Unknown, malformed, regenerated tokens, inactive people and active partners (BR-113, 2026-10-18)
+ *   all give the same 404.
  * - `X-Robots-Tag: noindex`, no-store; rate limited per IP with the limiter shared with the public
  *   offer page (http/publicGuard.ts).
  */
@@ -15,7 +16,12 @@ import { publicGuard } from '../http/publicGuard.js';
 import type { FixedWindowRateLimiter } from '../http/rateLimit.js';
 import { isUuid } from '../gigs/store.js';
 import { sameToken } from '../offers/shareToken.js';
-import { createPurchaseOrder, loadFreelancerView, toPublicPurchaseOrderDto } from '../purchaseOrders/store.js';
+import {
+  createPurchaseOrder,
+  isLinkUsable,
+  loadFreelancerView,
+  toPublicPurchaseOrderDto,
+} from '../purchaseOrders/store.js';
 import { isWellFormedFreelancerToken } from '../purchaseOrders/token.js';
 
 export const PUBLIC_FREELANCER_ROUTE = '/api/public/freelancers/:token';
@@ -53,9 +59,9 @@ export function publicFreelancerRoutes(app: FastifyInstance, deps: AppDeps, page
     if (!isWellFormedFreelancerToken(token)) return null;
     const person = await db.person.findUnique({
       where: { freelancerToken: token },
-      select: { id: true, name: true, active: true, freelancerToken: true },
+      select: { id: true, name: true, active: true, freelancerToken: true, partner: { select: { active: true } } },
     });
-    if (!person || !person.active || !sameToken(person.freelancerToken, token)) return null;
+    if (!person || !isLinkUsable(person) || !sameToken(person.freelancerToken, token)) return null;
     return person;
   };
 
@@ -76,7 +82,7 @@ export function publicFreelancerRoutes(app: FastifyInstance, deps: AppDeps, page
       personId: person.id,
       costLineIds,
       // Re-checked under the lock: the link may have been regenerated or the person deactivated.
-      isCurrent: (p) => p.active && sameToken(p.freelancerToken, token),
+      isCurrent: (p) => isLinkUsable(p) && sameToken(p.freelancerToken, token),
     });
     return reply.status(201).send(toPublicPurchaseOrderDto(po));
   });

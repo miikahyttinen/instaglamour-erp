@@ -89,7 +89,11 @@ spoof it and bypass the limit).
 - **Freelancer link** `/f/<token>`: `person.freelancer_token` (32 random bytes, base64url, unique).
   Existing people were backfilled by migration `20261016120000_purchase_orders` (column default built
   from `gen_random_uuid()` + `sha256`, no extension needed); regenerate uses the Node CSPRNG. An
-  inactive person's link is 404. The public view whitelists fields (FreelancerView / PublicPurchaseOrder).
+  inactive person's link is 404. **Active partners have no freelancer link** (BR-113, 2026-10-18): their
+  public link is 404 (view and create; re-checked under the PO lock), and `GET/POST
+  /api/people/{id}/freelancer-link(/regenerate)` answer 409 `PERSON_IS_PARTNER` (unknown person → 404
+  first). Removing partner status makes the same token work again. Existing POs of a person who becomes
+  a partner stay manageable as before. The public view whitelists fields (FreelancerView / PublicPurchaseOrder).
 - **Creating a PO** (public POST) runs in one transaction: `pg_advisory_xact_lock` per person, then
   `SELECT … FOR UPDATE` on the cost lines and `FOR SHARE` on their gigs, then the BR-114 check for every
   id — all or nothing (409 `COST_LINE_NOT_ELIGIBLE`, `details.costLineIds`). FUEL lines are never
