@@ -88,6 +88,31 @@
   min-height: var(--control-h);
   margin: 0;
 }
+.people-page .people-sort {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  max-width: 100%;
+}
+.people-page .people-sort label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  max-width: 100%;
+}
+.people-page .people-sort-label {
+  font-family: var(--font-mono);
+  font-size: var(--fs-meta);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.people-page .people-sort select {
+  width: auto;
+  max-width: 100%;
+}
 .people-page .people-hint {
   margin: 0 0 var(--space-4);
   max-width: 60ch;
