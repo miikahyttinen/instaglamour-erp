@@ -1,5 +1,6 @@
 // Typed functions for every endpoint in docs/api-contract.md.
 import { apiRequest, buildUrl } from './client';
+import type { MusicianRole } from './enums';
 import type {
   Attachment,
   BudgetCategory,
@@ -174,8 +175,8 @@ export const attachmentsApi = {
 // ---------- People ----------
 
 export const peopleApi = {
-  list: (active: PeopleActiveFilter = 'true', partner?: PeoplePartnerFilter) =>
-    apiRequest<Person[]>('/people', { query: { active, partner } }),
+  list: (active: PeopleActiveFilter = 'true', partner?: PeoplePartnerFilter, role?: MusicianRole) =>
+    apiRequest<Person[]>('/people', { query: { active, partner, role } }),
   create: (body: PersonCreate) =>
     apiRequest<PersonWithWarnings>('/people', { method: 'POST', body }),
   update: (id: Id, body: PersonUpdate) =>

@@ -84,6 +84,10 @@ export interface Person {
   active: boolean;
   /** null = never a partner; `active: false` = partner status removed. */
   partner: PersonPartner | null;
+  /** Roles the person can play: unique, in MUSICIAN_ROLES order. */
+  roles: MusicianRole[];
+  /** Distinct played gigs (SOLD, past, not deleted, all years) with a musician-role line. */
+  gigCount: number;
 }
 
 export interface GigSummary {
@@ -460,6 +464,8 @@ export interface PersonCreate {
 export interface PersonUpdate {
   name?: string;
   active?: boolean;
+  /** Replaces the list; duplicates or non-musician codes → 400 `roles: INVALID_VALUE`. */
+  roles?: MusicianRole[];
 }
 
 export interface PersonWithWarnings {

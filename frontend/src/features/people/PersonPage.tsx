@@ -20,7 +20,7 @@ import { GigStatusTag } from '../gigs/GigStatusTag';
 import { NoticeBox, type Notice } from './Notices';
 import { isPartner } from './partnerRules';
 import { PartnerStatus, PartnerTag } from './PartnerStatus';
-import { PersonActiveSwitch, PersonNameField } from './PersonFields';
+import { PersonActiveSwitch, PersonNameField, PersonRolesField } from './PersonFields';
 import { usePeopleList, usePersonCostLines } from './queries';
 import './people.css';
 
@@ -28,8 +28,8 @@ import './people.css';
 const TOTALS_SPAN: GridSpan = { base: 6, lg: 3 };
 
 /**
- * One person: name, active and partner status edited in place (NFR-8, UC-032), and their cost
- * lines in the selected year (UC-014 A2).
+ * One person: name, active, partner status and roles edited in place (NFR-8, UC-032), the played
+ * gig count, and their cost lines in the selected year (UC-014 A2).
  */
 export function PersonPage() {
   const { t } = useTranslation();
@@ -77,6 +77,16 @@ export function PersonPage() {
             <PersonNameField person={person} label={t('people.name')} onNotice={setNotice} />
             <PersonActiveSwitch person={person} label={t('people.active')} onNotice={setNotice} />
             <PartnerStatus person={person} onNotice={setNotice} />
+            <PersonRolesField person={person} label={t('people.roles')} hint={t('people.rolesHint')} />
+            <div className="person-gig-count" role="group" aria-labelledby="person-gig-count-label">
+              <span className="label" id="person-gig-count-label">
+                {t('people.gigCount')}
+              </span>
+              <span className="person-gig-count-value">
+                {person.gigCount}
+              </span>
+              <span className="muted small person-gig-count-hint">{t('people.gigCountHint')}</span>
+            </div>
           </FieldList>
           <NoticeBox notice={notice} onDismiss={() => setNotice(null)} />
           {/* BR-113: active partners have no freelancer link. */}

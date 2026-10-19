@@ -1,7 +1,9 @@
 import { screen, waitFor, within } from '@testing-library/react';
+import { http, HttpResponse } from 'msw';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { formatMoney } from '../../lib/format';
 import { db } from '../../mocks/data';
+import { server } from '../../mocks/server';
 import { payCostLine } from '../../mocks/gigStore';
 import { addMockGig, mockLine, partnerA, person, staffMockGig, TEST_YEAR } from '../../test/gigFixtures';
 import { renderApp, signInMock } from '../../test/renderApp';
@@ -125,6 +127,57 @@ describe('person page (UC-014 A2)', () => {
     await user.type(name, 'Person 1{Enter}');
     expect(await screen.findByText('Samanniminen henkilö on jo olemassa.')).toBeInTheDocument();
     expect(await screen.findByRole('heading', { name: 'Person 1', level: 1 })).toBeInTheDocument();
+  });
+
+  it('shows the played gig count (all years, musician lines only)', async () => {
+    db.gigs.people.push({ id: '00000000-0000-4000-8000-000000000998', name: 'Person 20', active: true, roles: [] });
+    const played = addMockGig({ startDate: '2020-03-01' });
+    staffMockGig(played, ['Person 20']);
+    const future = addMockGig({ startDate: `${TEST_YEAR}-03-01` });
+    staffMockGig(future, ['Person 20']);
+    renderApp(`/people/${person('Person 20').id}`);
+    const group = await screen.findByRole('group', { name: 'Keikkoja' });
+    expect(within(group).getByText('1')).toBeInTheDocument();
+  });
+
+  it('roles: each checkbox change saves the whole list (PATCH roles) with no Save button', async () => {
+    const patches: unknown[] = [];
+    server.events.on('request:start', async ({ request }) => {
+      if (request.method === 'PATCH') patches.push(await request.clone().json());
+    });
+    const { user } = renderApp(`/people/${person('Person 2').id}`);
+    const roles = await screen.findByRole('group', { name: 'Roolit' });
+    expect(within(roles).getByRole('checkbox', { name: 'Basso' })).toBeChecked();
+    expect(within(roles).getByRole('checkbox', { name: 'Laulu' })).not.toBeChecked();
+
+    await user.click(within(roles).getByRole('checkbox', { name: 'Laulu' }));
+    await waitFor(() => expect(person('Person 2').roles).toEqual(['VOC', 'BASS']));
+    await user.click(within(roles).getByRole('checkbox', { name: 'Basso' }));
+    await waitFor(() => expect(person('Person 2').roles).toEqual(['VOC']));
+    expect(patches).toEqual([{ roles: ['VOC', 'BASS'] }, { roles: ['VOC'] }]);
+    expect(screen.queryByRole('button', { name: /Tallenna/ })).not.toBeInTheDocument();
+    server.events.removeAllListeners();
+  });
+
+  it('roles: a failed save shows the error; Esc restores the saved roles', async () => {
+    server.use(
+      http.patch('/api/people/:id', () =>
+        HttpResponse.json(
+          { error: { code: 'VALIDATION_ERROR', message: 'x', fields: { roles: 'INVALID_VALUE' } } },
+          { status: 400 },
+        ),
+      ),
+    );
+    const { user } = renderApp(`/people/${person('Person 2').id}`);
+    const roles = await screen.findByRole('group', { name: 'Roolit' });
+    const drums = within(roles).getByRole('checkbox', { name: 'Rummut' });
+    await user.click(drums);
+    await waitFor(() => expect(roles).toHaveAttribute('aria-invalid', 'true'));
+    expect(drums).toBeChecked();
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(drums).not.toBeChecked());
+    expect(roles).not.toHaveAttribute('aria-invalid');
+    expect(person('Person 2').roles).toEqual(['BASS']);
   });
 
   it('unknown person shows not found', async () => {

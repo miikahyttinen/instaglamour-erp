@@ -20,6 +20,7 @@ const sameSet = <V,>(a: readonly V[], b: readonly V[]) =>
 /**
  * Multi-select as checkboxes (e.g. technical setup). Every change saves the whole list, in
  * `options` order. For "at least one", pass `validate={(v) => (v.length ? null : 'REQUIRED')}`.
+ * Esc after a failed save restores the last saved selection.
  */
 export function InlineCheckboxGroup<V extends string>(props: InlineCheckboxGroupProps<V>) {
   const id = useId();
@@ -59,6 +60,12 @@ export function InlineCheckboxGroup<V extends string>(props: InlineCheckboxGroup
       aria-invalid={error ? true : undefined}
       aria-describedby={describedBy || undefined}
       disabled={props.disabled}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape' && state.status === 'error') {
+          e.preventDefault();
+          state.revert();
+        }
+      }}
       onBlur={(e) => {
         if (state.status === 'error' && !e.currentTarget.contains(e.relatedTarget as Node | null)) {
           void state.commit();
