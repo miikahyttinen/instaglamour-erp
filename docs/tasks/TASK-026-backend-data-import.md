@@ -1,5 +1,5 @@
 # TASK-026: Data import endpoint
-- **owner:** backend · **status:** todo · **spec:** UC-035, BR-120, BR-121, api-contract "Data import" · **depends on:** none · **parallel:** TASK-154
+- **owner:** backend · **status:** done · **spec:** UC-035, BR-120, BR-121, api-contract "Data import" · **depends on:** none · **parallel:** TASK-154
 ## Goal
 Let partners import a seed-format JSON through the API, reusing `seed/load.ts` (`validateSeed`, `loadSeed`).
 ## Acceptance criteria
