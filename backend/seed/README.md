@@ -18,7 +18,25 @@ npx tsx seed/run.ts --file path/to.json  # load a specific file (add --reset to 
 ```
 
 The whole file is validated first. If anything is wrong, every problem is printed and
-**nothing is loaded** (one transaction).
+**nothing is loaded** (one transaction). On success it prints, per data type, how many items were
+**created**, **updated** and **skipped** (already there).
+
+## Import from the app (UC-035)
+
+Partners can load a file in this format without the command line: **Data import** in the app
+(`POST /api/import`). Same validation, same re-run rules (below), one transaction, and a **Check**
+(dry run) that shows the exact counts without saving anything. Differences from the seed command:
+
+- Max **10 MB**.
+- Every partner email must be in `AUTH_ALLOWED_DOMAIN` (`.env`).
+- **No photos:** a reference with `image` is rejected (the server never reads files named in an
+  upload). Import the references without `image` and add the photos in the app.
+- No `--reset`: an import never deletes anything (emptying the database is `npm run db:reset`).
+- Every real import is logged (partner, time, file name, counts) and shown in the import history.
+
+Imports and seed runs never run at the same time (a database lock), so importing the same file twice
+at once can't create duplicates. Import files contain real data: keep them out of git like
+`seed.local.json` (BR-090).
 
 ## Re-running (idempotency)
 

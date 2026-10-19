@@ -32,7 +32,8 @@ try {
     // Same default as the server (src/config.ts), relative to the backend directory.
     uploadDir: process.env.UPLOAD_DIR || DEFAULT_UPLOAD_DIR,
   });
-  console.log('Seed loaded:', summary);
+  console.log('Seed loaded (per data type: created / updated / skipped = already there):');
+  console.table(summary);
 } catch (err) {
   if (err instanceof SeedValidationError) {
     console.error(err.message);

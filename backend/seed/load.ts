@@ -14,6 +14,10 @@
  *   offer (client + eventName + eventDate; a `converted` offer also gets its gig, BR-105), task (title + owner),
  *   hour entry (partner + date + comment), budget row (category + year),
  *   reference (quoteFi + author; appended after the existing ones, its photo copied to UPLOAD_DIR).
+ *
+ * The summary counts, per data type, the items created, updated (reference data changed by the file)
+ * and skipped (already there). Loads hold an advisory lock, so seed runs and app imports (UC-035)
+ * never run at the same time; `dryRun` rolls the whole load back after counting.
  */
 import { randomUUID } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
@@ -41,22 +45,43 @@ export function resolveSeedFile(seedDir: string): string {
   return existsSync(local) ? local : path.join(seedDir, EXAMPLE_SEED_FILE);
 }
 
-export interface SeedSummary {
-  partners: number;
-  people: number;
-  lineupTemplates: number;
-  settings: number;
-  budgetCategories: number;
-  budgetCategoriesCreated: number;
-  clients: number;
-  clientsCreated: number;
-  gigsCreated: number;
-  offersCreated: number;
-  tasksCreated: number;
-  hoursCreated: number;
-  budgetRowsCreated: number;
-  referencesCreated: number;
+/** What a load did to one kind of item (api-contract "Data import": ImportSummary). */
+export interface SeedCounts {
+  /** New items inserted. */
+  created: number;
+  /** Existing items changed per the re-run rules (person `active`, template roles, setting value). */
+  updated: number;
+  /** Items already in the database and left as they are. */
+  skipped: number;
 }
+
+export const SEED_SUMMARY_KEYS = [
+  'partners',
+  'people',
+  'lineupTemplates',
+  'settings',
+  'budgetCategories',
+  'clients',
+  'gigs',
+  'offers',
+  'references',
+  'tasks',
+  'hours',
+  'budget',
+] as const;
+
+/** Per entity (the seed file's top-level keys) how many items were created, updated or skipped. */
+export type SeedSummary = Record<(typeof SEED_SUMMARY_KEYS)[number], SeedCounts>;
+
+export function emptySeedSummary(): SeedSummary {
+  return Object.fromEntries(SEED_SUMMARY_KEYS.map((k) => [k, { created: 0, updated: 0, skipped: 0 }])) as SeedSummary;
+}
+
+/**
+ * Advisory lock key held for the whole load transaction: seed runs and app imports (UC-035) run one
+ * at a time, so two concurrent loads of the same file can't both insert the same natural key.
+ */
+export const SEED_LOCK_KEY = 20261019035n;
 
 export class SeedValidationError extends Error {
   constructor(readonly errors: string[]) {
@@ -82,6 +107,7 @@ export function readSeedFile(file: string): unknown {
 /** Delete all application data (keeps the schema). Order respects foreign keys. */
 export async function emptyDatabase(tx: Tx): Promise<void> {
   await tx.session.deleteMany();
+  await tx.importRun.deleteMany();
   await tx.purchaseOrderEvent.deleteMany();
   await tx.purchaseOrderLine.deleteMany();
   await tx.purchaseOrder.deleteMany();
@@ -113,6 +139,17 @@ export interface LoadSeedOptions {
   seedDir?: string;
   /** Where reference photos are copied (UPLOAD_DIR). Required when a reference has an image. */
   uploadDir?: string;
+  /** Run the whole load, then roll it back: the summary is exact but nothing is saved. */
+  dryRun?: boolean;
+  /** Called inside the load transaction after the data is applied (not on a dry run), e.g. to log the import. */
+  afterLoad?: (tx: Tx, summary: SeedSummary) => Promise<void>;
+}
+
+/** Thrown inside the transaction to roll a dry run back; carries the summary out. */
+class DryRunRollback extends Error {
+  constructor(readonly summary: SeedSummary) {
+    super('dry run');
+  }
 }
 
 /** A checked reference photo from the seed file, ready to be copied. */
@@ -177,23 +214,35 @@ export async function loadSeed(db: Db, input: unknown, options: LoadSeedOptions 
   try {
     return await db.$transaction(
       async (tx) => {
+        // Released automatically at commit / rollback.
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(${SEED_LOCK_KEY})`;
         if (options.reset) await emptyDatabase(tx);
-        return applySeed(tx, data, images, copyImage);
+        const summary = await applySeed(tx, data, images, copyImage);
+        if (options.dryRun) throw new DryRunRollback(summary);
+        await options.afterLoad?.(tx, summary);
+        return summary;
       },
       { timeout: 120_000, maxWait: 10_000 },
     );
   } catch (err) {
     for (const key of copied) await uploads!.remove(key);
+    if (err instanceof DryRunRollback) return err.summary;
     throw err;
   }
 }
 
-async function upsertPersonByName(tx: Tx, name: string, active: boolean): Promise<string> {
+async function upsertPersonByName(tx: Tx, name: string, active: boolean, counts: SeedCounts): Promise<string> {
   const existing = await tx.person.findFirst({ where: { name }, orderBy: { createdAt: 'asc' } });
   if (existing) {
-    if (existing.active !== active) await tx.person.update({ where: { id: existing.id }, data: { active } });
+    if (existing.active !== active) {
+      await tx.person.update({ where: { id: existing.id }, data: { active } });
+      counts.updated++;
+    } else {
+      counts.skipped++;
+    }
     return existing.id;
   }
+  counts.created++;
   return (await tx.person.create({ data: { name, active } })).id;
 }
 
@@ -221,22 +270,7 @@ async function applySeed(
   images: ReadonlyMap<number, SeedImage>,
   copyImage: (image: SeedImage) => Promise<string>,
 ): Promise<SeedSummary> {
-  const summary: SeedSummary = {
-    partners: 0,
-    people: 0,
-    lineupTemplates: 0,
-    settings: 0,
-    budgetCategories: 0,
-    budgetCategoriesCreated: 0,
-    clients: 0,
-    clientsCreated: 0,
-    gigsCreated: 0,
-    offersCreated: 0,
-    tasksCreated: 0,
-    hoursCreated: 0,
-    budgetRowsCreated: 0,
-    referencesCreated: 0,
-  };
+  const summary = emptySeedSummary();
 
   // Partners (and their Person rows)
   const partnerByEmail = new Map<string, { id: string; personId: string }>();
@@ -248,6 +282,7 @@ async function applySeed(
       // Insert-only (UC-032): partners are managed in the app. An existing partner and its person are
       // never changed — in particular a partner removed in the app is never re-activated by a re-run.
       partner = existing;
+      summary.partners.skipped++;
     } else {
       const unlinked = await tx.person.findFirst({ where: { name: p.name, partner: null } });
       const personId = unlinked?.id ?? (await tx.person.create({ data: { name: p.name } })).id;
@@ -255,28 +290,36 @@ async function applySeed(
       partner = await tx.partner.create({
         data: { email: p.email, personId, language: p.language, phone: p.phone ?? null, active: true },
       });
+      summary.partners.created++;
     }
     partnerByEmail.set(p.email, partner);
     personIdByName.set(p.name, partner.personId);
-    summary.partners++;
   }
 
   // People
   for (const p of data.people) {
-    personIdByName.set(p.name, await upsertPersonByName(tx, p.name, p.active));
-    summary.people++;
+    personIdByName.set(p.name, await upsertPersonByName(tx, p.name, p.active, summary.people));
   }
 
-  // Lineup templates (roles replaced)
+  // Lineup templates (roles replaced when they differ from the file's)
   const templateByName = new Map<string, { id: string; roles: SeedData['lineupTemplates'][number]['roles'] }>();
+  const rolesKey = (roles: { role: string; defaultFeeCents: number }[]) => JSON.stringify(roles.map((r) => [r.role, r.defaultFeeCents]));
   for (const t of data.lineupTemplates) {
-    const template = await tx.lineupTemplate.upsert({ where: { name: t.name }, create: { name: t.name }, update: {} });
-    await tx.templateRole.deleteMany({ where: { templateId: template.id } });
-    await tx.templateRole.createMany({
-      data: t.roles.map((r, position) => ({ templateId: template.id, position, role: r.role, defaultFeeCents: r.defaultFeeCents })),
+    const existing = await tx.lineupTemplate.findUnique({
+      where: { name: t.name },
+      include: { roles: { orderBy: { position: 'asc' } } },
     });
+    const template = existing ?? (await tx.lineupTemplate.create({ data: { name: t.name } }));
+    if (existing && rolesKey(existing.roles) === rolesKey(t.roles)) {
+      summary.lineupTemplates.skipped++;
+    } else {
+      await tx.templateRole.deleteMany({ where: { templateId: template.id } });
+      await tx.templateRole.createMany({
+        data: t.roles.map((r, position) => ({ templateId: template.id, position, role: r.role, defaultFeeCents: r.defaultFeeCents })),
+      });
+      summary.lineupTemplates[existing ? 'updated' : 'created']++;
+    }
     templateByName.set(t.name, { id: template.id, roles: t.roles });
-    summary.lineupTemplates++;
   }
 
   // Settings
@@ -285,8 +328,16 @@ async function applySeed(
     // accepted in older files, not stored.
     if ((LEGACY_OFFER_SETTING_KEYS as readonly string[]).includes(key)) continue;
     const values = typeof value === 'number' ? { valueCents: value, valueText: null } : { valueCents: null, valueText: value };
-    await tx.setting.upsert({ where: { key }, create: { key, ...values }, update: values });
-    summary.settings++;
+    const existing = await tx.setting.findUnique({ where: { key } });
+    if (!existing) {
+      await tx.setting.create({ data: { key, ...values } });
+      summary.settings.created++;
+    } else if (existing.valueCents !== values.valueCents || existing.valueText !== values.valueText) {
+      await tx.setting.update({ where: { key }, data: values });
+      summary.settings.updated++;
+    } else {
+      summary.settings.skipped++;
+    }
   }
   const centsSetting = (key: string) => {
     const v = data.settings[key];
@@ -312,10 +363,11 @@ async function applySeed(
       const { _max } = await tx.budgetCategory.aggregate({ _max: { sortOrder: true } });
       const sortOrder = (_max.sortOrder ?? -1) + 1;
       id = (await tx.budgetCategory.create({ data: { code: c.code ?? null, name: c.name, active: c.active, sortOrder } })).id;
-      summary.budgetCategoriesCreated++;
+      summary.budgetCategories.created++;
+    } else {
+      summary.budgetCategories.skipped++;
     }
     categoryIdByEntry.set(c, id);
-    summary.budgetCategories++;
   }
 
   // Clients (insert only: partners manage them in the app)
@@ -327,10 +379,11 @@ async function applySeed(
     let id = rows[0]?.id;
     if (!id) {
       id = (await tx.client.create({ data: { name, notes: c.notes?.trim() || null } })).id;
-      summary.clientsCreated++;
+      summary.clients.created++;
+    } else {
+      summary.clients.skipped++;
     }
     clientIdByKey.set(clientNameKey(name), id);
-    summary.clients++;
   }
 
   const partnerId = (email: string) => partnerByEmail.get(email)!.id;
@@ -342,7 +395,10 @@ async function applySeed(
     const lineupName = g.lineupName ?? g.lineupTemplate!;
     const startDate = dateFromIso(g.startDate);
     const exists = await tx.gig.findFirst({ where: { startDate, venue: g.venue, lineupName } });
-    if (exists) continue;
+    if (exists) {
+      summary.gigs.skipped++;
+      continue;
+    }
 
     const lines =
       g.costLines?.map((c) => ({
@@ -386,7 +442,7 @@ async function applySeed(
       },
     });
     await tx.gigEvent.create({ data: { gigId: gig.id, type: 'CREATED', partnerId: partnerId(g.seller), details: {} } });
-    summary.gigsCreated++;
+    summary.gigs.created++;
   }
 
   // Offers (insert only; natural key client + eventName + eventDate, deleted offers count too)
@@ -394,7 +450,10 @@ async function applySeed(
   for (const o of data.offers) {
     const clientId = clientIdByKey.get(clientNameKey(o.client))!;
     const eventDate = dateFromIso(o.eventDate);
-    if (await tx.offer.findFirst({ where: { clientId, eventName: o.eventName, eventDate } })) continue;
+    if (await tx.offer.findFirst({ where: { clientId, eventName: o.eventName, eventDate } })) {
+      summary.offers.skipped++;
+      continue;
+    }
     const sellerId = partnerId(o.seller);
     const token = newShareToken();
     const offer = await tx.offer.create({
@@ -418,13 +477,16 @@ async function applySeed(
     });
     await tx.offerEvent.create({ data: { offerId: offer.id, type: 'CREATED', partnerId: sellerId, details: {} } });
     if (o.converted) await convertOfferInTx(tx, { offerId: offer.id, partnerId: sellerId, fees });
-    summary.offersCreated++;
+    summary.offers.created++;
   }
 
   // Tasks (insert only)
   for (const t of data.tasks) {
     const ownerId = partnerId(t.owner);
-    if (await tx.task.findFirst({ where: { title: t.title, ownerId } })) continue;
+    if (await tx.task.findFirst({ where: { title: t.title, ownerId } })) {
+      summary.tasks.skipped++;
+      continue;
+    }
     await tx.task.create({
       data: {
         title: t.title,
@@ -435,22 +497,28 @@ async function applySeed(
         completedAt: t.status === 'DONE' ? new Date() : null,
       },
     });
-    summary.tasksCreated++;
+    summary.tasks.created++;
   }
 
   // Hours (insert only)
   for (const h of data.hours) {
     const pid = partnerId(h.partner);
     const date = dateFromIso(h.date);
-    if (await tx.hourEntry.findFirst({ where: { partnerId: pid, date, comment: h.comment } })) continue;
+    if (await tx.hourEntry.findFirst({ where: { partnerId: pid, date, comment: h.comment } })) {
+      summary.hours.skipped++;
+      continue;
+    }
     await tx.hourEntry.create({ data: { partnerId: pid, date, comment: h.comment, hours: h.hours } });
-    summary.hoursCreated++;
+    summary.hours.created++;
   }
 
   // Budget rows (insert only)
   for (const b of data.budget) {
     const categoryId = categoryIdByEntry.get(findSeedCategory(data.budgetCategories, b.category)!)!;
-    if (await tx.budgetYear.findUnique({ where: { categoryId_year: { categoryId, year: b.year } } })) continue;
+    if (await tx.budgetYear.findUnique({ where: { categoryId_year: { categoryId, year: b.year } } })) {
+      summary.budget.skipped++;
+      continue;
+    }
     await tx.budgetYear.create({
       data: {
         categoryId,
@@ -461,14 +529,17 @@ async function applySeed(
         actualIncomeCents: b.actualIncomeCents,
       },
     });
-    summary.budgetRowsCreated++;
+    summary.budget.created++;
   }
 
   // References (insert only: partners manage them in the app). Appended in listed order.
   const existingReferences = await tx.reference.findMany({ select: { quoteFi: true, author: true } });
   const referenceKeys = new Set(existingReferences.map(referenceKey));
   for (const [i, r] of data.references.entries()) {
-    if (referenceKeys.has(referenceKey(r))) continue;
+    if (referenceKeys.has(referenceKey(r))) {
+      summary.references.skipped++;
+      continue;
+    }
     const { _max } = await tx.reference.aggregate({ _max: { sortOrder: true } });
     const image = images.get(i);
     const photo = image
@@ -485,7 +556,7 @@ async function applySeed(
       },
     });
     referenceKeys.add(referenceKey(r));
-    summary.referencesCreated++;
+    summary.references.created++;
   }
 
   return summary;

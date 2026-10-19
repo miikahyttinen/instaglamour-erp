@@ -14,6 +14,7 @@ import { clientRoutes } from './routes/clients.js';
 import { costLineRoutes } from './routes/costLines.js';
 import { gigRoutes } from './routes/gigs.js';
 import { hourRoutes } from './routes/hours.js';
+import { importRoutes } from './routes/import.js';
 import { meRoutes } from './routes/me.js';
 import { offerRoutes } from './routes/offers.js';
 import { peopleRoutes } from './routes/people.js';
@@ -103,6 +104,7 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
   offerRoutes(app, deps);
   referencesRoutes(app, deps);
   purchaseOrderRoutes(app, deps);
+  importRoutes(app, deps);
   // One per-IP budget for the public offer page and the freelancer endpoints (contract).
   const publicPageLimiter = newPublicRateLimiter();
   publicOfferRoutes(app, deps, publicPageLimiter);
