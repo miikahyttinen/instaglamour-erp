@@ -42,8 +42,8 @@ at once can't create duplicates. Import files contain real data: keep them out o
 
 | Data | Natural key | On re-run |
 |---|---|---|
-| Partner | `email` (case-insensitive) | **Inserted only if missing** (created active, with its person, `language` and `phone`). An existing partner and its person are never changed — not `active`, email, name, phone or language — so a re-run never re-activates a partner removed in the app (UC-032) |
-| Person | `name` | `active` updated |
+| Partner | `email` (case-insensitive) | **Inserted only if missing** (created active, with its person, `language` and `phone`). An existing partner and its person are never changed — not `active`, email, name, phone or language — so a re-run never re-activates a partner removed in the app (UC-032). **One exception:** the person's `roles` are filled from the file when the person has no roles yet (counted as `updated`) |
+| Person | `name` | `active` updated; `roles` set from the file **only when the person has no roles yet** (never overwrites roles edited in the app or backfilled from cost lines) |
 | Lineup template | `name` | Roles replaced by the file's roles |
 | Setting | key | Value updated |
 | Budget category (row) | `code` if given, else `name` (case-insensitive; removed rows count too) | Inserted only if missing — partners manage the rows in the app, so a re-run never renames, reorders or brings back a row they removed |
@@ -68,10 +68,13 @@ Partners, templates, people, clients and budget categories are referenced by ema
 {
   "partners": [                       // required, ≥ 1. Partners are also people.
     { "name": "Partner A", "email": "partner.a@example.com", "language": "fi",   // language: fi|en, default fi
-      "phone": "+358 40 000 0001" }                                              // optional; shown on public offers
+      "phone": "+358 40 000 0001",                                               // optional; shown on public offers
+      "roles": ["VOC"] }                                                         // optional, see people
   ],
   "people": [                         // non-partner people; don't repeat partner names here
-    { "name": "Person 1", "active": true }                                     // active default true
+    { "name": "Person 1", "active": true,                                       // active default true
+      "roles": ["GUITAR", "BACKING_VOC"] }  // optional; roles the person can play: musician-role codes
+                                            // (VOC … OTHER_ROLE), no duplicates; filled only when empty
   ],
   "lineupTemplates": [
     { "name": "Template A", "roles": [ { "role": "VOC", "defaultFeeCents": 30000 } ] }  // roles in display order

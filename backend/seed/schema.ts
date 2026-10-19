@@ -15,6 +15,7 @@ import {
   LANGUAGES,
   LEGACY_OFFER_SETTING_KEYS,
   LOGISTICS,
+  MUSICIAN_ROLES,
   OFFER_DISPOSITIONS,
   OFFER_SOURCES,
   TECHNICAL_SETUPS,
@@ -32,6 +33,12 @@ const singleChoice = (field: string, values: readonly string[]) => (issue: { inp
     ? `${field} is a single value now (one of ${values.join(', ')}), not a list; ` +
       'see seed/README.md (HOUSE_TECHNICIAN → houseTechnician: true, VAN → logistics: "OWN_VAN", OWN_PA → omit)'
     : `must be one of ${values.join(', ')}`;
+
+/** Roles a person can play (TASK-027): musician-role codes, no duplicates. Filled only when empty. */
+const personRoles = z
+  .array(z.enum(MUSICIAN_ROLES))
+  .refine((roles) => new Set(roles).size === roles.length, 'must not contain the same role twice')
+  .optional();
 
 const costLine = z.strictObject({
   type: z.enum(COST_TYPES),
@@ -130,10 +137,16 @@ export function findSeedCategory<C extends { code?: string | undefined; name: st
 export const seedSchema = z.strictObject({
   partners: z
     .array(
-      z.strictObject({ name, email, language: z.enum(LANGUAGES).default('fi'), phone: z.string().trim().min(1).max(50).optional() }),
+      z.strictObject({
+        name,
+        email,
+        language: z.enum(LANGUAGES).default('fi'),
+        phone: z.string().trim().min(1).max(50).optional(),
+        roles: personRoles,
+      }),
     )
     .min(1),
-  people: z.array(z.strictObject({ name, active: z.boolean().default(true) })).default([]),
+  people: z.array(z.strictObject({ name, active: z.boolean().default(true), roles: personRoles })).default([]),
   lineupTemplates: z
     .array(
       z.strictObject({
