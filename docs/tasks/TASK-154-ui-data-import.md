@@ -1,5 +1,5 @@
 # TASK-154: Data import page
-- **owner:** ui · **status:** todo · **spec:** UC-035, api-contract "Data import" · **depends on:** none · **parallel:** TASK-026
+- **owner:** ui · **status:** done · **spec:** UC-035, api-contract "Data import" · **depends on:** none · **parallel:** TASK-026
 ## Acceptance criteria
 - [ ] Nav item **Tietojen tuonti / Data import** (icon `Upload`), last item in the left menu; route `/import`.
 - [ ] Page: file chooser (`.json`, also drag & drop), shows file name and size; > 10 MB rejected client-side with a message. Read file as text, parse JSON client-side (parse error → message), send as body with `filename`.
