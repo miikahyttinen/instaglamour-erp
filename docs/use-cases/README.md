@@ -36,6 +36,8 @@ Actor is a signed-in partner unless stated.
 | **Purchase orders** ||
 | UC-033 | Freelancer link: see own gigs, create purchase order | Freelancer |
 | UC-034 | Manage purchase orders (list, search, mark paid, log) | Partner |
+| **Data** ||
+| UC-035 | Import data from a JSON file (seed format) | Partner |
 | **Development** ||
 | UC-024 | Load local seed data | A |
 

@@ -418,7 +418,20 @@ Duplicate = case-insensitive exact name match with another person.
 - `FUEL` lines are never shown to the freelancer and never eligible (they can't be paid). Unmarking a PAID PO also unpays lines on gigs cancelled/deleted after payment.
 - Concurrency: creation locks the person's lines (e.g. `pg_advisory_xact_lock` on person id) so two requests can't put a line on two POs. Number per BR-116 (global DB sequence).
 
+## Data import (UC-035)
+| Method & path | Request | Response |
+|---|---|---|
+| `POST /api/import` | Query `dryRun=true\|false` (default false), `filename` (optional, ≤ 200, for the log). Body: the seed JSON document (`Content-Type: application/json`, ≤ 10 MB) | 200 `{ dryRun, summary: ImportSummary }` |
+| `GET /api/import/runs` | — | 200 `[ImportRun]` newest first, last 50 |
+
+- `ImportSummary = { partners, people, lineupTemplates, settings, budgetCategories, clients, gigs, offers, references, tasks, hours, budget }`, each `{ created: int, updated: int, skipped: int }` (updated = existing item changed per the seed README re-run rules, e.g. person `active`, template roles, settings).
+- `ImportRun = { id, partnerId, at, filename|null, summary: ImportSummary }` — only real imports (not dry runs).
+- Dry run executes the full load inside a transaction and rolls it back, so the counts are exact.
+- Invalid document → 400 `VALIDATION_ERROR` with `details.errors: string[]` (every problem, path-prefixed, same texts as the seed CLI). Not JSON → 400 `VALIDATION_ERROR` `details.errors: ["not valid JSON"]`. Partner email outside `AUTH_ALLOWED_DOMAIN` → listed in `details.errors`. Any reference `image` → listed in `details.errors` ("image paths are not allowed in an import"). > 10 MB → 413 `FILE_TOO_LARGE`.
+- Concurrent imports are serialized (advisory lock); the seed loader's rules (BR-120) apply unchanged.
+
 ## Change log
+- 2026-10-19 – Data import (UC-035): POST /api/import (dry run), GET /api/import/runs (PM)
 - 2026-10-18 – Active partners have no freelancer link: public 404, link endpoints 409 `PERSON_IS_PARTNER` (PM)
 - 2026-10-16 – Error format: optional `details`; freelancer-link for unknown/inactive person (PM)
 - 2026-10-16 – Purchase orders (UC-033, UC-034): freelancer link, public freelancer view + create PO, PO list/search/pay/unpay/cancel/log, CostLine.purchaseOrder, COST_LINE_ON_PURCHASE_ORDER, COST_LINE_NOT_ELIGIBLE (PM)

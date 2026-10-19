@@ -111,3 +111,9 @@ Rules only — concrete values are seeded settings (`domain-model.md`).
 | BR-117 | **PO status:** `OPEN → PAID` (Mark paid: every line paid with its snapshot amount, now, by the partner — BR-025, logged on the gig with the PO number); `PAID → OPEN` (Unmark: lines unpaid); `OPEN → CANCELLED` (reason required; lines freed). Cancelled is final. |
 | BR-118 | **Lock:** while a line is on an OPEN or PAID PO, its person, amount, load-in switch and paid state can't be changed and it can't be deleted; the gig can't be cancelled or deleted while it has lines on an OPEN PO. Change the PO first (unmark / cancel). Description stays editable. |
 | BR-119 | **Everything is logged** per PO: created (by the freelancer via link), paid, unpaid, cancelled (with reason) — actor and time. The PO list year = year of creation; search by number/name covers all years. |
+
+## Data import (2026-10-19)
+| ID | Rule |
+|---|---|
+| BR-120 | **Import** uses the seed format and the seed loader's rules (`backend/seed/README.md`): validated as a whole, one transaction, insert-only/idempotent per natural key, never deletes or overwrites app edits. Any signed-in partner can import. |
+| BR-121 | Import safety: partner emails must be in `AUTH_ALLOWED_DOMAIN`; reference `image` paths are rejected (no server file access); max 10 MB. Every real import is logged (partner, time, file name, counts). Import files contain real data and are never committed (BR-090). |
