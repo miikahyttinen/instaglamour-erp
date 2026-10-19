@@ -610,3 +610,24 @@ partner status"; a 409 shows as an `alert` inside the dialog. Success notices: "
   `COST_LINE_ON_PURCHASE_ORDER` per BR-118. Extra demo POs (Person 2 paid, Person 3 cancelled + open
   on a 20 March gig, Person 4 paid in the previous year) come from `seedPartnerPurchaseOrders`. Test
   helpers: `src/test/purchaseOrderFixtures.ts`.
+
+### Data import (`src/features/dataImport/`, UC-035, BR-120/121)
+
+- **Nav:** "Tietojen tuonti / Data import" (icon `Upload`), the last menu item; route `/import`.
+- **File:** chooser (`.json`) or drag & drop on the dashed box; shows name and size. Files over 10 MB
+  are rejected in the browser (`IMPORT_MAX_BYTES`), non-`.json` drops too. The file is read as text and
+  parsed with `JSON.parse` (parse error → message); the parsed document is the request body, the file
+  name goes to `filename` (≤ 200).
+- **Tarkista / Check:** `POST /api/import?dryRun=true` → table per data type (Luodaan / Päivitetään /
+  Ohitetaan + total). **Tuo / Import** is enabled only after a successful check of the file chosen now
+  (choosing another file or importing resets it). Confirm dialog → `POST /api/import` → result table
+  (Luotu / Päivitetty / Ohitettu) + success message; then `queryClient.invalidateQueries()` (all data).
+- **Errors:** 400 `VALIDATION_ERROR` → every `details.errors` item in a scrollable monospace list;
+  413 `FILE_TOO_LARGE` → message.
+- **Tuontihistoria / Import history:** `GET /api/import/runs` — time, partner (reference data), file,
+  created / updated / skipped summed; "Näytä erittely" expands the non-zero counts per data type.
+- Types: `src/api/importTypes.ts`; logic (file reading, totals, size format): `importLogic.ts`.
+- **Mock:** `mocks/importHandlers.ts` + `mocks/importStore.ts` (reset by `resetMockDb`). It does not
+  change the other mock stores: it remembers imported items by natural key (re-import → skipped;
+  changed people / templates / settings → updated) and logs real imports. Validation (synthetic):
+  `partners` required, partner emails must be `@example.com`, any `references[].image` is rejected.

@@ -2,6 +2,7 @@
 // en.ts must have exactly the same keys (checked by i18n.test.ts).
 // Gig texts are below; the other features keep theirs in features/<feature>/i18n.ts and are
 // registered at the end in navigation order.
+import { fi as dataImportFi } from '../features/dataImport/i18n';
 import { fi as budgetFi } from '../features/budget/i18n';
 import { fi as clientsFi } from '../features/clients/i18n';
 import { fi as freelancerFi } from '../features/freelancer/i18n';
@@ -32,6 +33,7 @@ const fi = {
     tasks: 'Tehtävät',
     hours: 'Tunnit',
     budget: 'Budjetti',
+    dataImport: 'Tietojen tuonti',
     collapse: 'Pienennä valikko',
     expand: 'Laajenna valikko',
     close: 'Sulje valikko',
@@ -82,6 +84,7 @@ const fi = {
     tasks: 'Tehtävät',
     hours: 'Tunnit {{year}}',
     budget: 'Budjetti {{year}}',
+    dataImport: 'Tietojen tuonti',
     notFound: 'Sivua ei löytynyt.',
     backHome: 'Etusivulle',
   },
@@ -472,6 +475,7 @@ const fi = {
   ...tasksFi,
   ...hoursFi,
   budget: budgetFi,
+  ...dataImportFi,
 };
 
 export default fi;

@@ -69,6 +69,8 @@ import type {
   PublicPurchaseOrder,
   PublicPurchaseOrderCreate,
 } from './purchaseOrderTypes';
+import type { ImportOptions, ImportResponse, ImportRun } from './importTypes';
+import { IMPORT_FILENAME_MAX } from './importTypes';
 
 // ---------- Auth & me ----------
 
@@ -302,4 +304,18 @@ export const purchaseOrdersApi = {
   /** Recent events of every PO, newest first (`limit` 1…200, default 50). */
   events: (limit?: number) =>
     apiRequest<PurchaseOrderEvent[]>('/purchase-orders/events', { query: { limit } }),
+};
+
+// ---------- Data import (UC-035) ----------
+
+export const importApi = {
+  /** `document` = the parsed seed JSON, sent as the body. `dryRun` checks and rolls back. */
+  run: (document: unknown, options: ImportOptions) =>
+    apiRequest<ImportResponse>('/import', {
+      method: 'POST',
+      body: document,
+      query: { dryRun: options.dryRun, filename: options.filename?.slice(0, IMPORT_FILENAME_MAX) },
+    }),
+  /** Real imports, newest first (last 50). */
+  runs: () => apiRequest<ImportRun[]>('/import/runs'),
 };

@@ -49,6 +49,7 @@ export function mainPages(ids: BusyIds): [string, string][] {
     ['my hours', '/hours'],
     ['hours totals', '/hours/totals'],
     ['budget', '/budget'],
+    ['data import', '/import'],
   ];
 }
 

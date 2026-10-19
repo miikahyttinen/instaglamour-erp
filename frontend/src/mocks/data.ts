@@ -12,6 +12,7 @@ import { seedFreelancer, type FreelancerState } from './freelancerStore';
 import { seedGigState } from './gigSeed';
 import { emptyGigState, type GigState } from './gigStore';
 import { seedHours, type HoursState } from './hoursStore';
+import { resetImportStore } from './importStore';
 import { seedOffers } from './offerSeed';
 import type { OfferState } from './offerStore';
 import { seedPartnerPurchaseOrders } from './purchaseOrderStore';
@@ -180,5 +181,6 @@ export function resetMockDb(): void {
   db.hours = seedHours(db.partners);
   db.budget = seedBudget(db.reference.budgetCategories);
   db.freelancer = seedFreelancerAndPurchaseOrders(db.gigs, db.partners, db.reference);
+  resetImportStore();
   setMockSession(null);
 }
