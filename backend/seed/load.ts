@@ -5,7 +5,10 @@
  * - Reference data is upserted — the seed file wins:
  *   person (name), lineup template (name; roles replaced), setting (key).
  * - Partners (email, case-insensitive) are insert-only: created active when missing; an existing
- *   partner and its person are never changed (partner status is managed in the app, UC-032).
+ *   partner and its person are never changed (partner status is managed in the app, UC-032) —
+ *   except the person's `roles`, see below.
+ * - Person roles (partners and people, TASK-027) are set from the file only when the person has no
+ *   roles yet, so app edits are never overwritten; filling them counts as `updated`.
  * - Business data is only inserted when its natural key is not in the database yet, so data
  *   partners have since edited in the app is never overwritten:
  *   budget category (code if given, else name, case-insensitive; removed rows count too — partners
@@ -26,7 +29,14 @@ import path from 'node:path';
 import type { Db } from '../src/db.js';
 import { dateFromIso } from '../src/domain/dates.js';
 import { defaultCostLines } from '../src/domain/costLines.js';
-import { isMusicianRole, LEGACY_OFFER_SETTING_KEYS, OFFER_SETTING_KEYS, SETTING_KEYS } from '../src/domain/enums.js';
+import {
+  isMusicianRole,
+  LEGACY_OFFER_SETTING_KEYS,
+  normalizeRoles,
+  OFFER_SETTING_KEYS,
+  SETTING_KEYS,
+  type MusicianRole,
+} from '../src/domain/enums.js';
 import { newShareToken } from '../src/offers/shareToken.js';
 import { convertOfferInTx } from '../src/offers/store.js';
 import type { Prisma } from '../src/generated/prisma/client.js';
@@ -231,11 +241,30 @@ export async function loadSeed(db: Db, input: unknown, options: LoadSeedOptions 
   }
 }
 
-async function upsertPersonByName(tx: Tx, name: string, active: boolean, counts: SeedCounts): Promise<string> {
+/**
+ * TASK-027: the file's roles for a person, but only when the person has none yet (app edits are never
+ * overwritten). Null = nothing to fill.
+ */
+function rolesToFill(current: readonly string[], fromFile: readonly string[] | undefined): MusicianRole[] | null {
+  if (!fromFile || fromFile.length === 0 || current.length > 0) return null;
+  return normalizeRoles(fromFile);
+}
+
+async function upsertPersonByName(
+  tx: Tx,
+  name: string,
+  active: boolean,
+  roles: readonly MusicianRole[] | undefined,
+  counts: SeedCounts,
+): Promise<string> {
   const existing = await tx.person.findFirst({ where: { name }, orderBy: { createdAt: 'asc' } });
   if (existing) {
-    if (existing.active !== active) {
-      await tx.person.update({ where: { id: existing.id }, data: { active } });
+    const data: { active?: boolean; roles?: MusicianRole[] } = {};
+    if (existing.active !== active) data.active = active;
+    const fill = rolesToFill(existing.roles, roles);
+    if (fill) data.roles = fill;
+    if (Object.keys(data).length > 0) {
+      await tx.person.update({ where: { id: existing.id }, data });
       counts.updated++;
     } else {
       counts.skipped++;
@@ -243,7 +272,7 @@ async function upsertPersonByName(tx: Tx, name: string, active: boolean, counts:
     return existing.id;
   }
   counts.created++;
-  return (await tx.person.create({ data: { name, active } })).id;
+  return (await tx.person.create({ data: { name, active, roles: normalizeRoles(roles ?? []) } })).id;
 }
 
 /**
@@ -281,11 +310,26 @@ async function applySeed(
     if (existing) {
       // Insert-only (UC-032): partners are managed in the app. An existing partner and its person are
       // never changed — in particular a partner removed in the app is never re-activated by a re-run.
+      // The one exception (TASK-027): the person's roles are filled from the file when still empty.
       partner = existing;
-      summary.partners.skipped++;
+      const person = await tx.person.findUniqueOrThrow({ where: { id: existing.personId }, select: { roles: true } });
+      const fill = rolesToFill(person.roles, p.roles);
+      if (fill) {
+        await tx.person.update({ where: { id: existing.personId }, data: { roles: fill } });
+        summary.partners.updated++;
+      } else {
+        summary.partners.skipped++;
+      }
     } else {
       const unlinked = await tx.person.findFirst({ where: { name: p.name, partner: null } });
-      const personId = unlinked?.id ?? (await tx.person.create({ data: { name: p.name } })).id;
+      let personId: string;
+      if (unlinked) {
+        personId = unlinked.id;
+        const fill = rolesToFill(unlinked.roles, p.roles);
+        if (fill) await tx.person.update({ where: { id: personId }, data: { roles: fill } });
+      } else {
+        personId = (await tx.person.create({ data: { name: p.name, roles: normalizeRoles(p.roles ?? []) } })).id;
+      }
       // New partners are active. Language is a personal preference: only set when the partner is created.
       partner = await tx.partner.create({
         data: { email: p.email, personId, language: p.language, phone: p.phone ?? null, active: true },
@@ -298,7 +342,7 @@ async function applySeed(
 
   // People
   for (const p of data.people) {
-    personIdByName.set(p.name, await upsertPersonByName(tx, p.name, p.active, summary.people));
+    personIdByName.set(p.name, await upsertPersonByName(tx, p.name, p.active, p.roles, summary.people));
   }
 
   // Lineup templates (roles replaced when they differ from the file's)

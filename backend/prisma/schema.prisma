@@ -164,6 +164,9 @@ model Person {
   /// Secret freelancer link token (BR-113): 32 CSPRNG bytes, base64url (43 chars). The DB default
   /// gives every new row one (also seed rows); regenerate replaces it (src/purchaseOrders/token.ts).
   freelancerToken String   @unique @default(dbgenerated("translate(rtrim(encode(sha256(convert_to(gen_random_uuid()::text || gen_random_uuid()::text || gen_random_uuid()::text, 'UTF8')), 'base64'), '='), '+/', '-_')")) @map("freelancer_token")
+  /// Roles the person can play (TASK-027): musician-role codes only (validated in the app), unique,
+  /// stored in MUSICIAN_ROLES order. Backfilled from cost lines; the seed fills it only when empty.
+  roles           CostType[] @default([])
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
 

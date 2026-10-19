@@ -63,6 +63,12 @@ export function isMusicianRole(type: string): type is MusicianRole {
   return musicianRoleSet.has(type);
 }
 
+/** Person roles as the contract shows them: musician roles only, unique, in MUSICIAN_ROLES order. */
+export function normalizeRoles(roles: readonly string[]): MusicianRole[] {
+  const set = new Set(roles);
+  return MUSICIAN_ROLES.filter((r) => set.has(r));
+}
+
 /** Cost types whose line needs a free-text description. */
 export const DESCRIPTION_REQUIRED_TYPES: ReadonlySet<CostType> = new Set<CostType>(['OTHER', 'OTHER_ROLE']);
 

@@ -22,7 +22,7 @@ describe('GET /api/people', () => {
     const active = await call(s, 'GET', '/api/people');
     expect(active.statusCode).toBe(200);
     expect(names(active.json())).toEqual(['Partner A', 'Partner B', 'Partner C', 'Person 1', 'Person 2', 'Person 3']);
-    expect(active.json()[3]).toEqual({ id: s.world.p1.id, name: 'Person 1', active: true, partner: null });
+    expect(active.json()[3]).toEqual({ id: s.world.p1.id, name: 'Person 1', active: true, partner: null, roles: [], gigCount: 0 });
 
     const inactive = await call(s, 'GET', '/api/people?active=false');
     expect(names(inactive.json())).toEqual(['Person 0']);
@@ -47,7 +47,7 @@ describe('POST /api/people', () => {
   it('creates an active person without warnings', async () => {
     const res = await call(s, 'POST', '/api/people', { name: '  Person 4 ' });
     expect(res.statusCode).toBe(201);
-    expect(res.json()).toEqual({ person: { id: expect.any(String), name: 'Person 4', active: true, partner: null }, warnings: [] });
+    expect(res.json()).toEqual({ person: { id: expect.any(String), name: 'Person 4', active: true, partner: null, roles: [], gigCount: 0 }, warnings: [] });
   });
 
   it('warns on a case-insensitive duplicate name but still creates', async () => {
@@ -77,7 +77,7 @@ describe('PATCH /api/people/{id}', () => {
   it('renames and deactivates', async () => {
     const res = await call(s, 'PATCH', `/api/people/${s.world.p1.id}`, { name: 'Person 9', active: false });
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toEqual({ person: { id: s.world.p1.id, name: 'Person 9', active: false, partner: null }, warnings: [] });
+    expect(res.json()).toEqual({ person: { id: s.world.p1.id, name: 'Person 9', active: false, partner: null, roles: [], gigCount: 0 }, warnings: [] });
     const reactivated = await call(s, 'PATCH', `/api/people/${s.world.p1.id}`, { active: true });
     expect(reactivated.json().person.active).toBe(true);
   });
@@ -88,7 +88,7 @@ describe('PATCH /api/people/{id}', () => {
     expect(dup.json().warnings).toEqual([{ code: 'DUPLICATE_NAME' }]);
 
     const self = await call(s, 'PATCH', `/api/people/${s.world.p3.id}`, { name: 'PERSON 3' });
-    expect(self.json()).toEqual({ person: { id: s.world.p3.id, name: 'PERSON 3', active: true, partner: null }, warnings: [] });
+    expect(self.json()).toEqual({ person: { id: s.world.p3.id, name: 'PERSON 3', active: true, partner: null, roles: [], gigCount: 0 }, warnings: [] });
   });
 
   it('a no-op returns 200 and writes nothing', async () => {

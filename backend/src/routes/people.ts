@@ -9,7 +9,9 @@ import { compareCostLines, costLinePurchaseOrderInclude, toCostLineDto } from '.
 import { isUuid, yearDateRange } from '../gigs/store.js';
 import { currentSessionTokenHash } from '../auth/session.js';
 import { grantPartner, isInAllowedDomain, normalizeEmail, revokePartner } from '../partners/store.js';
-import { personInclude, toPersonDto } from '../serializers.js';
+import { MUSICIAN_ROLES, isMusicianRole, normalizeRoles, type MusicianRole } from '../domain/enums.js';
+import { toPersonDtoWithCount, toPersonDtos } from '../people/store.js';
+import { personInclude } from '../serializers.js';
 
 type IdParams = { Params: { id: string } };
 
@@ -17,9 +19,20 @@ const listQuery = z.object({
   active: z.enum(['true', 'false', 'all'], { message: 'INVALID_VALUE' }).default('true'),
   /** UC-032: true = has an active partner, false = doesn't (never a partner or removed). */
   partner: z.enum(['true', 'false'], { message: 'INVALID_VALUE' }).optional(),
+  /** TASK-027: people whose roles include this musician role. */
+  role: z.enum(MUSICIAN_ROLES, { message: 'INVALID_VALUE' }).optional(),
 });
 const createBody = z.object({ name: requiredText() });
-const updateBody = z.object({ name: requiredText().optional(), active: z.boolean().optional() });
+/** A whole-list replacement: musician-role codes, no duplicates; any problem → `roles: INVALID_VALUE`. */
+const rolesInput = z.custom<MusicianRole[]>(
+  (v) => Array.isArray(v) && v.every((r) => typeof r === 'string' && isMusicianRole(r)) && new Set(v).size === v.length,
+  { message: 'INVALID_VALUE' },
+);
+const updateBody = z.object({
+  name: requiredText().optional(),
+  active: z.boolean().optional(),
+  roles: rolesInput.optional(),
+});
 const costLinesQuery = z.object({ year: yearString });
 const partnerBody = z.object({ email: requiredText() });
 
@@ -43,24 +56,25 @@ export function peopleRoutes(app: FastifyInstance, deps: AppDeps): void {
   };
 
   app.get('/api/people', async (request) => {
-    const { active, partner } = parseInput(listQuery, request.query);
+    const { active, partner, role } = parseInput(listQuery, request.query);
     const people = await db.person.findMany({
       where: {
         ...(active !== 'all' && { active: active === 'true' }),
         ...(partner === 'true' && { partner: { is: { active: true } } }),
         ...(partner === 'false' && { OR: [{ partner: { is: null } }, { partner: { is: { active: false } } }] }),
+        ...(role && { roles: { has: role } }),
       },
       include: personInclude,
       orderBy: [{ name: 'asc' }, { id: 'asc' }],
     });
-    return people.map(toPersonDto);
+    return toPersonDtos(db, people);
   });
 
   app.post('/api/people', async (request, reply) => {
     const { name } = parseInput(createBody, request.body);
     const warnings = await duplicateWarnings(name);
     const person = await db.person.create({ data: { name }, include: personInclude });
-    return reply.status(201).send({ person: toPersonDto(person), warnings });
+    return reply.status(201).send({ person: await toPersonDtoWithCount(db, person), warnings });
   });
 
   app.patch<IdParams>('/api/people/:id', async (request) => {
@@ -68,11 +82,17 @@ export function peopleRoutes(app: FastifyInstance, deps: AppDeps): void {
     const person = await requirePerson(request.params.id);
     const warnings = body.name === undefined ? [] : await duplicateWarnings(body.name, person.id);
 
-    const data: { name?: string; active?: boolean } = {};
+    const data: { name?: string; active?: boolean; roles?: MusicianRole[] } = {};
     if (body.name !== undefined && body.name !== person.name) data.name = body.name;
     if (body.active !== undefined && body.active !== person.active) data.active = body.active;
+    if (body.roles !== undefined) {
+      // Stored in MUSICIAN_ROLES order, so the same set in another order is a no-op. People have no
+      // change history, so a roles change is not logged (contract).
+      const roles = normalizeRoles(body.roles);
+      if (roles.join() !== normalizeRoles(person.roles).join()) data.roles = roles;
+    }
     const updated = Object.keys(data).length > 0 ? await db.person.update({ where: { id: person.id }, data, include: personInclude }) : person;
-    return { person: toPersonDto(updated), warnings };
+    return { person: await toPersonDtoWithCount(db, updated), warnings };
   });
 
   /** UC-032 / BR-110: make (or keep) the person an active partner with this email. */
@@ -89,7 +109,7 @@ export function peopleRoutes(app: FastifyInstance, deps: AppDeps): void {
       actorId: me.id,
       keepTokenHash: currentSessionTokenHash(request),
     });
-    return toPersonDto(await requirePerson(request.params.id));
+    return toPersonDtoWithCount(db, await requirePerson(request.params.id));
   });
 
   /** UC-032 A2 / BR-111, BR-112: deactivate the partner and revoke all its sessions. */
@@ -97,7 +117,7 @@ export function peopleRoutes(app: FastifyInstance, deps: AppDeps): void {
     const me = request.requirePartner();
     if (!isUuid(request.params.id)) throw notFound('Person not found');
     await revokePartner(db, { personId: request.params.id, actorId: me.id });
-    return toPersonDto(await requirePerson(request.params.id));
+    return toPersonDtoWithCount(db, await requirePerson(request.params.id));
   });
 
   /** The person's cost lines on non-deleted gigs of the year (UC-014 A2), in gig order. */

@@ -7,8 +7,8 @@
     { "name": "Partner E", "email": "partner.e@example.com", "language": "en" }
   ],
   "people": [
-    { "name": "Person 1" },
-    { "name": "Person 2" },
+    { "name": "Person 1", "roles": ["VOC", "BACKING_VOC"] },
+    { "name": "Person 2", "roles": ["GUITAR"] },
     { "name": "Person 3" },
     { "name": "Person 4" },
     { "name": "Person 5" },

@@ -38,6 +38,8 @@ describe('PUT /api/people/{id}/partner — grant', () => {
       name: 'Person 1',
       active: true,
       partner: { id: expect.any(String), email: 'person.one@example.com', active: true },
+      roles: [],
+      gigCount: 0,
     });
     const partnerId = res.json().partner.id as string;
 
@@ -183,6 +185,8 @@ describe('DELETE /api/people/{id}/partner — revoke', () => {
       name: 'Partner B',
       active: true,
       partner: { id: s.world.b.id, email: 'partner.b@example.com', active: false },
+      roles: [],
+      gigCount: 0,
     });
 
     const row = await testDb().partner.findUniqueOrThrow({ where: { id: s.world.b.id } });
