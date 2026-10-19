@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { rootKeys } from '../../api/cache';
 import { peopleApi } from '../../api/endpoints';
+import type { MusicianRole } from '../../api/enums';
 import type { Id, PeopleActiveFilter, PeoplePartnerFilter, PersonUpdate } from '../../api/types';
 import { meKey } from '../../auth/useMe';
 import { referenceKey } from '../../reference/useReference';
@@ -10,15 +11,19 @@ import { referenceKey } from '../../reference/useReference';
 // cost lines through invalidateYearData (api/cache.ts).
 export const peopleKeys = {
   all: ['people'] as const,
-  list: (filter: PeopleActiveFilter, partner?: PeoplePartnerFilter) =>
-    ['people', 'list', filter, partner ?? 'any'] as const,
+  list: (filter: PeopleActiveFilter, partner?: PeoplePartnerFilter, role?: MusicianRole) =>
+    ['people', 'list', filter, partner ?? 'any', role ?? 'any'] as const,
   costLines: (id: Id, year: number) => [...rootKeys.personCostLines, id, year] as const,
 };
 
-export function usePeopleList(filter: PeopleActiveFilter, partner?: PeoplePartnerFilter) {
+export function usePeopleList(
+  filter: PeopleActiveFilter,
+  partner?: PeoplePartnerFilter,
+  role?: MusicianRole,
+) {
   return useQuery({
-    queryKey: peopleKeys.list(filter, partner),
-    queryFn: () => peopleApi.list(filter, partner),
+    queryKey: peopleKeys.list(filter, partner, role),
+    queryFn: () => peopleApi.list(filter, partner, role),
     placeholderData: (previous) => previous,
   });
 }

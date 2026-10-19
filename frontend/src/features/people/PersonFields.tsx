@@ -1,7 +1,8 @@
 import { useTranslation } from 'react-i18next';
+import { MUSICIAN_ROLES, type MusicianRole } from '../../api/enums';
 import type { Person } from '../../api/types';
-import { InlineSwitch, InlineText } from '../../components/inline';
-import { warningMessage } from '../../i18n/labels';
+import { InlineCheckboxGroup, InlineSwitch, InlineText } from '../../components/inline';
+import { costTypeLabel, warningMessage } from '../../i18n/labels';
 import { useLang } from '../../i18n/useLang';
 import type { Notice } from './Notices';
 import { useUpdatePerson } from './queries';
@@ -62,6 +63,30 @@ export function PersonActiveSwitch({ person, label, hideLabel, className, onNoti
           text: t(active ? 'people.activated' : 'people.deactivated', { name: result.person.name }),
           warnings: [],
         });
+      }}
+    />
+  );
+}
+
+/**
+ * Roles the person can play (musician roles): a checkbox list; every change saves the whole list
+ * with one PATCH `{ roles }` (NFR-8), Esc after a failed save restores the saved roles.
+ */
+export function PersonRolesField({ person, label, hideLabel, className, hint }: Omit<FieldProps, 'onNotice'> & { hint?: string }) {
+  const { t } = useTranslation();
+  const update = useUpdatePerson();
+  const options = MUSICIAN_ROLES.map((role) => ({ value: role, label: costTypeLabel(t, role) }));
+  return (
+    <InlineCheckboxGroup<MusicianRole>
+      label={label}
+      hideLabel={hideLabel}
+      className={['person-roles-field', className].filter(Boolean).join(' ')}
+      hint={hint}
+      field="roles"
+      value={person.roles}
+      options={options}
+      onSave={async (roles) => {
+        await update.mutateAsync({ id: person.id, body: { roles } });
       }}
     />
   );

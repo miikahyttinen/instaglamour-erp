@@ -66,12 +66,30 @@
   margin: 0;
 }
 
-/* Filter + hint. */
+/* Filters on one line (active status · role · only partners); they wrap on phones. The hint sits
+   under the row. */
 .people-page .people-filters {
-  align-items: flex-start;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+.people-page .people-role-filter {
+  display: flex;
+  margin: 0;
+  max-width: 100%;
+}
+.people-page .people-role-filter select {
+  width: auto;
+  max-width: 100%;
+}
+.people-page .people-only-partners {
+  min-height: var(--control-h);
+  margin: 0;
 }
 .people-page .people-hint {
-  margin: 0;
+  margin: 0 0 var(--space-4);
   max-width: 60ch;
 }
 
@@ -84,7 +102,8 @@
 }
 .people-page .people-name-field {
   flex: 1 1 auto;
-  min-width: 0;
+  /* Keeps the name readable when the roles column takes space (table auto layout). */
+  min-width: calc(var(--label-w) * 0.6);
   max-width: var(--people-name-w);
 }
 .people-page .people-open {
@@ -156,14 +175,33 @@
   }
 }
 
-/* Partner status (UC-032): filter select, tag column, person page header tags, dialogs. */
-.people-page .people-partner-filter {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  align-self: flex-start;
-  min-width: calc(var(--label-w) + var(--space-5));
+/* 600–1199 px (table next to the sidebar): the open link is the chevron only (its accessible
+   name stays), so name, roles, gig count, partner and active fit without sideways scrolling. */
+@media (min-width: 600px) and (max-width: 1199px) {
+  .people-page .people-table .people-open-text {
+    display: none;
+  }
+  .people-page .people-table .people-open {
+    min-width: var(--control-h);
+    justify-content: center;
+  }
+  .people-page .people-table {
+    --cell-pad-x: var(--space-2);
+  }
 }
+
+/* Roles (tags, wrap) and gig count (number, one line). */
+.people-page .people-roles {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+.people-page .people-table .people-gigs-cell {
+  width: 1%;
+  white-space: nowrap;
+}
+
+/* Partner status (UC-032): tag column, person page header tags, dialogs. */
 .people-page .people-table .people-partner-cell {
   width: 1%;
   white-space: nowrap;
@@ -194,5 +232,35 @@
   }
   .people-page .people-table td.people-partner-cell:not(:has(.tag)) {
     display: none;
+  }
+  .people-page .people-table .people-gigs-cell {
+    width: auto;
+  }
+  .people-page .people-roles {
+    justify-content: flex-end;
+  }
+}
+
+/* Person page: gig count as a read-only row in the field list. */
+.people-page .person-gig-count {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: var(--space-2) 0;
+}
+.people-page .person-gig-count-value {
+  font-variant-numeric: tabular-nums;
+}
+@media (min-width: 600px) {
+  .people-page .field-list > .person-gig-count {
+    display: grid;
+    grid-template-columns: var(--field-label-w) minmax(0, 1fr);
+    column-gap: var(--space-4);
+    align-items: center;
+    min-height: var(--control-h);
+    margin: 0;
+  }
+  .people-page .person-gig-count > .person-gig-count-hint {
+    grid-column: 2;
   }
 }

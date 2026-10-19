@@ -2,13 +2,15 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ChevronRight } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
-import type { PeopleActiveFilter, PeoplePartnerFilter, Person } from '../../api/types';
+import { MUSICIAN_ROLES, type MusicianRole } from '../../api/enums';
+import type { PeopleActiveFilter, Person } from '../../api/types';
 import { Button } from '../../components/Button';
 import { DataTable, type DataTableColumn } from '../../components/DataTable';
 import { Notice as NoticeMessage } from '../../components/Notice';
 import { PageHead } from '../../components/PageHead';
 import { SectionLabel } from '../../components/SectionLabel';
-import { warningMessage } from '../../i18n/labels';
+import { StatusTag } from '../../components/StatusTag';
+import { costTypeLabel, warningMessage } from '../../i18n/labels';
 import { useLang } from '../../i18n/useLang';
 import { NameForm } from './NameForm';
 import { NoticeBox, type Notice } from './Notices';
@@ -28,16 +30,15 @@ function parseFilter(value: string | null): PeopleActiveFilter {
   return value === 'false' || value === 'all' ? value : 'true';
 }
 
-/** `?partner=true|false` (UC-032); anything else = everyone. */
-function parsePartnerFilter(value: string | null): PeoplePartnerFilter | undefined {
-  return value === 'true' || value === 'false' ? value : undefined;
+/** `?partner=true` = only active partners (UC-032); anything else = no partner filter. */
+function parseOnlyPartners(value: string | null): boolean {
+  return value === 'true';
 }
 
-const PARTNER_FILTERS: { value: PeoplePartnerFilter | ''; labelKey: string }[] = [
-  { value: '', labelKey: 'people.partner.filters.all' },
-  { value: 'true', labelKey: 'people.partner.filters.partners' },
-  { value: 'false', labelKey: 'people.partner.filters.others' },
-];
+/** `?role=<MusicianRole>`; unknown codes are ignored (no role filter). */
+function parseRole(value: string | null): MusicianRole | undefined {
+  return (MUSICIAN_ROLES as readonly string[]).includes(value ?? '') ? (value as MusicianRole) : undefined;
+}
 
 /**
  * Accessible names must be unique per row, but duplicate names are allowed (DUPLICATE_NAME is a
@@ -59,15 +60,17 @@ function rowNames(people: readonly Person[]): Map<string, string> {
 /**
  * People register (UC-014): list (active by default), add; name and active are edited in place
  * (NFR-8: no Edit buttons, the name saves on blur / Enter, the switch on change). Partners have an
- * "Osakas" tag and the list can be filtered by partner status (UC-032, `?partner=`).
+ * "Osakas" tag; each row shows the person's roles and played gig count. Filters on one line:
+ * active status, role (`?role=`) and "only partners" (`?partner=true`), all kept in the URL.
  */
 export function PeoplePage() {
   const { t } = useTranslation();
   const lang = useLang();
   const [params, setParams] = useSearchParams();
   const filter = parseFilter(params.get('active'));
-  const partnerFilter = parsePartnerFilter(params.get('partner'));
-  const list = usePeopleList(filter, partnerFilter);
+  const onlyPartners = parseOnlyPartners(params.get('partner'));
+  const role = parseRole(params.get('role'));
+  const list = usePeopleList(filter, onlyPartners ? 'true' : undefined, role);
   const create = useCreatePerson();
   const [notice, setNotice] = useState<Notice | null>(null);
 
@@ -83,7 +86,8 @@ export function PeoplePage() {
     );
   };
   const setFilter = (value: PeopleActiveFilter) => setParam('active', value === 'true' ? undefined : value);
-  const setPartnerFilter = (value: string) => setParam('partner', parsePartnerFilter(value));
+  const setOnlyPartners = (checked: boolean) => setParam('partner', checked ? 'true' : undefined);
+  const setRole = (value: string) => setParam('role', parseRole(value));
 
   const add = async (name: string) => {
     const result = await create.mutateAsync(name);
@@ -115,11 +119,35 @@ export function PeoplePage() {
             className="people-open"
             aria-label={t('people.openOf', { name: nameOf(person) })}
           >
-            {t('people.open')}
+            <span className="people-open-text">{t('people.open')}</span>
             <ChevronRight aria-hidden="true" />
           </Link>
         </span>
       ),
+    },
+    {
+      key: 'roles',
+      label: t('people.roles'),
+      className: 'people-roles-cell',
+      cell: (person) =>
+        person.roles.length > 0 ? (
+          <span className="people-roles">
+            {person.roles.map((r) => (
+              <StatusTag key={r}>{costTypeLabel(t, r)}</StatusTag>
+            ))}
+          </span>
+        ) : (
+          <span className="muted" title={t('people.noRoles')}>
+            –
+          </span>
+        ),
+    },
+    {
+      key: 'gigCount',
+      label: t('people.gigCount'),
+      numeric: true,
+      className: 'people-gigs-cell',
+      cell: (person) => person.gigCount,
     },
     {
       key: 'partner',
@@ -174,18 +202,27 @@ export function PeoplePage() {
             </button>
           ))}
         </div>
-        <label className="people-partner-filter">
-          <span className="label">{t('people.partner.filterLabel')}</span>
-          <select value={partnerFilter ?? ''} onChange={(e) => setPartnerFilter(e.target.value)}>
-            {PARTNER_FILTERS.map((f) => (
-              <option key={f.value} value={f.value}>
-                {t(f.labelKey)}
+        <label className="people-role-filter">
+          <span className="visually-hidden">{t('people.roleFilter')}</span>
+          <select value={role ?? ''} onChange={(e) => setRole(e.target.value)}>
+            <option value="">{t('people.allRoles')}</option>
+            {MUSICIAN_ROLES.map((r) => (
+              <option key={r} value={r}>
+                {costTypeLabel(t, r)}
               </option>
             ))}
           </select>
         </label>
-        <p className="muted small people-hint">{t('people.inactiveHint')}</p>
+        <label className="check people-only-partners">
+          <input
+            type="checkbox"
+            checked={onlyPartners}
+            onChange={(e) => setOnlyPartners(e.target.checked)}
+          />
+          {t('people.onlyPartners')}
+        </label>
       </div>
+      <p className="muted small people-hint">{t('people.inactiveHint')}</p>
 
       {list.isPending && <p className="muted">{t('app.loading')}</p>}
       {list.isError && (

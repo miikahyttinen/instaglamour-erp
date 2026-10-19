@@ -1,5 +1,6 @@
 // Synthetic demo gigs for `npm run dev:mock` and tests (BR-090: no real names or numbers).
 // Dates are in the current year so the default gig list shows something.
+import type { MusicianRole } from '../api/enums';
 import type { LineupTemplate, Partner, Settings } from '../api/types';
 import type { GigState, MockClient, MockPerson, NewGigInput } from './gigStore';
 import {
@@ -18,10 +19,30 @@ export const PERSON_IDS = Array.from(
   (_, i) => `00000000-0000-4000-8000-0000000003${String(i + 1).padStart(2, '0')}`,
 );
 
+/** Synthetic roles per seeded person (Person 1…9); in MUSICIAN_ROLES order. The last has none. */
+const PERSON_ROLES: MusicianRole[][] = [
+  ['VOC', 'BACKING_VOC'],
+  ['BASS'],
+  ['GUITAR', 'BACKING_VOC'],
+  ['DRUMS'],
+  ['KEYS', 'PIANO'],
+  ['MIX', 'TECHNICIAN'],
+  ['SAX', 'HORN_1'],
+  ['DJ'],
+  [],
+];
+/** Synthetic roles for the seeded partners (Partner A, B…). */
+const PARTNER_ROLES: MusicianRole[][] = [['VOC'], ['GUITAR', 'KEYS']];
+
 export function seedPeople(partners: Partner[]): MockPerson[] {
   return [
-    ...partners.map((p) => ({ id: p.personId, name: p.name, active: true })),
-    ...PERSON_IDS.map((id, i) => ({ id, name: `Person ${i + 1}`, active: i < 8 })),
+    ...partners.map((p, i) => ({ id: p.personId, name: p.name, active: true, roles: [...(PARTNER_ROLES[i] ?? [])] })),
+    ...PERSON_IDS.map((id, i) => ({
+      id,
+      name: `Person ${i + 1}`,
+      active: i < 8,
+      roles: [...(PERSON_ROLES[i] ?? [])],
+    })),
   ];
 }
 

@@ -57,7 +57,7 @@ async function otherBrowser(browser: Browser, testInfo: TestInfo, baseURL: strin
   return context.newPage();
 }
 
-test('make a person a partner: email errors, "Osakas" label on the person page and in the list, "Osakkuus" filter', async ({ page }, testInfo) => {
+test('make a person a partner: email errors, "Osakas" label on the person page and in the list, "Näytä vain osakkaat" filter', async ({ page }, testInfo) => {
   await signIn(page);
   const s = suffix();
   const name = `Person ${tagOf(testInfo)}-${s} Grant`;
@@ -122,28 +122,28 @@ test('make a person a partner: email errors, "Osakas" label on the person page a
   expect(ref.partners.find((p) => p.personId === person.id)).toMatchObject({ active: true, email });
   await expectNoHorizontalScroll(page, 'person page (partner)');
 
-  // People list: "Osakas" label and the "Osakkuus" filter (?partner=true|false) = API.
+  // People list: "Osakas" label and the "Näytä vain osakkaat" checkbox (?partner=true) = API.
   await page.goto('/people');
   await expect(page.getByRole('heading', { level: 1, name: 'Henkilöt' })).toBeVisible();
   await expect(peopleRow(page, name)).toContainText('Osakas');
   await expect(peopleRow(page, 'Person 1')).not.toContainText('Osakas');
-  const filter = page.getByRole('main').getByRole('combobox', { name: 'Osakkuus', exact: true });
-  await filter.selectOption({ label: 'Osakkaat' });
+  const onlyPartners = page.getByRole('main').getByRole('checkbox', { name: 'Näytä vain osakkaat', exact: true });
+  await expect(onlyPartners).not.toBeChecked();
+  await onlyPartners.click(); // URL-controlled: the state follows the navigation
+  await expect(onlyPartners).toBeChecked();
   await expect(page).toHaveURL(/[?&]partner=true/);
   await expect(peopleRow(page, name)).toHaveCount(1);
   await expect(peopleRow(page, 'Person 1')).toHaveCount(0);
   const partnersApi = (await api(page).get('/people?partner=true')) as ApiPerson[];
   await expect(page.getByRole('table', { name: 'Henkilöt' }).getByRole('link', { name: /^Avaa: / })).toHaveCount(partnersApi.length);
   expect(partnersApi.every((p) => p.partner?.active)).toBe(true);
-  await filter.selectOption({ label: 'Muut' });
-  await expect(page).toHaveURL(/[?&]partner=false/);
-  await expect(peopleRow(page, name)).toHaveCount(0);
-  await expect(peopleRow(page, 'Person 1')).toHaveCount(1);
   await page.reload();
-  await expect(page.getByRole('main').getByRole('combobox', { name: 'Osakkuus', exact: true }).locator('option:checked')).toHaveText('Muut');
-  await filter.selectOption({ label: 'Kaikki' });
+  await expect(onlyPartners).toBeChecked();
+  await onlyPartners.click();
+  await expect(onlyPartners).not.toBeChecked();
   await expect(page).not.toHaveURL(/[?&]partner=/);
   await expect(peopleRow(page, name)).toHaveCount(1);
+  await expect(peopleRow(page, 'Person 1')).toHaveCount(1);
 });
 
 test('own partner status is locked (BR-112): switch disabled with a note, API 409 CANNOT_REMOVE_SELF', async ({ page }) => {
@@ -260,8 +260,10 @@ test('removing a partner ends their session and sign-in; the name stays on their
     await expect(totals).toContainText(comment);
     await expect(totals).toContainText(name);
 
-    // People list: now under "Muut", no label.
-    await page.goto('/people?partner=false');
+    // People list: no label; not in "only partners" (API ?partner=false lists it).
+    const others = (await api(page).get('/people?partner=false')) as ApiPerson[];
+    expect(others.some((p) => p.id === person.id)).toBe(true);
+    await page.goto('/people');
     await expect(peopleRow(page, name)).toHaveCount(1);
     await expect(peopleRow(page, name)).not.toContainText('Osakas');
     await page.goto('/people?partner=true');

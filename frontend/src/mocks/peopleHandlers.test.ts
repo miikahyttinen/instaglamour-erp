@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { ApiError } from '../api/client';
 import { authApi, meApi, peopleApi, referenceApi } from '../api/endpoints';
-import { person } from '../test/gigFixtures';
+import { addMockGig, mockLine, person, staffMockGig, TEST_YEAR } from '../test/gigFixtures';
 import { signInMock } from '../test/renderApp';
 import { db, setMockSession } from './data';
 
@@ -91,5 +91,59 @@ describe('partner status mock (contract → Partner status, UC-032)', () => {
     const b = byName('Partner B');
     await peopleApi.update(b.personId, { name: 'Partner B2' });
     expect((await referenceApi.get()).partners.find((p) => p.id === b.id)!.name).toBe('Partner B2');
+  });
+});
+
+describe('people roles and gig count mock (contract → People: roles and gig count)', () => {
+  beforeEach(() => {
+    signInMock();
+  });
+
+  const gigCount = async (name: string) =>
+    (await peopleApi.list('all')).find((p) => p.name === name)!.gigCount;
+
+  it('every person has roles (MUSICIAN_ROLES order) and a gigCount', async () => {
+    const all = await peopleApi.list('all');
+    for (const p of all) {
+      expect(Array.isArray(p.roles)).toBe(true);
+      expect(typeof p.gigCount).toBe('number');
+    }
+    expect(all.find((p) => p.name === 'Person 1')!.roles).toEqual(['VOC', 'BACKING_VOC']);
+  });
+
+  it('gigCount = distinct played SOLD non-deleted gigs with a musician-role line', async () => {
+    const before = await gigCount('Person 3');
+    const played = addMockGig({ startDate: '2020-03-01' });
+    staffMockGig(played, ['Person 3', 'Person 3']); // two lines on one gig count once
+    const future = addMockGig({ startDate: `${TEST_YEAR}-03-01` });
+    staffMockGig(future, ['Person 3']);
+    const cancelled = addMockGig({ startDate: '2020-04-01' });
+    staffMockGig(cancelled, ['Person 3']);
+    cancelled.status = 'CANCELLED';
+    const deleted = addMockGig({ startDate: '2020-05-01' });
+    staffMockGig(deleted, ['Person 3']);
+    deleted.deletedAt = new Date().toISOString();
+    const internalOnly = addMockGig({ startDate: '2020-06-01' });
+    mockLine(internalOnly, 'OFFICE').personId = person('Person 3').id;
+    expect(await gigCount('Person 3')).toBe(before + 1);
+  });
+
+  it('?role= filters by role, combines with active / partner; unknown role → 400', async () => {
+    expect((await peopleApi.list('all', undefined, 'VOC')).map((p) => p.name)).toEqual(['Partner A', 'Person 1']);
+    expect((await peopleApi.list('true', 'true', 'VOC')).map((p) => p.name)).toEqual(['Partner A']);
+    expect((await peopleApi.list('false', undefined, 'VOC')).map((p) => p.name)).toEqual([]);
+    const err = await apiError(peopleApi.list('all', undefined, 'OFFICE' as never));
+    expect(err.status).toBe(400);
+    expect(err.fields).toEqual({ role: 'INVALID_VALUE' });
+  });
+
+  it('PATCH roles replaces the list in MUSICIAN_ROLES order; duplicates / non-musician codes → 400', async () => {
+    const id = person('Person 2').id;
+    const res = await peopleApi.update(id, { roles: ['KEYS', 'BASS'] });
+    expect(res.person.roles).toEqual(['BASS', 'KEYS']);
+    expect((await peopleApi.update(id, { roles: [] })).person.roles).toEqual([]);
+    expect((await apiError(peopleApi.update(id, { roles: ['BASS', 'BASS'] }))).fields).toEqual({ roles: 'INVALID_VALUE' });
+    expect((await apiError(peopleApi.update(id, { roles: ['OFFICE' as never] }))).fields).toEqual({ roles: 'INVALID_VALUE' });
+    expect(person('Person 2').roles).toEqual([]);
   });
 });

@@ -2,7 +2,7 @@
 // live in the gig mock store (db.gigs.people) so the gig pickers and the people register share
 // one list; `person.partner` is derived from db.partners (linked by personId).
 import { http, HttpResponse } from 'msw';
-import type { FieldCode } from '../api/enums';
+import { isMusicianRole, MUSICIAN_ROLES, type FieldCode, type MusicianRole } from '../api/enums';
 import type {
   Person,
   PersonCostLine,
@@ -15,6 +15,7 @@ import type {
 } from '../api/types';
 import { db } from './data';
 import { mockId, type MockPerson } from './gigStore';
+import { todayIso } from '../lib/format';
 import { currentPartner, errorResponse, unauthenticated, validationError } from './util';
 
 const NAME_MAX = 500;
@@ -53,12 +54,45 @@ function partnerOf(personId: string) {
   return db.partners.find((p) => p.personId === personId);
 }
 
-/** API shape: the stored person + its partner status. */
+/**
+ * Distinct played gigs (SOLD, start date before today, not deleted, all years) where the person
+ * has at least one musician-role cost line.
+ */
+function gigCountOf(personId: string): number {
+  const today = todayIso();
+  const played = new Set(
+    db.gigs.gigs
+      .filter((g) => g.deletedAt === null && g.status === 'SOLD' && g.startDate < today)
+      .map((g) => g.id),
+  );
+  const gigIds = new Set(
+    db.gigs.costLines
+      .filter((l) => l.personId === personId && isMusicianRole(l.type) && played.has(l.gigId))
+      .map((l) => l.gigId),
+  );
+  return gigIds.size;
+}
+
+/** `roles` of PATCH: unique musician-role codes, returned in MUSICIAN_ROLES order. */
+function checkRoles(value: unknown): { roles?: MusicianRole[]; error?: FieldCode } {
+  if (value === undefined) return {};
+  if (!Array.isArray(value)) return { error: 'INVALID_VALUE' };
+  const codes = value as unknown[];
+  const valid = codes.every(
+    (c) => typeof c === 'string' && (MUSICIAN_ROLES as readonly string[]).includes(c),
+  );
+  if (!valid || new Set(codes).size !== codes.length) return { error: 'INVALID_VALUE' };
+  return { roles: MUSICIAN_ROLES.filter((r) => codes.includes(r)) };
+}
+
+/** API shape: the stored person + its partner status and gig count. */
 function toPerson(stored: MockPerson): Person {
   const partner = partnerOf(stored.id);
   return {
     ...stored,
+    roles: [...stored.roles],
     partner: partner ? { id: partner.id, email: partner.email, active: partner.active } : null,
+    gigCount: gigCountOf(stored.id),
   };
 }
 
@@ -92,10 +126,15 @@ export const peopleHandlers = [
     if (partner !== null && !['true', 'false'].includes(partner)) {
       return validationError({ partner: 'INVALID_VALUE' });
     }
+    const role = params.get('role');
+    if (role !== null && !(MUSICIAN_ROLES as readonly string[]).includes(role)) {
+      return validationError({ role: 'INVALID_VALUE' });
+    }
     const people: Person[] = db.gigs.people
       .filter((p) => active === 'all' || p.active === (active === 'true'))
       .map(toPerson)
       .filter((p) => partner === null || (p.partner?.active === true) === (partner === 'true'))
+      .filter((p) => role === null || (p.roles as string[]).includes(role))
       .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
     return HttpResponse.json(people);
   }),
@@ -106,7 +145,7 @@ export const peopleHandlers = [
     const { name, error } = checkName(body.name, true);
     if (error || name === undefined) return validationError({ name: error ?? 'REQUIRED' });
     const warnings = duplicateWarnings(name);
-    const person: MockPerson = { id: mockId(), name, active: true };
+    const person: MockPerson = { id: mockId(), name, active: true, roles: [] };
     db.gigs.people.push(person);
     const response: PersonWithWarnings = { person: toPerson(person), warnings };
     return HttpResponse.json(response, { status: 201 });
@@ -119,6 +158,8 @@ export const peopleHandlers = [
     const { name, error } = checkName(body.name, false);
     if (error) fields.name = error;
     if (body.active !== undefined && typeof body.active !== 'boolean') fields.active = 'INVALID_VALUE';
+    const { roles, error: rolesError } = checkRoles(body.roles);
+    if (rolesError) fields.roles = rolesError;
     if (Object.keys(fields).length > 0) return validationError(fields);
     const person = findPerson(params.id);
     if (!person) return notFound();
@@ -130,6 +171,7 @@ export const peopleHandlers = [
       if (partner) partner.name = name;
     }
     if (body.active !== undefined) person.active = body.active;
+    if (roles !== undefined) person.roles = roles;
     const response: PersonWithWarnings = { person: toPerson(person), warnings };
     return HttpResponse.json(response);
   }),

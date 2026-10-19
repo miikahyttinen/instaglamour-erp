@@ -189,33 +189,92 @@ describe('people register (UC-014)', () => {
     expect(db.gigs.people.find((p) => p.name === 'Person 2')!.active).toBe(true);
   });
 
-  it('shows an Osakas tag on partners and filters by partner status (UC-032 AC-5)', async () => {
+  it('shows an Osakas tag on partners and the "only partners" checkbox filters (UC-032 AC-5)', async () => {
     const { user } = await openPeople();
     expect(within(row('Partner A')).getByText('Osakas')).toHaveClass('tag');
     expect(within(row('Person 1')).queryByText('Osakas')).not.toBeInTheDocument();
+    expect(screen.queryByRole('combobox', { name: 'Osakkuus' })).not.toBeInTheDocument();
 
-    const filter = screen.getByRole('combobox', { name: 'Osakkuus' });
-    expect(filter).toHaveDisplayValue('Kaikki');
-    await user.selectOptions(filter, 'Osakkaat');
+    const only = screen.getByRole('checkbox', { name: 'Näytä vain osakkaat' });
+    expect(only).not.toBeChecked();
+    await user.click(only);
     await waitFor(() => expect(names()).toEqual(['Partner A', 'Partner B', 'Partner C']));
 
-    await user.selectOptions(filter, 'Muut');
-    await waitFor(() => expect(names()).not.toContain('Partner A'));
-    expect(names()).toContain('Person 1');
-
-    // Combines with the active filter (both in the URL).
-    await user.click(screen.getByRole('button', { name: 'Ei käytössä' }));
-    await waitFor(() => expect(names()).toEqual(['Person 9']));
-    expect(filter).toHaveDisplayValue('Muut');
+    // Unchecked = no partner filter (everyone).
+    await user.click(only);
+    await waitFor(() => expect(names()).toContain('Person 1'));
+    expect(names()).toContain('Partner A');
   });
 
   it('a removed partner has no tag and is not in the partner filter', async () => {
     db.partners.find((p) => p.name === 'Partner C')!.active = false;
     const { user } = await openPeople('/people?partner=true');
     await waitFor(() => expect(names()).toEqual(['Partner A', 'Partner B']));
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Osakkuus' }), 'Kaikki');
+    const only = screen.getByRole('checkbox', { name: 'Näytä vain osakkaat' });
+    expect(only).toBeChecked();
+    await user.click(only);
     await waitFor(() => expect(names()).toContain('Partner C'));
     expect(within(row('Partner C')).queryByText('Osakas')).not.toBeInTheDocument();
+  });
+
+  it('shows roles as tags and the played gig count', async () => {
+    db.gigs.people.find((p) => p.name === 'Person 5')!.roles = ['KEYS', 'PIANO'];
+    await openPeople();
+    const head = within(list()).getAllByRole('columnheader').map((th) => th.textContent);
+    expect(head).toEqual(expect.arrayContaining(['Roolit', 'Keikkoja', 'Osakas']));
+    const tags = within(row('Person 5')).getAllByText(/Koskettimet|Piano/);
+    expect(tags.map((t) => t.textContent)).toEqual(['Koskettimet', 'Piano']);
+    tags.forEach((tag) => expect(tag).toHaveClass('tag'));
+    const count = within(row('Person 5')).getByRole('cell', { name: '0' });
+    expect(count).toHaveClass('num');
+  });
+
+  it('gig count comes from the API', async () => {
+    server.use(
+      http.get('/api/people', () =>
+        HttpResponse.json([
+          { id: '00000000-0000-4000-8000-000000000999', name: 'Person X', active: true, partner: null, roles: ['DRUMS'], gigCount: 12 },
+        ]),
+      ),
+    );
+    await openPeople();
+    expect(within(row('Person X')).getByRole('cell', { name: '12' })).toHaveClass('num');
+    expect(within(row('Person X')).getByText('Rummut')).toHaveClass('tag');
+  });
+
+  it('filters by role, combined with active and partner filters (one request with all params)', async () => {
+    const queries: string[] = [];
+    server.events.on('request:start', ({ request }) => {
+      const url = new URL(request.url);
+      if (request.method === 'GET' && url.pathname === '/api/people') queries.push(url.search);
+    });
+    const { user } = await openPeople();
+    const roleSelect = screen.getByRole('combobox', { name: 'Rooli' });
+    expect(roleSelect).toHaveDisplayValue('Kaikki roolit');
+    await user.selectOptions(roleSelect, 'Basso');
+    await waitFor(() => expect(names()).toEqual(['Person 2']));
+    expect(queries.at(-1)).toContain('role=BASS');
+
+    await user.selectOptions(roleSelect, 'Laulu');
+    await waitFor(() => expect(names()).toEqual(['Partner A', 'Person 1']));
+    await user.click(screen.getByRole('checkbox', { name: 'Näytä vain osakkaat' }));
+    await waitFor(() => expect(names()).toEqual(['Partner A']));
+    const last = new URLSearchParams(queries.at(-1));
+    expect(last.get('role')).toBe('VOC');
+    expect(last.get('partner')).toBe('true');
+    expect(last.get('active')).toBe('true');
+
+    await user.selectOptions(roleSelect, 'Kaikki roolit');
+    await waitFor(() => expect(names()).toEqual(['Partner A', 'Partner B', 'Partner C']));
+    expect(new URLSearchParams(queries.at(-1)).has('role')).toBe(false);
+  });
+
+  it('reads the filters from the URL', async () => {
+    await openPeople('/people?active=all&role=DJ');
+    await waitFor(() => expect(names()).toEqual(['Person 8']));
+    expect(screen.getByRole('combobox', { name: 'Rooli' })).toHaveDisplayValue('DJ');
+    expect(screen.getByRole('button', { name: 'Kaikki' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('checkbox', { name: 'Näytä vain osakkaat' })).not.toBeChecked();
   });
 
   it('shows English texts', async () => {
