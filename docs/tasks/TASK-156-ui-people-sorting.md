@@ -1,5 +1,5 @@
 # TASK-156: Sort the people list
-- **owner:** ui · **status:** todo · **spec:** owner request 2026-10-19; docs/design.md "Excel-style tables" (sort toggles) · **depends on:** TASK-155
+- **owner:** ui · **status:** done · **spec:** owner request 2026-10-19; docs/design.md "Excel-style tables" (sort toggles) · **depends on:** TASK-155
 ## Goal
 Partners can sort Henkilöt by name, gigs played and partnership.
 ## Acceptance criteria
