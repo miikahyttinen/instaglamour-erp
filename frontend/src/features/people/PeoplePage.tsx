@@ -6,17 +6,20 @@ import { MUSICIAN_ROLES, type MusicianRole } from '../../api/enums';
 import type { PeopleActiveFilter, Person } from '../../api/types';
 import { Button } from '../../components/Button';
 import { DataTable, type DataTableColumn } from '../../components/DataTable';
+import { nextSort, readTableParams, type SortDir } from '../../components/excelTableState';
 import { Notice as NoticeMessage } from '../../components/Notice';
 import { PageHead } from '../../components/PageHead';
 import { SectionLabel } from '../../components/SectionLabel';
 import { StatusTag } from '../../components/StatusTag';
 import { costTypeLabel, warningMessage } from '../../i18n/labels';
 import { useLang } from '../../i18n/useLang';
+import { TABLET_QUERY, useMediaQuery } from '../../lib/useMediaQuery';
 import { NameForm } from './NameForm';
 import { NoticeBox, type Notice } from './Notices';
 import { isPartner } from './partnerRules';
 import { PartnerTag } from './PartnerStatus';
 import { PersonActiveSwitch, PersonNameField } from './PersonFields';
+import { PEOPLE_SORT_KEYS, parsePeopleSort, sortPeople, type PeopleSort, type PeopleSortKey } from './peopleSort';
 import { useCreatePerson, usePeopleList } from './queries';
 import './people.css';
 
@@ -25,6 +28,12 @@ const FILTERS: { value: PeopleActiveFilter; labelKey: string }[] = [
   { value: 'false', labelKey: 'people.filters.inactive' },
   { value: 'all', labelKey: 'people.filters.all' },
 ];
+
+const SORT_LABELS: Record<PeopleSortKey, string> = {
+  name: 'people.name',
+  gigCount: 'people.gigCount',
+  partner: 'people.partner.column',
+};
 
 function parseFilter(value: string | null): PeopleActiveFilter {
   return value === 'false' || value === 'all' ? value : 'true';
@@ -62,6 +71,8 @@ function rowNames(people: readonly Person[]): Map<string, string> {
  * (NFR-8: no Edit buttons, the name saves on blur / Enter, the switch on change). Partners have an
  * "Osakas" tag; each row shows the person's roles and played gig count. Filters on one line:
  * active status, role (`?role=`) and "only partners" (`?partner=true`), all kept in the URL.
+ * Sorted client-side (TASK-156) by name / gig count / partnership via the column headers (phones:
+ * a "Järjestys" select); `?sort=name|gigCount|partner&dir=asc|desc`, default name ascending.
  */
 export function PeoplePage() {
   const { t } = useTranslation();
@@ -70,6 +81,8 @@ export function PeoplePage() {
   const filter = parseFilter(params.get('active'));
   const onlyPartners = parseOnlyPartners(params.get('partner'));
   const role = parseRole(params.get('role'));
+  const sort = parsePeopleSort(readTableParams(params).sort);
+  const wide = useMediaQuery(TABLET_QUERY);
   const list = usePeopleList(filter, onlyPartners ? 'true' : undefined, role);
   const create = useCreatePerson();
   const [notice, setNotice] = useState<Notice | null>(null);
@@ -88,6 +101,21 @@ export function PeoplePage() {
   const setFilter = (value: PeopleActiveFilter) => setParam('active', value === 'true' ? undefined : value);
   const setOnlyPartners = (checked: boolean) => setParam('partner', checked ? 'true' : undefined);
   const setRole = (value: string) => setParam('role', parseRole(value));
+  const setSort = (next: PeopleSort) =>
+    setParams(
+      (prev) => {
+        const p = new URLSearchParams(prev);
+        p.set('sort', next.key);
+        p.set('dir', next.dir);
+        return p;
+      },
+      { replace: true },
+    );
+  const toggleSort = (key: PeopleSortKey) => setSort(nextSort(sort, key) as PeopleSort);
+  const sortProps = (key: PeopleSortKey) => ({
+    sort: sort.key === key ? sort.dir : undefined,
+    onSort: () => toggleSort(key),
+  });
 
   const add = async (name: string) => {
     const result = await create.mutateAsync(name);
@@ -97,7 +125,8 @@ export function PeoplePage() {
     });
   };
 
-  const names = rowNames(list.data ?? []);
+  const people = sortPeople(list.data ?? [], sort);
+  const names = rowNames(people);
   const nameOf = (person: Person) => names.get(person.id) ?? person.name;
 
   const columns: DataTableColumn<Person>[] = [
@@ -105,6 +134,7 @@ export function PeoplePage() {
       key: 'name',
       label: t('people.name'),
       primary: true,
+      ...sortProps('name'),
       cell: (person) => (
         <span className="people-name">
           <PersonNameField
@@ -147,12 +177,14 @@ export function PeoplePage() {
       label: t('people.gigCount'),
       numeric: true,
       className: 'people-gigs-cell',
+      ...sortProps('gigCount'),
       cell: (person) => person.gigCount,
     },
     {
       key: 'partner',
       label: t('people.partner.column'),
       className: 'people-partner-cell',
+      ...sortProps('partner'),
       cell: (person) => (isPartner(person) ? <PartnerTag /> : null),
     },
     {
@@ -221,6 +253,27 @@ export function PeoplePage() {
           />
           {t('people.onlyPartners')}
         </label>
+        {!wide && (
+          <div className="people-sort">
+            <label className="people-sort-key">
+              <span className="people-sort-label">{t('table.sortBy')}</span>
+              <select value={sort.key} onChange={(e) => setSort({ key: e.target.value as PeopleSortKey, dir: sort.dir })}>
+                {PEOPLE_SORT_KEYS.map((key) => (
+                  <option key={key} value={key}>
+                    {t(SORT_LABELS[key])}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span className="visually-hidden">{t('table.sortDir')}</span>
+              <select value={sort.dir} onChange={(e) => setSort({ key: sort.key, dir: e.target.value as SortDir })}>
+                <option value="asc">{t('table.asc')}</option>
+                <option value="desc">{t('table.desc')}</option>
+              </select>
+            </label>
+          </div>
+        )}
       </div>
       <p className="muted small people-hint">{t('people.inactiveHint')}</p>
 
@@ -238,7 +291,7 @@ export function PeoplePage() {
           className="people-table"
           caption={t('pages.people')}
           columns={columns}
-          rows={list.data}
+          rows={people}
           rowKey={(person) => person.id}
           rowClassName={(person) => (person.active ? undefined : 'is-inactive')}
           empty={<p className="empty">{t('people.empty')}</p>}

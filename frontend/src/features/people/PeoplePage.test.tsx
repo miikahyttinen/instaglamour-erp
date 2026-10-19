@@ -1,9 +1,15 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { App } from '../../App';
 import { setLanguage } from '../../i18n';
+import { TABLET_QUERY } from '../../lib/useMediaQuery';
 import { db } from '../../mocks/data';
 import { server } from '../../mocks/server';
+import { createQueryClient } from '../../queryClient';
+import { installMatchMedia } from '../../test/matchMedia';
 import { renderApp, signInMock } from '../../test/renderApp';
 
 const list = () => screen.getByRole('table', { name: 'Henkilöt' });
@@ -16,6 +22,25 @@ const rows = () =>
 const nameInput = (tr: HTMLElement) => within(tr).getByRole('textbox') as HTMLInputElement;
 const names = () => rows().map((tr) => nameInput(tr).value);
 const row = (name: string) => rows().find((tr) => nameInput(tr).value === name)!;
+
+function UrlProbe() {
+  const { search } = useLocation();
+  return <output data-testid="url">{search}</output>;
+}
+const url = () => new URLSearchParams(screen.getByTestId('url').textContent ?? '');
+
+/** Like `openPeople`, plus a probe of the current query string (`url()`). */
+async function openPeopleWithUrl(path = '/people') {
+  const user = userEvent.setup();
+  render(
+    <MemoryRouter initialEntries={[path]}>
+      <App queryClient={createQueryClient({ retry: false })} />
+      <UrlProbe />
+    </MemoryRouter>,
+  );
+  await screen.findByRole('table', { name: 'Henkilöt' });
+  return { user };
+}
 
 async function openPeople(path = '/people') {
   const app = renderApp(path);
@@ -105,7 +130,8 @@ describe('people register (UC-014)', () => {
 
   it('has no Edit buttons or rename dialog: names and active switches are edited in place', async () => {
     await openPeople();
-    expect(within(list()).queryAllByRole('button')).toEqual([]);
+    // Only the header sort toggles (TASK-156) are buttons; rows have none.
+    expect(rows().flatMap((tr) => within(tr).queryAllByRole('button'))).toEqual([]);
     expect(screen.queryByRole('button', { name: /Muuta nimeä|Ota käyttöön|Poista käytöstä|Tallenna/ })).not.toBeInTheDocument();
     expect(screen.getByLabelText('Nimi: Person 2')).toHaveValue('Person 2');
     expect(screen.getByRole('switch', { name: 'Aktiivinen: Person 2' })).toBeChecked();
@@ -275,6 +301,109 @@ describe('people register (UC-014)', () => {
     expect(screen.getByRole('combobox', { name: 'Rooli' })).toHaveDisplayValue('DJ');
     expect(screen.getByRole('button', { name: 'Kaikki' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('checkbox', { name: 'Näytä vain osakkaat' })).not.toBeChecked();
+  });
+
+  describe('sorting (TASK-156)', () => {
+    const sortHeader = (name: string) => within(list()).getByRole('columnheader', { name: new RegExp(`^${name}`) });
+    const setPeople = (people: object[]) =>
+      server.use(http.get('/api/people', () => HttpResponse.json(people)));
+    const person = (n: number, name: string, gigCount: number, partner = false) => ({
+      id: `00000000-0000-4000-8000-00000000010${n}`,
+      name,
+      active: true,
+      partner: partner ? { active: true, email: `p${n}@example.com`, language: 'fi' } : null,
+      roles: [],
+      gigCount,
+    });
+    // API order deliberately unsorted; names test FI collation (å/ä/ö after z) and case.
+    const synthetic = [
+      person(1, 'Örjan X', 3),
+      person(2, 'person b', 5, true),
+      person(3, 'Ärrä Y', 5),
+      person(4, 'Person A', 0, true),
+      person(5, 'Zeta Z', 1),
+    ];
+
+    it('defaults to name ascending (FI collation, case-insensitive)', async () => {
+      setPeople(synthetic);
+      await openPeople();
+      expect(names()).toEqual(['Person A', 'person b', 'Zeta Z', 'Ärrä Y', 'Örjan X']);
+      expect(sortHeader('Nimi')).toHaveAttribute('aria-sort', 'ascending');
+      expect(sortHeader('Keikkoja')).toHaveAttribute('aria-sort', 'none');
+      expect(sortHeader('Osakas')).toHaveAttribute('aria-sort', 'none');
+    });
+
+    it('header clicks sort by gig count and toggle direction; ties by name; kept in the URL', async () => {
+      setPeople(synthetic);
+      const { user } = await openPeopleWithUrl('/people?role=DJ&active=all');
+      // The role filter is applied by the API; the overridden handler returns these rows anyway.
+      await user.click(within(sortHeader('Keikkoja')).getByRole('button'));
+      await waitFor(() => expect(names()).toEqual(['Person A', 'Zeta Z', 'Örjan X', 'person b', 'Ärrä Y']));
+      expect(sortHeader('Keikkoja')).toHaveAttribute('aria-sort', 'ascending');
+      expect(sortHeader('Nimi')).toHaveAttribute('aria-sort', 'none');
+      expect(url().get('sort')).toBe('gigCount');
+      expect(url().get('dir')).toBe('asc');
+      expect(url().get('role')).toBe('DJ');
+      expect(url().get('active')).toBe('all');
+
+      await user.click(within(sortHeader('Keikkoja')).getByRole('button'));
+      await waitFor(() => expect(names()).toEqual(['person b', 'Ärrä Y', 'Örjan X', 'Zeta Z', 'Person A']));
+      expect(sortHeader('Keikkoja')).toHaveAttribute('aria-sort', 'descending');
+      expect(url().get('dir')).toBe('desc');
+    });
+
+    it('sorts by name descending', async () => {
+      setPeople(synthetic);
+      const { user } = await openPeople();
+      await user.click(within(sortHeader('Nimi')).getByRole('button'));
+      await waitFor(() => expect(names()).toEqual(['Örjan X', 'Ärrä Y', 'Zeta Z', 'person b', 'Person A']));
+      expect(sortHeader('Nimi')).toHaveAttribute('aria-sort', 'descending');
+    });
+
+    it('sorts by partnership: partners first, ties by name; descending puts others first', async () => {
+      setPeople(synthetic);
+      const { user } = await openPeople();
+      await user.click(within(sortHeader('Osakas')).getByRole('button'));
+      await waitFor(() => expect(names()).toEqual(['Person A', 'person b', 'Zeta Z', 'Ärrä Y', 'Örjan X']));
+      expect(sortHeader('Osakas')).toHaveAttribute('aria-sort', 'ascending');
+      await user.click(within(sortHeader('Osakas')).getByRole('button'));
+      await waitFor(() => expect(names()).toEqual(['Zeta Z', 'Ärrä Y', 'Örjan X', 'Person A', 'person b']));
+    });
+
+    it('reads the sort from the URL (survives reload); unknown keys fall back to the default', async () => {
+      setPeople(synthetic);
+      const first = await openPeople('/people?sort=gigCount&dir=desc');
+      expect(names()).toEqual(['person b', 'Ärrä Y', 'Örjan X', 'Zeta Z', 'Person A']);
+      expect(sortHeader('Keikkoja')).toHaveAttribute('aria-sort', 'descending');
+      first.unmount();
+      await openPeople('/people?sort=bogus&dir=desc');
+      expect(names()).toEqual(['Person A', 'person b', 'Zeta Z', 'Ärrä Y', 'Örjan X']);
+      expect(sortHeader('Nimi')).toHaveAttribute('aria-sort', 'ascending');
+    });
+
+    it('phones: a sort select with the three options and a direction select', async () => {
+      setPeople(synthetic);
+      const { user } = await openPeopleWithUrl();
+      const key = screen.getByRole('combobox', { name: 'Järjestys' });
+      const dir = screen.getByRole('combobox', { name: 'Suunta' });
+      expect(within(key).getAllByRole('option').map((o) => o.textContent)).toEqual(['Nimi', 'Keikkoja', 'Osakas']);
+      expect(key).toHaveDisplayValue('Nimi');
+      expect(dir).toHaveDisplayValue('Nouseva');
+
+      await user.selectOptions(key, 'Keikkoja');
+      await user.selectOptions(dir, 'Laskeva');
+      await waitFor(() => expect(names()).toEqual(['person b', 'Ärrä Y', 'Örjan X', 'Zeta Z', 'Person A']));
+      expect(url().get('sort')).toBe('gigCount');
+      expect(url().get('dir')).toBe('desc');
+    });
+
+    it('from 600 px the headers sort and there is no sort select', async () => {
+      installMatchMedia({ [TABLET_QUERY]: true });
+      setPeople(synthetic);
+      await openPeople();
+      expect(screen.queryByRole('combobox', { name: 'Järjestys' })).not.toBeInTheDocument();
+      expect(within(sortHeader('Nimi')).getByRole('button')).toBeInTheDocument();
+    });
   });
 
   it('shows English texts', async () => {
