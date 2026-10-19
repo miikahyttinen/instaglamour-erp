@@ -297,3 +297,9 @@ A Person is a partner when an **active** Partner links to it. Partners are now c
 
 ### PurchaseOrderEvent (history, append-only)
 `id, purchase_order_id, type (CREATED | PAID | UNPAID | CANCELLED), partner_id (null = freelancer via link), at, details`
+
+## Person (addition 2026-10-19)
+| Field | Type | Notes |
+|---|---|---|
+| roles | MusicianRole[] | roles the person can play; editable on the person page; backfilled from their cost lines; seed/import fills empty only |
+`gigCount` is derived (not stored): played SOLD non-deleted gigs with a musician-role line for the person.
