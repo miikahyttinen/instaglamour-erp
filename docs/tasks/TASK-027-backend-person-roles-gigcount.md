@@ -1,5 +1,5 @@
 # TASK-027: Person roles and gig count
-- **owner:** backend · **status:** todo · **spec:** api-contract "People: roles and gig count", domain-model Person (2026-10-19) · **depends on:** none · **parallel:** TASK-155
+- **owner:** backend · **status:** done · **spec:** api-contract "People: roles and gig count", domain-model Person (2026-10-19) · **depends on:** none · **parallel:** TASK-155
 ## Acceptance criteria
 - [ ] Migration: `person.roles` (text[] or enum array, default empty) + backfill from existing cost lines (musician roles, non-deleted gigs) — non-destructive.
 - [ ] `Person.roles` (ordered per `MUSICIAN_ROLES`) and `Person.gigCount` in every Person response; efficient for the list (one grouped query, no N+1).
