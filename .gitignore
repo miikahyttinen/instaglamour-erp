@@ -32,3 +32,10 @@ frontend/assets/
 
 # Offer prototype used as reference only (contains real business data) — never commit
 instaglamour_offer_proto/
+
+# Real data exports / imports (BR-090) — never commit
+offers.json
+*_data_import*.json
+id_data_import.json
+data/
+backups/
