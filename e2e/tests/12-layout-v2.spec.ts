@@ -21,8 +21,8 @@ import { busyIds, MAIN_PAGE_NAMES, mainPages, openLoaded, type BusyIds } from '.
 // on phones, the gig list as one Excel-style table (TASK-144), compact cost rows by container width.
 // Read-only flows: nothing here changes the shared database.
 
-// Nine items: Asiakkaat after Keikat (TASK-015…139); Vuosi first, then Tarjoukset (TASK-142);
-// Ostotilaukset after Keikat (TASK-152).
+// Ten items: Asiakkaat after Keikat (TASK-015…139); Vuosi first, then Tarjoukset (TASK-142);
+// Ostotilaukset after Keikat (TASK-152); Tietojen tuonti last (TASK-154).
 const NAV: { label: string; path: string }[] = [
   { label: 'Vuosi', path: '/' },
   { label: 'Tarjoukset', path: '/offers' },
@@ -33,6 +33,7 @@ const NAV: { label: string; path: string }[] = [
   { label: 'Tehtävät', path: '/tasks' },
   { label: 'Tunnit', path: '/hours' },
   { label: 'Budjetti', path: '/budget' },
+  { label: 'Tietojen tuonti', path: '/import' },
 ];
 const SIDEBAR_KEY = 'ig-sidebar'; // frontend/src/layout/sidebarState.ts
 /**

@@ -701,3 +701,4 @@ export type ReferenceUpdate = Partial<Pick<Reference, 'quoteFi' | 'quoteEn' | 'a
 // ---------- Purchase orders (UC-033, UC-034) ----------
 
 export * from './purchaseOrderTypes';
+export * from './importTypes';

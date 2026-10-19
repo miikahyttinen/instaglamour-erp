@@ -1,4 +1,5 @@
 // English UI texts. Must have exactly the same keys as fi.ts (checked by i18n.test.ts).
+import { en as dataImportEn } from '../features/dataImport/i18n';
 import { en as budgetEn } from '../features/budget/i18n';
 import { en as clientsEn } from '../features/clients/i18n';
 import { en as freelancerEn } from '../features/freelancer/i18n';
@@ -30,6 +31,7 @@ const en: Resources = {
     tasks: 'Tasks',
     hours: 'Hours',
     budget: 'Budget',
+    dataImport: 'Data import',
     collapse: 'Collapse menu',
     expand: 'Expand menu',
     close: 'Close menu',
@@ -80,6 +82,7 @@ const en: Resources = {
     tasks: 'Tasks',
     hours: 'Hours {{year}}',
     budget: 'Budget {{year}}',
+    dataImport: 'Data import',
     notFound: 'Page not found.',
     backHome: 'Go to home',
   },
@@ -469,6 +472,7 @@ const en: Resources = {
   ...tasksEn,
   ...hoursEn,
   budget: budgetEn,
+  ...dataImportEn,
 };
 
 export default en;

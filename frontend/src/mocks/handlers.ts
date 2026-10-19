@@ -8,6 +8,7 @@ import { db, setMockSession } from './data';
 import { freelancerHandlers } from './freelancerHandlers';
 import { attachmentHandlers, costLineHandlers, gigHandlers } from './gigHandlers';
 import { hoursHandlers } from './hoursHandlers';
+import { importHandlers } from './importHandlers';
 import { offerHandlers } from './offerHandlers';
 import { peopleHandlers } from './peopleHandlers';
 import { publicOfferHandlers } from './publicOfferHandlers';
@@ -89,4 +90,5 @@ export const handlers = [
   ...hoursHandlers,
   ...budgetHandlers,
   ...budgetCategoryHandlers,
+  ...importHandlers,
 ];

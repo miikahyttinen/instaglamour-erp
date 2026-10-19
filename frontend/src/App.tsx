@@ -7,6 +7,7 @@ import { RequireAuth } from './auth/RequireAuth';
 import { SignInPage } from './auth/SignInPage';
 import { BudgetPage } from './features/budget/BudgetPage';
 import { ClientsRoutes } from './features/clients/ClientsRoutes';
+import { DataImportPage } from './features/dataImport/DataImportPage';
 import { FreelancerPage } from './features/freelancer/FreelancerPage';
 import { GigsRoutes } from './features/gigs/GigsRoutes';
 import { HoursRoutes } from './features/hours/HoursRoutes';
@@ -56,6 +57,7 @@ export function AppRoutes() {
         <Route path="tasks/*" element={<TasksPage />} />
         <Route path="hours/*" element={<HoursRoutes />} />
         <Route path="budget/*" element={<BudgetPage />} />
+        <Route path="import" element={<DataImportPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>

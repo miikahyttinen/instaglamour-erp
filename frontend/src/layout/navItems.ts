@@ -6,6 +6,7 @@ import {
   ListChecks,
   Music,
   Receipt,
+  Upload,
   Users,
   Wallet,
   type LucideIcon,
@@ -13,7 +14,7 @@ import {
 
 export interface NavItem {
   to: string;
-  labelKey: `nav.${'offers' | 'year' | 'gigs' | 'purchaseOrders' | 'clients' | 'people' | 'tasks' | 'hours' | 'budget'}`;
+  labelKey: `nav.${'offers' | 'year' | 'gigs' | 'purchaseOrders' | 'clients' | 'people' | 'tasks' | 'hours' | 'budget' | 'dataImport'}`;
   icon: LucideIcon;
   end?: boolean;
 }
@@ -29,6 +30,8 @@ export const NAV_ITEMS: NavItem[] = [
   { to: '/tasks', labelKey: 'nav.tasks', icon: ListChecks },
   { to: '/hours', labelKey: 'nav.hours', icon: Clock },
   { to: '/budget', labelKey: 'nav.budget', icon: Wallet },
+  // Last item (UC-035).
+  { to: '/import', labelKey: 'nav.dataImport', icon: Upload },
 ];
 
 /** The nav item whose section contains `pathname` (`/gigs/12` → Gigs), or undefined. */
