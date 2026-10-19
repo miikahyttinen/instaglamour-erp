@@ -212,6 +212,7 @@ model Partner {
   paidPurchaseOrders      PurchaseOrder[]      @relation("PurchaseOrderPaidBy")
   cancelledPurchaseOrders PurchaseOrder[]      @relation("PurchaseOrderCancelledBy")
   purchaseOrderEvents     PurchaseOrderEvent[]
+  importRuns              ImportRun[]
 
   @@map("partner")
 }
@@ -694,4 +695,20 @@ model PurchaseOrderEvent {
   @@index([purchaseOrderId, at])
   @@index([at])
   @@map("purchase_order_event")
+}
+
+/// UC-035 / BR-121: log of every real data import (dry runs are not logged).
+model ImportRun {
+  id        String   @id @default(uuid()) @db.Uuid
+  partnerId String   @map("partner_id") @db.Uuid
+  at        DateTime @default(now())
+  /// The uploaded file's name as sent by the client (for the log only; nothing is read from disk).
+  filename  String?
+  /// ImportSummary (api-contract "Data import").
+  summary   Json
+
+  partner Partner @relation(fields: [partnerId], references: [id], onDelete: Restrict)
+
+  @@index([at])
+  @@map("import_run")
 }

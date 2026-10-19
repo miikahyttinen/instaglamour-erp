@@ -113,6 +113,26 @@ spoof it and bypass the limit).
 - **List year** = year of `created_at` in Europe/Helsinki; `q` (number or current person name,
   case-insensitive) searches all years.
 
+## Data import (UC-035)
+
+- `POST /api/import?dryRun=true|false&filename=…` takes a seed-format JSON document as the body and
+  loads it with the seed loader (`seed/load.ts`, same rules as `npm run db:seed`, BR-120) in one
+  transaction. `dryRun=true` runs the whole load and rolls it back, so the counts are exact.
+  `GET /api/import/runs` lists the last 50 real imports (table `import_run`: partner, time, file name,
+  summary JSON). Dry runs are not logged. `npm run db:reset` empties the log too.
+- **Body:** this route alone accepts up to 10 MB (413 `FILE_TOO_LARGE`; the rest of the API keeps
+  Fastify's 1 MB). It has its own content-type parser that takes the raw text (any content type,
+  UTF-8 BOM tolerated), so "not JSON" is a 400 with `details.errors: ["not valid JSON"]`.
+- **Checks (BR-121):** all `validateSeed` errors plus partner emails outside `AUTH_ALLOWED_DOMAIN`
+  and any `references[].image` are reported together in `details.errors`. The loader is called
+  without `seedDir` / `uploadDir`, so an import never reads or writes files.
+- **One at a time:** every load (app import and seed command) takes `pg_advisory_xact_lock`
+  (`SEED_LOCK_KEY`) at the start of its transaction, so concurrent imports of the same file can't
+  insert duplicates — the second one waits and then finds everything already there.
+- **Summary:** per data type `{ created, updated, skipped }`. Only person `active`, lineup template
+  roles and setting values are ever *updated*; everything else is insert-only (*skipped* if present).
+  The seed command prints the same summary as a table.
+
 ## Layout
 
 ```
@@ -124,6 +144,7 @@ src/domain/        shared enums (CostType, TechnicalSetup…), dates, default co
                    gig economics / year gig sums (gigEconomics.ts), load-in switch (loadIn.ts)
 src/gigs/          gig data access (events, double-booking check, year gigs), input schemas, serializers
 src/hours/         hour entries + loadHoursTotals (single source for /api/hours/totals and the year page)
+src/import/        data import checks (domain, no photos) + ImportRun DTO (routes/import.ts, UC-035)
 src/clients/       client lookup + name-uniqueness check (routes/clients.ts; soft delete, BR-100/101)
 src/offers/        offers (routes/offers.ts): derived status/expired (BR-102), year summary (BR-106),
                    convert-to-gig in one transaction (row lock + unique gig.offer_id, BR-105; if the

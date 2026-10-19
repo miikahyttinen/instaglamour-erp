@@ -186,7 +186,7 @@ describe('loadSeed: budget categories (TASK-012)', () => {
     await testDb().budgetCategory.create({ data: { name: 'Category D', sortOrder: 3 } });
 
     const summary = await loadSeed(testDb(), data);
-    expect(summary).toMatchObject({ budgetCategories: 3, budgetCategoriesCreated: 0 });
+    expect(summary.budgetCategories).toEqual({ created: 0, updated: 0, skipped: 3 });
     const after = await rows();
     expect(after.map((r) => [r.name, r.active])).toEqual([
       ['Category A2', true], // matched by code
@@ -204,7 +204,7 @@ describe('loadSeed: budget categories (TASK-012)', () => {
       budgetCategories: [{ name: 'CATEGORY A' }, { name: 'Category B', active: false }, { code: 'CAT_C', name: 'Category C' }],
       budget: [{ year: 2026, category: 'CAT_C', actualExpenseCents: 10000 }, { year: 2026, category: 'category a', budgetIncomeCents: 1000 }],
     });
-    expect(summary).toMatchObject({ budgetCategoriesCreated: 2, budgetRowsCreated: 2 });
+    expect(summary).toMatchObject({ budgetCategories: { created: 2, skipped: 1 }, budget: { created: 2 } });
     const all = await rows();
     expect(all.map((r) => [r.name, r.code, r.active, r.sortOrder])).toEqual([
       ['Category A', null, true, 5],
@@ -246,7 +246,7 @@ describe('validateSeed: clients (TASK-015)', () => {
 describe('loadSeed: clients (TASK-015)', () => {
   it('loads the example clients and links most example gigs to them', async () => {
     const summary = await loadSeed(testDb(), example());
-    expect(summary).toMatchObject({ clients: 5, clientsCreated: 5 });
+    expect(summary.clients).toEqual({ created: 5, updated: 0, skipped: 0 });
     const clients = await testDb().client.findMany({ orderBy: { name: 'asc' }, include: { _count: { select: { gigs: true } } } });
     expect(clients.map((c) => c.name)).toEqual(['Client A Oy', 'Client B ry', 'Client C Ltd', 'Client D Oy', 'Client E Oy']);
     expect(clients[0]).toMatchObject({ notes: 'Synthetic demo client.', deletedAt: null });
@@ -272,14 +272,14 @@ describe('loadSeed: clients (TASK-015)', () => {
     expect((await db.client.findUniqueOrThrow({ where: { id: a.id } })).notes).toBe('Edited in the app');
     expect((await db.gig.findFirstOrThrow({ where: { venue: 'Venue V' } })).clientId).toBeNull();
     // A deleted client's name is free again, so the seed creates a new active client for it.
-    expect(summary).toMatchObject({ clients: 5, clientsCreated: 1 });
+    expect(summary.clients).toEqual({ created: 1, updated: 0, skipped: 4 });
     expect(await db.client.count({ where: { name: 'Client E Oy', deletedAt: null } })).toBe(1);
   });
 
   it('matches existing clients case-insensitively', async () => {
     const existing = await testDb().client.create({ data: { name: 'CLIENT A OY' } });
     const summary = await loadSeed(testDb(), example());
-    expect(summary.clientsCreated).toBe(4);
+    expect(summary.clients).toEqual({ created: 4, updated: 0, skipped: 1 });
     const gig = await testDb().gig.findFirstOrThrow({ where: { startDate: new Date('2026-02-14') } });
     expect(gig.clientId).toBe(existing.id);
   });
@@ -334,7 +334,7 @@ describe('loadSeed', () => {
     const first = await snapshot();
     const summary = await loadSeed(testDb(), example());
     expect(await snapshot()).toEqual(first);
-    expect(summary).toMatchObject({ gigsCreated: 0, tasksCreated: 0, hoursCreated: 0, budgetRowsCreated: 0 });
+    for (const counts of Object.values(summary)) expect(counts).toMatchObject({ created: 0, updated: 0 });
     expect(first.partner).toBe(5);
     expect(first.person).toBe(15);
   });
@@ -498,7 +498,7 @@ describe('loadSeed: offers (TASK-016)', () => {
     const summary = await loadSeed(testDb(), example());
     const db = testDb();
     const offers = await db.offer.findMany({ include: { gig: true, client: true } });
-    expect(summary.offersCreated).toBe(offers.length);
+    expect(summary.offers.created).toBe(offers.length);
     expect(offers.length).toBeGreaterThanOrEqual(8);
     expect(new Set(offers.map((o) => o.disposition)).size).toBeGreaterThanOrEqual(6);
     for (const o of offers) {
@@ -539,7 +539,7 @@ describe('loadSeed: offers (TASK-016)', () => {
     const any = await db.offer.findFirstOrThrow({ where: { gig: null } });
     await db.offer.update({ where: { id: any.id }, data: { disposition: 'LOST_OTHER', venue: 'Venue Edited' } });
     const summary = await loadSeed(db, example());
-    expect(summary.offersCreated).toBe(0);
+    expect(summary.offers.created).toBe(0);
     expect(await snapshot()).toEqual(first);
     expect(await db.offer.findUniqueOrThrow({ where: { id: any.id } })).toMatchObject({ disposition: 'LOST_OTHER', venue: 'Venue Edited' });
   });
@@ -572,7 +572,7 @@ describe('seed: references (TASK-018)', () => {
 
   it('the example seed loads 3 synthetic references without photos, in order, idempotently', async () => {
     const summary = await loadSeed(testDb(), example());
-    expect(summary.referencesCreated).toBe(3);
+    expect(summary.references.created).toBe(3);
     const all = await refs();
     expect(all.map((r) => [r.author, r.active, r.sortOrder, r.imageStorageKey])).toEqual([
       ['— Person 1, Client A Oy', true, 0, null],
@@ -584,7 +584,7 @@ describe('seed: references (TASK-018)', () => {
 
     // Re-run: nothing new, edits made in the app are kept.
     await testDb().reference.update({ where: { id: all[0]!.id }, data: { active: false } });
-    expect((await loadSeed(testDb(), example())).referencesCreated).toBe(0);
+    expect((await loadSeed(testDb(), example())).references).toEqual({ created: 0, updated: 0, skipped: 3 });
     expect((await refs())[0]!.active).toBe(false);
   });
 
@@ -597,7 +597,7 @@ describe('seed: references (TASK-018)', () => {
         { quoteFi: 'New', author: '— Person 8' },
       ],
     };
-    expect((await loadSeed(testDb(), data)).referencesCreated).toBe(1);
+    expect((await loadSeed(testDb(), data)).references.created).toBe(1);
     expect((await refs()).map((r) => [r.quoteFi, r.sortOrder])).toEqual([
       ['App quote', 4],
       ['New', 5],
@@ -610,7 +610,7 @@ describe('seed: references (TASK-018)', () => {
     old.settings = { ...(old.settings as object), 'offers.references_fi': 'Vanha teksti', 'offers.references_en': 'Old text' };
     expect(validateSeed(old).ok).toBe(true);
     const summary = await loadSeed(testDb(), old);
-    expect(summary.referencesCreated).toBe(0);
+    expect(summary.references.created).toBe(0);
     expect(await testDb().setting.count({ where: { key: { startsWith: 'offers.references' } } })).toBe(0);
   });
 
