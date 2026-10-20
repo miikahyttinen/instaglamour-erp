@@ -451,6 +451,7 @@ OfferStats = {
              byEventType: [{ eventType, pct|null, won, decided }] } // one item per EVENT_TYPES value, in that order
 }
 ```
+Details: `averageByCreatedYear[].count` = priced offers in the average, `averageCents` rounded to a cent; `openByEventType` lists only types with open offers (may be `[]`), ties by count, null last; `createdByMonth` counts back from today (ignores `year`); win `pct` 1 decimal, untyped decided offers count only in the overall rate; open offers beyond year+3 are only in `openByEventType`.
 `year` missing/invalid → 400 `INVALID_VALUE`. The existing `GET /api/offers` `summary` stays (unused by the new cards).
 
 ## Change log
