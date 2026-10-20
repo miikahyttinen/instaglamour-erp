@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { ConfirmDialog } from './offerParts';
+import { ConfirmDialog, OfferStatusTag } from './offerParts';
 
 function renderDialog(mutationFn: () => Promise<unknown>, onDone = vi.fn()) {
   const client = new QueryClient({ defaultOptions: { mutations: { retry: false } } });
@@ -14,6 +14,18 @@ function renderDialog(mutationFn: () => Promise<unknown>, onDone = vi.fn()) {
   );
   return screen.getByRole('button', { name: 'Kyllä' });
 }
+
+describe('OfferStatusTag', () => {
+  it.each([
+    [{ status: 'OPEN', expired: false }, 'Avoin', 'tag-info'],
+    [{ status: 'OPEN', expired: true }, 'Vanhentunut', 'tag-warn'],
+    [{ status: 'ACCEPTED', expired: false }, 'Hyväksytty', 'tag-ok'],
+    [{ status: 'REJECTED', expired: false }, 'Hylätty', 'tag-danger'],
+  ] as const)('%o is %s (%s)', (offer, label, toneClass) => {
+    render(<OfferStatusTag offer={offer} />);
+    expect(screen.getByText(label)).toHaveClass('tag', toneClass);
+  });
+});
 
 describe('ConfirmDialog (F-007)', () => {
   it('sends one request on a zero-delay double click (two clicks in the same frame)', async () => {

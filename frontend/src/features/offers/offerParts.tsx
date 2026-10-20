@@ -13,9 +13,9 @@ import { apiErrorMessage, offerStatusLabel } from '../../i18n/labels';
 import type { CopyResult } from './offerOptions';
 import { offerDisplayStatus } from './offerStatus';
 
-const TONE = { OPEN: 'info', EXPIRED: 'warn', ACCEPTED: 'ok', REJECTED: 'muted' } as const;
+const TONE = { OPEN: 'info', EXPIRED: 'warn', ACCEPTED: 'ok', REJECTED: 'danger' } as const;
 
-/** Status incl. expired (BR-102): Open (info) · Expired (warn) · Accepted (ok) · Rejected (muted). */
+/** Status incl. expired (BR-102): Open (info) · Expired (warn) · Accepted (ok) · Rejected (danger, red). */
 export function OfferStatusTag({ offer }: { offer: Pick<OfferSummary, 'status' | 'expired'> }) {
   const { t } = useTranslation();
   const status = offerDisplayStatus(offer);
