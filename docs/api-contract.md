@@ -428,6 +428,7 @@ Duplicate = case-insensitive exact name match with another person.
 - `ImportRun = { id, partnerId, at, filename|null, summary: ImportSummary }` — only real imports (not dry runs).
 - Dry run executes the full load inside a transaction and rolls it back, so the counts are exact.
 - Invalid document → 400 `VALIDATION_ERROR` with `details.errors: string[]` (every problem, path-prefixed, same texts as the seed CLI). Not JSON → 400 `VALIDATION_ERROR` `details.errors: ["not valid JSON"]`. Partner email outside `AUTH_ALLOWED_DOMAIN` → listed in `details.errors`. Any reference `image` → listed in `details.errors` ("image paths are not allowed in an import"). > 10 MB → 413 `FILE_TOO_LARGE`.
+- Offers in the seed/import may carry `createdAt` (ISO 8601 date-time with offset, not in the future): on insert the offer's `createdAt` and `updatedAt`, and the time of its creation history event, are set to it (default: now). Existing offers are never changed by a re-import.
 - Concurrent imports are serialized (advisory lock); the seed loader's rules (BR-120) apply unchanged.
 
 ## People: roles and gig count (owner request 2026-10-19)
@@ -438,6 +439,7 @@ Duplicate = case-insensitive exact name match with another person.
 - Seed/import: `people[]` and `partners[]` accept optional `roles: MusicianRole[]`. On (re)load a person's roles are set from the file **only when the person has no roles yet** (never overwrites app edits); counted as `updated`.
 
 ## Change log
+- 2026-10-20 – Seed/import: optional offer `createdAt` (PM)
 - 2026-10-19 – Person.roles, Person.gigCount, ?role filter, roles in seed/import (PM)
 - 2026-10-19 – Data import (UC-035): POST /api/import (dry run), GET /api/import/runs (PM)
 - 2026-10-18 – Active partners have no freelancer link: public 404, link endpoints 409 `PERSON_IS_PARTNER` (PM)
