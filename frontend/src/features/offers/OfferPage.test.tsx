@@ -133,21 +133,22 @@ describe('offer page (UC-029, UC-031)', () => {
     );
   });
 
-  it('converts to a gig via the form; the gig page links back "From offer" (UC-031)', async () => {
+  it('converts to a gig in the modal; the gig page links back "From offer" (UC-031)', async () => {
     const offer = addMockOffer({ clientId, eventName: 'Event 1' });
     const { user } = renderApp(`/offers/${offer.id}`);
-    await user.click(await screen.findByRole('link', { name: 'Muuta keikaksi: Event 1' }));
-    expect(await screen.findByText('Tarkista, että tiedot ovat oikein.')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Luo keikka' }));
-    expect(await screen.findByRole('heading', { name: 'Event 1 · Venue X' })).toBeInTheDocument();
-    const back = screen.getByRole('link', { name: 'Event 1' });
+    await user.click(await screen.findByRole('button', { name: 'Muuta keikaksi: Event 1' }));
+    const dialog = screen.getByRole('dialog', { name: 'Muuta keikaksi' });
+    expect(await within(dialog).findByText('Tarkista, että tiedot ovat oikein.')).toBeInTheDocument();
+    await user.click(within(dialog).getByRole('button', { name: 'Muuta keikaksi' }));
+    expect(await screen.findByText(/Keikka luotu\./)).toBeInTheDocument();
+    const gigLink = await screen.findByRole('link', { name: 'Keikka: Event 1' });
+    expect(screen.queryByRole('button', { name: /Muuta keikaksi/ })).not.toBeInTheDocument();
+    expect(await screen.findByRole('list', { name: 'Muutoshistoria' })).toHaveTextContent('Muutettu keikaksi');
+
+    await user.click(gigLink);
+    const back = await screen.findByRole('link', { name: 'Event 1' });
     expect(back).toHaveAttribute('href', `/offers/${offer.id}`);
     expect(back.closest('p')).toHaveTextContent('Tarjouksesta: Event 1');
-
-    await user.click(back);
-    expect(await screen.findByRole('link', { name: 'Keikka: Event 1' })).toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: /Muuta keikaksi/ })).not.toBeInTheDocument();
-    expect(await screen.findByRole('list', { name: 'Muutoshistoria' })).toHaveTextContent('Muutettu keikaksi');
   });
 
   it('deletes after confirmation; a deleted offer is read-only with Restore only', async () => {
@@ -162,7 +163,7 @@ describe('offer page (UC-029, UC-031)', () => {
     expect(await screen.findByText(/Tarjous on poistettu/)).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'Paikka' })).toBeDisabled();
     expect(screen.queryByRole('button', { name: 'Kopioi julkinen linkki' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: /Muuta keikaksi/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Muuta keikaksi/ })).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Palauta tarjous' }));
     expect(await screen.findByText('Tarjous palautettu.')).toBeInTheDocument();
     expect(offer.deletedAt).toBeNull();

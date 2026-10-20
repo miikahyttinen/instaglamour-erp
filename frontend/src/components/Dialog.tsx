@@ -1,6 +1,7 @@
 import { X } from 'lucide-react';
 import { useEffect, useId, useRef, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { focusableIn } from '../lib/useFocusTrap';
 
 interface Props {
   title: string;
@@ -10,7 +11,8 @@ interface Props {
 
 /**
  * Modal dialog: bottom sheet on phones, centred panel from 600 px. Uppercase title, X close
- * button, Escape closes it and focus returns to the opener. Put the actions in a
+ * button, Escape closes it, Tab / Shift+Tab stay inside it (focus trap) and focus returns to the
+ * opener. Put the actions in a
  * `<div className="form-actions">` at the end of `children`.
  */
 export function Dialog({ title, onClose, children }: Props) {
@@ -29,7 +31,24 @@ export function Dialog({ title, onClose, children }: Props) {
     );
     first?.focus();
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onCloseRef.current();
+      if (e.key === 'Escape') {
+        onCloseRef.current();
+        return;
+      }
+      const root = ref.current;
+      if (e.key !== 'Tab' || !root) return;
+      const items = focusableIn(root);
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (!first || !last) return;
+      const current = document.activeElement;
+      if (e.shiftKey && (current === first || !root.contains(current))) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && (current === last || !root.contains(current))) {
+        e.preventDefault();
+        first.focus();
+      }
     };
     document.addEventListener('keydown', onKey);
     return () => {

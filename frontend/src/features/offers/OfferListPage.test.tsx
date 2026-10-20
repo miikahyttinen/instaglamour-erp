@@ -210,23 +210,22 @@ describe('offer list (UC-028)', () => {
     expect(screen.getAllByRole('link', { name: 'Uusi tarjous' })).toHaveLength(2);
   });
 
-  it('Convert opens the prefilled gig form; after creating, the row links to the gig (UC-031)', async () => {
+  it('converts to a gig in the modal; the row then links to the gig (UC-031)', async () => {
     const offer = addMockOffer({ clientId, eventName: 'Event 1', city: 'City Y', priceCents: 120000 });
     const { user } = renderApp('/offers');
     await screen.findByRole('table', { name: 'Tarjoukset' });
-    const convert = screen.getByRole('link', { name: 'Muuta keikaksi: Event 1' });
-    expect(convert).toHaveAttribute('href', `/gigs/new?fromOffer=${offer.id}`);
-    await user.click(convert);
-    expect(await screen.findByRole('textbox', { name: 'Paikka' })).toHaveValue('Venue X, City Y');
-    await user.click(screen.getByRole('button', { name: 'Luo keikka' }));
-    expect(await screen.findByRole('heading', { name: 'Event 1 · Venue X, City Y' })).toBeInTheDocument();
-    expect(db.gigs.gigs.filter((g) => g.offerId === offer.id)).toHaveLength(1);
+    await user.click(screen.getByRole('button', { name: 'Muuta keikaksi: Event 1' }));
+    const dialog = screen.getByRole('dialog', { name: 'Muuta keikaksi' });
+    expect(await within(dialog).findByRole('textbox', { name: 'Paikka' })).toHaveValue('Venue X, City Y');
+    await user.click(within(dialog).getByRole('button', { name: 'Muuta keikaksi' }));
 
-    await user.click(screen.getByRole('link', { name: 'Event 1' })); // "Tarjouksesta: Event 1"
-    await user.click(await screen.findByRole('link', { name: 'Tarjoukset' })); // offer page back link
+    expect(await screen.findByText('Keikka luotu tarjouksesta Event 1.', { exact: false })).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     const link = await screen.findByRole('link', { name: 'Keikka: Event 1' });
     expect(link).toHaveTextContent('Keikka →');
     expect(link).toHaveAttribute('href', `/gigs/${offer.gigId}`);
+    expect(screen.getByRole('link', { name: 'Avaa keikka' })).toHaveAttribute('href', `/gigs/${offer.gigId}`);
+    expect(db.gigs.gigs.filter((g) => g.offerId === offer.id)).toHaveLength(1);
     expect(bodyRows()[0]).toHaveTextContent('Hyväksytty');
   });
 

@@ -44,19 +44,12 @@
 .offer-dialog-body > p {
   color: var(--text-muted);
 }
-/* Convert dialog: label / value pairs. */
-.offer-convert-facts {
-  display: grid;
-  gap: var(--space-3);
+/* Convert dialog (UC-031): yellow review tag on top, then the prefilled key fields. */
+.offer-convert-review {
   margin: 0 0 var(--space-4);
 }
-.offer-convert-facts > div {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-.offer-convert-facts dd {
-  margin: 0;
+.offer-convert-review .tag {
+  white-space: normal;
   overflow-wrap: anywhere;
 }
 
