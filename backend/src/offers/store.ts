@@ -2,14 +2,13 @@
  * Offer data access, derived values and serializers (docs/api-contract.md "Offers", "Public offer";
  * UC-028…UC-031, BR-102…BR-106).
  */
-import { defaultCostLines } from '../domain/costLines.js';
 import { isoFromDate } from '../domain/dates.js';
 import { OFFER_SETTING_KEYS } from '../domain/enums.js';
 import type { Offer, OfferDisposition, OfferEvent, OfferEventType, Prisma } from '../generated/prisma/client.js';
-import { isUuid, logEvent, type Tx } from '../gigs/store.js';
+import { insertGig, type GigCreateInput, type GigFees, type PreparedGig } from '../gigs/create.js';
+import { isUuid, type Tx } from '../gigs/store.js';
 import { AppError, notFound } from '../http/errors.js';
 import { imageVersion, publicReferenceImageUrl, type PublicReferenceSource } from '../references/store.js';
-import type { FeeSettings } from '../routes/reference.js';
 import { SPOTIFY_URL } from './constants.js';
 import { sharePath } from './shareToken.js';
 
@@ -195,57 +194,90 @@ export async function loadOfferSettings(db: Tx): Promise<OfferSettings> {
   };
 }
 
+/** The offer fields the BR-105 gig prefill reads. */
+type DraftSource = Pick<Offer, 'eventDate' | 'eventName' | 'venue' | 'city' | 'priceCents' | 'clientId' | 'sellerId'> & {
+  seller: { active: boolean; personId: string };
+};
+
+/**
+ * The gig a conversion prefills (BR-105) as a GigCreate: start date = event date, custom lineup
+ * named after the event, venue "venue, city", client, price (0 if empty), seller and producer =
+ * offer seller. BR-111: a removed (inactive) partner is never chosen for a new gig, so if the
+ * offer's seller has been removed, the converting partner is used instead.
+ */
+export async function offerGigDraft(
+  tx: Tx,
+  offer: DraftSource,
+  callerPartnerId: string,
+): Promise<{ draft: GigCreateInput & { clientId: string }; partnerPersonId: string }> {
+  const partner = offer.seller.active
+    ? { id: offer.sellerId, personId: offer.seller.personId }
+    : await tx.partner.findUniqueOrThrow({ where: { id: callerPartnerId }, select: { id: true, personId: true } });
+  return {
+    draft: {
+      startDate: isoFromDate(offer.eventDate),
+      endDate: null,
+      lineupTemplateId: null,
+      lineupName: offer.eventName,
+      venue: offer.city ? `${offer.venue}, ${offer.city}` : offer.venue,
+      technicalSetup: null,
+      logistics: null,
+      houseTechnician: false,
+      sellerId: partner.id,
+      producerId: partner.id,
+      priceCents: offer.priceCents ?? 0,
+      additionalSalesCents: 0,
+      additionalSalesDescription: null,
+      notes: null,
+      clientId: offer.clientId,
+    },
+    partnerPersonId: partner.personId,
+  };
+}
+
+/** The offer behind a conversion: 404 unknown, 409 INVALID_STATUS_TRANSITION deleted, 409 ALREADY_CONVERTED. */
+export async function requireConvertibleOffer(tx: Tx, offerId: string) {
+  const offer = isUuid(offerId)
+    ? await tx.offer.findUnique({
+        where: { id: offerId },
+        include: {
+          gig: { select: { id: true } },
+          seller: { select: { personId: true, active: true } },
+          client: { select: { deletedAt: true } },
+        },
+      })
+    : null;
+  if (!offer) throw notFound('Offer not found');
+  assertOfferNotDeleted(offer);
+  if (offer.gig) throw new AppError('ALREADY_CONVERTED', 'The offer already has a gig');
+  return offer;
+}
+
 /**
  * Convert an offer to a gig (BR-105) inside the caller's transaction. The offer row is locked
  * first, so concurrent conversions of the same offer run one after the other and the second one
  * sees the first one's gig (409 ALREADY_CONVERTED). The unique gig.offer_id is the last line of
  * defence; callers map its unique violation to ALREADY_CONVERTED as well.
+ *
+ * `gig` = a GigCreate already validated by `prepareGigCreate` (the edited form); without it the
+ * gig is created from the BR-105 prefill as is.
  */
 export async function convertOfferInTx(
   tx: Prisma.TransactionClient,
-  input: { offerId: string; partnerId: string; fees: Pick<FeeSettings, 'officeDefaultCents' | 'salesDefaultCents' | 'productionDefaultCents'> },
+  input: { offerId: string; partnerId: string; fees: GigFees; gig?: PreparedGig },
 ): Promise<{ gigId: string }> {
   const locked = await tx.$queryRaw<{ id: string }[]>`
     SELECT "id"::text FROM "offer" WHERE "id" = ${input.offerId}::uuid FOR UPDATE`;
   if (locked.length === 0) throw notFound('Offer not found');
 
-  const offer = await tx.offer.findUniqueOrThrow({
-    where: { id: input.offerId },
-    include: { gig: { select: { id: true } }, seller: { select: { personId: true, active: true } } },
-  });
-  assertOfferNotDeleted(offer);
-  if (offer.gig) throw new AppError('ALREADY_CONVERTED', 'The offer already has a gig');
+  const offer = await requireConvertibleOffer(tx, input.offerId);
 
-  // BR-111: a removed (inactive) partner is never chosen for a new gig. If the offer's seller has
-  // been removed, the partner doing the conversion becomes the gig's seller and producer.
-  const gigPartner = offer.seller.active
-    ? { id: offer.sellerId, personId: offer.seller.personId }
-    : await tx.partner.findUniqueOrThrow({ where: { id: input.partnerId }, select: { id: true, personId: true } });
-
-  const lines = defaultCostLines({
-    templateRoles: [],
-    sellerPersonId: gigPartner.personId,
-    producerPersonId: gigPartner.personId,
-    fees: input.fees,
-  });
-  const createdBase = Date.now();
-  const gig = await tx.gig.create({
-    data: {
-      startDate: offer.eventDate,
-      endDate: null,
-      lineupTemplateId: null,
-      lineupName: offer.eventName,
-      venue: offer.city ? `${offer.venue}, ${offer.city}` : offer.venue,
-      sellerId: gigPartner.id,
-      producerId: gigPartner.id,
-      priceCents: offer.priceCents ?? 0,
-      clientId: offer.clientId,
-      offerId: offer.id,
-      // Explicit, increasing creation times keep the lines in creation order (contract).
-      costLines: { createMany: { data: lines.map((l, i) => ({ ...l, createdAt: new Date(createdBase + i) })) } },
-    },
-  });
-  await logEvent(tx, { gigId: gig.id, type: 'CREATED', partnerId: input.partnerId });
+  let gig = input.gig;
+  if (!gig) {
+    const { draft, partnerPersonId } = await offerGigDraft(tx, offer, input.partnerId);
+    gig = { input: draft, template: null, sellerPersonId: partnerPersonId, producerPersonId: partnerPersonId };
+  }
+  const gigId = await insertGig(tx, gig, { partnerId: input.partnerId, fees: input.fees, offerId: offer.id });
 
   if (offer.disposition !== 'WON') {
     await tx.offer.update({ where: { id: offer.id }, data: { disposition: 'WON' } });
@@ -259,6 +291,6 @@ export async function convertOfferInTx(
     // Touch updatedAt: the offer gained a gig.
     await tx.offer.update({ where: { id: offer.id }, data: { updatedAt: new Date() } });
   }
-  await logOfferEvent(tx, { offerId: offer.id, type: 'CONVERTED', partnerId: input.partnerId, details: { gigId: gig.id } });
-  return { gigId: gig.id };
+  await logOfferEvent(tx, { offerId: offer.id, type: 'CONVERTED', partnerId: input.partnerId, details: { gigId } });
+  return { gigId };
 }

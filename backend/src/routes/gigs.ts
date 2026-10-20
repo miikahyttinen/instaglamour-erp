@@ -2,7 +2,6 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import type { AppDeps } from '../app.js';
-import { defaultCostLines } from '../domain/costLines.js';
 import { dateFromIso, isoFromDate, todayIso } from '../domain/dates.js';
 import { isNotFullyStaffed, yearGigSummary } from '../domain/gigEconomics.js';
 import type { CostType, Prisma } from '../generated/prisma/client.js';
@@ -31,6 +30,7 @@ import {
 } from '../gigs/store.js';
 import { findActiveClient } from '../clients/store.js';
 import { assertCostLineNotOnPurchaseOrder, assertGigHasNoOpenPurchaseOrder } from '../purchaseOrders/lock.js';
+import { insertGig, prepareGigCreate } from '../gigs/create.js';
 import { loadFeeSettings } from './reference.js';
 
 type IdParams = { Params: { id: string } };
@@ -44,24 +44,6 @@ const listQuery = z.object({
   notFullyStaffed: z.enum(['true', 'false'], { message: 'INVALID_VALUE' }).optional(),
   q: z.string().max(500).optional(),
   deleted: z.enum(['true', 'false'], { message: 'INVALID_VALUE' }).optional(),
-});
-
-const gigCreateBody = z.object({
-  startDate: isoDate,
-  endDate: isoDate.nullable().optional(),
-  lineupTemplateId: z.string().nullable().optional(),
-  lineupName: optionalText(),
-  venue: requiredText(),
-  technicalSetup: technicalSetup.optional(),
-  logistics: logistics.optional(),
-  houseTechnician: flag.optional(),
-  sellerId: z.string().min(1),
-  producerId: z.string().min(1),
-  priceCents: money,
-  additionalSalesCents: money.optional(),
-  additionalSalesDescription: optionalText(),
-  notes: optionalText(LONG_TEXT_MAX),
-  clientId: z.string().nullable().optional(),
 });
 
 const gigUpdateBody = z.object({
@@ -149,67 +131,9 @@ export function gigRoutes(app: FastifyInstance, deps: AppDeps): void {
   // ---------------------------------------------------------------- create
   app.post('/api/gigs', async (request, reply) => {
     const me = request.requirePartner();
-    const body = parseInput(gigCreateBody, request.body);
-
-    const fields: Record<string, FieldCode> = {};
-    if (body.endDate && body.endDate < body.startDate) fields.endDate = 'END_BEFORE_START';
-
-    let template: Prisma.LineupTemplateGetPayload<{ include: { roles: true } }> | null = null;
-    if (body.lineupTemplateId) {
-      template = isUuid(body.lineupTemplateId)
-        ? await db.lineupTemplate.findUnique({
-            where: { id: body.lineupTemplateId },
-            include: { roles: { orderBy: { position: 'asc' } } },
-          })
-        : null;
-      if (!template) fields.lineupTemplateId = 'UNKNOWN_REFERENCE';
-    } else if (!body.lineupName) {
-      fields.lineupName = 'REQUIRED';
-    }
-
-    const partners = await findPartners([body.sellerId, body.producerId]);
-    const seller = partners.get(body.sellerId);
-    const producer = partners.get(body.producerId);
-    // BR-111: new seller/producer choices must be active partners.
-    if (!seller?.active) fields.sellerId = 'UNKNOWN_REFERENCE';
-    if (!producer?.active) fields.producerId = 'UNKNOWN_REFERENCE';
-    if (body.clientId && !(await findActiveClient(db, body.clientId))) fields.clientId = 'UNKNOWN_REFERENCE';
-    throwIfAny(fields);
-
+    const gig = await prepareGigCreate(db, request.body);
     const fees = await loadFeeSettings(db);
-    const lines = defaultCostLines({
-      templateRoles: template?.roles ?? [],
-      sellerPersonId: seller!.personId,
-      producerPersonId: producer!.personId,
-      fees,
-    });
-
-    const gigId = await inTransaction(db, async (tx) => {
-      const createdBase = Date.now();
-      const gig = await tx.gig.create({
-        data: {
-          startDate: dateFromIso(body.startDate),
-          endDate: body.endDate ? dateFromIso(body.endDate) : null,
-          lineupTemplateId: template?.id ?? null,
-          lineupName: body.lineupName ?? template!.name,
-          venue: body.venue,
-          technicalSetup: body.technicalSetup ?? null,
-          logistics: body.logistics ?? null,
-          houseTechnician: body.houseTechnician ?? false,
-          sellerId: body.sellerId,
-          producerId: body.producerId,
-          priceCents: body.priceCents,
-          additionalSalesCents: body.additionalSalesCents ?? 0,
-          additionalSalesDescription: body.additionalSalesDescription ?? null,
-          notes: body.notes ?? null,
-          clientId: body.clientId ?? null,
-          // Explicit, increasing creation times keep the lines in creation order (contract).
-          costLines: { createMany: { data: lines.map((l, i) => ({ ...l, createdAt: new Date(createdBase + i) })) } },
-        },
-      });
-      await logEvent(tx, { gigId: gig.id, type: 'CREATED', partnerId: me.id });
-      return gig.id;
-    });
+    const gigId = await inTransaction(db, (tx) => insertGig(tx, gig, { partnerId: me.id, fees }));
 
     return reply.status(201).send(await detail(gigId));
   });

@@ -10,6 +10,7 @@ import { dateFromIso, isoFromDate, todayIso } from '../domain/dates.js';
 import { EVENT_TYPES, OFFER_DISPOSITIONS, OFFER_SOURCES } from '../domain/enums.js';
 import type { Prisma } from '../generated/prisma/client.js';
 import { flag, isoDate, LONG_TEXT_MAX, money, oneOf, optionalText, requiredText, SHORT_TEXT_MAX, yearString } from '../gigs/schemas.js';
+import { prepareGigCreate } from '../gigs/create.js';
 import { toGigDetailDto } from '../gigs/serialize.js';
 import { inTransaction, isUuid, requireGigDetail, yearDateRange } from '../gigs/store.js';
 import { AppError, parseInput, validationError, type FieldCode } from '../http/errors.js';
@@ -21,7 +22,9 @@ import {
   offerInclude,
   offerStatus,
   isExpired,
+  offerGigDraft,
   offerYearSummary,
+  requireConvertibleOffer,
   requireOffer,
   logOfferEvent,
   toOfferDetailDto,
@@ -323,16 +326,28 @@ export function offerRoutes(app: FastifyInstance, deps: AppDeps): void {
   });
 
   // ---------------------------------------------------------------- convert to gig (BR-105)
+  app.get<IdParams>('/api/offers/:id/gig-draft', async (request) => {
+    const me = request.requirePartner();
+    const offer = await requireConvertibleOffer(db, request.params.id);
+    const { draft } = await offerGigDraft(db, offer, me.id);
+    // A deleted client cannot be linked to a new gig (UNKNOWN_REFERENCE), so the draft leaves it
+    // empty and the prefilled form submits cleanly (PM decision 2026-10-20). Convert without a
+    // body is unchanged.
+    return { ...draft, clientId: offer.client.deletedAt ? null : draft.clientId };
+  });
+
   app.post<IdParams>('/api/offers/:id/convert', async (request, reply) => {
     const me = request.requirePartner();
-    const offer = await requireOffer(db, request.params.id);
-    assertOfferNotDeleted(offer);
-    if (offer.gig) throw alreadyConverted();
+    const offer = await requireConvertibleOffer(db, request.params.id);
+    // Optional body: an edited GigCreate (the prefilled form), validated exactly as POST /api/gigs.
+    // No body (or JSON null) → the BR-105 prefill as is.
+    const gig =
+      request.body === undefined || request.body === null ? undefined : await prepareGigCreate(db, request.body);
 
     const fees = await loadFeeSettings(db);
     let gigId: string;
     try {
-      ({ gigId } = await inTransaction(db, (tx) => convertOfferInTx(tx, { offerId: offer.id, partnerId: me.id, fees })));
+      ({ gigId } = await inTransaction(db, (tx) => convertOfferInTx(tx, { offerId: offer.id, partnerId: me.id, fees, gig })));
     } catch (err) {
       // A concurrent conversion that slipped past the row lock still hits the unique gig.offer_id.
       if (isUniqueViolation(err)) throw alreadyConverted();
