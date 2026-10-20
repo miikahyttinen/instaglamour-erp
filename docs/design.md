@@ -50,7 +50,7 @@ Contrast must meet WCAG AA for text in both themes. (`--label` dark raised from 
 - **Buttons:** ghost by default — transparent, 1 px `--border-strong`, mono uppercase text, optional leading icon; primary = solid `--accent` with `--accent-contrast` text; danger = ghost with danger colours. Min height 36 px (44 px touch targets on phone).
 - **Inputs/selects:** transparent / `--bg`, 1 px `--border-strong`, Afacad text, mono placeholder, focus ring 1 px `--accent`.
 - **Tables:** `--surface`, header row `--surface-2` with mono uppercase labels + sort icons, hairline row borders, generous row height, numbers right-aligned tabular. Phone: rows become cards (label/value) as today.
-- **Status tags:** mono uppercase, 1 px border, tinted background: Sold/Played = info, Done/Paid = ok, Overdue/Not fully staffed/contract-like warnings = warn, Cancelled/Deleted = danger or muted.
+- **Status tags:** mono uppercase, 1 px border, tinted background: Sold/Played = info, Done/Paid = ok, Overdue/Not fully staffed/contract-like warnings = warn, Cancelled/Deleted = danger or muted. Offer status: Open = info, Accepted = ok, Rejected = danger (owner request 2026-10-20).
 - **Dialogs:** `--surface`, 1 px border, title uppercase; phone = bottom sheet.
 - **Icons:** thin line icons (e.g. `lucide-react`), 16 px, stroke 1.5.
 
