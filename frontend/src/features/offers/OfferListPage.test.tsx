@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { formatMoney } from '../../lib/format';
+import { formatMoney, formatMoneyWhole } from '../../lib/format';
 import { DESKTOP_QUERY, TABLET_QUERY } from '../../lib/useMediaQuery';
 import { db } from '../../mocks/data';
 import { addMockClient, partnerB, TEST_YEAR } from '../../test/gigFixtures';
@@ -8,7 +8,9 @@ import { installMatchMedia } from '../../test/matchMedia';
 import { addMockOffer } from '../../test/offerFixtures';
 import { renderApp, signInMock } from '../../test/renderApp';
 
-const fiMoney = (cents: number) => formatMoney(cents, 'fi').replace(/\s/g, ' ');
+const fiMoney = (cents: number) => formatMoneyWhole(cents, 'fi').replace(/\s/g, ' ');
+/** KPI card "Avoimet tarjoukset · <year>" (BR-122; default = the selected year). */
+const openCard = () => screen.getByRole('region', { name: `Avoimet tarjoukset · ${TEST_YEAR}` });
 const table = () => screen.getByRole('table', { name: 'Tarjoukset' });
 const bodyRows = () => within(table()).getAllByRole('row').filter((r) => r.closest('tbody'));
 const eventNames = () => bodyRows().map((r) => within(r).getAllByRole('link')[0]!.textContent);
@@ -21,7 +23,7 @@ describe('offer list (UC-028)', () => {
     clientId = addMockClient('Client X').id;
   });
 
-  it('is the second menu item (after Vuosi) and shows the year figures, all columns and the default sort', async () => {
+  it('is the second menu item (after Vuosi) and shows the KPI cards, all columns and the default sort', async () => {
     addMockOffer({ clientId, eventName: 'Event B', eventDate: `${TEST_YEAR}-09-01`, priceCents: 200000 });
     addMockOffer({ clientId, eventName: 'Event A', eventDate: `${TEST_YEAR}-03-01`, city: 'City Y' });
     addMockOffer({ clientId, eventName: 'Event W', eventDate: `${TEST_YEAR}-04-01`, disposition: 'WON' });
@@ -37,10 +39,11 @@ describe('offer list (UC-028)', () => {
     await user.click(offers);
 
     expect(await screen.findByRole('heading', { level: 1, name: `Tarjoukset ${TEST_YEAR}` })).toBeInTheDocument();
-    expect(text(screen.getByRole('region', { name: 'Avoimet tarjoukset' }))).toContain(fiMoney(300000));
-    const winRate = screen.getByRole('region', { name: 'Voittoprosentti' });
-    expect(text(winRate)).toContain('50,0');
-    expect(winRate).toHaveTextContent('1 / 2 ratkaistusta voitettu');
+    expect(screen.getByRole('heading', { level: 2, name: 'Tarjoustilastot' })).toBeInTheDocument();
+    expect(text(await screen.findByRole('region', { name: `Avoimet tarjoukset · ${TEST_YEAR}` }))).toContain(
+      fiMoney(300000),
+    );
+    expect(screen.getByRole('region', { name: 'Voittoprosentti' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Uusi tarjous' })).toHaveAttribute('href', '/offers/new');
 
     await screen.findByRole('table', { name: 'Tarjoukset' });
@@ -98,8 +101,8 @@ describe('offer list (UC-028)', () => {
     await user.selectOptions(screen.getByRole('combobox', { name: 'Lopputulos: Event 1' }), 'Hävitty: hinta');
     await waitFor(() => expect(offer.disposition).toBe('LOST_PRICE'));
     await waitFor(() => expect(bodyRows()[0]).toHaveTextContent('Hylätty'));
-    // Open value follows (BR-106).
-    await waitFor(() => expect(text(screen.getByRole('region', { name: 'Avoimet tarjoukset' }))).toContain(fiMoney(0)));
+    // The open value KPI follows (BR-122).
+    await waitFor(() => expect(text(openCard())).toContain(fiMoney(0)));
     expect(db.offers.events.filter((e) => e.offerId === offer.id).map((e) => e.type)).toEqual([
       'CREATED',
       'UPDATED',
@@ -167,7 +170,7 @@ describe('offer list (UC-028)', () => {
     expect(await screen.findByText('Ei hakua vastaavia tarjouksia.')).toBeInTheDocument();
   });
 
-  it('keeps the column filters and sort in the URL; the year figures ignore them', async () => {
+  it('keeps the column filters and sort in the URL; the KPI cards ignore them', async () => {
     addMockOffer({ clientId, eventName: 'Event 1', priceCents: 100000, source: 'INSTAGRAM' });
     addMockOffer({ clientId, eventName: 'Event 2', priceCents: 200000 });
     installMatchMedia({ [TABLET_QUERY]: true });
@@ -175,7 +178,9 @@ describe('offer list (UC-028)', () => {
     await screen.findByRole('table', { name: 'Tarjoukset' });
     // "(tyhjä)" = offers without a source.
     expect(eventNames()).toEqual(['Event 2']);
-    expect(text(screen.getByRole('region', { name: 'Avoimet tarjoukset' }))).toContain(fiMoney(300000));
+    expect(text(await screen.findByRole('region', { name: `Avoimet tarjoukset · ${TEST_YEAR}` }))).toContain(
+      fiMoney(300000),
+    );
     expect(within(table()).getByRole('columnheader', { name: /Hinta/ })).toHaveAttribute('aria-sort', 'descending');
 
     await user.click(within(table()).getByRole('button', { name: 'Suodata: Lähde' }));
@@ -213,7 +218,7 @@ describe('offer list (UC-028)', () => {
     const dialog = screen.getByRole('dialog', { name: 'Muuta keikaksi' });
     expect(text(dialog)).toContain('Venue X, City Y');
     expect(text(dialog)).toContain('Client X');
-    expect(text(dialog)).toContain(fiMoney(120000));
+    expect(text(dialog)).toContain(formatMoney(120000, 'fi').replace(/\s/g, ' '));
     expect(dialog).toHaveTextContent('Partner A');
     await user.dblClick(within(dialog).getByRole('button', { name: 'Luo keikka' }));
 

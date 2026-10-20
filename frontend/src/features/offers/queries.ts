@@ -11,7 +11,14 @@ export const offerKeys = {
   list: (query: OfferListQuery) => [...rootKeys.offers, 'list', query] as const,
   detail: (id: Id) => [...rootKeys.offers, 'detail', id] as const,
   history: (id: Id) => [...rootKeys.offers, 'history', id] as const,
+  allStats: [...rootKeys.offers, 'stats'] as const,
+  stats: (year: number) => [...rootKeys.offers, 'stats', year] as const,
 };
+
+/** KPI cards (BR-122): all offers of all years, relative to the selected year. */
+export function useOfferStats(year: number) {
+  return useQuery({ queryKey: offerKeys.stats(year), queryFn: () => offersApi.stats(year) });
+}
 
 export function useOfferList(query: OfferListQuery) {
   return useQuery({
@@ -33,12 +40,13 @@ export function useOfferHistory(id: Id) {
   return useQuery({ queryKey: offerKeys.history(id), queryFn: () => offersApi.history(id) });
 }
 
-/** After any offer mutation: lists (summary), the page, its history and the client pages. */
+/** After any offer mutation: lists (summary), KPI stats, the page, its history and the client pages. */
 export function refreshAfterOfferChange(queryClient: QueryClient, offer: OfferDetail | null, id: Id) {
   if (offer) queryClient.setQueryData(offerKeys.detail(id), offer);
   else void queryClient.invalidateQueries({ queryKey: offerKeys.detail(id) });
   return Promise.all([
     queryClient.invalidateQueries({ queryKey: offerKeys.lists }),
+    queryClient.invalidateQueries({ queryKey: offerKeys.allStats }),
     queryClient.invalidateQueries({ queryKey: offerKeys.history(id) }),
     queryClient.invalidateQueries({ queryKey: rootKeys.clients }),
   ]).then(() => undefined);

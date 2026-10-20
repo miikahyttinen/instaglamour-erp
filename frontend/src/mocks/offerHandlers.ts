@@ -12,6 +12,7 @@ import {
   gigInputFromOffer,
   logOfferEvent,
   markConverted,
+  offerStats,
   offerYearSummary,
   regenerateLink,
   toOfferDetail,
@@ -192,6 +193,14 @@ export const offerHandlers = [
       me.id,
     );
     return detail(offer, 201);
+  }),
+
+  // Before `/api/offers/:id` (first match wins).
+  http.get('/api/offers/stats', ({ request }) => {
+    if (!currentPartner()) return unauthenticated();
+    const yearParam = new URL(request.url).searchParams.get('year') ?? '';
+    if (!/^\d{4}$/.test(yearParam)) return validationError({ year: 'INVALID_VALUE' });
+    return HttpResponse.json(offerStats(db.offers, Number(yearParam)));
   }),
 
   http.get('/api/offers/:id', ({ params }) => {

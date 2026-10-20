@@ -189,5 +189,18 @@ export function seedOffers(gigs: GigState, partners: Partner[], year = new Date(
   );
   deleted.deletedAt = nowTs();
   logOfferEvent(state, deleted.id, 'DELETED', a.id);
+  backdateCreated(state);
   return state;
+}
+
+/**
+ * Spreads the seeded offers' `createdAt` over the last completed months (synthetic), so the
+ * "Offers created" KPI card (BR-122) has bars in dev:mock. Like an import with `createdAt`.
+ */
+function backdateCreated(state: OfferState, now = new Date()) {
+  state.offers.forEach((offer, i) => {
+    const d = new Date(now.getFullYear(), now.getMonth() - 1 - (i % 6), 10 + i, 12);
+    offer.createdAt = d.toISOString();
+    offer.updatedAt = offer.createdAt;
+  });
 }

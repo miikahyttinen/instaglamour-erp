@@ -6,7 +6,7 @@ import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import type { OfferDisposition, OfferEventType, OfferSource } from '../../api/enums';
 import { OFFER_DISPOSITIONS, OFFER_EVENT_TYPES, OFFER_SOURCES } from '../../api/enums';
 import { offersApi } from '../../api/endpoints';
-import type { OfferListQuery, OfferSummary, OfferUpdate, OfferYearSummary, Partner } from '../../api/types';
+import type { OfferListQuery, OfferSummary, OfferUpdate, Partner } from '../../api/types';
 import { useSelectedYear } from '../../auth/SignedInContext';
 import { Button, IconButton } from '../../components/Button';
 import { buttonClass } from '../../components/buttonClass';
@@ -15,7 +15,6 @@ import { ExcelTable } from '../../components/ExcelTable';
 import { useUrlTableState, type ExcelColumn, type ExcelTableState } from '../../components/excelTableState';
 import { InlineSelect } from '../../components/inline';
 import { Notice } from '../../components/Notice';
-import { StatGrid, StatTile } from '../../components/StatTile';
 import { PageHead } from '../../components/PageHead';
 import {
   apiErrorMessage,
@@ -24,9 +23,10 @@ import {
   offerSourceLabel,
 } from '../../i18n/labels';
 import { useLang } from '../../i18n/useLang';
-import { formatDate, formatMoney, formatPercent } from '../../lib/format';
+import { formatDate, formatMoney } from '../../lib/format';
 import { useReference } from '../../reference/useReference';
 import { ConvertDialog } from './ConvertDialog';
+import { OfferKpis } from './OfferKpis';
 import { copyToClipboard, useOfferOptions, type CopyResult } from './offerOptions';
 import { ConfirmDialog, CopyResultNotice, GigCell, OfferStatusTag } from './offerParts';
 import { OFFER_DISPLAY_STATUSES, offerDisplayStatus, offerTieBreak, type OfferDisplayStatus } from './offerStatus';
@@ -60,7 +60,7 @@ function partnerName(partners: Partner[] | undefined, id: string): string {
 }
 
 /**
- * Offers of the selected year (UC-028): figures, search, Excel-style table with column filters
+ * Offers of the selected year (UC-028): KPI cards (BR-122, all years), search, Excel-style table with column filters
  * (ExcelTable; filters and sort in the URL, client-side), Deleted view.
  */
 export function OfferListPage() {
@@ -160,7 +160,7 @@ export function OfferListPage() {
     <section className="page offers-page">
       <PageHead title={t('pages.offers', { year })} actions={headActions} />
 
-      {list.data && <YearFigures summary={list.data.summary} />}
+      <OfferKpis year={year} />
 
       <div className="offers-toolbar">
         <div className="segmented" role="group" aria-label={t('offers.viewLabel')}>
@@ -260,26 +260,6 @@ export function OfferListPage() {
         </ConfirmDialog>
       )}
     </section>
-  );
-}
-
-/** BR-106: open value and win rate of the selected year (ignores the filters). */
-function YearFigures({ summary }: { summary: OfferYearSummary }) {
-  const { t } = useTranslation();
-  const lang = useLang();
-  return (
-    <StatGrid className="offers-figures">
-      <StatTile
-        label={t('offers.openValue')}
-        value={formatMoney(summary.openValueCents, lang)}
-        caption={t('offers.openValueCaption')}
-      />
-      <StatTile
-        label={t('offers.winRate')}
-        value={summary.winRatePct === null ? '–' : formatPercent(summary.winRatePct, lang)}
-        caption={t('offers.winRateCaption', { won: summary.wonCount, decided: summary.decidedCount })}
-      />
-    </StatGrid>
   );
 }
 
