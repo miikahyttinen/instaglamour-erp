@@ -71,6 +71,16 @@ const gig = z.strictObject({
   costLines: z.array(costLine).optional(),
 });
 
+/**
+ * A past moment with a time-zone offset (TASK-028), e.g. `2026-10-14T17:09:01.341414+00:00` or
+ * `…Z`; any fraction of a second. Future times are rejected.
+ */
+const pastDateTime = z
+  .string()
+  .pipe(z.iso.datetime({ offset: true, error: 'must be an ISO 8601 date-time with an offset, e.g. 2026-10-14T17:09:01+00:00' }))
+  // NaN (already reported by the format check) compares false, so it gets no second error.
+  .refine((v) => !(Date.parse(v) > Date.now()), 'must not be in the future');
+
 const offer = z.strictObject({
   client: name,
   eventName: name,
@@ -88,6 +98,8 @@ const offer = z.strictObject({
   eventType: z.enum(EVENT_TYPES).optional(),
   disposition: z.enum(OFFER_DISPOSITIONS).optional(),
   converted: z.boolean().default(false),
+  /** When the offer was made (TASK-028); used only when the offer is inserted. Default: now. */
+  createdAt: pastDateTime.optional(),
 });
 
 /** A reference / testimonial (BR-108). `image` is a file path relative to the seed file. */
