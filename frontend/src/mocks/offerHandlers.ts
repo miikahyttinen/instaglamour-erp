@@ -249,6 +249,8 @@ export const offerHandlers = [
     if (offer.deletedAt) return isDeleted();
     if (offer.gigId) return alreadyConverted();
     const draft: GigCreate = gigInputFromOffer(offer, { isActive: isActivePartner, callerId: me.id });
+    // A deleted client can't be linked (UC-027): the draft leaves it empty.
+    if (!db.gigs.clients.some((c) => c.id === draft.clientId && c.deletedAt === null)) draft.clientId = null;
     return HttpResponse.json(draft);
   }),
 
