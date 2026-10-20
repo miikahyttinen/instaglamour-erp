@@ -160,7 +160,7 @@ function ClientGigs({ gigs }: { gigs: GigSummary[] }) {
   );
 }
 
-const OFFER_TONE = { OPEN: 'info', ACCEPTED: 'ok', REJECTED: 'muted' } as const;
+const OFFER_TONE = { OPEN: 'info', ACCEPTED: 'ok', REJECTED: 'danger' } as const;
 
 function ClientOffers({ offers }: { offers: OfferSummary[] }) {
   const { t } = useTranslation();

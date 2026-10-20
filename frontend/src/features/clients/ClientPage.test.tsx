@@ -65,6 +65,7 @@ describe('client page (UC-027)', () => {
     expect(rows[0]!.textContent!.replace(/\s/g, ' ')).toContain(fi(100000));
     expect(rows[2]).toHaveTextContent('Vanhentunut');
     expect(rows[1]).toHaveTextContent('Hylätty');
+    expect(within(rows[1]!).getByText('Hylätty')).toHaveClass('tag', 'tag-danger');
     expect(rows[1]).toHaveTextContent('Hävitty: hinta');
     expect(within(rows[1]!).getAllByRole('cell').at(-1)).toHaveTextContent('–');
   });
