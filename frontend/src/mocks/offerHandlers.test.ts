@@ -145,6 +145,44 @@ describe('offers mock (contract → Offers, BR-102…BR-106)', () => {
     expect(db.gigs.gigs.filter((g) => g.offerId === offer.id)).toHaveLength(1);
   });
 
+  it('gig-draft prefills per BR-105, falls back to the caller for an inactive seller, 409s', async () => {
+    const offer = addMockOffer({ clientId, city: 'City Y', priceCents: 50000, sellerId: db.partners[1]!.id });
+    expect(await offersApi.gigDraft(offer.id)).toMatchObject({
+      startDate: offer.eventDate,
+      venue: 'Venue X, City Y',
+      lineupName: 'Event 1',
+      lineupTemplateId: null,
+      clientId,
+      priceCents: 50000,
+      sellerId: db.partners[1]!.id,
+      producerId: db.partners[1]!.id,
+    });
+    db.partners[1]!.active = false;
+    const draft = await offersApi.gigDraft(offer.id);
+    expect(draft.sellerId).toBe(db.partners[0]!.id);
+    expect(draft.producerId).toBe(db.partners[0]!.id);
+    await offersApi.convert(offer.id);
+    await expectApiError(offersApi.gigDraft(offer.id), 409, 'ALREADY_CONVERTED');
+    const deleted = addMockOffer({ clientId });
+    await offersApi.delete(deleted.id);
+    await expectApiError(offersApi.gigDraft(deleted.id), 409, 'INVALID_STATUS_TRANSITION');
+  });
+
+  it('convert with a body creates the gig from the body and validates it like POST /api/gigs', async () => {
+    const offer = addMockOffer({ clientId, priceCents: 50000 });
+    const draft = await offersApi.gigDraft(offer.id);
+    await expectApiError(offersApi.convert(offer.id, { ...draft, venue: ' ' }), 400, 'VALIDATION_ERROR');
+    expect((await offersApi.get(offer.id)).gigId).toBeNull();
+    const { offer: converted, gig } = await offersApi.convert(offer.id, {
+      ...draft,
+      venue: 'Venue Q',
+      lineupName: 'Edited',
+      priceCents: 70000,
+    });
+    expect(gig).toMatchObject({ venue: 'Venue Q', lineupName: 'Edited', priceCents: 70000, offerId: offer.id });
+    expect(converted).toMatchObject({ disposition: 'WON', gigId: gig.id });
+  });
+
   it('a deleted offer is read-only and its link is gone; restore brings both back', async () => {
     const offer = addMockOffer({ clientId });
     await offersApi.delete(offer.id);

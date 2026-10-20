@@ -219,8 +219,11 @@ export const offersApi = {
     apiRequest<OfferDetail>(`/offers/${id}`, { method: 'PATCH', body }),
   regenerateLink: (id: Id) =>
     apiRequest<OfferDetail>(`/offers/${id}/regenerate-link`, { method: 'POST' }),
-  convert: (id: Id) =>
-    apiRequest<OfferConvertResponse>(`/offers/${id}/convert`, { method: 'POST' }),
+  /** BR-105 prefilled values for the convert form (UC-031). */
+  gigDraft: (id: Id) => apiRequest<GigCreate>(`/offers/${id}/gig-draft`),
+  /** With `body`: the gig is created from the (edited) form; without: BR-105 defaults. */
+  convert: (id: Id, body?: GigCreate) =>
+    apiRequest<OfferConvertResponse>(`/offers/${id}/convert`, { method: 'POST', body }),
   delete: (id: Id) => apiRequest<void>(`/offers/${id}/delete`, { method: 'POST' }),
   restore: (id: Id) => apiRequest<OfferDetail>(`/offers/${id}/restore`, { method: 'POST' }),
   history: (id: Id) => apiRequest<OfferEvent[]>(`/offers/${id}/history`),

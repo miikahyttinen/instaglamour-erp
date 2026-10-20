@@ -303,8 +303,16 @@ export function regenerateLink(state: OfferState, offer: MockOffer, actorId: Id)
   logOfferEvent(state, offer.id, 'LINK_REGENERATED', actorId);
 }
 
-/** BR-105 gig fields from the offer. The caller creates the gig and then calls `markConverted`. */
-export function gigInputFromOffer(offer: MockOffer) {
+/**
+ * BR-105 gig fields from the offer. The caller creates the gig and then calls `markConverted`.
+ * `isActive` + `callerId`: an inactive offer seller falls back to the caller (BR-111).
+ */
+export function gigInputFromOffer(
+  offer: MockOffer,
+  fallback?: { isActive: (partnerId: Id) => boolean; callerId: Id },
+) {
+  const sellerId =
+    fallback && !fallback.isActive(offer.sellerId) ? fallback.callerId : offer.sellerId;
   return {
     startDate: offer.eventDate,
     endDate: null,
@@ -314,8 +322,8 @@ export function gigInputFromOffer(offer: MockOffer) {
     technicalSetup: null,
     logistics: null,
     houseTechnician: false,
-    sellerId: offer.sellerId,
-    producerId: offer.sellerId,
+    sellerId,
+    producerId: sellerId,
     priceCents: offer.priceCents ?? 0,
     additionalSalesCents: 0,
     additionalSalesDescription: null,
