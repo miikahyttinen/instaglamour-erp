@@ -196,10 +196,54 @@ export async function rowEvents(page: Page): Promise<string[]> {
   return offerRows(page).locator('a.offer-link').allTextContents();
 }
 
-/** A stat tile of the year figures ("Avoimet tarjoukset", "Voittoprosentti"). */
-export function figure(page: Page, label: string): { value: Locator; caption: Locator } {
-  const tile = page.getByRole('region', { name: label, exact: true });
-  return { value: tile.locator('.stat-tile-value'), caption: tile };
+/** `GET /api/offers/stats?year=` (contract "Offer statistics", BR-122). */
+export interface OfferStats {
+  createdByMonth: { month: string; count: number; valueCents: number }[];
+  averageByCreatedYear: { year: number; averageCents: number | null; count: number }[];
+  byEventYear: { year: number; count: number; valueCents: number }[];
+  openValueByEventYear: { year: number; valueCents: number; count: number }[];
+  openByEventType: { eventType: OfferEventType | null; count: number; valueCents: number }[];
+  winRate: {
+    pct: number | null;
+    won: number;
+    decided: number;
+    byEventType: { eventType: OfferEventType; pct: number | null; won: number; decided: number }[];
+  };
+}
+
+export async function offerStats(page: Page, year: number): Promise<OfferStats> {
+  return api(page).get(`/offers/stats?year=${year}`);
+}
+
+/** FI whole euros as the KPI cards format money ("1 500 €"). */
+export function fiMoneyWhole(cents: number | null): string {
+  if (cents === null) return '–';
+  return new Intl.NumberFormat('fi-FI', {
+    style: 'currency',
+    currency: 'EUR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(Math.round(cents / 100));
+}
+
+/** FI whole percent as the KPI cards show it ("33 %"). */
+export function fiPercentWhole(value: number | null): string {
+  if (value === null) return '–';
+  return `${new Intl.NumberFormat('fi-FI', { maximumFractionDigits: 0 }).format(Math.round(value))}\u00a0%`;
+}
+
+/**
+ * A KPI card on Tarjoukset (BR-122, TASK-157): a region named by its heading, e.g.
+ * "Avoimet tarjoukset · 2026" or "Voittoprosentti". `value` = the big figure, `ring` = win rate %.
+ */
+export function kpiCard(page: Page, name: string | RegExp) {
+  const card = page.getByRole('region', { name, exact: typeof name === 'string' });
+  return {
+    card,
+    value: card.locator('.stat-tile-value').first(),
+    ring: card.locator('.offer-kpi-ring-text'),
+    bar: (label: string) => card.getByRole('button', { name: new RegExp(`^${label}:`) }),
+  };
 }
 
 /** Opens the offer list for the signed-in partner's year and waits for the data. */

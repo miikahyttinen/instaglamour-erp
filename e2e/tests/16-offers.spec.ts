@@ -25,12 +25,14 @@ import {
   DISPOSITION_FI,
   expectedStatus,
   fiDateWithWeekday,
-  fiPercent,
-  figure,
+  fiMoneyWhole,
+  fiPercentWhole,
+  kpiCard,
   helsinkiToday,
   offerList,
   offerRow,
   offerRows,
+  offerStats,
   offerTable,
   offerYear,
   openOfferList,
@@ -89,7 +91,8 @@ test('new offer: required fields refused, "what\'s included" default applied, no
   const before = await offerList(page, year);
   if (before.offers.length === 0) {
     await expect(page.getByText(`Ei tarjouksia vuodelle ${year}.`)).toBeVisible();
-    await expect(figure(page, 'Voittoprosentti').value).toHaveText('–');
+    // KPI cards (BR-122) are shown even for an empty year: nothing open for it.
+    await expect(kpiCard(page, `Avoimet tarjoukset · ${year}`).value).toHaveText(fiMoneyWhole(0));
   }
   await page.getByRole('main').getByRole('link', { name: 'Uusi tarjous' }).first().click();
   await expect(page.getByRole('heading', { level: 1, name: 'Uusi tarjous' })).toBeVisible();
@@ -197,7 +200,7 @@ test('new offer: required fields refused, "what\'s included" default applied, no
   await expect(offerRow(page, eventName)).toContainText('Avoin');
 });
 
-test('list: figures = BR-106 from the API; rows of the year; sorting; filters incl. Expired', async ({ page }, testInfo) => {
+test('list: KPI cards = offer stats API (open value = BR-106); rows of the year; sorting; filters incl. Expired', async ({ page }, testInfo) => {
   const tag = tagOf(testInfo);
   await signIn(page); // current year: offers before and after today
   const sfx = `${tag}${suffix()}`;
@@ -251,11 +254,15 @@ test('list: figures = BR-106 from the API; rows of the year; sorting; filters in
   await page.goto('/');
   await goNav(page, 'Tarjoukset');
   await expect(page.getByRole('heading', { level: 1, name: `Tarjoukset ${CURRENT_YEAR}` })).toBeVisible();
-  await expect(figure(page, 'Avoimet tarjoukset').value).toHaveText(fiMoney(expected.openValueCents));
-  await expect(figure(page, 'Voittoprosentti').value).toHaveText(fiPercent(expected.winRatePct));
-  await expect(figure(page, 'Voittoprosentti').caption).toContainText(
-    `${expected.wonCount} / ${expected.decidedCount} ratkaistusta voitettu`,
-  );
+  // KPI cards (BR-122) = GET /api/offers/stats; the open value of the year = BR-106's open value.
+  const stats = await offerStats(page, CURRENT_YEAR);
+  const openOfYear = stats.openValueByEventYear.find((y) => y.year === CURRENT_YEAR)!;
+  expect(openOfYear.valueCents, 'stats open value = BR-106 open value').toBe(expected.openValueCents);
+  const openCard = kpiCard(page, `Avoimet tarjoukset · ${CURRENT_YEAR}`);
+  const winCard = kpiCard(page, 'Voittoprosentti');
+  await expect(openCard.value).toHaveText(fiMoneyWhole(openOfYear.valueCents));
+  await expect(winCard.ring).toHaveText(fiPercentWhole(stats.winRate.pct));
+  await expect(winCard.value).toHaveText(`${stats.winRate.won} / ${stats.winRate.decided}`);
   await expect(offerRows(page)).toHaveCount(all.offers.length);
   await expectNoHorizontalScroll(page, 'offer list');
 
@@ -307,8 +314,8 @@ test('list: figures = BR-106 from the API; rows of the year; sorting; filters in
   // the other columns may be hidden on narrower tables (TASK-147), so they are set through the URL.
   // Display status: "Avoin" = open and not expired, "Vanhentunut" = open and expired (BR-102).
   const expectFiguresUnchanged = async (what: string) => {
-    await expect(figure(page, 'Avoimet tarjoukset').value, `${what}: figures ignore filters`).toHaveText(fiMoney(expected.openValueCents));
-    await expect(figure(page, 'Voittoprosentti').value).toHaveText(fiPercent(expected.winRatePct));
+    await expect(openCard.value, `${what}: KPI cards ignore filters`).toHaveText(fiMoneyWhole(openOfYear.valueCents));
+    await expect(winCard.ring).toHaveText(fiPercentWhole(stats.winRate.pct));
   };
   const statusFilters: [option: string, code: string, keys: string[]][] = [
     [STATUS_FI.EXPIRED, 'EXPIRED', ['Alfa']],
@@ -399,6 +406,52 @@ async function showAllOfferColumns(page: Page, testInfo: Parameters<typeof isMob
   await page.addInitScript(() => window.localStorage.setItem('ig-sidebar', 'collapsed'));
   await page.setViewportSize({ width: 1920, height: 900 });
 }
+
+test('KPI cards: clicking or pressing Enter on a bar selects that month / year (BR-122)', async ({ page }, testInfo) => {
+  const tag = tagOf(testInfo);
+  const year = offerYear(testInfo);
+  await signIn(page, PARTNER_A, { selectedYear: year });
+  const client = await createClientViaApi(page, `Client ${tag}-${suffix()}-kpi`);
+  for (const [date, price] of [
+    [`${year}-05-10`, 120000],
+    [`${year - 1}-05-10`, 80000],
+    [`${year + 1}-05-10`, 60000],
+  ] as const) {
+    await createOfferViaApi(page, { clientId: client.id, eventName: `KPI ${tag}-${suffix()}`, eventDate: date, venue: 'Venue K', priceCents: price });
+  }
+  const stats = await offerStats(page, year);
+  await openOfferList(page);
+  await expect(page.getByRole('heading', { level: 2, name: 'Tarjoustilastot' })).toBeVisible();
+
+  // Offers by event year: default = the selected year; click the previous year.
+  const byYear = (y: number) => kpiCard(page, `Tarjoukset vuodelle (keikan päivä) · ${y}`);
+  const fig = (y: number) => stats.byEventYear.find((x) => x.year === y)!;
+  await expect(byYear(year).value).toHaveText(String(fig(year).count));
+  await expect(byYear(year).bar(String(year))).toHaveAttribute('aria-pressed', 'true');
+  await expect(byYear(year).bar(String(year))).toHaveAccessibleName(new RegExp(`${fig(year).count} kpl`));
+  await byYear(year).bar(String(year - 1)).click();
+  await expect(byYear(year - 1).value).toHaveText(String(fig(year - 1).count));
+  await expect(byYear(year - 1).card).toContainText(fiMoneyWhole(fig(year - 1).valueCents));
+  await expect(byYear(year - 1).bar(String(year - 1))).toHaveAttribute('aria-pressed', 'true');
+  await expect(byYear(year - 1).bar(String(year))).toHaveAttribute('aria-pressed', 'false');
+
+  // Open offers value: keyboard (focus + Enter) selects next year.
+  const open = (y: number) => kpiCard(page, `Avoimet tarjoukset · ${y}`);
+  const openNext = stats.openValueByEventYear.find((x) => x.year === year + 1)!;
+  await open(year).bar(String(year + 1)).focus();
+  await page.keyboard.press('Enter');
+  await expect(open(year + 1).value).toHaveText(fiMoneyWhole(openNext.valueCents));
+
+  // Offers created: the latest completed month by default; clicking the oldest month selects it.
+  const created = kpiCard(page, /^Luodut tarjoukset · /);
+  const bars = created.card.getByRole('button');
+  await expect(bars).toHaveCount(6);
+  await expect(bars.nth(5)).toHaveAttribute('aria-pressed', 'true');
+  await bars.nth(0).click();
+  await expect(bars.nth(0)).toHaveAttribute('aria-pressed', 'true');
+  await expect(created.value).toHaveText(String(stats.createdByMonth[0]!.count));
+  await expectNoHorizontalScroll(page, 'offer KPI cards');
+});
 
 test('inline source, event type and disposition: saved on change, kept after reload, logged; status follows disposition', async ({ page }, testInfo) => {
   const tag = tagOf(testInfo);
