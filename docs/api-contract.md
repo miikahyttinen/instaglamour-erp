@@ -345,7 +345,8 @@ Duplicate = case-insensitive exact name match with another person.
 | `GET /api/offers/{id}` | — | 200 `OfferDetail` |
 | `PATCH /api/offers/{id}` | any editable field incl. `disposition` | 200 `OfferDetail`; logged |
 | `POST /api/offers/{id}/regenerate-link` | — | 200 `OfferDetail` (new `sharePath`) |
-| `POST /api/offers/{id}/convert` | — | 201 `{ offer: OfferDetail, gig: GigDetail }`; 409 `ALREADY_CONVERTED` |
+| `GET /api/offers/{id}/gig-draft` | — | 200 `GigCreate` (incl. `clientId`) prefilled per BR-105 (incl. the inactive-seller fallback). Already converted → 409 `ALREADY_CONVERTED`; deleted → 409 `INVALID_STATUS_TRANSITION` |
+| `POST /api/offers/{id}/convert` | optional `GigCreate` (incl. `clientId`) — **changed 2026-10-20** | 201 `{ offer: OfferDetail, gig: GigDetail }`; 409 `ALREADY_CONVERTED`. With a body: the gig is created from the body (same validation and errors as `POST /api/gigs`), then linked and the offer set WON; without a body: BR-105 defaults (unchanged). |
 | `POST /api/offers/{id}/delete` / `/restore` | — | 204 / 200 |
 | `GET /api/offers/{id}/history` | — | 200 `[OfferEvent]` newest first |
 
@@ -455,6 +456,7 @@ Details: `averageByCreatedYear[].count` = priced offers in the average, `average
 `year` missing/invalid → 400 `INVALID_VALUE`. The existing `GET /api/offers` `summary` stays (unused by the new cards).
 
 ## Change log
+- 2026-10-20 – Convert to gig via an editable prefilled form: GET /api/offers/{id}/gig-draft, convert accepts GigCreate (PM)
 - 2026-10-20 – GET /api/offers/stats (offer KPI cards) (PM)
 - 2026-10-20 – Seed/import: optional offer `createdAt` (PM)
 - 2026-10-19 – Person.roles, Person.gigCount, ?role filter, roles in seed/import (PM)
