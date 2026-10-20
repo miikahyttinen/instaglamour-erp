@@ -60,11 +60,7 @@
   overflow-wrap: anywhere;
 }
 
-/* ---------- List: figures, toolbar ---------- */
-.offers-page .offers-figures > * {
-  --span: 6;
-  --span-lg: 3;
-}
+/* ---------- List: toolbar (KPI cards: offerKpis.css) ---------- */
 .offers-page .offers-toolbar {
   display: flex;
   flex-direction: column;

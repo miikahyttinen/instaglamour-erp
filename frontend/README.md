@@ -453,8 +453,17 @@ offer's link is not found there either.
 ### Offers (`src/features/offers/`, UC-028 / UC-029 / UC-031)
 
 - **Menu:** Tarjoukset / Offers is the first item (`/offers`); `/` stays the year page.
-- **List** (`OfferListPage`): figures of the selected year from `summary` (open value, win rate,
-  BR-106; they ignore the filters), search (`?q=`, sent to the API) and an `ExcelTable` (see above):
+- **KPI cards** (`OfferKpis.tsx`, `offerKpis.css`, BR-122, TASK-157): "Tarjoustilastot / Offer
+  statistics" above the table, from `GET /api/offers/stats?year=` (`offersApi.stats`,
+  `useOfferStats`; all years, ignore the table filters; invalidated with every offer change).
+  Six cards: offers created (selected month of the last 6 completed, default latest), average value
+  (by creation year), offers for the year by event date, open offers value (year … +3), open offers
+  by event type, win rate (ring + per event type). Bars are buttons (`aria-pressed`, exact value in
+  the accessible name and tooltip); clicking / Enter selects; selections reset when the year
+  changes. Money `formatMoneyWhole`, percent `formatPercentWhole`; `–` for null. Grid by container
+  width: 1 / 2 / 3 / 5 per row; narrow cards show years as `'26`. Mock: `offerStats()` in
+  `mocks/offerStore.ts` (the demo seed spreads `createdAt` over the last months).
+- **List** (`OfferListPage`): KPI cards (above), search (`?q=`, sent to the API) and an `ExcelTable` (see above):
   every column sortable (default event date ascending; ties by event date, then created), column
   filters for Asiakas, Paikka / kaupunki, Tila (incl. Vanhentunut; `offerStatus.ts`), Myyjä, Lähde,
   Tapahtumatyyppi, Lopputulos and Keikka (luotu / ei), all client-side and in the URL

@@ -1,5 +1,5 @@
 # TASK-157: Offer KPI cards on Tarjoukset
-- **owner:** ui · **status:** todo · **spec:** BR-122, api-contract "Offer statistics", docs/design.md · **depends on:** none · **parallel:** TASK-029
+- **owner:** ui · **status:** done · **spec:** BR-122, api-contract "Offer statistics", docs/design.md · **depends on:** none · **parallel:** TASK-029
 ## Goal
 Replace the two year tiles (open value, win rate) above the offer table with six KPI cards like the offer prototype (`instaglamour_offer_proto/src/pages/OffersList.tsx`, gitignored — read it for layout and behaviour; it is the reference the owner showed).
 ## Acceptance criteria

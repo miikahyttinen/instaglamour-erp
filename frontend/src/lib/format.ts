@@ -28,6 +28,24 @@ export function formatMoney(cents: number | null | undefined, lang: Language): s
   return moneyFormatter(lang).format(cents / 100);
 }
 
+const wholeMoneyFormatters = new Map<Language, Intl.NumberFormat>();
+
+/** Whole euros for KPI figures: FI `1 235 €`, EN `€1,235` (rounded). `null` → `–`. */
+export function formatMoneyWhole(cents: number | null | undefined, lang: Language): string {
+  if (cents === null || cents === undefined || Number.isNaN(cents)) return '–';
+  let f = wholeMoneyFormatters.get(lang);
+  if (!f) {
+    f = new Intl.NumberFormat(LOCALES[lang], {
+      style: 'currency',
+      currency: 'EUR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    });
+    wholeMoneyFormatters.set(lang, f);
+  }
+  return f.format(Math.round(cents / 100));
+}
+
 /**
  * Parses a user-typed amount (`1234,5`, `1 234.50`, `€1,234.50`) into integer cents.
  * Returns `null` when the text is not a valid non-negative amount with at most 2 decimals.
@@ -139,6 +157,13 @@ export function formatPercent(value: number | null | undefined, lang: Language):
     minimumFractionDigits: 1,
     maximumFractionDigits: 1,
   }).format(value);
+  return lang === 'fi' ? `${text}${NBSP}%` : `${text}%`;
+}
+
+/** Whole percent (rounded): FI `32 %`, EN `32%`. `null` → `–`. */
+export function formatPercentWhole(value: number | null | undefined, lang: Language): string {
+  if (value === null || value === undefined || Number.isNaN(value)) return '–';
+  const text = new Intl.NumberFormat(LOCALES[lang], { maximumFractionDigits: 0 }).format(Math.round(value));
   return lang === 'fi' ? `${text}${NBSP}%` : `${text}%`;
 }
 

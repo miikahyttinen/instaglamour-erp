@@ -7,7 +7,9 @@ import {
   formatDateWithWeekday,
   formatHours,
   formatMoney,
+  formatMoneyWhole,
   formatPercent,
+  formatPercentWhole,
   parseMoneyToCents,
   todayIso,
 } from './format';
@@ -37,6 +39,21 @@ describe('formatMoney', () => {
   it('shows a dash for missing values', () => {
     expect(formatMoney(null, 'fi')).toBe('–');
     expect(formatMoney(undefined, 'en')).toBe('–');
+  });
+});
+
+describe('formatMoneyWhole / formatPercentWhole (KPI cards)', () => {
+  it('rounds to whole euros', () => {
+    expect(plain(formatMoneyWhole(123450, 'fi'))).toBe('1 235 €');
+    expect(formatMoneyWhole(123449, 'en')).toBe('€1,234');
+    expect(formatMoneyWhole(0, 'en')).toBe('€0');
+    expect(formatMoneyWhole(null, 'fi')).toBe('–');
+  });
+
+  it('rounds percentages to whole numbers', () => {
+    expect(plain(formatPercentWhole(66.7, 'fi'))).toBe('67 %');
+    expect(formatPercentWhole(50, 'en')).toBe('50%');
+    expect(formatPercentWhole(null, 'en')).toBe('–');
   });
 });
 
