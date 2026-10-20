@@ -28,6 +28,7 @@ import {
   toOfferEventDto,
   toOfferSummaryDto,
 } from '../offers/store.js';
+import { computeOfferStats } from '../offers/stats.js';
 import { loadActiveReferences } from '../references/store.js';
 import { isUniqueViolation } from './budgetCategories.js';
 import { loadFeeSettings } from './reference.js';
@@ -176,6 +177,19 @@ export function offerRoutes(app: FastifyInstance, deps: AppDeps): void {
       return true;
     });
     return { offers: filtered.map((o) => toOfferSummaryDto(o, today)), summary };
+  });
+
+  // ---------------------------------------------------------------- KPI card statistics (BR-122)
+  app.get('/api/offers/stats', async (request) => {
+    // Contract: a missing or invalid year is INVALID_VALUE (not REQUIRED).
+    const year = (request.query as Record<string, unknown> | undefined)?.year;
+    if (typeof year !== 'string' || !/^\d{4}$/.test(year)) throw validationError({ year: 'INVALID_VALUE' });
+    // All years, non-deleted; only the columns the figures need.
+    const rows = await db.offer.findMany({
+      where: { deletedAt: null },
+      select: { disposition: true, eventDate: true, priceCents: true, eventType: true, createdAt: true },
+    });
+    return computeOfferStats(rows, Number(year));
   });
 
   // ---------------------------------------------------------------- create

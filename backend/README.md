@@ -152,6 +152,9 @@ src/offers/        offers (routes/offers.ts): derived status/expired (BR-102), y
                    seller and producer, BR-111),
                    PublicOffer whitelist serializer (also OfferDetail.preview) and share tokens
                    (32 CSPRNG bytes, base64url; looked up by SHA-256, BR-104)
+                   KPI card figures for GET /api/offers/stats (stats.ts, BR-122): one scan over the
+                   non-deleted offers of all years (5 columns); months/years of createdAt and "today"
+                   in Europe/Helsinki; open = PENDING and event date >= today
 src/routes/publicOffers.ts  GET /api/public/offers/{token} and its token-scoped reference photos
                    (BR-108): the only non-auth routes besides /api/auth/*; noindex, 60 requests/min per IP
                    each (in-memory, 429 RATE_LIMITED); every photo miss is the same 404
