@@ -307,18 +307,18 @@ function GigForm({ initial, convert }: GigFormProps) {
           </p>
         )}
       </PageHead>
-      {convert && (
-        <Notice tone="warn" role="note" className="new-gig-review">
-          <p>
-            <strong>{t('convert.review')}</strong>
-          </p>
-          <p>
-            <span className="label">{t('convert.fromOffer')}:</span>{' '}
-            <Link to={`/offers/${convert.offerId}`}>{convert.eventName ?? offer.data?.eventName ?? '…'}</Link>
-          </p>
-        </Notice>
-      )}
       <form className="form new-gig-form" onSubmit={onSubmit} noValidate>
+        {convert && (
+          <Notice tone="warn" role="note" className="new-gig-review">
+            <p>
+              <strong>{t('convert.review')}</strong>
+            </p>
+            <p>
+              <span className="label">{t('convert.fromOffer')}:</span>{' '}
+              <Link to={`/offers/${convert.offerId}`}>{convert.eventName ?? offer.data?.eventName ?? '…'}</Link>
+            </p>
+          </Notice>
+        )}
         <section className="new-gig-section" aria-labelledby="new-gig-basic">
           <SectionLabel id="new-gig-basic">{t('gig.sections.basic')}</SectionLabel>
           <div className="form-row">
