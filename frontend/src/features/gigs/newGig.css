@@ -85,6 +85,17 @@
 .new-gig-page .new-gig-error {
   margin: var(--section-gap) 0 0;
 }
+/* Convert mode (UC-031): yellow review notice above the form, same width as the form. */
+.new-gig-page .new-gig-review {
+  max-width: var(--content-max);
+  margin: 0 0 var(--section-gap);
+}
+.new-gig-page .new-gig-review p {
+  margin: 0;
+}
+.new-gig-page .new-gig-review p + p {
+  margin-top: var(--space-1);
+}
 .new-gig-page .new-gig-actions {
   margin-top: var(--section-gap);
   padding-top: var(--space-5);

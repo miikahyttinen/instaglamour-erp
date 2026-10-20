@@ -125,15 +125,7 @@ export function ConfirmDialog<T>({
  * Gig column / action: the gig link once converted, else Convert (UC-031). `size="md"` is the
  * page-head action (full-size button look); the table uses the small one.
  */
-export function GigCell({
-  offer,
-  onConvert,
-  size = 'sm',
-}: {
-  offer: OfferSummary;
-  onConvert: () => void;
-  size?: 'sm' | 'md';
-}) {
+export function GigCell({ offer, size = 'sm' }: { offer: OfferSummary; size?: 'sm' | 'md' }) {
   const { t } = useTranslation();
   if (offer.gigId) {
     return (
@@ -146,9 +138,17 @@ export function GigCell({
       </Link>
     );
   }
+  // UC-031: opens the new-gig form prefilled from the offer (GET /api/offers/{id}/gig-draft).
   return (
-    <Button size={size} onClick={onConvert} aria-label={t('convert.buttonLabel', { event: offer.eventName })}>
+    <Link
+      to={convertPath(offer.id)}
+      className={buttonClass({ size })}
+      aria-label={t('convert.buttonLabel', { event: offer.eventName })}
+    >
       {t('convert.button')}
-    </Button>
+    </Link>
   );
 }
+
+/** New-gig form in convert mode (UC-031). */
+const convertPath = (offerId: string) => `/gigs/new?fromOffer=${encodeURIComponent(offerId)}`;
