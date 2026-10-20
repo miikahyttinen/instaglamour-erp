@@ -345,7 +345,7 @@ Duplicate = case-insensitive exact name match with another person.
 | `GET /api/offers/{id}` | — | 200 `OfferDetail` |
 | `PATCH /api/offers/{id}` | any editable field incl. `disposition` | 200 `OfferDetail`; logged |
 | `POST /api/offers/{id}/regenerate-link` | — | 200 `OfferDetail` (new `sharePath`) |
-| `GET /api/offers/{id}/gig-draft` | — | 200 `GigCreate` (incl. `clientId`) prefilled per BR-105 (incl. the inactive-seller fallback). Already converted → 409 `ALREADY_CONVERTED`; deleted → 409 `INVALID_STATUS_TRANSITION` |
+| `GET /api/offers/{id}/gig-draft` | — | 200 `GigCreate` (incl. `clientId`) prefilled per BR-105 (incl. the inactive-seller fallback; `clientId: null` if the offer's client is deleted). Already converted → 409 `ALREADY_CONVERTED`; deleted → 409 `INVALID_STATUS_TRANSITION` |
 | `POST /api/offers/{id}/convert` | optional `GigCreate` (incl. `clientId`) — **changed 2026-10-20** | 201 `{ offer: OfferDetail, gig: GigDetail }`; 409 `ALREADY_CONVERTED`. With a body: the gig is created from the body (same validation and errors as `POST /api/gigs`), then linked and the offer set WON; without a body: BR-105 defaults (unchanged). |
 | `POST /api/offers/{id}/delete` / `/restore` | — | 204 / 200 |
 | `GET /api/offers/{id}/history` | — | 200 `[OfferEvent]` newest first |

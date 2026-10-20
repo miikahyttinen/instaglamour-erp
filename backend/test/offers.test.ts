@@ -663,6 +663,233 @@ describe('POST /api/offers/{id}/convert (BR-105)', () => {
   });
 });
 
+describe('GET /api/offers/{id}/gig-draft (BR-105)', () => {
+  const draft = (id: string) => call(s, 'GET', `/api/offers/${id}/gig-draft`);
+
+  it('returns the BR-105 prefill as a GigCreate', async () => {
+    const offer = await createOffer({ sellerId: s.world.b.id });
+    const res = await draft(offer.id);
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({
+      startDate: `${YEAR}-11-14`,
+      endDate: null,
+      lineupTemplateId: null,
+      lineupName: 'Event 1',
+      venue: 'Venue X, City A',
+      technicalSetup: null,
+      logistics: null,
+      houseTechnician: false,
+      sellerId: s.world.b.id,
+      producerId: s.world.b.id,
+      priceCents: 300000,
+      additionalSalesCents: 0,
+      additionalSalesDescription: null,
+      notes: null,
+      clientId: clientA.id,
+    });
+    // Reading the draft changes nothing.
+    expect(await testDb().gig.count()).toBe(0);
+    expect((await history(offer.id)).map((e) => e.type)).toEqual(['CREATED']);
+  });
+
+  it('price 0 when empty; venue without city', async () => {
+    const offer = await createOffer({ priceCents: null, city: null });
+    expect((await draft(offer.id)).json()).toMatchObject({ priceCents: 0, venue: 'Venue X' });
+  });
+
+  it('an inactive seller falls back to the caller as seller and producer (BR-111)', async () => {
+    const offer = await createOffer({ sellerId: s.world.c.id });
+    await testDb().partner.update({ where: { id: s.world.c.id }, data: { active: false } });
+    expect((await draft(offer.id)).json()).toMatchObject({ sellerId: s.world.a.id, producerId: s.world.a.id });
+  });
+
+  it("clientId null when the offer's client is deleted; that draft converts cleanly", async () => {
+    const offer = await createOffer();
+    await testDb().client.update({ where: { id: clientA.id }, data: { deletedAt: new Date() } });
+    const body = (await draft(offer.id)).json();
+    expect(body).toMatchObject({ clientId: null, lineupName: 'Event 1' });
+    const res = await call(s, 'POST', `/api/offers/${offer.id}/convert`, body);
+    expect(res.statusCode).toBe(201);
+    expect(res.json().gig).toMatchObject({ clientId: null, offerId: offer.id });
+  });
+
+  it('404 unknown; 409 deleted; 409 already converted', async () => {
+    expect((await draft(UNKNOWN_ID)).statusCode).toBe(404);
+    expect((await draft('not-a-uuid')).statusCode).toBe(404);
+
+    const deleted = await createOffer({ eventName: 'Deleted' });
+    await action(deleted.id, 'delete');
+    const del = await draft(deleted.id);
+    expect(del.statusCode).toBe(409);
+    expect(del.json().error.code).toBe('INVALID_STATUS_TRANSITION');
+
+    const offer = await createOffer();
+    await action(offer.id, 'convert');
+    const conv = await draft(offer.id);
+    expect(conv.statusCode).toBe(409);
+    expect(conv.json().error.code).toBe('ALREADY_CONVERTED');
+  });
+
+  it('needs a session', async () => {
+    const res = await s.app.inject({ method: 'GET', url: `/api/offers/${UNKNOWN_ID}/gig-draft` });
+    expect(res.statusCode).toBe(401);
+  });
+});
+
+describe('POST /api/offers/{id}/convert with an edited GigCreate', () => {
+  const convert = (id: string, body: unknown) => call(s, 'POST', `/api/offers/${id}/convert`, body);
+  const draftOf = async (id: string) =>
+    (await call(s, 'GET', `/api/offers/${id}/gig-draft`)).json<Record<string, unknown>>();
+
+  it('the unchanged draft gives the same gig as no body', async () => {
+    const offer = await createOffer({ sellerId: s.world.b.id });
+    const res = await convert(offer.id, await draftOf(offer.id));
+    expect(res.statusCode).toBe(201);
+    expect(res.json().gig).toMatchObject({
+      startDate: `${YEAR}-11-14`,
+      lineupTemplateId: null,
+      lineupName: 'Event 1',
+      venue: 'Venue X, City A',
+      clientId: clientA.id,
+      offerId: offer.id,
+      priceCents: 300000,
+      sellerId: s.world.b.id,
+      producerId: s.world.b.id,
+    });
+  });
+
+  it('creates the gig from the body (overrides), with BR-020/021 cost lines, link, WON and logs', async () => {
+    const offer = await createOffer({ sellerId: s.world.b.id });
+    const body = {
+      ...(await draftOf(offer.id)),
+      startDate: `${YEAR}-11-15`,
+      endDate: `${YEAR}-11-16`,
+      lineupTemplateId: s.world.templateA.id,
+      lineupName: null,
+      venue: 'Venue Y',
+      technicalSetup: 'SET_A',
+      logistics: 'OWN_VAN',
+      houseTechnician: true,
+      sellerId: s.world.a.id,
+      producerId: s.world.c.id,
+      priceCents: 200000,
+      additionalSalesCents: 10000,
+      additionalSalesDescription: 'Extra 1',
+      notes: 'Note 1',
+      clientId: clientB.id,
+    };
+    const res = await convert(offer.id, body);
+    expect(res.statusCode).toBe(201);
+    const { offer: converted, gig } = res.json();
+    expect(gig).toMatchObject({
+      startDate: `${YEAR}-11-15`,
+      endDate: `${YEAR}-11-16`,
+      lineupTemplateId: s.world.templateA.id,
+      lineupName: 'Template A',
+      venue: 'Venue Y',
+      technicalSetup: 'SET_A',
+      logistics: 'OWN_VAN',
+      houseTechnician: true,
+      sellerId: s.world.a.id,
+      producerId: s.world.c.id,
+      priceCents: 200000,
+      additionalSalesCents: 10000,
+      additionalSalesDescription: 'Extra 1',
+      notes: 'Note 1',
+      clientId: clientB.id,
+      offerId: offer.id,
+    });
+    expect(gig.costLines.map((l: { type: string; personId: string | null }) => [l.type, l.personId])).toEqual([
+      ['VOC', null],
+      ['BASS', null],
+      ['OFFICE', null],
+      ['SALES', s.world.a.personId],
+      ['PRODUCTION', s.world.c.personId],
+    ]);
+    expect(converted).toMatchObject({ id: offer.id, gigId: gig.id, disposition: 'WON', status: 'ACCEPTED' });
+    // The offer itself is not changed by the edited gig.
+    expect(converted).toMatchObject({ clientId: clientA.id, sellerId: s.world.b.id, venue: 'Venue X' });
+
+    expect((await history(offer.id)).map((e) => [e.type, e.details])).toEqual([
+      ['CONVERTED', { gigId: gig.id }],
+      ['DISPOSITION_CHANGED', { from: 'PENDING', to: 'WON' }],
+      ['CREATED', {}],
+    ]);
+    const gigEvents = (await call(s, 'GET', `/api/gigs/${gig.id}/history`)).json();
+    expect(gigEvents.map((e: { type: string; partnerId: string }) => [e.type, e.partnerId])).toEqual([['CREATED', s.world.a.id]]);
+  });
+
+  it('clientId null is allowed (as in POST /api/gigs)', async () => {
+    const offer = await createOffer();
+    const res = await convert(offer.id, { ...(await draftOf(offer.id)), clientId: null });
+    expect(res.statusCode).toBe(201);
+    expect(res.json().gig).toMatchObject({ clientId: null, offerId: offer.id });
+  });
+
+  it('400 with the same field errors as POST /api/gigs; nothing is created or logged', async () => {
+    const offer = await createOffer({ sellerId: s.world.b.id });
+    const base = await draftOf(offer.id);
+    await testDb().partner.update({ where: { id: s.world.c.id }, data: { active: false } });
+    const cases: [Record<string, unknown>, Record<string, string>][] = [
+      [{ lineupName: null }, { lineupName: 'REQUIRED' }],
+      [{ venue: '  ' }, { venue: 'REQUIRED' }],
+      [{ priceCents: -1 }, { priceCents: 'NEGATIVE_AMOUNT' }],
+      [{ startDate: `${YEAR}-02-30` }, { startDate: 'INVALID_DATE' }],
+      [{ endDate: `${YEAR}-11-13` }, { endDate: 'END_BEFORE_START' }],
+      [{ lineupTemplateId: UNKNOWN_ID }, { lineupTemplateId: 'UNKNOWN_REFERENCE' }],
+      [{ sellerId: s.world.c.id, producerId: UNKNOWN_ID }, { sellerId: 'UNKNOWN_REFERENCE', producerId: 'UNKNOWN_REFERENCE' }],
+      [{ clientId: UNKNOWN_ID }, { clientId: 'UNKNOWN_REFERENCE' }],
+      [{ technicalSetup: 'NOPE' }, { technicalSetup: 'INVALID_VALUE' }],
+    ];
+    for (const [override, fields] of cases) {
+      const body = { ...base, ...override };
+      const res = await convert(offer.id, body);
+      expect(res.statusCode, JSON.stringify(override)).toBe(400);
+      expect(res.json(), JSON.stringify(override)).toEqual(validation(fields));
+      // Same answer as POST /api/gigs for the same body.
+      const viaGigs = await call(s, 'POST', '/api/gigs', body);
+      expect(viaGigs.json(), JSON.stringify(override)).toEqual(res.json());
+    }
+    const missing = await convert(offer.id, {});
+    expect(missing.statusCode).toBe(400);
+    expect(missing.json().error.fields).toMatchObject({ startDate: 'REQUIRED', venue: 'REQUIRED', priceCents: 'REQUIRED' });
+
+    expect(await testDb().gig.count()).toBe(0);
+    const after = (await get(offer.id)).json();
+    expect(after).toMatchObject({ gigId: null, disposition: 'PENDING' });
+    expect((await history(offer.id)).map((e) => e.type)).toEqual(['CREATED']);
+  });
+
+  it('409 ALREADY_CONVERTED / INVALID_STATUS_TRANSITION take precedence over the body', async () => {
+    const offer = await createOffer();
+    const body = await draftOf(offer.id);
+    expect((await convert(offer.id, body)).statusCode).toBe(201);
+    const again = await convert(offer.id, body);
+    expect(again.statusCode).toBe(409);
+    expect(again.json().error.code).toBe('ALREADY_CONVERTED');
+
+    const deleted = await createOffer({ eventName: 'Deleted' });
+    await action(deleted.id, 'delete');
+    const del = await convert(deleted.id, body);
+    expect(del.statusCode).toBe(409);
+    expect(del.json().error.code).toBe('INVALID_STATUS_TRANSITION');
+    expect((await convert(UNKNOWN_ID, body)).statusCode).toBe(404);
+    expect(await testDb().gig.count()).toBe(1);
+  });
+
+  it('is still one gig per offer under concurrent requests with a body', async () => {
+    const offer = await createOffer();
+    const body = await draftOf(offer.id);
+    const results = await Promise.all(Array.from({ length: 8 }, () => convert(offer.id, body)));
+    const codes = results.map((r) => r.statusCode);
+    expect(codes.filter((c) => c === 201)).toHaveLength(1);
+    expect(codes.filter((c) => c === 409)).toHaveLength(7);
+    for (const r of results.filter((x) => x.statusCode === 409)) expect(r.json().error.code).toBe('ALREADY_CONVERTED');
+    expect(await testDb().gig.count({ where: { offerId: offer.id } })).toBe(1);
+    expect((await history(offer.id)).filter((e) => e.type === 'CONVERTED')).toHaveLength(1);
+  });
+});
+
 describe('delete / restore / history', () => {
   it('soft-deletes and restores with history; state errors are 409', async () => {
     const offer = await createOffer();
