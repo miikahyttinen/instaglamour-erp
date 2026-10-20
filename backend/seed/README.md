@@ -49,7 +49,7 @@ at once can't create duplicates. Import files contain real data: keep them out o
 | Budget category (row) | `code` if given, else `name` (case-insensitive; removed rows count too) | Inserted only if missing — partners manage the rows in the app, so a re-run never renames, reorders or brings back a row they removed |
 | Client | `name` (case-insensitive, trimmed; non-deleted clients) | Inserted only if missing — partners manage clients in the app, so a re-run never changes notes or brings back a deleted client (a deleted client's name creates a new client) |
 | Gig | `startDate` + `venue` + `lineupName` | Inserted only if missing (never overwrites app edits — so adding `client` to an already-loaded gig does not link it; set the client in the app) |
-| Offer | `client` + `eventName` + `eventDate` (deleted offers count too) | Inserted only if missing, with a new random share link. `converted: true` also creates the gig per BR-105 (disposition WON) |
+| Offer | `client` + `eventName` + `eventDate` (deleted offers count too) | Inserted only if missing, with a new random share link. `converted: true` also creates the gig per BR-105 (disposition WON). `createdAt` (TASK-028) sets the offer's created/updated time and the time of its "created" history event on insert; an existing offer is never changed, and the offer's year stays its `eventDate` |
 | Task | `title` + owner | Inserted only if missing |
 | Hour entry | partner + `date` + `comment` | Inserted only if missing |
 | Budget row | `category` + `year` | Inserted only if missing |
@@ -133,7 +133,9 @@ Partners, templates, people, clients and budget categories are referenced by ema
       "source": "EMAIL",                                    // optional: EMAIL | WEBSITE | INSTAGRAM | OTHER
       "eventType": "CORPORATE",                             // optional: PRIVATE | WEDDING | CORPORATE
       "disposition": "PENDING",                             // optional, default PENDING (see domain-model.md)
-      "converted": false                                    // optional; true = also create its gig (BR-105), disposition WON
+      "converted": false,                                   // optional; true = also create its gig (BR-105), disposition WON
+      "createdAt": "2026-10-14T17:09:01.341414+00:00"      // optional: when the offer was made (ISO 8601 with offset or Z,
+                                                            // any fraction of a second, not in the future); default: load time
     }
   ],
   "references": [                     // optional (BR-108): testimonials on offers with showReferences; real ones only in seed.local.json

@@ -500,6 +500,8 @@ async function applySeed(
     }
     const sellerId = partnerId(o.seller);
     const token = newShareToken();
+    // Original creation time from the file (TASK-028), else now; the creation event gets the same time.
+    const createdAt = o.createdAt ? new Date(o.createdAt) : new Date();
     const offer = await tx.offer.create({
       data: {
         clientId,
@@ -517,9 +519,13 @@ async function applySeed(
         disposition: o.disposition ?? 'PENDING',
         shareToken: token.token,
         shareTokenHash: token.hash,
+        createdAt,
+        updatedAt: createdAt,
       },
     });
-    await tx.offerEvent.create({ data: { offerId: offer.id, type: 'CREATED', partnerId: sellerId, details: {} } });
+    await tx.offerEvent.create({
+      data: { offerId: offer.id, type: 'CREATED', partnerId: sellerId, details: {}, at: createdAt, createdAt, updatedAt: createdAt },
+    });
     if (o.converted) await convertOfferInTx(tx, { offerId: offer.id, partnerId: sellerId, fees });
     summary.offers.created++;
   }
