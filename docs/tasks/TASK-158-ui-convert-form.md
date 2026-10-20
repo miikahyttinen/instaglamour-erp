@@ -1,5 +1,5 @@
 # TASK-158: Convert to gig opens a prefilled, editable form
-- **owner:** ui · **status:** todo · **spec:** UC-031 (2026-10-20), api-contract Offers · **depends on:** none · **parallel:** TASK-030
+- **owner:** ui · **status:** done · **spec:** UC-031 (2026-10-20), api-contract Offers · **depends on:** none · **parallel:** TASK-030
 ## Acceptance criteria
 - [ ] "Muuta keikaksi / Convert to gig" (offer list and offer page) navigates to the new-gig form in convert mode (e.g. `/gigs/new?fromOffer=<id>`), prefilled from `GET /api/offers/{id}/gig-draft`. Reuse `NewGigPage` — all its fields editable (date(s), lineup template or custom name, venue, client, technical setup, logistics, house technician, seller, producer, price, additional sales, notes).
 - [ ] A **yellow (warn) badge/notice** at the top: **"Tarkista, että tiedot ovat oikein." / "Review that the information is correct."**, plus "Tarjouksesta: <event name>" linking back.
