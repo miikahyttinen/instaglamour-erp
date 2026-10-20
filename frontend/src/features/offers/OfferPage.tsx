@@ -28,6 +28,7 @@ import { formatDateTime, formatDateWithWeekday } from '../../lib/format';
 import { partnerOptions } from '../../reference/partners';
 import { useReference } from '../../reference/useReference';
 import { InlineClientSelect } from '../clients/ClientSelect';
+import { ConvertDialog } from './ConvertDialog';
 import { OfferHistory } from './OfferHistory';
 import { OfferPreview } from './OfferPreview';
 import { copyToClipboard, useOfferOptions, type CopyResult } from './offerOptions';
@@ -38,9 +39,10 @@ import './offers.css';
 type PageNotice =
   | { kind: 'copy'; result: CopyResult }
   | { kind: 'regenerated' | 'restored' }
+  | { kind: 'converted'; gigId: string }
   | { kind: 'error'; error: unknown };
 
-type ActionDialog = 'regenerate' | 'delete' | null;
+type ActionDialog = 'regenerate' | 'convert' | 'delete' | null;
 
 function BackLink() {
   const { t } = useTranslation();
@@ -119,7 +121,7 @@ export function OfferPage() {
       <Button icon={RefreshCw} onClick={() => setDialog('regenerate')}>
         {t('offer.actions.regenerate')}
       </Button>
-      <GigCell offer={offer} size="md" />
+      <GigCell offer={offer} size="md" onConvert={() => setDialog('convert')} />
       <Button variant="danger" icon={Trash2} onClick={() => setDialog('delete')}>
         {t('offer.actions.delete')}
       </Button>
@@ -193,6 +195,16 @@ export function OfferPage() {
           <p>{t('offer.regenerateText')}</p>
         </ConfirmDialog>
       )}
+      {dialog === 'convert' && (
+        <ConvertDialog
+          offer={offer}
+          onClose={close}
+          onConverted={(result) => {
+            close();
+            setNotice({ kind: 'converted', gigId: result.gig.id });
+          }}
+        />
+      )}
       {dialog === 'delete' && (
         <ConfirmDialog
           title={t('offer.actions.delete')}
@@ -218,6 +230,13 @@ function PageNoticeBox({ notice, onDismiss }: { notice: PageNotice; onDismiss: (
   const tone = notice.kind === 'error' ? 'danger' : 'ok';
   let text;
   if (notice.kind === 'error') text = <p>{apiErrorMessage(t, notice.error)}</p>;
+  else if (notice.kind === 'converted') {
+    text = (
+      <p>
+        {t('convert.created')} <Link to={`/gigs/${notice.gigId}`}>{t('convert.openGig')}</Link>
+      </p>
+    );
+  }
   else text = <p>{t(`offer.${notice.kind}`)}</p>;
   return (
     <Notice tone={tone} role={notice.kind === 'error' ? 'alert' : 'status'} className="offer-notice">
