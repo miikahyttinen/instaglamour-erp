@@ -329,7 +329,11 @@ export function offerRoutes(app: FastifyInstance, deps: AppDeps): void {
   app.get<IdParams>('/api/offers/:id/gig-draft', async (request) => {
     const me = request.requirePartner();
     const offer = await requireConvertibleOffer(db, request.params.id);
-    return (await offerGigDraft(db, offer, me.id)).draft;
+    const { draft } = await offerGigDraft(db, offer, me.id);
+    // A deleted client cannot be linked to a new gig (UNKNOWN_REFERENCE), so the draft leaves it
+    // empty and the prefilled form submits cleanly (PM decision 2026-10-20). Convert without a
+    // body is unchanged.
+    return { ...draft, clientId: offer.client.deletedAt ? null : draft.clientId };
   });
 
   app.post<IdParams>('/api/offers/:id/convert', async (request, reply) => {

@@ -240,7 +240,11 @@ export async function requireConvertibleOffer(tx: Tx, offerId: string) {
   const offer = isUuid(offerId)
     ? await tx.offer.findUnique({
         where: { id: offerId },
-        include: { gig: { select: { id: true } }, seller: { select: { personId: true, active: true } } },
+        include: {
+          gig: { select: { id: true } },
+          seller: { select: { personId: true, active: true } },
+          client: { select: { deletedAt: true } },
+        },
       })
     : null;
   if (!offer) throw notFound('Offer not found');

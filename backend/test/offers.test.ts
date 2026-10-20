@@ -703,6 +703,16 @@ describe('GET /api/offers/{id}/gig-draft (BR-105)', () => {
     expect((await draft(offer.id)).json()).toMatchObject({ sellerId: s.world.a.id, producerId: s.world.a.id });
   });
 
+  it("clientId null when the offer's client is deleted; that draft converts cleanly", async () => {
+    const offer = await createOffer();
+    await testDb().client.update({ where: { id: clientA.id }, data: { deletedAt: new Date() } });
+    const body = (await draft(offer.id)).json();
+    expect(body).toMatchObject({ clientId: null, lineupName: 'Event 1' });
+    const res = await call(s, 'POST', `/api/offers/${offer.id}/convert`, body);
+    expect(res.statusCode).toBe(201);
+    expect(res.json().gig).toMatchObject({ clientId: null, offerId: offer.id });
+  });
+
   it('404 unknown; 409 deleted; 409 already converted', async () => {
     expect((await draft(UNKNOWN_ID)).statusCode).toBe(404);
     expect((await draft('not-a-uuid')).statusCode).toBe(404);
