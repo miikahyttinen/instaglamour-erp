@@ -438,7 +438,23 @@ Duplicate = case-insensitive exact name match with another person.
 - Migration backfill: for every person, `roles` = distinct musician-role types of their cost lines on non-deleted gigs (any status, any year).
 - Seed/import: `people[]` and `partners[]` accept optional `roles: MusicianRole[]`. On (re)load a person's roles are set from the file **only when the person has no roles yet** (never overwrites app edits); counted as `updated`.
 
+## Offer statistics (owner request 2026-10-20, like the offer prototype's KPI cards)
+`GET /api/offers/stats?year=<selected year>` → 200 `OfferStats`. All non-deleted offers, **all years** (not only the selected one). "Value" = `priceCents` (offers without a price count in counts but add 0 to values and are left out of averages). "Open" = disposition PENDING and event date ≥ today (not expired). Months/years of `createdAt` in Europe/Helsinki.
+```
+OfferStats = {
+  createdByMonth: [{ month: "YYYY-MM", count, valueCents }],        // the 6 most recent COMPLETED months, oldest first
+  averageByCreatedYear: [{ year, averageCents|null, count }],       // year-5 … year (6 items), average over priced offers
+  byEventYear: [{ year, count, valueCents }],                       // year-3 … year+2 (6 items), by event date, all statuses
+  openValueByEventYear: [{ year, valueCents, count }],              // year … year+3 (4 items), open offers by event date
+  openByEventType: [{ eventType|null, count, valueCents }],         // all open offers, sorted by value desc (null = no type)
+  winRate: { pct|null, won, decided,                                // all years; decided = disposition not PENDING and not CANCELLED
+             byEventType: [{ eventType, pct|null, won, decided }] } // one item per EVENT_TYPES value, in that order
+}
+```
+`year` missing/invalid → 400 `INVALID_VALUE`. The existing `GET /api/offers` `summary` stays (unused by the new cards).
+
 ## Change log
+- 2026-10-20 – GET /api/offers/stats (offer KPI cards) (PM)
 - 2026-10-20 – Seed/import: optional offer `createdAt` (PM)
 - 2026-10-19 – Person.roles, Person.gigCount, ?role filter, roles in seed/import (PM)
 - 2026-10-19 – Data import (UC-035): POST /api/import (dry run), GET /api/import/runs (PM)

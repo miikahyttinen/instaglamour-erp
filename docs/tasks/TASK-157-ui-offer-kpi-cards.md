@@ -1,0 +1,10 @@
+# TASK-157: Offer KPI cards on Tarjoukset
+- **owner:** ui · **status:** todo · **spec:** BR-122, api-contract "Offer statistics", docs/design.md · **depends on:** none · **parallel:** TASK-029
+## Goal
+Replace the two year tiles (open value, win rate) above the offer table with six KPI cards like the offer prototype (`instaglamour_offer_proto/src/pages/OffersList.tsx`, gitignored — read it for layout and behaviour; it is the reference the owner showed).
+## Acceptance criteria
+- [ ] Section label **Tarjoustilastot / Offer statistics**; responsive card grid (full width; 5 per row on wide screens like the reference, wrapping; 1 per row on phones). Cards use existing tokens (dark/light), mono uppercase labels, big figure, small bar charts (simple divs/SVG, no chart library).
+- [ ] Cards: 1 **Luodut tarjoukset / Offers created** — big = count of the selected month, "Yhteensä / Total value", bars = value per month (6 completed months, month labels); clicking a bar selects that month (default latest), selected bar highlighted. 2 **Keskiarvo · <year> / Average value** — bars per creation year, selected year highlighted (click selects). 3 **Tarjoukset vuodelle (keikan päivä) · <year>** — big = count, total value, bars by event year, selected year highlighted. 4 **Avoimet tarjoukset · <year> / Open offers value** — bars from selected year +3. 5 **Tapahtumatyypeittäin / By event type** (open offers) — rows with label, "count / value", proportional bar. 6 **Voittoprosentti / Win rate** — ring with %, "won / decided", per event type rows with % and won/decided and bar.
+- [ ] Money in FI/EN format, no decimals; "–" for null; accessible: each card a region with heading, bars have aria-labels/titles with exact values, keyboard-selectable bars.
+- [ ] Types + `offersApi.stats(year)`, MSW mock computing stats from the mock offers per contract.
+- [ ] Tests (render of all cards, month/year selection, null/empty states, EN), lint, build; headless check 375/900/1440/1920 both themes, no sideways scroll; README.

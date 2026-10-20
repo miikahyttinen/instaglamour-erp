@@ -117,3 +117,8 @@ Rules only — concrete values are seeded settings (`domain-model.md`).
 |---|---|
 | BR-120 | **Import** uses the seed format and the seed loader's rules (`backend/seed/README.md`): validated as a whole, one transaction, insert-only/idempotent per natural key, never deletes or overwrites app edits. Any signed-in partner can import. |
 | BR-121 | Import safety: partner emails must be in `AUTH_ALLOWED_DOMAIN`; reference `image` paths are rejected (no server file access); max 10 MB. Every real import is logged (partner, time, file name, counts). Import files contain real data and are never committed (BR-090). |
+
+## Offer statistics (2026-10-20)
+| ID | Rule |
+|---|---|
+| BR-122 | The Tarjoukset page shows six statistics cards (contract "Offer statistics"): offers created (selected month among the last 6 completed months: count + total value), average value (by creation year), offers per year by event date (count + total value), open offers value (by event year, from the selected year on), open offers by event type, and win rate (all years; per event type). Cards ignore the table filters. Win rate here is all-time; BR-106's per-year figures are replaced on this page by the cards. |
