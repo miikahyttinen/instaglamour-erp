@@ -18,7 +18,7 @@ import type {
 } from '../api/types';
 import { todayIso } from '../lib/format';
 import { db } from './data';
-import type { MockGig } from './gigStore';
+import type { MockGig, NewGigInput } from './gigStore';
 import {
   addAttachment,
   addCostLine,
@@ -167,6 +167,67 @@ function reasonOf(body: Partial<ReasonRequest>): string | null {
   return typeof body.reason === 'string' && body.reason.trim() !== '' ? body.reason.trim() : null;
 }
 
+/**
+ * Validates a GigCreate body (POST /api/gigs, and POST /api/offers/{id}/convert with a body) and
+ * returns the field errors, or the cleaned createGig input.
+ */
+export function parseGigCreate(
+  body: Partial<GigCreate>,
+): { fields: Fields; input: null } | { fields: null; input: NewGigInput } {
+  const fields: Fields = {};
+  if (body.startDate === undefined || body.startDate === null || body.startDate === '') {
+    fields.startDate = 'REQUIRED';
+  } else if (!isDate(body.startDate)) fields.startDate = 'INVALID_DATE';
+  if (body.endDate !== undefined && body.endDate !== null) {
+    if (!isDate(body.endDate)) fields.endDate = 'INVALID_DATE';
+    else if (isDate(body.startDate) && body.endDate < body.startDate) {
+      fields.endDate = 'END_BEFORE_START';
+    }
+  }
+  if (body.lineupTemplateId) {
+    if (!db.reference.lineupTemplates.some((t) => t.id === body.lineupTemplateId)) {
+      fields.lineupTemplateId = 'UNKNOWN_REFERENCE';
+    }
+    checkString(fields, 'lineupName', body.lineupName, false);
+  } else {
+    checkString(fields, 'lineupName', body.lineupName, true);
+  }
+  checkString(fields, 'venue', body.venue, true);
+  checkGigOptions(fields, body);
+  checkPartner(fields, 'sellerId', body.sellerId, true);
+  checkPartner(fields, 'producerId', body.producerId, true);
+  checkMoney(fields, 'priceCents', body.priceCents, true);
+  checkMoney(fields, 'additionalSalesCents', body.additionalSalesCents, false);
+  checkString(fields, 'additionalSalesDescription', body.additionalSalesDescription, false);
+  checkString(fields, 'notes', body.notes, false, MAX_TEXT);
+  checkClient(fields, body.clientId);
+  if (Object.keys(fields).length > 0) return { fields, input: null };
+  return {
+    fields: null,
+    input: {
+      startDate: body.startDate!,
+      endDate: body.endDate ?? null,
+      lineupTemplateId: body.lineupTemplateId ?? null,
+      lineupName: blankToNull(body.lineupName),
+      venue: body.venue!.trim(),
+      technicalSetup: (body.technicalSetup ?? null) as TechnicalSetup | null,
+      logistics: (body.logistics ?? null) as Logistics | null,
+      houseTechnician: body.houseTechnician ?? false,
+      sellerId: body.sellerId!,
+      producerId: body.producerId!,
+      priceCents: body.priceCents!,
+      additionalSalesCents: body.additionalSalesCents ?? 0,
+      additionalSalesDescription: blankToNull(body.additionalSalesDescription),
+      notes: blankToNull(body.notes),
+      clientId: body.clientId ?? null,
+    },
+  };
+}
+
+/** createGig with the mock reference context. */
+export const createGigFromInput = (input: NewGigInput, actorId: string) =>
+  createGig(db.gigs, input, actorId, ctx());
+
 // ---------- Gigs ----------
 
 export const gigHandlers = [
@@ -209,58 +270,9 @@ export const gigHandlers = [
   http.post('/api/gigs', async ({ request }) => {
     const me = currentPartner();
     if (!me) return unauthenticated();
-    const body = await readJson<GigCreate>(request);
-    const fields: Fields = {};
-    if (body.startDate === undefined || body.startDate === null || body.startDate === '') {
-      fields.startDate = 'REQUIRED';
-    } else if (!isDate(body.startDate)) fields.startDate = 'INVALID_DATE';
-    if (body.endDate !== undefined && body.endDate !== null) {
-      if (!isDate(body.endDate)) fields.endDate = 'INVALID_DATE';
-      else if (isDate(body.startDate) && body.endDate < body.startDate) {
-        fields.endDate = 'END_BEFORE_START';
-      }
-    }
-    if (body.lineupTemplateId) {
-      if (!db.reference.lineupTemplates.some((t) => t.id === body.lineupTemplateId)) {
-        fields.lineupTemplateId = 'UNKNOWN_REFERENCE';
-      }
-      checkString(fields, 'lineupName', body.lineupName, false);
-    } else {
-      checkString(fields, 'lineupName', body.lineupName, true);
-    }
-    checkString(fields, 'venue', body.venue, true);
-    checkGigOptions(fields, body);
-    checkPartner(fields, 'sellerId', body.sellerId, true);
-    checkPartner(fields, 'producerId', body.producerId, true);
-    checkMoney(fields, 'priceCents', body.priceCents, true);
-    checkMoney(fields, 'additionalSalesCents', body.additionalSalesCents, false);
-    checkString(fields, 'additionalSalesDescription', body.additionalSalesDescription, false);
-    checkString(fields, 'notes', body.notes, false, MAX_TEXT);
-    checkClient(fields, body.clientId);
-    if (Object.keys(fields).length > 0) return validationError(fields);
-
-    const gig = createGig(
-      db.gigs,
-      {
-        startDate: body.startDate!,
-        endDate: body.endDate ?? null,
-        lineupTemplateId: body.lineupTemplateId ?? null,
-        lineupName: blankToNull(body.lineupName),
-        venue: body.venue!.trim(),
-        technicalSetup: (body.technicalSetup ?? null) as TechnicalSetup | null,
-        logistics: (body.logistics ?? null) as Logistics | null,
-        houseTechnician: body.houseTechnician ?? false,
-        sellerId: body.sellerId!,
-        producerId: body.producerId!,
-        priceCents: body.priceCents!,
-        additionalSalesCents: body.additionalSalesCents ?? 0,
-        additionalSalesDescription: blankToNull(body.additionalSalesDescription),
-        notes: blankToNull(body.notes),
-        clientId: body.clientId ?? null,
-      },
-      me.id,
-      ctx(),
-    );
+    const parsed = parseGigCreate(await readJson<GigCreate>(request));
+    if (parsed.fields) return validationError(parsed.fields);
+    const gig = createGigFromInput(parsed.input, me.id);
     return HttpResponse.json(toDetail(db.gigs, gig), { status: 201 });
   }),
 

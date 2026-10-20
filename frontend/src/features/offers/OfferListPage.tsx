@@ -25,7 +25,6 @@ import {
 import { useLang } from '../../i18n/useLang';
 import { formatDate, formatMoney } from '../../lib/format';
 import { useReference } from '../../reference/useReference';
-import { ConvertDialog } from './ConvertDialog';
 import { OfferKpis } from './OfferKpis';
 import { copyToClipboard, useOfferOptions, type CopyResult } from './offerOptions';
 import { ConfirmDialog, CopyResultNotice, GigCell, OfferStatusTag } from './offerParts';
@@ -34,14 +33,12 @@ import { offerKeys, publicOfferUrl, useApplyOffer, useOfferList } from './querie
 import './offers.css';
 
 type PageNotice =
-  | { kind: 'converted'; gigId: string; event: string }
-  | { kind: 'alreadyConverted' }
   | { kind: 'deleted'; event: string }
   | { kind: 'restored'; id: string; event: string }
   | { kind: 'copy'; result: CopyResult }
   | { kind: 'error'; error: unknown };
 
-type RowDialog = { kind: 'convert' | 'delete'; offer: OfferSummary } | null;
+type RowDialog = { kind: 'delete'; offer: OfferSummary } | null;
 
 /** Default order of the offer table (UC-028): event date ascending. */
 const DEFAULT_SORT = { key: 'eventDate', dir: 'asc' } as const;
@@ -222,26 +219,11 @@ export function OfferListPage() {
             lang={lang}
             tableState={tableState}
             onPatch={patch}
-            onConvert={(offer) => setDialog({ kind: 'convert', offer })}
             onCopy={(offer) => void copyLink(offer)}
             onDelete={(offer) => setDialog({ kind: 'delete', offer })}
           />
         ))}
 
-      {dialog?.kind === 'convert' && (
-        <ConvertDialog
-          offer={dialog.offer}
-          onClose={() => setDialog(null)}
-          onConverted={(result) => {
-            setDialog(null);
-            setNotice({ kind: 'converted', gigId: result.gig.id, event: result.offer.eventName });
-          }}
-          onAlreadyConverted={() => {
-            setDialog(null);
-            setNotice({ kind: 'alreadyConverted' });
-          }}
-        />
-      )}
       {dialog?.kind === 'delete' && (
         <ConfirmDialog
           title={t('offer.actions.delete')}
@@ -280,15 +262,7 @@ function ListNotice({ notice, onDismiss }: { notice: PageNotice; onDismiss: () =
     );
   }
   let content;
-  if (notice.kind === 'converted') {
-    content = (
-      <p>
-        {t('convert.done', { event: notice.event })} <Link to={`/gigs/${notice.gigId}`}>{t('convert.openGig')}</Link>
-      </p>
-    );
-  } else if (notice.kind === 'alreadyConverted') {
-    content = <p>{t('convert.alreadyConverted')}</p>;
-  } else if (notice.kind === 'deleted') {
+  if (notice.kind === 'deleted') {
     content = <p>{t('offers.deleted', { event: notice.event })}</p>;
   } else {
     content = (
@@ -298,7 +272,7 @@ function ListNotice({ notice, onDismiss }: { notice: PageNotice; onDismiss: () =
     );
   }
   return (
-    <Notice tone={notice.kind === 'alreadyConverted' ? 'warn' : 'ok'} role="status" className="offer-notice">
+    <Notice tone="ok" role="status" className="offer-notice">
       {content}
       {dismiss}
     </Notice>
@@ -311,7 +285,6 @@ interface OfferTableProps {
   lang: 'fi' | 'en';
   tableState: ExcelTableState;
   onPatch: (offer: OfferSummary, body: OfferUpdate) => Promise<void>;
-  onConvert: (offer: OfferSummary) => void;
   onCopy: (offer: OfferSummary) => void;
   onDelete: (offer: OfferSummary) => void;
 }
@@ -474,7 +447,7 @@ function OfferTable(props: OfferTableProps) {
       filterValue: (o) => (o.gigId ? 'yes' : 'no'),
       filterLabel: (v) => t(v === 'yes' ? 'offers.gigFilter.yes' : 'offers.gigFilter.no'),
       filterCompare: byCodeOrder(['yes', 'no']),
-      cell: (o) => <GigCell offer={o} onConvert={() => props.onConvert(o)} />,
+      cell: (o) => <GigCell offer={o} />,
     },
     {
       key: 'actions',

@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { formatMoney, formatMoneyWhole } from '../../lib/format';
+import { formatMoneyWhole } from '../../lib/format';
 import { DESKTOP_QUERY, TABLET_QUERY } from '../../lib/useMediaQuery';
 import { db } from '../../mocks/data';
 import { addMockClient, partnerB, TEST_YEAR } from '../../test/gigFixtures';
@@ -210,35 +210,24 @@ describe('offer list (UC-028)', () => {
     expect(screen.getAllByRole('link', { name: 'Uusi tarjous' })).toHaveLength(2);
   });
 
-  it('converts to a gig after confirmation; the row then links to the gig (UC-031)', async () => {
+  it('Convert opens the prefilled gig form; after creating, the row links to the gig (UC-031)', async () => {
     const offer = addMockOffer({ clientId, eventName: 'Event 1', city: 'City Y', priceCents: 120000 });
     const { user } = renderApp('/offers');
     await screen.findByRole('table', { name: 'Tarjoukset' });
-    await user.click(screen.getByRole('button', { name: 'Muuta keikaksi: Event 1' }));
-    const dialog = screen.getByRole('dialog', { name: 'Muuta keikaksi' });
-    expect(text(dialog)).toContain('Venue X, City Y');
-    expect(text(dialog)).toContain('Client X');
-    expect(text(dialog)).toContain(formatMoney(120000, 'fi').replace(/\s/g, ' '));
-    expect(dialog).toHaveTextContent('Partner A');
-    await user.dblClick(within(dialog).getByRole('button', { name: 'Luo keikka' }));
+    const convert = screen.getByRole('link', { name: 'Muuta keikaksi: Event 1' });
+    expect(convert).toHaveAttribute('href', `/gigs/new?fromOffer=${offer.id}`);
+    await user.click(convert);
+    expect(await screen.findByRole('textbox', { name: 'Paikka' })).toHaveValue('Venue X, City Y');
+    await user.click(screen.getByRole('button', { name: 'Luo keikka' }));
+    expect(await screen.findByRole('heading', { name: 'Event 1 · Venue X, City Y' })).toBeInTheDocument();
+    expect(db.gigs.gigs.filter((g) => g.offerId === offer.id)).toHaveLength(1);
 
+    await user.click(screen.getByRole('link', { name: 'Event 1' })); // "Tarjouksesta: Event 1"
+    await user.click(await screen.findByRole('link', { name: 'Tarjoukset' })); // offer page back link
     const link = await screen.findByRole('link', { name: 'Keikka: Event 1' });
     expect(link).toHaveTextContent('Keikka →');
     expect(link).toHaveAttribute('href', `/gigs/${offer.gigId}`);
-    expect(screen.getByText('Keikka luotu tarjouksesta Event 1.', { exact: false })).toBeInTheDocument();
-    expect(db.gigs.gigs.filter((g) => g.offerId === offer.id)).toHaveLength(1);
     expect(bodyRows()[0]).toHaveTextContent('Hyväksytty');
-  });
-
-  it('shows the gig link when the offer was already converted elsewhere (E1)', async () => {
-    const offer = addMockOffer({ clientId, eventName: 'Event 1' });
-    const { user } = renderApp('/offers');
-    await screen.findByRole('table', { name: 'Tarjoukset' });
-    offer.gigId = '00000000-0000-4000-8000-00000000ffff'; // someone else converted it meanwhile
-    await user.click(screen.getByRole('button', { name: 'Muuta keikaksi: Event 1' }));
-    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Luo keikka' }));
-    expect(await screen.findByText('Tarjouksesta on jo tehty keikka.')).toBeInTheDocument();
-    expect(await screen.findByRole('link', { name: 'Keikka: Event 1' })).toBeInTheDocument();
   });
 
   it('copies the absolute public link', async () => {
