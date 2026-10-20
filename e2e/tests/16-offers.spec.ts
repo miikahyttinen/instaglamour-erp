@@ -606,7 +606,7 @@ test('regenerate link, copy link, delete and restore; a deleted offer is read-on
   for (const name of ['Kopioi julkinen linkki', 'Luo uusi linkki', 'Poista tarjous']) {
     await expect(page.getByRole('main').getByRole('button', { name })).toHaveCount(0);
   }
-  await expect(page.getByRole('main').getByRole('link', { name: /Muuta keikaksi/ })).toHaveCount(0);
+  await expect(page.getByRole('main').getByRole('button', { name: /Muuta keikaksi/ })).toHaveCount(0);
   // API: a deleted offer can't be changed, regenerated or converted (409).
   for (const [method, path, data] of [
     ['patch', `/api/offers/${offer.id}`, { venue: 'Venue R' }],
@@ -644,22 +644,22 @@ test('regenerate link, copy link, delete and restore; a deleted offer is read-on
   expect(history2.filter((e) => e.type === 'RESTORED')).toHaveLength(2);
 });
 
-/** UC-031: the convert form (`/gigs/new?fromOffer=<id>`), checked open and prefilled. */
-async function expectConvertForm(page: Page, offer: Pick<OfferSummary, 'id' | 'eventName'>): Promise<void> {
-  await expect(page).toHaveURL(new RegExp(`/gigs/new\\?fromOffer=${offer.id}$`));
-  await expect(page.getByRole('heading', { level: 1, name: 'Muuta keikaksi' })).toBeVisible();
-  const review = page.getByRole('main').getByRole('note');
+/** UC-031: the convert modal, checked open and prefilled (gig-draft loaded). */
+async function expectConvertModal(page: Page): Promise<void> {
+  const dialog = convertModal(page);
+  await expect(dialog).toBeVisible();
+  const review = dialog.getByRole('note');
   await expect(review).toContainText('Tarkista, että tiedot ovat oikein.');
-  await expect(review).toHaveClass(/notice-warn/);
-  await expect(review).toContainText(`Tarjouksesta: ${offer.eventName}`);
-  await expect(review.getByRole('link', { name: offer.eventName })).toHaveAttribute('href', `/offers/${offer.id}`);
-  await expect(page.getByRole('textbox', { name: 'Paikka' })).not.toHaveValue('');
+  await expect(review.locator('.tag-warn')).toBeVisible();
+  await expect(field(page, 'Paikka')).not.toHaveValue('');
+  await expect(field(page, 'Alkupäivä')).toBeFocused();
 }
 
-const convertForm = (page: Page) => page.getByRole('main').locator('form');
-const field = (page: Page, label: string) => convertForm(page).getByLabel(label, { exact: true });
+const convertModal = (page: Page) => page.getByRole('dialog', { name: 'Muuta keikaksi' });
+const field = (page: Page, label: string) => convertModal(page).getByLabel(label, { exact: true });
+const confirmButton = (page: Page) => convertModal(page).getByRole('button', { name: 'Muuta keikaksi' });
 
-test('convert to gig: prefilled editable form → gig from the edited values, offer WON / ACCEPTED, links both ways, one request on a double click', async ({ page }, testInfo) => {
+test('convert to gig: prefilled editable modal → gig from the edited values, offer WON / ACCEPTED, links both ways, one request on a double click', async ({ page }, testInfo) => {
   const tag = tagOf(testInfo);
   const year = offerYear(testInfo);
   await showAllOfferColumns(page, testInfo);
@@ -693,24 +693,25 @@ test('convert to gig: prefilled editable form → gig from the edited values, of
 
   await openOfferList(page, `?q=${encodeURIComponent(ev)}`);
   const row = offerRow(page, ev);
-  await row.getByRole('link', { name: `Muuta keikaksi: ${ev}` }).click();
-  await expectConvertForm(page, offer);
+  await row.getByRole('button', { name: `Muuta keikaksi: ${ev}` }).click();
+  await expectConvertModal(page);
+  await expect(page).toHaveURL(/\/offers(\?|$)/); // a modal, not a page
 
   // Prefilled from the offer (BR-105); every field editable.
   await expect(field(page, 'Alkupäivä')).toHaveValue(`${year}-09-19`);
-  await expect(field(page, 'Kokoonpano').locator('option:checked')).toHaveText('Oma kokoonpano');
-  await expect(field(page, 'Kokoonpanon nimi')).toHaveValue(ev);
+  await expect(field(page, 'Kokoonpano')).toHaveValue(ev);
   await expect(field(page, 'Paikka')).toHaveValue('Venue Q, City Q');
   await expect(field(page, 'Asiakas').locator('option:checked')).toHaveText(client.name);
   await expect(field(page, 'Myyjä')).toHaveValue(partnerB);
   await expect(field(page, 'Tuottaja')).toHaveValue(partnerB);
   await expect(field(page, 'Hinta (alv 0 %)')).toHaveValue('5000,00');
+  await expectNoHorizontalScroll(page, 'convert modal');
 
-  // Edit: producer, price, additional sales, notes.
+  // Edit: date, lineup name, producer, price.
+  await field(page, 'Alkupäivä').fill(`${year}-09-20`);
+  await field(page, 'Kokoonpano').fill(`${ev} live`);
   await field(page, 'Tuottaja').selectOption(partnerA);
   await field(page, 'Hinta (alv 0 %)').fill('5500');
-  await field(page, 'Lisämyynti').fill('100');
-  await field(page, 'Muistiinpanot').fill('Note 1');
 
   // AC-3: a human double click (two clicks 50 ms apart) sends one request.
   const converts: number[] = [];
@@ -718,36 +719,44 @@ test('convert to gig: prefilled editable form → gig from the edited values, of
     if (r.request().method() === 'POST' && r.url().endsWith(`/api/offers/${offer.id}/convert`)) converts.push(r.status());
   });
   const done = page.waitForResponse((r) => r.url().endsWith(`/api/offers/${offer.id}/convert`));
-  const submit = page.getByRole('button', { name: 'Luo keikka' });
+  const submit = confirmButton(page);
   await submit.click();
   await page.waitForTimeout(50);
-  await submit.click({ timeout: 1000 }).catch(() => undefined); // disabled, or the page changed
+  await submit.click({ timeout: 1000 }).catch(() => undefined); // disabled, or the modal closed
   const res = await done;
   expect(res.status()).toBe(201);
   expect(res.request().postDataJSON()).toMatchObject({
+    startDate: `${year}-09-20`,
+    lineupName: `${ev} live`,
+    venue: 'Venue Q, City Q',
     producerId: partnerA,
     sellerId: partnerB,
     priceCents: 550000,
-    additionalSalesCents: 10000,
-    notes: 'Note 1',
     clientId: client.id,
   });
   const { gig, offer: converted } = (await res.json()) as { gig: Record<string, unknown>; offer: OfferDetail };
-  await expect(page).toHaveURL(new RegExp(`/gigs/${gig.id}$`));
-  await expect(page.getByRole('heading', { level: 1, name: `${ev} · Venue Q, City Q` })).toBeVisible();
+  await expect(convertModal(page)).toHaveCount(0);
+  const notice = page.getByRole('main').getByRole('status').filter({ hasText: `Keikka luotu tarjouksesta ${ev}.` });
+  await expect(notice.getByRole('link', { name: 'Avaa keikka' })).toHaveAttribute('href', `/gigs/${gig.id}`);
+  // The row: "Keikka →" instead of the convert button; disposition Voitettu, status Hyväksytty.
+  const gigLink = offerRow(page, ev).getByRole('link', { name: `Keikka: ${ev}` });
+  await expect(gigLink).toHaveText('Keikka →');
+  await expect(gigLink).toHaveAttribute('href', `/gigs/${gig.id}`);
+  await expect(offerRow(page, ev).getByRole('button', { name: `Muuta keikaksi: ${ev}` })).toHaveCount(0);
+  await expect(offerRow(page, ev)).toContainText(STATUS_FI.ACCEPTED);
+  await expect(offerRow(page, ev).getByLabel(`Lopputulos: ${ev}`).locator('option:checked')).toHaveText(DISPOSITION_FI.WON);
   await page.waitForTimeout(500);
   expect(converts, 'one convert request').toEqual([201]);
 
   expect(gig).toMatchObject({
-    startDate: `${year}-09-19`,
+    startDate: `${year}-09-20`,
     endDate: null,
     venue: 'Venue Q, City Q',
-    lineupName: ev,
+    lineupName: `${ev} live`,
     lineupTemplateId: null,
     clientId: client.id,
     clientName: client.name,
     priceCents: 550000,
-    additionalSalesCents: 10000,
     sellerId: partnerB,
     producerId: partnerA,
     offerId: offer.id,
@@ -769,21 +778,14 @@ test('convert to gig: prefilled editable form → gig from the edited values, of
   expect(gigsOfOffer).toHaveLength(1);
 
   // Gig page: "Tarjouksesta: <event>" links back; the offer page shows the gig link.
+  await notice.getByRole('link', { name: 'Avaa keikka' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: `${ev} live · Venue Q, City Q` })).toBeVisible();
   const fromOffer = page.getByRole('main').locator('p', { hasText: 'Tarjouksesta:' });
   await expect(fromOffer.getByRole('link', { name: ev })).toHaveAttribute('href', `/offers/${offer.id}`);
   await expect(page.getByRole('main').getByLabel('Asiakas', { exact: true }).locator('option:checked')).toHaveText(client.name);
   await fromOffer.getByRole('link', { name: ev }).click();
   await expect(page.getByRole('heading', { level: 1, name: ev })).toBeVisible();
   await expect(page.getByRole('group', { name: 'Tarjouksen toiminnot' }).getByRole('link', { name: `Keikka: ${ev}` })).toBeVisible();
-
-  // The row: "Keikka →" instead of the convert link; disposition Voitettu, status Hyväksytty.
-  await openOfferList(page, `?q=${encodeURIComponent(ev)}`);
-  const gigLink = offerRow(page, ev).getByRole('link', { name: `Keikka: ${ev}` });
-  await expect(gigLink).toHaveText('Keikka →');
-  await expect(gigLink).toHaveAttribute('href', `/gigs/${gig.id}`);
-  await expect(offerRow(page, ev).getByRole('link', { name: `Muuta keikaksi: ${ev}` })).toHaveCount(0);
-  await expect(offerRow(page, ev)).toContainText(STATUS_FI.ACCEPTED);
-  await expect(offerRow(page, ev).getByLabel(`Lopputulos: ${ev}`).locator('option:checked')).toHaveText(DISPOSITION_FI.WON);
 
   // E1: a second convert (API) → 409 ALREADY_CONVERTED; the draft too; still one gig.
   const second = await page.request.post(`/api/offers/${offer.id}/convert`);
@@ -796,12 +798,6 @@ test('convert to gig: prefilled editable form → gig from the edited values, of
   );
   expect(stillOne).toHaveLength(1);
 
-  // Opening the form again → "already converted" + link to the gig, no form.
-  await page.goto(`/gigs/new?fromOffer=${offer.id}`);
-  await expect(page.getByRole('alert')).toContainText('Tarjouksesta on jo tehty keikka.');
-  await expect(page.getByRole('alert').getByRole('link', { name: 'Avaa keikka' })).toHaveAttribute('href', `/gigs/${gig.id}`);
-  await expect(page.getByRole('button', { name: 'Luo keikka' })).toHaveCount(0);
-
   // The client page lists the gig and the offer.
   await page.goto(`/clients/${client.id}`);
   await expect(page.getByRole('table', { name: 'Asiakkaan keikat' })).toContainText('Venue Q, City Q');
@@ -809,55 +805,68 @@ test('convert to gig: prefilled editable form → gig from the edited values, of
   await expectNoHorizontalScroll(page, 'client page after convert');
 });
 
-test('convert form: Cancel goes back to the offer; validation errors keep the input; no price → 0 €; a stale form shows the gig link (409); two parallel requests make one gig', async ({ page }, testInfo) => {
+test('convert modal: Cancel / Esc close it; validation errors next to the fields; no price → 0 €; a stale modal shows the gig link (409); two parallel requests make one gig', async ({ page }, testInfo) => {
   const tag = tagOf(testInfo);
   const year = offerYear(testInfo);
   await signIn(page, PARTNER_A, { selectedYear: year });
   const client = await createClientViaApi(page, `Client ${tag}-${suffix()}-race`);
   const mk = (key: string, priceCents: number | null) =>
     createOfferViaApi(page, { clientId: client.id, eventName: `Juhla ${tag}-${suffix()}-${key}`, eventDate: `${year}-10-0${key.length}`, venue: 'Venue Q', priceCents });
+  const actions = page.getByRole('group', { name: 'Tarjouksen toiminnot' });
 
-  // A1: Cancel → back to the offer, nothing created.
+  // A1: Cancel and Esc close the modal, nothing created; focus returns to the opener.
   const cancelled = await mk('a', null);
   await openOffer(page, cancelled);
-  await page.getByRole('group', { name: 'Tarjouksen toiminnot' }).getByRole('link', { name: `Muuta keikaksi: ${cancelled.eventName}` }).click();
-  await expectConvertForm(page, cancelled);
+  const opener = actions.getByRole('button', { name: `Muuta keikaksi: ${cancelled.eventName}` });
+  await opener.click();
+  await expectConvertModal(page);
   await expect(field(page, 'Hinta (alv 0 %)')).toHaveValue('0,00'); // no price → 0 (BR-105)
-  await expectNoHorizontalScroll(page, 'convert form');
-  await page.getByRole('main').getByRole('link', { name: 'Peruuta' }).click();
-  await expect(page).toHaveURL(new RegExp(`/offers/${cancelled.id}$`));
-  await expect(page.getByRole('heading', { level: 1, name: cancelled.eventName })).toBeVisible();
+  await expectNoHorizontalScroll(page, 'convert modal');
+  // Focus trap: Shift+Tab from the first field stays in the modal.
+  await page.keyboard.press('Shift+Tab');
+  await expect(convertModal(page).locator(':focus')).toHaveCount(1);
+  await convertModal(page).getByRole('button', { name: 'Peruuta' }).click();
+  await expect(convertModal(page)).toHaveCount(0);
+  await expect(opener).toBeFocused();
+  await opener.click();
+  await expectConvertModal(page);
+  await page.keyboard.press('Escape');
+  await expect(convertModal(page)).toHaveCount(0);
   expect(((await api(page).get(`/offers/${cancelled.id}`)) as OfferDetail).gigId).toBeNull();
 
   // Validation: empty venue → field error, nothing sent; fixed → 0 € gig.
-  await page.goto(`/gigs/new?fromOffer=${cancelled.id}`);
-  await expectConvertForm(page, cancelled);
+  await opener.click();
+  await expectConvertModal(page);
   const writes: string[] = [];
   page.on('request', (r) => {
     if (r.method() === 'POST' && r.url().includes('/convert')) writes.push(r.url());
   });
   await field(page, 'Paikka').fill('');
-  await page.getByRole('button', { name: 'Luo keikka' }).click();
+  await confirmButton(page).click();
   await expect(field(page, 'Paikka')).toHaveAttribute('aria-invalid', 'true');
   expect(writes).toEqual([]);
   await field(page, 'Paikka').fill('Venue R');
   const created = page.waitForResponse((r) => r.url().endsWith(`/api/offers/${cancelled.id}/convert`));
-  await page.getByRole('button', { name: 'Luo keikka' }).click();
+  await confirmButton(page).click();
   const { gig } = await (await created).json();
   expect(gig).toMatchObject({ priceCents: 0, venue: 'Venue R', lineupName: cancelled.eventName });
-  await expect(page).toHaveURL(new RegExp(`/gigs/${gig.id}$`));
+  await expect(convertModal(page)).toHaveCount(0);
+  await expect(page.getByRole('main').getByRole('status').getByRole('link', { name: 'Avaa keikka' })).toHaveAttribute('href', `/gigs/${gig.id}`);
+  await expect(actions.getByRole('link', { name: `Keikka: ${cancelled.eventName}` })).toHaveAttribute('href', `/gigs/${gig.id}`);
 
-  // Stale form: converted meanwhile → "already converted" + the gig link (E1).
+  // Stale modal: converted meanwhile → "already converted" + the gig link (E1).
   const stale = await mk('bb', 100000);
-  await page.goto(`/gigs/new?fromOffer=${stale.id}`);
-  await expectConvertForm(page, stale);
+  await openOffer(page, stale);
+  await actions.getByRole('button', { name: `Muuta keikaksi: ${stale.eventName}` }).click();
+  await expectConvertModal(page);
   const other = await api(page).post(`/offers/${stale.id}/convert`);
   const conflict = page.waitForResponse((r) => r.url().endsWith(`/api/offers/${stale.id}/convert`));
-  await page.getByRole('button', { name: 'Luo keikka' }).click();
+  await confirmButton(page).click();
   expect((await conflict).status()).toBe(409);
-  await expect(page.getByRole('alert')).toContainText('Tarjouksesta on jo tehty keikka.');
-  await expect(page.getByRole('alert').getByRole('link', { name: 'Avaa keikka' })).toHaveAttribute('href', `/gigs/${other.gig.id}`);
-  await expect(page.getByRole('button', { name: 'Luo keikka' })).toBeDisabled();
+  const alert = convertModal(page).getByRole('alert');
+  await expect(alert).toContainText('Tarjouksesta on jo tehty keikka.');
+  await expect(alert.getByRole('link', { name: 'Avaa keikka' })).toHaveAttribute('href', `/gigs/${other.gig.id}`);
+  await expect(confirmButton(page)).toBeDisabled();
 
   // AC-3 on the server: two requests at the same time → one 201, one 409, one gig.
   const race = await mk('ccc', 100000);
@@ -873,7 +882,7 @@ test('convert form: Cancel goes back to the offer; validation errors keep the in
   expect(((await api(page).get(`/offers/${race.id}`)) as OfferDetail).gigId).toBe(gigs[0].id);
 });
 
-test('convert form: a zero-delay double click on "Luo keikka" sends one request and opens the gig (AC-3, F-007)', async ({ page }, testInfo) => {
+test('convert modal: a zero-delay double click on "Muuta keikaksi" sends one request (AC-3, F-007)', async ({ page }, testInfo) => {
   const tag = tagOf(testInfo);
   const year = offerYear(testInfo);
   await signIn(page, PARTNER_A, { selectedYear: year });
@@ -891,10 +900,11 @@ test('convert form: a zero-delay double click on "Luo keikka" sends one request 
   });
   await openOffer(page, offer);
   const actions = page.getByRole('group', { name: 'Tarjouksen toiminnot' });
-  await actions.getByRole('link', { name: `Muuta keikaksi: ${offer.eventName}` }).click();
-  await expectConvertForm(page, offer);
-  await page.getByRole('button', { name: 'Luo keikka' }).dblclick();
-  await expect(page.getByRole('heading', { level: 1, name: `${offer.eventName} · Venue Q` })).toBeVisible();
+  await actions.getByRole('button', { name: `Muuta keikaksi: ${offer.eventName}` }).click();
+  await expectConvertModal(page);
+  await confirmButton(page).dblclick();
+  await expect(convertModal(page)).toHaveCount(0);
+  await expect(actions.getByRole('link', { name: `Keikka: ${offer.eventName}` })).toBeVisible();
   await expect(page.getByRole('alert')).toHaveCount(0);
   await page.waitForTimeout(1000);
   expect(converts, 'one convert request').toEqual([201]);
@@ -902,5 +912,5 @@ test('convert form: a zero-delay double click on "Luo keikka" sends one request 
     (g: { offerId: string | null }) => g.offerId === offer.id,
   );
   expect(gigs, 'one gig').toHaveLength(1);
-  await expect(page).toHaveURL(new RegExp(`/gigs/${gigs[0].id}$`));
 });
+
