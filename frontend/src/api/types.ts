@@ -623,6 +623,27 @@ export interface OfferYearSummary {
   decidedCount: number;
 }
 
+/** `GET /api/offers/stats?year=` (BR-122): KPI cards, all non-deleted offers of all years. */
+export interface OfferStats {
+  /** The 6 most recent completed months (createdAt, Europe/Helsinki), oldest first. */
+  createdByMonth: { month: string; count: number; valueCents: Cents }[];
+  /** year-5 … year; average over priced offers, `null` when none. */
+  averageByCreatedYear: { year: number; averageCents: Cents | null; count: number }[];
+  /** year-3 … year+2 by event date, all statuses. */
+  byEventYear: { year: number; count: number; valueCents: Cents }[];
+  /** year … year+3, open offers by event date. */
+  openValueByEventYear: { year: number; valueCents: Cents; count: number }[];
+  /** All open offers, sorted by value desc (`null` = no type). */
+  openByEventType: { eventType: OfferEventType | null; count: number; valueCents: Cents }[];
+  winRate: {
+    pct: number | null;
+    won: number;
+    decided: number;
+    /** One item per OFFER_EVENT_TYPES value, in that order. */
+    byEventType: { eventType: OfferEventType; pct: number | null; won: number; decided: number }[];
+  };
+}
+
 export interface OfferListResponse {
   offers: OfferSummary[];
   summary: OfferYearSummary;

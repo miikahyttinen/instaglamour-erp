@@ -37,6 +37,7 @@ import type {
   OfferEvent,
   OfferListQuery,
   OfferListResponse,
+  OfferStats,
   OfferUpdate,
   Reference,
   ReferenceCreate,
@@ -224,6 +225,8 @@ export const offersApi = {
   delete: (id: Id) => apiRequest<void>(`/offers/${id}/delete`, { method: 'POST' }),
   restore: (id: Id) => apiRequest<OfferDetail>(`/offers/${id}/restore`, { method: 'POST' }),
   history: (id: Id) => apiRequest<OfferEvent[]>(`/offers/${id}/history`),
+  /** BR-122: KPI cards (all years; `year` = the selected year). */
+  stats: (year: number) => apiRequest<OfferStats>('/offers/stats', { query: { year } }),
 };
 
 // ---------- Tasks ----------

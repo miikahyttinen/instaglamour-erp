@@ -2,6 +2,7 @@
 // Pure functions over `OfferState`; the handlers (offerHandlers.ts, publicOfferHandlers.ts) pass in
 // clients and partners. Synthetic data only (BR-090). Does not import mocks/data.ts (no cycle).
 import type { OfferDisposition, OfferEventType, OfferHistoryType, OfferSource, OfferStatus } from '../api/enums';
+import { OFFER_EVENT_TYPES } from '../api/enums';
 import type {
   FieldChange,
   Id,
@@ -9,6 +10,7 @@ import type {
   OfferDetail,
   OfferEvent,
   OfferEventDetails,
+  OfferStats,
   OfferSummary,
   OfferYearSummary,
   Partner,
@@ -178,6 +180,91 @@ export function offerYearSummary(state: OfferState, year: number, today = todayI
     winRatePct: decided.length === 0 ? null : Math.round((wonCount / decided.length) * 1000) / 10,
     wonCount,
     decidedCount: decided.length,
+  };
+}
+
+const helsinkiMonth = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Europe/Helsinki',
+  year: 'numeric',
+  month: '2-digit',
+});
+
+/** `YYYY-MM` of a timestamp in Europe/Helsinki. */
+export function helsinkiYearMonth(ts: string): string {
+  const parts = helsinkiMonth.formatToParts(new Date(ts));
+  const y = parts.find((p) => p.type === 'year')?.value ?? '0000';
+  const m = parts.find((p) => p.type === 'month')?.value ?? '00';
+  return `${y}-${m}`;
+}
+
+const pctOf = (won: number, decided: number) =>
+  decided === 0 ? null : Math.round((won / decided) * 1000) / 10;
+
+/**
+ * Contract "Offer statistics" (BR-122) over every non-deleted offer, all years. `createdByMonth`
+ * counts back from today (ignores `year`); average `count` = priced offers; untyped decided
+ * offers count only in the overall win rate; only types with open offers are listed.
+ */
+export function offerStats(state: OfferState, year: number, today = todayIso()): OfferStats {
+  const offers = state.offers.filter((o) => o.deletedAt === null);
+  const value = (o: MockOffer) => o.priceCents ?? 0;
+  const isOpen = (o: MockOffer) => o.disposition === 'PENDING' && o.eventDate >= today;
+  const eventYear = (o: MockOffer) => Number(o.eventDate.slice(0, 4));
+  const range = (from: number, n: number) => Array.from({ length: n }, (_, i) => from + i);
+
+  // The 6 completed months before the current month.
+  const [ty, tm] = [Number(today.slice(0, 4)), Number(today.slice(5, 7))];
+  const months = range(0, 6).map((i) => {
+    const d = new Date(Date.UTC(ty, tm - 1 - (6 - i), 1));
+    return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+  });
+  const created = offers.map((o) => ({ o, month: helsinkiYearMonth(o.createdAt) }));
+
+  const open = offers.filter(isOpen);
+  const typeKeys = [...new Set(open.map((o) => o.eventType))];
+  const decided = offers.filter((o) => o.disposition !== 'PENDING' && o.disposition !== 'CANCELLED');
+  const typeRank = (t: OfferEventType | null) => (t === null ? OFFER_EVENT_TYPES.length : OFFER_EVENT_TYPES.indexOf(t));
+  const won = (list: MockOffer[]) => list.filter((o) => o.disposition === 'WON').length;
+
+  return {
+    createdByMonth: months.map((month) => {
+      const list = created.filter((c) => c.month === month).map((c) => c.o);
+      return { month, count: list.length, valueCents: list.reduce((s, o) => s + value(o), 0) };
+    }),
+    averageByCreatedYear: range(year - 5, 6).map((y) => {
+      const list = created.filter((c) => c.month.startsWith(`${y}-`)).map((c) => c.o);
+      const priced = list.filter((o) => o.priceCents !== null);
+      return {
+        year: y,
+        count: priced.length,
+        averageCents:
+          priced.length === 0 ? null : Math.round(priced.reduce((s, o) => s + value(o), 0) / priced.length),
+      };
+    }),
+    byEventYear: range(year - 3, 6).map((y) => {
+      const list = offers.filter((o) => eventYear(o) === y);
+      return { year: y, count: list.length, valueCents: list.reduce((s, o) => s + value(o), 0) };
+    }),
+    openValueByEventYear: range(year, 4).map((y) => {
+      const list = open.filter((o) => eventYear(o) === y);
+      return { year: y, count: list.length, valueCents: list.reduce((s, o) => s + value(o), 0) };
+    }),
+    openByEventType: typeKeys
+      .map((eventType) => {
+        const list = open.filter((o) => o.eventType === eventType);
+        return { eventType, count: list.length, valueCents: list.reduce((s, o) => s + value(o), 0) };
+      })
+      // Ties: more offers first, then EVENT_TYPES order, "no type" last (like the backend).
+      .sort((a, b) => b.valueCents - a.valueCents || b.count - a.count || typeRank(a.eventType) - typeRank(b.eventType)),
+    winRate: {
+      pct: pctOf(won(decided), decided.length),
+      won: won(decided),
+      decided: decided.length,
+      byEventType: OFFER_EVENT_TYPES.map((eventType) => {
+        const list = decided.filter((o) => o.eventType === eventType);
+        return { eventType, pct: pctOf(won(list), list.length), won: won(list), decided: list.length };
+      }),
+    },
   };
 }
 
