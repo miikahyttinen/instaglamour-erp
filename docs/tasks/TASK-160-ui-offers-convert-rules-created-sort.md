@@ -1,5 +1,5 @@
 # TASK-160: Offers table — convert only accepted upcoming, created column, newest first
-- **owner:** ui · **status:** todo · **spec:** BR-109, UC-028 change 2026-10-22, UC-031 · **depends on:** none · **parallel:** TASK-031
+- **owner:** ui · **status:** done · **spec:** BR-109, UC-028 change 2026-10-22, UC-031 · **depends on:** none · **parallel:** TASK-031
 ## Acceptance criteria
 - [ ] "Muuta keikaksi" button (list row, phone card, offer page) shown only when status ACCEPTED (disposition WON), not expired-by-date (event date ≥ today, local date) and no gig yet. Otherwise the Keikka cell is empty ("–"); converted offers keep "Keikka →". Changing the disposition to Voitettu inline makes the button appear immediately.
 - [ ] Handle 409 `OFFER_NOT_CONVERTIBLE` in the modal (FI/EN message, refetch). Add the code to enums/i18n.
