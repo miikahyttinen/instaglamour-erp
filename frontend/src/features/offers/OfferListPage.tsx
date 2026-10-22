@@ -342,6 +342,7 @@ function OfferTable(props: OfferTableProps) {
     {
       key: 'client',
       label: t('offers.columns.client'),
+      className: 'offer-col-text',
       sortValue: (o) => o.clientName,
       filterValue: (o) => o.clientId,
       filterLabel: (id) => clientNames.get(id) ?? '–',
@@ -350,6 +351,7 @@ function OfferTable(props: OfferTableProps) {
     {
       key: 'place',
       label: t('offers.columns.place'),
+      className: 'offer-col-text',
       priority: 2,
       sortValue: place,
       filterValue: place,
@@ -391,6 +393,7 @@ function OfferTable(props: OfferTableProps) {
     {
       key: 'seller',
       label: t('offers.columns.seller'),
+      className: 'offer-col-text',
       priority: 2,
       sortValue: (o) => partnerName(partners, o.sellerId),
       filterValue: (o) => o.sellerId,
@@ -460,7 +463,7 @@ function OfferTable(props: OfferTableProps) {
     {
       key: 'gig',
       label: t('offers.columns.gig'),
-      className: 'excel-col-fit',
+      className: 'offer-col-gig excel-col-fit',
       priority: 2,
       sortValue: (o) => (o.gigId ? 1 : 0),
       filterValue: (o) => (o.gigId ? 'yes' : 'no'),

@@ -149,20 +149,57 @@
   .offers-page .offer-table td.offer-col-select {
     min-width: 150px;
   }
+  /* Free-text cells: a long single word (venue, client) wraps instead of widening the table. */
+  .offers-page .offer-table td:is(.offer-col-event, .offer-col-text) {
+    overflow-wrap: anywhere;
+  }
+  /* Actions: icons at the right edge, the header text right-aligned with the trash glyph (the
+     icon button centres a 16 px glyph in a --control-h box). */
+  .offers-page .offer-table td.offer-col-actions {
+    text-align: right;
+  }
+  .offers-page .offer-table th.offer-col-actions .excel-th {
+    justify-content: flex-end;
+    padding-right: calc((var(--control-h) - 16px) / 2);
+  }
   /* Narrow tables (priority 1 only, incl. Luotu since TASK-160): the row icons stack and the
      dates drop their letter spacing, so every column fits without sideways scroll. */
   @container excel-table (max-width: 899.98px) {
     .offers-page .offer-table .offer-row-actions {
       flex-direction: column;
+      align-items: flex-end;
     }
     .offers-page .offer-table td.offer-col-date {
       letter-spacing: 0;
     }
+    /* Compact cells and header controls: seven columns incl. EN headers / dates fit in 566 px. */
+    .offers-page .offer-table .excel-table-grid :is(th, td):not(:first-child, :last-child) {
+      padding-left: 6px;
+      padding-right: 6px;
+    }
+    .offers-page .offer-table .excel-th {
+      gap: 0;
+    }
+    .offers-page .offer-table thead th {
+      letter-spacing: 0.04em;
+    }
   }
-  /* Until the table has room for every column at ease, the inline selects give up a little. */
+  /* Until the table has room for every column at ease, the inline selects give up a little, and
+     the dates (EN "20 Nov 2026") and the Convert button may break onto two lines. They stay on
+     one line whenever there is room (auto table layout); this only lowers the minimum width, so
+     the table never grows past its box when a priority tier comes in (UI bug 2026-10-22: with
+     Luotu at priority 1 the EN table overflowed by up to ~80 px, the body rows ended short of the
+     header with the box border cutting through the Actions column). */
   @container excel-table (max-width: 1599.98px) {
     .offers-page .offer-table td.offer-col-select {
       min-width: 128px;
+    }
+    .offers-page .offer-table td.offer-col-date {
+      white-space: normal;
+    }
+    .offers-page .offer-table td.offer-col-gig .btn {
+      white-space: normal;
+      text-align: center;
     }
   }
 }
