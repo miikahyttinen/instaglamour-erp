@@ -133,8 +133,19 @@ describe('offer page (UC-029, UC-031)', () => {
     );
   });
 
+  it('shows Convert only once the offer is won (BR-109)', async () => {
+    addMockOffer({ clientId, eventName: 'Event 1' });
+    const offer = addMockOffer({ clientId, eventName: 'Event 2', disposition: 'LOST_PRICE' });
+    const { user } = renderApp(`/offers/${offer.id}`);
+    await screen.findByRole('heading', { level: 1, name: 'Event 2' });
+    expect(screen.getByRole('button', { name: 'Kopioi julkinen linkki' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Muuta keikaksi/ })).not.toBeInTheDocument();
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Lopputulos' }), 'Voitettu');
+    expect(await screen.findByRole('button', { name: 'Muuta keikaksi: Event 2' })).toBeInTheDocument();
+  });
+
   it('converts to a gig in the modal; the gig page links back "From offer" (UC-031)', async () => {
-    const offer = addMockOffer({ clientId, eventName: 'Event 1' });
+    const offer = addMockOffer({ clientId, eventName: 'Event 1', disposition: 'WON' });
     const { user } = renderApp(`/offers/${offer.id}`);
     await user.click(await screen.findByRole('button', { name: 'Muuta keikaksi: Event 1' }));
     const dialog = screen.getByRole('dialog', { name: 'Muuta keikaksi' });
