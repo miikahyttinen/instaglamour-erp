@@ -116,8 +116,10 @@ describe('GET /api/public/offers/{token}', () => {
   });
 
   it('never exposes price, disposition, source, event type, gig, notes, ids or the token', async () => {
-    // Convert so the offer also has a gig, then look again.
-    await call(s, 'POST', `/api/offers/${offer.id}/convert`);
+    // Convert so the offer also has a gig, then look again (BR-109: accepted and upcoming first).
+    const upcoming = new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10);
+    await call(s, 'PATCH', `/api/offers/${offer.id}`, { disposition: 'WON', eventDate: upcoming });
+    expect((await call(s, 'POST', `/api/offers/${offer.id}/convert`)).statusCode).toBe(201);
     const res = await anon(token);
     expect(res.statusCode).toBe(200);
     // Reference ids and the token-scoped photo URLs are public by contract (BR-108); check the rest.
