@@ -36,3 +36,6 @@ See and manage the selected year's offers, and the open value and win rate.
 
 ## Change 2026-10-14 (owner)
 Filters move into the column titles (Excel-style filter icons); the filter dropdowns above the table are removed. Search stays.
+
+## Change 2026-10-22 (owner)
+- The table shows the **created date** column at all widths (priority 1) and is sorted **newest created first** by default.

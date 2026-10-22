@@ -43,6 +43,7 @@ The UI translates `code` and the field codes; it never shows `message` to users.
 | 409 | `CANNOT_REMOVE_SELF` / `LAST_PARTNER` | Removing own partner status / the last active partner |
 | 409 | `COST_LINE_ON_PURCHASE_ORDER` | Changing person/amount/paid state of, or deleting, a cost line on an open/paid PO; cancelling/deleting a gig with lines on an open PO |
 | 409 | `PERSON_IS_PARTNER` | Freelancer link of an active partner (partners have no freelancer link) |
+| 409 | `OFFER_NOT_CONVERTIBLE` | Converting (or getting the gig draft of) an offer that is not ACCEPTED or whose event date is before today (BR-109) |
 | 409 | `COST_LINE_NOT_ELIGIBLE` | Creating a PO with a fee that is not eligible (BR-114); `details.costLineIds` |
 | 429 | `RATE_LIMITED` | Public offer and freelancer endpoints: > 60 requests/min/IP (`Retry-After` header) |
 | 413 | `FILE_TOO_LARGE` | Upload too large (attachments > 20 MB; reference photos > 10 MB) |
@@ -430,6 +431,7 @@ Duplicate = case-insensitive exact name match with another person.
 - Dry run executes the full load inside a transaction and rolls it back, so the counts are exact.
 - Invalid document → 400 `VALIDATION_ERROR` with `details.errors: string[]` (every problem, path-prefixed, same texts as the seed CLI). Not JSON → 400 `VALIDATION_ERROR` `details.errors: ["not valid JSON"]`. Partner email outside `AUTH_ALLOWED_DOMAIN` → listed in `details.errors`. Any reference `image` → listed in `details.errors` ("image paths are not allowed in an import"). > 10 MB → 413 `FILE_TOO_LARGE`.
 - Offers in the seed/import may carry `createdAt` (ISO 8601 date-time with offset, not in the future): on insert the offer's `createdAt` and `updatedAt`, and the time of its creation history event, are set to it (default: now). Existing offers are never changed by a re-import.
+- Seed/import `converted: true` is exempt from BR-109 (historical data).
 - Concurrent imports are serialized (advisory lock); the seed loader's rules (BR-120) apply unchanged.
 
 ## People: roles and gig count (owner request 2026-10-19)
@@ -456,6 +458,7 @@ Details: `averageByCreatedYear[].count` = priced offers in the average, `average
 `year` missing/invalid → 400 `INVALID_VALUE`. The existing `GET /api/offers` `summary` stays (unused by the new cards).
 
 ## Change log
+- 2026-10-22 – Convert only ACCEPTED offers with event date ≥ today: 409 OFFER_NOT_CONVERTIBLE on gig-draft and convert (PM)
 - 2026-10-20 – Convert to gig via an editable prefilled form: GET /api/offers/{id}/gig-draft, convert accepts GigCreate (PM)
 - 2026-10-20 – GET /api/offers/stats (offer KPI cards) (PM)
 - 2026-10-20 – Seed/import: optional offer `createdAt` (PM)
