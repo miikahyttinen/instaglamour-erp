@@ -982,3 +982,78 @@ test('convert modal: a zero-delay double click on "Muuta keikaksi" sends one req
   expect(gigs, 'one gig').toHaveLength(1);
 });
 
+/**
+ * UI bug 2026-10-22 (after TASK-160 made Luotu priority 1): at some desktop widths the EN table
+ * was wider than its frame, so the body rows ended at the frame border while the header ran on,
+ * and the Actions header was not aligned with the icons. Every row must end where the header ends,
+ * inside the frame, with the Actions header text right-aligned with the trash icon — EN and FI,
+ * sidebar expanded and collapsed, at the widths where a priority tier comes in.
+ */
+test('offer table: header and body rows end together inside the frame; Actions header aligned with the icons', async ({ page }, testInfo) => {
+  test.skip(isMobile(testInfo), 'the table layout (from 600 px) is checked in the desktop project');
+  const tag = tagOf(testInfo);
+  const year = offerYear(testInfo);
+  await signIn(page, PARTNER_A, { selectedYear: year });
+  const client = await createClientViaApi(page, `Client ${tag}-${suffix()}-layout`);
+  const key = `Layout${tag}${suffix()}`;
+  // Wide content (synthetic): long single words, five-digit prices, won and upcoming (Convert buttons).
+  for (let i = 0; i < 4; i++) {
+    const o = await createOfferViaApi(page, {
+      clientId: client.id,
+      eventName: `${key} anniversary celebration ${i}`,
+      eventDate: `${year}-11-1${i}`,
+      venue: 'Venue Extraordinarylongname',
+      city: 'City Y',
+      priceCents: 2500000 + i,
+      source: 'INSTAGRAM',
+      eventType: 'CORPORATE',
+    });
+    await setDisposition(page, o.id, i % 2 ? 'WON' : 'LOST_COMPETITOR');
+  }
+  const measure = () =>
+    page.evaluate(() => {
+      const table = document.querySelector<HTMLElement>('main .offer-table table')!;
+      const frame = table.closest('.table-wrap')!.getBoundingClientRect();
+      const shown = (el: Element) => getComputedStyle(el).display !== 'none';
+      const lastTh = [...table.querySelectorAll('thead th')].filter(shown).at(-1)!;
+      const headRight = lastTh.getBoundingClientRect().right;
+      const rows = [...table.querySelectorAll('tbody tr')].map((tr) => ({
+        row: tr.getBoundingClientRect().right,
+        cell: [...tr.children].filter(shown).at(-1)!.getBoundingClientRect().right,
+      }));
+      const label = lastTh.querySelector('.excel-th-label')!.getBoundingClientRect();
+      const glyphs = [...table.querySelectorAll('tbody tr:first-child td.offer-col-actions svg')].map(
+        (s) => s.getBoundingClientRect().right,
+      );
+      return {
+        overflow: table.getBoundingClientRect().right - frame.right,
+        tableRight: table.getBoundingClientRect().right,
+        headRight,
+        rows,
+        labelRight: label.right,
+        glyphRight: Math.max(...glyphs),
+      };
+    });
+  for (const language of ['en', 'fi'] as const) {
+    await signIn(page, PARTNER_A, { selectedYear: year, language });
+    for (const mode of ['expanded', 'collapsed'] as const) {
+      await page.addInitScript(([k, value]) => window.localStorage.setItem(k, value), ['ig-sidebar', mode]);
+      await page.setViewportSize({ width: 1440, height: 900 });
+      await page.goto(`/offers?q=${key}`);
+      await expect(page.locator('main .offer-table table a.offer-link')).toHaveCount(4);
+      for (const w of [600, 900, 1100, 1250, 1280, 1366, 1400, 1440, 1550, 1600, 1920]) {
+        const where = `${language}, sidebar ${mode}, ${w} px`;
+        await page.setViewportSize({ width: w, height: 900 });
+        await expect.poll(async () => (await measure()).overflow, `${where}: table inside its frame`).toBeLessThanOrEqual(1);
+        const m = await measure();
+        for (const r of m.rows) {
+          expect(Math.abs(r.cell - m.headRight), `${where}: last body cell ends with the header`).toBeLessThanOrEqual(0.5);
+          expect(Math.abs(r.row - m.tableRight), `${where}: row fills the table`).toBeLessThanOrEqual(0.5);
+        }
+        expect(Math.abs(m.labelRight - m.glyphRight), `${where}: Actions header aligned with the trash icon`).toBeLessThanOrEqual(1.5);
+        await expectNoHorizontalScroll(page, `offer table ${where}`);
+      }
+    }
+  }
+});
+
