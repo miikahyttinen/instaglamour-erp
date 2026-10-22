@@ -2,7 +2,7 @@
  * Offer data access, derived values and serializers (docs/api-contract.md "Offers", "Public offer";
  * UC-028…UC-031, BR-102…BR-106).
  */
-import { isoFromDate } from '../domain/dates.js';
+import { isoFromDate, todayIso } from '../domain/dates.js';
 import { OFFER_SETTING_KEYS } from '../domain/enums.js';
 import type { Offer, OfferDisposition, OfferEvent, OfferEventType, Prisma } from '../generated/prisma/client.js';
 import { insertGig, type GigCreateInput, type GigFees, type PreparedGig } from '../gigs/create.js';
@@ -235,8 +235,13 @@ export async function offerGigDraft(
   };
 }
 
-/** The offer behind a conversion: 404 unknown, 409 INVALID_STATUS_TRANSITION deleted, 409 ALREADY_CONVERTED. */
-export async function requireConvertibleOffer(tx: Tx, offerId: string) {
+/**
+ * The offer behind a conversion: 404 unknown, 409 INVALID_STATUS_TRANSITION deleted, 409
+ * ALREADY_CONVERTED, then BR-109: 409 OFFER_NOT_CONVERTIBLE unless the offer is WON (ACCEPTED)
+ * and its event date is today or later (Europe/Helsinki). `historical: true` (seed/import
+ * `converted: true`) skips the BR-109 check.
+ */
+export async function requireConvertibleOffer(tx: Tx, offerId: string, options: { historical?: boolean } = {}) {
   const offer = isUuid(offerId)
     ? await tx.offer.findUnique({
         where: { id: offerId },
@@ -250,6 +255,8 @@ export async function requireConvertibleOffer(tx: Tx, offerId: string) {
   if (!offer) throw notFound('Offer not found');
   assertOfferNotDeleted(offer);
   if (offer.gig) throw new AppError('ALREADY_CONVERTED', 'The offer already has a gig');
+  if (!options.historical && (offer.disposition !== 'WON' || isoFromDate(offer.eventDate) < todayIso()))
+    throw new AppError('OFFER_NOT_CONVERTIBLE', 'Only an accepted offer whose event date is today or later can be converted');
   return offer;
 }
 
@@ -260,17 +267,18 @@ export async function requireConvertibleOffer(tx: Tx, offerId: string) {
  * defence; callers map its unique violation to ALREADY_CONVERTED as well.
  *
  * `gig` = a GigCreate already validated by `prepareGigCreate` (the edited form); without it the
- * gig is created from the BR-105 prefill as is.
+ * gig is created from the BR-105 prefill as is. `historical: true` (seed/import `converted: true`)
+ * is exempt from BR-109 and may convert any offer, e.g. an open or past one.
  */
 export async function convertOfferInTx(
   tx: Prisma.TransactionClient,
-  input: { offerId: string; partnerId: string; fees: GigFees; gig?: PreparedGig },
+  input: { offerId: string; partnerId: string; fees: GigFees; gig?: PreparedGig; historical?: boolean },
 ): Promise<{ gigId: string }> {
   const locked = await tx.$queryRaw<{ id: string }[]>`
     SELECT "id"::text FROM "offer" WHERE "id" = ${input.offerId}::uuid FOR UPDATE`;
   if (locked.length === 0) throw notFound('Offer not found');
 
-  const offer = await requireConvertibleOffer(tx, input.offerId);
+  const offer = await requireConvertibleOffer(tx, input.offerId, { historical: input.historical });
 
   let gig = input.gig;
   if (!gig) {

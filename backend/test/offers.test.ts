@@ -79,6 +79,17 @@ function shiftDays(iso: string, days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+/** An upcoming event date, so conversions pass BR-109 whenever the tests run. */
+const EVENT_DATE = shiftDays(todayIso(), 30);
+
+/** A convertible offer (BR-109): accepted (WON, set via PATCH and logged) and upcoming. */
+async function createWonOffer(overrides: Record<string, unknown> = {}): Promise<Json> {
+  const offer = await createOffer({ eventDate: EVENT_DATE, ...overrides });
+  const res = await patch(offer.id, { disposition: 'WON' });
+  if (res.statusCode !== 200) throw new Error(`accept offer failed: ${res.statusCode} ${res.body}`);
+  return res.json();
+}
+
 const validation = (fields: Record<string, string>) => ({
   error: { code: 'VALIDATION_ERROR', message: expect.any(String), fields },
 });
@@ -560,13 +571,13 @@ describe('POST /api/offers/{id}/regenerate-link (BR-104)', () => {
 
 describe('POST /api/offers/{id}/convert (BR-105)', () => {
   it('creates the gig per BR-105, links it, sets WON and logs both sides', async () => {
-    const offer = await createOffer({ sellerId: s.world.b.id });
+    const offer = await createWonOffer({ sellerId: s.world.b.id });
     const res = await action(offer.id, 'convert');
     expect(res.statusCode).toBe(201);
     const { offer: converted, gig } = res.json();
 
     expect(gig).toMatchObject({
-      startDate: `${YEAR}-11-14`,
+      startDate: EVENT_DATE,
       endDate: null,
       status: 'SOLD',
       lineupTemplateId: null,
@@ -596,13 +607,13 @@ describe('POST /api/offers/{id}/convert (BR-105)', () => {
     expect(gigEvents.map((e: { type: string }) => e.type)).toEqual(['CREATED']);
 
     // The gig counts in the year like any gig, and every gig response carries offerId.
-    const gigs = (await call(s, 'GET', `/api/gigs?year=${YEAR}`)).json().gigs;
+    const gigs = (await call(s, 'GET', `/api/gigs?year=${EVENT_DATE.slice(0, 4)}`)).json().gigs;
     expect(gigs.find((g: Json) => g.id === gig.id)).toMatchObject({ offerId: offer.id });
     expect((await call(s, 'GET', `/api/gigs/${gig.id}`)).json().offerId).toBe(offer.id);
   });
 
   it('price 0 when empty; venue without city; an already WON offer logs no disposition change', async () => {
-    const offer = await createOffer({ priceCents: null, city: null });
+    const offer = await createWonOffer({ priceCents: null, city: null });
     await patch(offer.id, { disposition: 'WON' });
     const { gig } = (await action(offer.id, 'convert')).json();
     expect(gig).toMatchObject({ priceCents: 0, venue: 'Venue X' });
@@ -610,7 +621,7 @@ describe('POST /api/offers/{id}/convert (BR-105)', () => {
   });
 
   it('a second request is 409 ALREADY_CONVERTED and creates no gig', async () => {
-    const offer = await createOffer();
+    const offer = await createWonOffer();
     expect((await action(offer.id, 'convert')).statusCode).toBe(201);
     const res = await action(offer.id, 'convert');
     expect(res.statusCode).toBe(409);
@@ -619,7 +630,7 @@ describe('POST /api/offers/{id}/convert (BR-105)', () => {
   });
 
   it('is idempotent under concurrent requests: exactly one gig, the rest 409', async () => {
-    const offer = await createOffer();
+    const offer = await createWonOffer();
     const results = await Promise.all(Array.from({ length: 8 }, () => action(offer.id, 'convert')));
     const codes = results.map((r) => r.statusCode).sort();
     expect(codes.filter((c) => c === 201)).toHaveLength(1);
@@ -630,7 +641,7 @@ describe('POST /api/offers/{id}/convert (BR-105)', () => {
   });
 
   it('the database allows at most one gig per offer', async () => {
-    const offer = await createOffer();
+    const offer = await createWonOffer();
     const { gig } = (await action(offer.id, 'convert')).json();
     const row = await testDb().gig.findUniqueOrThrow({ where: { id: gig.id } });
     await expect(
@@ -650,13 +661,13 @@ describe('POST /api/offers/{id}/convert (BR-105)', () => {
 
   it('404 unknown; 409 deleted offer; still ALREADY_CONVERTED after the gig is deleted', async () => {
     expect((await action(UNKNOWN_ID, 'convert')).statusCode).toBe(404);
-    const deleted = await createOffer({ eventName: 'Deleted' });
+    const deleted = await createWonOffer({ eventName: 'Deleted' });
     await action(deleted.id, 'delete');
     const res = await action(deleted.id, 'convert');
     expect(res.statusCode).toBe(409);
     expect(res.json().error.code).toBe('INVALID_STATUS_TRANSITION');
 
-    const offer = await createOffer();
+    const offer = await createWonOffer();
     const { gig } = (await action(offer.id, 'convert')).json();
     await call(s, 'POST', `/api/gigs/${gig.id}/delete`, { reason: 'Test' });
     expect((await action(offer.id, 'convert')).json().error.code).toBe('ALREADY_CONVERTED');
@@ -667,11 +678,11 @@ describe('GET /api/offers/{id}/gig-draft (BR-105)', () => {
   const draft = (id: string) => call(s, 'GET', `/api/offers/${id}/gig-draft`);
 
   it('returns the BR-105 prefill as a GigCreate', async () => {
-    const offer = await createOffer({ sellerId: s.world.b.id });
+    const offer = await createWonOffer({ sellerId: s.world.b.id });
     const res = await draft(offer.id);
     expect(res.statusCode).toBe(200);
     expect(res.json()).toEqual({
-      startDate: `${YEAR}-11-14`,
+      startDate: EVENT_DATE,
       endDate: null,
       lineupTemplateId: null,
       lineupName: 'Event 1',
@@ -689,22 +700,22 @@ describe('GET /api/offers/{id}/gig-draft (BR-105)', () => {
     });
     // Reading the draft changes nothing.
     expect(await testDb().gig.count()).toBe(0);
-    expect((await history(offer.id)).map((e) => e.type)).toEqual(['CREATED']);
+    expect((await history(offer.id)).map((e) => e.type)).toEqual(['DISPOSITION_CHANGED', 'CREATED']);
   });
 
   it('price 0 when empty; venue without city', async () => {
-    const offer = await createOffer({ priceCents: null, city: null });
+    const offer = await createWonOffer({ priceCents: null, city: null });
     expect((await draft(offer.id)).json()).toMatchObject({ priceCents: 0, venue: 'Venue X' });
   });
 
   it('an inactive seller falls back to the caller as seller and producer (BR-111)', async () => {
-    const offer = await createOffer({ sellerId: s.world.c.id });
+    const offer = await createWonOffer({ sellerId: s.world.c.id });
     await testDb().partner.update({ where: { id: s.world.c.id }, data: { active: false } });
     expect((await draft(offer.id)).json()).toMatchObject({ sellerId: s.world.a.id, producerId: s.world.a.id });
   });
 
   it("clientId null when the offer's client is deleted; that draft converts cleanly", async () => {
-    const offer = await createOffer();
+    const offer = await createWonOffer();
     await testDb().client.update({ where: { id: clientA.id }, data: { deletedAt: new Date() } });
     const body = (await draft(offer.id)).json();
     expect(body).toMatchObject({ clientId: null, lineupName: 'Event 1' });
@@ -717,13 +728,13 @@ describe('GET /api/offers/{id}/gig-draft (BR-105)', () => {
     expect((await draft(UNKNOWN_ID)).statusCode).toBe(404);
     expect((await draft('not-a-uuid')).statusCode).toBe(404);
 
-    const deleted = await createOffer({ eventName: 'Deleted' });
+    const deleted = await createWonOffer({ eventName: 'Deleted' });
     await action(deleted.id, 'delete');
     const del = await draft(deleted.id);
     expect(del.statusCode).toBe(409);
     expect(del.json().error.code).toBe('INVALID_STATUS_TRANSITION');
 
-    const offer = await createOffer();
+    const offer = await createWonOffer();
     await action(offer.id, 'convert');
     const conv = await draft(offer.id);
     expect(conv.statusCode).toBe(409);
@@ -742,11 +753,11 @@ describe('POST /api/offers/{id}/convert with an edited GigCreate', () => {
     (await call(s, 'GET', `/api/offers/${id}/gig-draft`)).json<Record<string, unknown>>();
 
   it('the unchanged draft gives the same gig as no body', async () => {
-    const offer = await createOffer({ sellerId: s.world.b.id });
+    const offer = await createWonOffer({ sellerId: s.world.b.id });
     const res = await convert(offer.id, await draftOf(offer.id));
     expect(res.statusCode).toBe(201);
     expect(res.json().gig).toMatchObject({
-      startDate: `${YEAR}-11-14`,
+      startDate: EVENT_DATE,
       lineupTemplateId: null,
       lineupName: 'Event 1',
       venue: 'Venue X, City A',
@@ -759,11 +770,11 @@ describe('POST /api/offers/{id}/convert with an edited GigCreate', () => {
   });
 
   it('creates the gig from the body (overrides), with BR-020/021 cost lines, link, WON and logs', async () => {
-    const offer = await createOffer({ sellerId: s.world.b.id });
+    const offer = await createWonOffer({ sellerId: s.world.b.id });
     const body = {
       ...(await draftOf(offer.id)),
-      startDate: `${YEAR}-11-15`,
-      endDate: `${YEAR}-11-16`,
+      startDate: shiftDays(EVENT_DATE, 1),
+      endDate: shiftDays(EVENT_DATE, 2),
       lineupTemplateId: s.world.templateA.id,
       lineupName: null,
       venue: 'Venue Y',
@@ -782,8 +793,8 @@ describe('POST /api/offers/{id}/convert with an edited GigCreate', () => {
     expect(res.statusCode).toBe(201);
     const { offer: converted, gig } = res.json();
     expect(gig).toMatchObject({
-      startDate: `${YEAR}-11-15`,
-      endDate: `${YEAR}-11-16`,
+      startDate: shiftDays(EVENT_DATE, 1),
+      endDate: shiftDays(EVENT_DATE, 2),
       lineupTemplateId: s.world.templateA.id,
       lineupName: 'Template A',
       venue: 'Venue Y',
@@ -820,14 +831,14 @@ describe('POST /api/offers/{id}/convert with an edited GigCreate', () => {
   });
 
   it('clientId null is allowed (as in POST /api/gigs)', async () => {
-    const offer = await createOffer();
+    const offer = await createWonOffer();
     const res = await convert(offer.id, { ...(await draftOf(offer.id)), clientId: null });
     expect(res.statusCode).toBe(201);
     expect(res.json().gig).toMatchObject({ clientId: null, offerId: offer.id });
   });
 
   it('400 with the same field errors as POST /api/gigs; nothing is created or logged', async () => {
-    const offer = await createOffer({ sellerId: s.world.b.id });
+    const offer = await createWonOffer({ sellerId: s.world.b.id });
     const base = await draftOf(offer.id);
     await testDb().partner.update({ where: { id: s.world.c.id }, data: { active: false } });
     const cases: [Record<string, unknown>, Record<string, string>][] = [
@@ -835,7 +846,7 @@ describe('POST /api/offers/{id}/convert with an edited GigCreate', () => {
       [{ venue: '  ' }, { venue: 'REQUIRED' }],
       [{ priceCents: -1 }, { priceCents: 'NEGATIVE_AMOUNT' }],
       [{ startDate: `${YEAR}-02-30` }, { startDate: 'INVALID_DATE' }],
-      [{ endDate: `${YEAR}-11-13` }, { endDate: 'END_BEFORE_START' }],
+      [{ endDate: shiftDays(EVENT_DATE, -1) }, { endDate: 'END_BEFORE_START' }],
       [{ lineupTemplateId: UNKNOWN_ID }, { lineupTemplateId: 'UNKNOWN_REFERENCE' }],
       [{ sellerId: s.world.c.id, producerId: UNKNOWN_ID }, { sellerId: 'UNKNOWN_REFERENCE', producerId: 'UNKNOWN_REFERENCE' }],
       [{ clientId: UNKNOWN_ID }, { clientId: 'UNKNOWN_REFERENCE' }],
@@ -856,19 +867,19 @@ describe('POST /api/offers/{id}/convert with an edited GigCreate', () => {
 
     expect(await testDb().gig.count()).toBe(0);
     const after = (await get(offer.id)).json();
-    expect(after).toMatchObject({ gigId: null, disposition: 'PENDING' });
-    expect((await history(offer.id)).map((e) => e.type)).toEqual(['CREATED']);
+    expect(after).toMatchObject({ gigId: null, disposition: 'WON' });
+    expect((await history(offer.id)).map((e) => e.type)).toEqual(['DISPOSITION_CHANGED', 'CREATED']);
   });
 
   it('409 ALREADY_CONVERTED / INVALID_STATUS_TRANSITION take precedence over the body', async () => {
-    const offer = await createOffer();
+    const offer = await createWonOffer();
     const body = await draftOf(offer.id);
     expect((await convert(offer.id, body)).statusCode).toBe(201);
     const again = await convert(offer.id, body);
     expect(again.statusCode).toBe(409);
     expect(again.json().error.code).toBe('ALREADY_CONVERTED');
 
-    const deleted = await createOffer({ eventName: 'Deleted' });
+    const deleted = await createWonOffer({ eventName: 'Deleted' });
     await action(deleted.id, 'delete');
     const del = await convert(deleted.id, body);
     expect(del.statusCode).toBe(409);
@@ -878,7 +889,7 @@ describe('POST /api/offers/{id}/convert with an edited GigCreate', () => {
   });
 
   it('is still one gig per offer under concurrent requests with a body', async () => {
-    const offer = await createOffer();
+    const offer = await createWonOffer();
     const body = await draftOf(offer.id);
     const results = await Promise.all(Array.from({ length: 8 }, () => convert(offer.id, body)));
     const codes = results.map((r) => r.statusCode);
@@ -887,6 +898,70 @@ describe('POST /api/offers/{id}/convert with an edited GigCreate', () => {
     for (const r of results.filter((x) => x.statusCode === 409)) expect(r.json().error.code).toBe('ALREADY_CONVERTED');
     expect(await testDb().gig.count({ where: { offerId: offer.id } })).toBe(1);
     expect((await history(offer.id)).filter((e) => e.type === 'CONVERTED')).toHaveLength(1);
+  });
+});
+
+describe('BR-109: only accepted, upcoming offers convert', () => {
+  const draft = (id: string) => call(s, 'GET', `/api/offers/${id}/gig-draft`);
+  const convert = (id: string, body?: unknown) => call(s, 'POST', `/api/offers/${id}/convert`, body);
+  const today = () => todayIso();
+
+  async function expectNotConvertible(id: string) {
+    const body = (await call(s, 'GET', `/api/offers/${id}`)).json();
+    const responses = [await draft(id), await convert(id), await convert(id, {}), await convert(id, { startDate: 'x' })];
+    for (const res of responses) {
+      expect(res.statusCode).toBe(409);
+      expect(res.json().error.code).toBe('OFFER_NOT_CONVERTIBLE');
+    }
+    expect(await testDb().gig.count({ where: { offerId: id } })).toBe(0);
+    // Nothing changed or logged on the offer.
+    expect((await call(s, 'GET', `/api/offers/${id}`)).json()).toMatchObject({ disposition: body.disposition, gigId: null });
+    expect((await history(id)).filter((e) => e.type === 'CONVERTED')).toHaveLength(0);
+  }
+
+  it('pending, lost and cancelled offers → 409 OFFER_NOT_CONVERTIBLE (even with an invalid body)', async () => {
+    const pending = await createOffer({ eventDate: EVENT_DATE, eventName: 'Pending' });
+    await expectNotConvertible(pending.id);
+    for (const disposition of ['LOST_PRICE', 'CANCELLED']) {
+      const offer = await createOffer({ eventDate: EVENT_DATE, eventName: disposition });
+      expect((await patch(offer.id, { disposition })).statusCode).toBe(200);
+      await expectNotConvertible(offer.id);
+    }
+  });
+
+  it('a won offer whose event date is before today → 409', async () => {
+    const past = await createWonOffer({ eventDate: shiftDays(today(), -1), eventName: 'Past' });
+    await expectNotConvertible(past.id);
+  });
+
+  it('a won offer today or later converts; disposition stays WON without a new DISPOSITION_CHANGED', async () => {
+    for (const eventDate of [today(), shiftDays(today(), 1)]) {
+      const offer = await createWonOffer({ eventDate, eventName: `Event ${eventDate}` });
+      expect((await draft(offer.id)).statusCode).toBe(200);
+      const res = await convert(offer.id);
+      expect(res.statusCode).toBe(201);
+      expect(res.json().offer).toMatchObject({ disposition: 'WON', status: 'ACCEPTED', gigId: res.json().gig.id });
+      expect((await history(offer.id)).map((e) => e.type)).toEqual(['CONVERTED', 'DISPOSITION_CHANGED', 'CREATED']);
+    }
+    // With a body too.
+    const withBody = await createWonOffer({ eventDate: today(), eventName: 'With body' });
+    const res = await convert(withBody.id, (await draft(withBody.id)).json());
+    expect(res.statusCode).toBe(201);
+  });
+
+  it('ALREADY_CONVERTED is checked before BR-109; deleted and unknown before both', async () => {
+    const offer = await createWonOffer();
+    expect((await convert(offer.id)).statusCode).toBe(201);
+    // Afterwards the offer no longer qualifies (moved to the past and set lost), yet stays ALREADY_CONVERTED.
+    await testDb().offer.update({ where: { id: offer.id }, data: { disposition: 'LOST_PRICE', eventDate: new Date('2020-01-01') } });
+    for (const res of [await draft(offer.id), await convert(offer.id), await convert(offer.id, {})])
+      expect(res.json().error.code).toBe('ALREADY_CONVERTED');
+
+    const deleted = await createOffer({ eventName: 'Deleted', eventDate: shiftDays(today(), -5) });
+    await action(deleted.id, 'delete');
+    for (const res of [await draft(deleted.id), await convert(deleted.id), await convert(deleted.id, {})])
+      expect(res.json().error.code).toBe('INVALID_STATUS_TRANSITION');
+    expect((await convert(UNKNOWN_ID, {})).statusCode).toBe(404);
   });
 });
 
