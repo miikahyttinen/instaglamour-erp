@@ -133,6 +133,20 @@ describe('POST /api/import', () => {
     expect(await testDb().gig.count()).toBe(gigCount + converted);
   });
 
+  it('converted: true is exempt from BR-109 (past event date, no accepted disposition)', async () => {
+    const doc = example();
+    const offers = doc.offers as Record<string, unknown>[];
+    const template = offers.find((o) => o.converted)!;
+    const historical: Record<string, unknown> = { ...template, eventName: 'Event Past', eventDate: '2020-03-01' };
+    delete historical.disposition;
+    offers.push(historical);
+    const res = await post(doc);
+    expect(res.statusCode).toBe(200);
+    const offer = await testDb().offer.findFirstOrThrow({ where: { eventName: 'Event Past' }, include: { gig: true } });
+    expect(offer.disposition).toBe('WON');
+    expect(offer.gig).toMatchObject({ startDate: new Date('2020-03-01T00:00:00.000Z'), offerId: offer.id });
+  });
+
   it('accepts files above the global 1 MB body limit (up to 10 MB) and a UTF-8 BOM', async () => {
     const text = '\uFEFF' + JSON.stringify(example()) + ' '.repeat(2 * 1024 * 1024);
     const res = await post(text, '?dryRun=true', { 'content-type': 'application/json; charset=utf-8' });

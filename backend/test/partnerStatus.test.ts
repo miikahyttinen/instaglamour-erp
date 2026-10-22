@@ -395,7 +395,8 @@ describe('new choices reject removed partners; existing records keep them (BR-11
     const body = {
       clientId: client.id,
       eventName: 'Event 1',
-      eventDate: '2026-11-14',
+      // BR-109: upcoming, and both offers are accepted below.
+      eventDate: new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10),
       venue: 'Venue X',
       lineup: ['Vocals'],
       priceCents: 100000,
@@ -448,7 +449,8 @@ describe('new choices reject removed partners; existing records keep them (BR-11
     const body = {
       clientId: client.id,
       eventName: 'Event 1',
-      eventDate: '2026-11-14',
+      // BR-109: upcoming, and both offers are accepted below.
+      eventDate: new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10),
       venue: 'Venue X',
       lineup: ['Vocals'],
       priceCents: 100000,
@@ -457,6 +459,8 @@ describe('new choices reject removed partners; existing records keep them (BR-11
     };
     const removedSeller = (await call(s, 'POST', '/api/offers', { ...body, sellerId: s.world.c.id })).json();
     const activeSeller = (await call(s, 'POST', '/api/offers', { ...body, eventName: 'Event 2', sellerId: s.world.b.id })).json();
+    for (const o of [removedSeller, activeSeller])
+      expect((await call(s, 'PATCH', `/api/offers/${o.id}`, { disposition: 'WON' })).statusCode).toBe(200);
     await del(s.world.c.personId);
 
     const res = await call(s, 'POST', `/api/offers/${removedSeller.id}/convert`);

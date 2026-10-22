@@ -526,7 +526,7 @@ async function applySeed(
     await tx.offerEvent.create({
       data: { offerId: offer.id, type: 'CREATED', partnerId: sellerId, details: {}, at: createdAt, createdAt, updatedAt: createdAt },
     });
-    if (o.converted) await convertOfferInTx(tx, { offerId: offer.id, partnerId: sellerId, fees });
+    if (o.converted) await convertOfferInTx(tx, { offerId: offer.id, partnerId: sellerId, fees, historical: true });
     summary.offers.created++;
   }
 
