@@ -149,6 +149,16 @@
   .offers-page .offer-table td.offer-col-select {
     min-width: 150px;
   }
+  /* Narrow tables (priority 1 only, incl. Luotu since TASK-160): the row icons stack and the
+     dates drop their letter spacing, so every column fits without sideways scroll. */
+  @container excel-table (max-width: 899.98px) {
+    .offers-page .offer-table .offer-row-actions {
+      flex-direction: column;
+    }
+    .offers-page .offer-table td.offer-col-date {
+      letter-spacing: 0;
+    }
+  }
   /* Until the table has room for every column at ease, the inline selects give up a little. */
   @container excel-table (max-width: 1599.98px) {
     .offers-page .offer-table td.offer-col-select {
