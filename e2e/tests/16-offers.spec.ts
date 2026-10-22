@@ -270,9 +270,29 @@ test('list: KPI cards = offer stats API (open value = BR-106); rows of the year;
   await page.getByLabel('Haku', { exact: true }).fill(sfx);
   await expect(page).toHaveURL(new RegExp(`[?&]q=${sfx}`));
   await expect(offerRows(page)).toHaveCount(specs.length);
-  // Default sort: event date ascending.
+  // Default sort (UC-028 change 2026-10-22): newest created first = reverse creation order.
+  const newestFirst = [...specs].reverse().map((s) => name(s.key));
+  await expect.poll(() => rowEvents(page)).toEqual(newestFirst);
+  if (!isMobile(testInfo)) {
+    await expect(offerTable(page).getByRole('columnheader', { name: 'Luotu', exact: true })).toHaveAttribute('aria-sort', 'descending');
+  }
+  // The Luotu column is always shown (priority 1), on phone cards too (FI date format).
+  const createdCell = offerRow(page, name('Alfa')).locator('td[data-label="Luotu"]');
+  await expect(createdCell).toBeVisible();
+  await expect(createdCell).toHaveText(/^\d{1,2}\.\d{1,2}\.\d{4}$/);
+  // BR-109: only the won, upcoming offer (Foxtrot) gets the convert button; the others show "–"
+  // (the Keikka column may be hidden at this width, so the DOM is checked).
+  for (const s of specs) {
+    const cell = offerRow(page, name(s.key)).locator('td[data-label="Keikka"]');
+    if (s.key === 'Foxtrot') await expect(cell.locator('button')).toHaveCount(1);
+    else expect(await cell.evaluate((el) => el.textContent), `${s.key}: no convert`).toBe('–');
+  }
+  // A sort in the URL overrides the default.
+  await openOfferList(page, `?q=${sfx}&sort=eventDate&dir=asc`);
   const byDate = [...specs].sort((a, b) => a.date.localeCompare(b.date)).map((s) => name(s.key));
   await expect.poll(() => rowEvents(page)).toEqual(byDate);
+  await openOfferList(page, `?q=${sfx}`);
+  await expect.poll(() => rowEvents(page)).toEqual(newestFirst);
   // Status tags incl. Expired (AC-4): the open, past offer.
   await expect(offerRow(page, name('Alfa'))).toContainText(STATUS_FI.EXPIRED);
   await expect(offerRow(page, name('Delta'))).toContainText(STATUS_FI.OPEN);
@@ -295,7 +315,7 @@ test('list: KPI cards = offer stats API (open value = BR-106); rows of the year;
         'aria-sort',
         dir === 'asc' ? 'ascending' : 'descending',
       );
-      await expect(offerTable(page).getByRole('columnheader', { name: 'Tapahtumapäivä', exact: true })).toHaveAttribute('aria-sort', 'none');
+      await expect(offerTable(page).getByRole('columnheader', { name: 'Luotu', exact: true })).toHaveAttribute('aria-sort', 'none');
     }
     await expect(page).toHaveURL(new RegExp(`sort=${key}&dir=${dir}`));
   };
@@ -679,6 +699,24 @@ test('convert to gig: prefilled editable modal → gig from the edited values, o
   const ev = offer.eventName;
   const yearBefore = await api(page).get(`/years/${year}`);
 
+  // BR-109: a pending offer can't be converted: 409 OFFER_NOT_CONVERTIBLE, no button in the row.
+  for (const res of [
+    await page.request.get(`/api/offers/${offer.id}/gig-draft`),
+    await page.request.post(`/api/offers/${offer.id}/convert`),
+  ]) {
+    expect(res.status()).toBe(409);
+    expect((await res.json()).error.code).toBe('OFFER_NOT_CONVERTIBLE');
+  }
+  await openOfferList(page, `?q=${encodeURIComponent(ev)}`);
+  await expect(offerRow(page, ev)).toHaveCount(1);
+  await expect(offerRow(page, ev).getByRole('button', { name: `Muuta keikaksi: ${ev}` })).toHaveCount(0);
+  await expect(offerRow(page, ev).locator('td[data-label="Keikka"]')).toHaveText('–');
+  // Marking it won inline shows the button at once (no reload).
+  expect(await selectInline(page, offerRow(page, ev).getByLabel(`Lopputulos: ${ev}`, { exact: true }), DISPOSITION_FI.WON)).toEqual({
+    disposition: 'WON',
+  });
+  await expect(offerRow(page, ev).getByRole('button', { name: `Muuta keikaksi: ${ev}` })).toBeVisible();
+
   // API draft per BR-105.
   expect(await api(page).get(`/offers/${offer.id}/gig-draft`)).toMatchObject({
     startDate: `${year}-09-19`,
@@ -691,7 +729,6 @@ test('convert to gig: prefilled editable modal → gig from the edited values, o
     producerId: partnerB,
   });
 
-  await openOfferList(page, `?q=${encodeURIComponent(ev)}`);
   const row = offerRow(page, ev);
   await row.getByRole('button', { name: `Muuta keikaksi: ${ev}` }).click();
   await expectConvertModal(page);
@@ -810,8 +847,12 @@ test('convert modal: Cancel / Esc close it; validation errors next to the fields
   const year = offerYear(testInfo);
   await signIn(page, PARTNER_A, { selectedYear: year });
   const client = await createClientViaApi(page, `Client ${tag}-${suffix()}-race`);
-  const mk = (key: string, priceCents: number | null) =>
-    createOfferViaApi(page, { clientId: client.id, eventName: `Juhla ${tag}-${suffix()}-${key}`, eventDate: `${year}-10-0${key.length}`, venue: 'Venue Q', priceCents });
+  // Convertible offers (BR-109): won, dated in the project's future year.
+  const mk = async (key: string, priceCents: number | null) => {
+    const o = await createOfferViaApi(page, { clientId: client.id, eventName: `Juhla ${tag}-${suffix()}-${key}`, eventDate: `${year}-10-0${key.length}`, venue: 'Venue Q', priceCents });
+    await setDisposition(page, o.id, 'WON');
+    return o;
+  };
   const actions = page.getByRole('group', { name: 'Tarjouksen toiminnot' });
 
   // A1: Cancel and Esc close the modal, nothing created; focus returns to the opener.
@@ -868,6 +909,32 @@ test('convert modal: Cancel / Esc close it; validation errors next to the fields
   await expect(alert.getByRole('link', { name: 'Avaa keikka' })).toHaveAttribute('href', `/gigs/${other.gig.id}`);
   await expect(confirmButton(page)).toBeDisabled();
 
+  // Stale modal: no longer won meanwhile → 409 OFFER_NOT_CONVERTIBLE message; the page drops the button (BR-109).
+  const lost = await mk('dddd', 100000);
+  await openOffer(page, lost);
+  await actions.getByRole('button', { name: `Muuta keikaksi: ${lost.eventName}` }).click();
+  await expectConvertModal(page);
+  await setDisposition(page, lost.id, 'LOST_PRICE');
+  const refused = page.waitForResponse((r) => r.url().endsWith(`/api/offers/${lost.id}/convert`));
+  await confirmButton(page).click();
+  expect((await refused).status()).toBe(409);
+  await expect(convertModal(page).getByRole('alert')).toContainText(
+    'Vain hyväksytyn tarjouksen, jonka päivä ei ole mennyt, voi muuttaa keikaksi.',
+  );
+  await expect(confirmButton(page)).toBeDisabled();
+  await convertModal(page).getByRole('button', { name: 'Peruuta' }).click();
+  await expect(actions.getByRole('button', { name: /Muuta keikaksi/ })).toHaveCount(0);
+  expect(((await api(page).get(`/offers/${lost.id}`)) as OfferDetail).gigId).toBeNull();
+
+  // A won offer whose date has passed: no button, 409 from the API.
+  const past = await createOfferViaApi(page, { clientId: client.id, eventName: `Juhla ${tag}-${suffix()}-past`, eventDate: '2020-05-02', venue: 'Venue Q', priceCents: 100000 });
+  await setDisposition(page, past.id, 'WON');
+  await openOffer(page, past);
+  await expect(actions.getByRole('button', { name: /Muuta keikaksi/ })).toHaveCount(0);
+  const pastRes = await page.request.post(`/api/offers/${past.id}/convert`);
+  expect(pastRes.status()).toBe(409);
+  expect((await pastRes.json()).error.code).toBe('OFFER_NOT_CONVERTIBLE');
+
   // AC-3 on the server: two requests at the same time → one 201, one 409, one gig.
   const race = await mk('ccc', 100000);
   const [r1, r2] = await Promise.all([
@@ -894,6 +961,7 @@ test('convert modal: a zero-delay double click on "Muuta keikaksi" sends one req
     venue: 'Venue Q',
     priceCents: 100000,
   });
+  await setDisposition(page, offer.id, 'WON'); // BR-109
   const converts: number[] = [];
   page.on('response', (r) => {
     if (r.request().method() === 'POST' && r.url().endsWith(`/api/offers/${offer.id}/convert`)) converts.push(r.status());

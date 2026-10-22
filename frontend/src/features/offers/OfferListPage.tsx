@@ -42,8 +42,8 @@ type PageNotice =
 
 type RowDialog = { kind: 'convert' | 'delete'; offer: OfferSummary } | null;
 
-/** Default order of the offer table (UC-028): event date ascending. */
-const DEFAULT_SORT = { key: 'eventDate', dir: 'asc' } as const;
+/** Default order of the offer table (UC-028 change 2026-10-22): newest created first. */
+const DEFAULT_SORT = { key: 'created', dir: 'desc' } as const;
 
 /** Filter values in the order of a code list (unknown values last). */
 const byCodeOrder =
@@ -312,8 +312,8 @@ interface OfferTableProps {
 /**
  * Excel-style table (UC-028, design.md "Excel-style tables"): every column sortable, filter icons
  * on the coded / text columns. From 600 px it fills the width without scrolling sideways; columns
- * with priority 2 / 3 are hidden on narrower tables (TASK-147: 1 event, date, client, price,
- * status, actions · 2 place, seller, disposition, gig · 3 created, source, event type).
+ * with priority 2 / 3 are hidden on narrower tables (TASK-147, TASK-160: 1 event, date, created,
+ * client, price, status, actions · 2 place, seller, disposition, gig · 3 source, event type).
  * Phones (< 600 px): one card per offer + the "Suodattimet" sheet.
  */
 function OfferTable(props: OfferTableProps) {
@@ -365,11 +365,10 @@ function OfferTable(props: OfferTableProps) {
     {
       key: 'created',
       label: t('offers.columns.created'),
-      priority: 3,
       className: 'offer-col-date excel-col-fit',
-      hideOnPhone: true,
       sortValue: (o) => o.createdAt,
-      cell: (o) => formatDate(o.createdAt.slice(0, 10), lang),
+      // Local date of the creation time, formatted like the other dates.
+      cell: (o) => formatDate(o.createdAt, lang),
     },
     {
       key: 'price',

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { OfferSummary } from '../../api/types';
-import { offerDisplayStatus, offerTieBreak } from './offerStatus';
+import { canConvertOffer, offerDisplayStatus, offerTieBreak } from './offerStatus';
 
 const base: OfferSummary = {
   id: 'o',
@@ -37,5 +37,17 @@ describe('offer display status', () => {
     const b = offer({ eventDate: '2030-01-01' });
     const c = offer({ eventDate: '2030-01-01', createdAt: '2029-12-01T00:00:00.000Z' });
     expect([a, b, c].sort(offerTieBreak)).toEqual([c, b, a]);
+  });
+});
+
+describe('canConvertOffer (BR-109)', () => {
+  const today = '2030-06-01';
+  it('needs an accepted offer dated today or later without a gig', () => {
+    expect(canConvertOffer(offer({ status: 'ACCEPTED', eventDate: today }), today)).toBe(true);
+    expect(canConvertOffer(offer({ status: 'ACCEPTED', eventDate: '2030-06-02' }), today)).toBe(true);
+    expect(canConvertOffer(offer({ status: 'ACCEPTED', eventDate: '2030-05-31' }), today)).toBe(false);
+    expect(canConvertOffer(offer({ status: 'OPEN', eventDate: today }), today)).toBe(false);
+    expect(canConvertOffer(offer({ status: 'REJECTED', eventDate: today }), today)).toBe(false);
+    expect(canConvertOffer(offer({ status: 'ACCEPTED', eventDate: today, gigId: 'g' }), today)).toBe(false);
   });
 });

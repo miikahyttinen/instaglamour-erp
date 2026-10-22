@@ -99,6 +99,7 @@ const fi = {
     BUDGET_NOT_EMPTY: 'Vuodelle on jo budjettilukuja.',
     CLIENT_IN_USE: 'Asiakas on käytössä: siihen on liitetty keikkoja tai tarjouksia.',
     ALREADY_CONVERTED: 'Tarjouksesta on jo tehty keikka.',
+    OFFER_NOT_CONVERTIBLE: 'Vain hyväksytyn tarjouksen, jonka päivä ei ole mennyt, voi muuttaa keikaksi.',
     CANNOT_REMOVE_SELF: 'Et voi poistaa omaa osakkuuttasi.',
     LAST_PARTNER: 'Viimeistä osakasta ei voi poistaa.',
     COST_LINE_ON_PURCHASE_ORDER: 'Rivi on ostotilauksella. Muuta ostotilausta ensin.',

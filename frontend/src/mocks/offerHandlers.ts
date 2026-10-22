@@ -22,6 +22,7 @@ import {
   offerStats,
   offerYearSummary,
   regenerateLink,
+  statusOf,
   toOfferDetail,
   toOfferSummary,
   updateOffer,
@@ -40,6 +41,11 @@ const notFound = () => errorResponse(404, 'NOT_FOUND', 'Offer not found');
 /** Deleted offers are read-only: only GET, history and restore work. */
 const isDeleted = () => errorResponse(409, 'INVALID_STATUS_TRANSITION', 'Offer is deleted');
 const alreadyConverted = () => errorResponse(409, 'ALREADY_CONVERTED', 'Offer already has a gig');
+/** BR-109: only ACCEPTED offers with event date today or later (checked after ALREADY_CONVERTED). */
+const notConvertible = (offer: MockOffer) =>
+  statusOf(offer.disposition) !== 'ACCEPTED' || offer.eventDate < todayIso()
+    ? errorResponse(409, 'OFFER_NOT_CONVERTIBLE', 'Offer is not accepted or its date has passed')
+    : null;
 const isActivePartner = (id: string) => db.partners.some((p) => p.id === id && p.active !== false);
 const LINEUP_MAX_ITEMS = 100;
 const detail = (offer: MockOffer, status = 200) =>
@@ -248,6 +254,8 @@ export const offerHandlers = [
     if (!offer) return notFound();
     if (offer.deletedAt) return isDeleted();
     if (offer.gigId) return alreadyConverted();
+    const blocked = notConvertible(offer);
+    if (blocked) return blocked;
     const draft: GigCreate = gigInputFromOffer(offer, { isActive: isActivePartner, callerId: me.id });
     // A deleted client can't be linked (UC-027): the draft leaves it empty.
     if (!db.gigs.clients.some((c) => c.id === draft.clientId && c.deletedAt === null)) draft.clientId = null;
@@ -262,6 +270,8 @@ export const offerHandlers = [
     if (!offer) return notFound();
     if (offer.deletedAt) return isDeleted();
     if (offer.gigId) return alreadyConverted();
+    const blocked = notConvertible(offer);
+    if (blocked) return blocked;
     const text = await request.text();
     let input: NewGigInput = gigInputFromOffer(offer);
     if (text.trim() !== '') {

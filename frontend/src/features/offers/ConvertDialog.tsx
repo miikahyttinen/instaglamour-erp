@@ -83,7 +83,7 @@ export function ConvertDialog({ offer, onClose, onConverted }: Props) {
     retry: false,
     refetchOnWindowFocus: false,
   });
-  const alreadyConverted = isApiError(draft.error) && draft.error.code === 'ALREADY_CONVERTED';
+  const blocked = blockingCode(draft.error);
 
   return (
     <Dialog title={t('convert.title')} onClose={onClose}>
@@ -92,8 +92,8 @@ export function ConvertDialog({ offer, onClose, onConverted }: Props) {
       ) : (
         <>
           {draft.isPending && <p className="muted">{t('app.loading')}</p>}
-          {alreadyConverted && <AlreadyConverted offerId={offer.id} />}
-          {draft.isError && !alreadyConverted && (
+          {blocked && <ConvertBlocked offerId={offer.id} code={blocked} />}
+          {draft.isError && !blocked && (
             <Notice tone="danger" role="alert">
               <p>{t('convert.loadError')}</p>
               <p>{apiErrorMessage(t, draft.error)}</p>
@@ -108,24 +108,36 @@ export function ConvertDialog({ offer, onClose, onConverted }: Props) {
   );
 }
 
-/** 409 ALREADY_CONVERTED (UC-031 E1): message + link to the existing gig (from the refetched offer). */
-function AlreadyConverted({ offerId }: { offerId: Id }) {
+type BlockingCode = 'ALREADY_CONVERTED' | 'OFFER_NOT_CONVERTIBLE';
+
+/** 409s that mean the offer can't be converted (any more): the modal shows a notice, no retry. */
+function blockingCode(error: unknown): BlockingCode | null {
+  if (!isApiError(error)) return null;
+  return error.code === 'ALREADY_CONVERTED' || error.code === 'OFFER_NOT_CONVERTIBLE' ? error.code : null;
+}
+
+/**
+ * 409 ALREADY_CONVERTED (UC-031 E1): message + link to the existing gig (from the refetched offer).
+ * 409 OFFER_NOT_CONVERTIBLE (BR-109): the offer is no longer accepted / its date has passed.
+ * Both refetch the offers so the row / page drop the Convert button.
+ */
+function ConvertBlocked({ offerId, code }: { offerId: Id; code: BlockingCode }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const offer = useOffer(offerId);
   useEffect(() => {
-    // Converted elsewhere: refresh the offer (for the link; the row / page show "Keikka →" too).
+    // Changed elsewhere: refresh the offer (for the link; the row / page update too).
     // Not the draft itself: refetching it would remount this notice and loop.
     void queryClient.invalidateQueries({
       queryKey: offerKeys.all,
       predicate: (query) => query.queryKey.at(-1) !== DRAFT,
     });
   }, [queryClient]);
-  const gigId = offer.data?.gigId ?? null;
+  const gigId = code === 'ALREADY_CONVERTED' ? (offer.data?.gigId ?? null) : null;
   return (
     <Notice tone="warn" role="alert">
       <p>
-        {t('convert.alreadyConverted')}
+        {code === 'ALREADY_CONVERTED' ? t('convert.alreadyConverted') : t('errors.OFFER_NOT_CONVERTIBLE')}
         {gigId && (
           <>
             {' '}
@@ -176,16 +188,16 @@ function ConvertForm({
       setErrors(fieldErrors);
     },
   });
-  const alreadyConverted = isApiError(convert.error) && convert.error.code === 'ALREADY_CONVERTED';
+  const blocked = blockingCode(convert.error);
   // A 400 on a field the modal doesn't show (or a non-field error) goes to the notice.
   const unshownError =
     convert.isError &&
-    !alreadyConverted &&
+    !blocked &&
     Object.keys(apiFieldErrors(t, convert.error)).every((field) => !FIELD_TO_CONTROL[field]);
 
   const onSubmit = (e: FormEvent) => {
     e.preventDefault();
-    if (submitting.current || alreadyConverted) return;
+    if (submitting.current || blocked) return;
     const price = parseMoneyField(form.price, lang, true);
     const lineupName = form.lineupName.trim();
     const codes: Partial<Record<keyof FormState, FieldCode>> = {};
@@ -266,14 +278,14 @@ function ConvertForm({
           )}
         </Field>
       </div>
-      {alreadyConverted && <AlreadyConverted offerId={offer.id} />}
+      {blocked && <ConvertBlocked offerId={offer.id} code={blocked} />}
       {unshownError && (
         <Notice tone="danger" role="alert">
           <p>{apiErrorMessage(t, convert.error)}</p>
         </Notice>
       )}
       <div className="form-actions">
-        <Button type="submit" variant="primary" disabled={convert.isPending || alreadyConverted}>
+        <Button type="submit" variant="primary" disabled={convert.isPending || blocked !== null}>
           {convert.isPending ? t('convert.converting') : t('convert.button')}
         </Button>
         <Button onClick={onClose}>{t('common.cancel')}</Button>

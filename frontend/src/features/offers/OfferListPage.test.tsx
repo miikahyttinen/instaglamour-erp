@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { formatMoneyWhole } from '../../lib/format';
+import { formatDate, formatMoneyWhole } from '../../lib/format';
 import { DESKTOP_QUERY, TABLET_QUERY } from '../../lib/useMediaQuery';
 import { db } from '../../mocks/data';
 import { addMockClient, partnerB, TEST_YEAR } from '../../test/gigFixtures';
@@ -64,13 +64,33 @@ describe('offer list (UC-028)', () => {
     ]);
     // Column priorities (TASK-147): 2 hidden below 1100 px, 3 below 1400 px of table width.
     expect(within(table()).getAllByRole('columnheader').map((h) => h.getAttribute('data-priority'))).toEqual([
-      '1', '1', '2', '1', '3', '1', '1', '2', '3', '3', '2', '2', '1',
+      '1', '1', '2', '1', '1', '1', '1', '2', '3', '3', '2', '2', '1',
     ]);
-    expect(eventNames()).toEqual(['Event A', 'Event W', 'Event L', 'Event B']);
-    expect(bodyRows()[0]).toHaveTextContent('Venue X, City Y');
+    // Default sort (UC-028 change 2026-10-22): newest created first.
+    expect(eventNames()).toEqual(['Event L', 'Event W', 'Event A', 'Event B']);
+    expect(bodyRows()[2]).toHaveTextContent('Venue X, City Y');
+    expect(within(table()).getByRole('columnheader', { name: /Luotu/ })).toHaveAttribute('aria-sort', 'descending');
+    // Created date formatted like the other dates (local date of the creation time).
+    const created = db.offers.offers.find((o) => o.eventName === 'Event L')!.createdAt;
+    expect(bodyRows()[0]).toHaveTextContent(formatDate(created, 'fi'));
+    // Phone cards show it too (not hidden below 600 px).
+    expect(bodyRows()[0]!.querySelector('td[data-label="Luotu"]')).not.toHaveClass('hide-phone');
+  });
+
+  it('a sort in the URL overrides the default (newest created first)', async () => {
+    addMockOffer({ clientId, eventName: 'Event B', eventDate: `${TEST_YEAR}-09-01` });
+    addMockOffer({ clientId, eventName: 'Event A', eventDate: `${TEST_YEAR}-03-01` });
+    addMockOffer({ clientId, eventName: 'Event C', eventDate: `${TEST_YEAR}-05-01` });
+    renderApp('/offers?sort=eventDate&dir=asc');
+    await screen.findByRole('table', { name: 'Tarjoukset' });
+    expect(eventNames()).toEqual(['Event A', 'Event C', 'Event B']);
     expect(within(table()).getByRole('columnheader', { name: /Tapahtumapäivä/ })).toHaveAttribute(
       'aria-sort',
       'ascending',
+    );
+    expect(within(table()).getByRole('columnheader', { name: /Luotu/ })).not.toHaveAttribute(
+      'aria-sort',
+      'descending',
     );
   });
 
@@ -121,6 +141,8 @@ describe('offer list (UC-028)', () => {
     const { user } = renderApp('/offers');
     await screen.findByRole('table', { name: 'Tarjoukset' });
     expect(eventNames()).toHaveLength(3);
+    // A won offer whose date has passed can't be converted (BR-109): no button, "–".
+    expect(screen.queryByRole('button', { name: /^Muuta keikaksi:/ })).not.toBeInTheDocument();
     // No filter dropdowns above the table any more.
     expect(screen.queryByRole('combobox', { name: 'Tila' })).not.toBeInTheDocument();
     for (const column of ['Asiakas', 'Paikka / kaupunki', 'Tila', 'Myyjä', 'Lähde', 'Tapahtumatyyppi', 'Lopputulos', 'Keikka']) {
@@ -152,7 +174,7 @@ describe('offer list (UC-028)', () => {
     popover = screen.getByRole('dialog', { name: 'Suodata: Myyjä' });
     await user.click(within(popover).getByRole('checkbox', { name: 'Partner B' }));
     await user.click(within(popover).getByRole('button', { name: 'OK' }));
-    expect(eventNames()).toEqual(['Expired one', 'Lost one']);
+    expect(eventNames()).toEqual(['Lost one', 'Expired one']);
     await user.click(within(table()).getByRole('button', { name: 'Suodata: Lopputulos' }));
     popover = screen.getByRole('dialog', { name: 'Suodata: Lopputulos' });
     // Only the values left by the other filters are offered (Excel).
@@ -211,7 +233,13 @@ describe('offer list (UC-028)', () => {
   });
 
   it('converts to a gig in the modal; the row then links to the gig (UC-031)', async () => {
-    const offer = addMockOffer({ clientId, eventName: 'Event 1', city: 'City Y', priceCents: 120000 });
+    const offer = addMockOffer({
+      clientId,
+      eventName: 'Event 1',
+      city: 'City Y',
+      priceCents: 120000,
+      disposition: 'WON',
+    });
     const { user } = renderApp('/offers');
     await screen.findByRole('table', { name: 'Tarjoukset' });
     await user.click(screen.getByRole('button', { name: 'Muuta keikaksi: Event 1' }));
@@ -227,6 +255,32 @@ describe('offer list (UC-028)', () => {
     expect(screen.getByRole('link', { name: 'Avaa keikka' })).toHaveAttribute('href', `/gigs/${offer.gigId}`);
     expect(db.gigs.gigs.filter((g) => g.offerId === offer.id)).toHaveLength(1);
     expect(bodyRows()[0]).toHaveTextContent('Hyväksytty');
+  });
+
+  it('shows Convert only for accepted, upcoming offers without a gig; Voitettu inline shows it at once (BR-109)', async () => {
+    addMockOffer({ clientId, eventName: 'Pending 1' });
+    addMockOffer({ clientId, eventName: 'Lost 1', disposition: 'LOST_PRICE' });
+    addMockOffer({ clientId, eventName: 'Won 1', disposition: 'WON' });
+    const converted = addMockOffer({ clientId, eventName: 'Converted 1', disposition: 'WON' });
+    converted.gigId = '00000000-0000-4000-8000-00000000ffff';
+    const { user } = renderApp('/offers');
+    await screen.findByRole('table', { name: 'Tarjoukset' });
+    const gigCell = (event: string) => {
+      const row = bodyRows().find((r) => within(r).queryByRole('link', { name: event }))!;
+      return row.querySelector<HTMLElement>('td[data-label="Keikka"]')!;
+    };
+    expect(within(gigCell('Won 1')).getByRole('button', { name: 'Muuta keikaksi: Won 1' })).toBeInTheDocument();
+    expect(gigCell('Pending 1')).toHaveTextContent(/^–$/);
+    expect(gigCell('Lost 1')).toHaveTextContent(/^–$/);
+    expect(within(gigCell('Converted 1')).getByRole('link', { name: 'Keikka: Converted 1' })).toHaveTextContent(
+      'Keikka →',
+    );
+    expect(screen.getAllByRole('button', { name: /^Muuta keikaksi:/ })).toHaveLength(1);
+
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Lopputulos: Pending 1' }), 'Voitettu');
+    expect(
+      await within(gigCell('Pending 1')).findByRole('button', { name: 'Muuta keikaksi: Pending 1' }),
+    ).toBeInTheDocument();
   });
 
   it('copies the absolute public link', async () => {

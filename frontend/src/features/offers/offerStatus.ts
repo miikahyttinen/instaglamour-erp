@@ -1,4 +1,5 @@
 import type { OfferSummary } from '../../api/types';
+import { todayIso } from '../../lib/format';
 
 /** Status as shown in the list: open, expired (open but past its date), accepted, rejected. */
 export type OfferDisplayStatus = 'OPEN' | 'EXPIRED' | 'ACCEPTED' | 'REJECTED';
@@ -13,4 +14,16 @@ export function offerDisplayStatus(offer: Pick<OfferSummary, 'status' | 'expired
 /** Ties in the offer table (and the order without a sort): event date, then creation time. */
 export function offerTieBreak(a: OfferSummary, b: OfferSummary): number {
   return a.eventDate.localeCompare(b.eventDate) || a.createdAt.localeCompare(b.createdAt);
+}
+
+/**
+ * BR-109: an offer can be converted to a gig only when it is accepted (disposition WON), its
+ * event date is today or later (local date) and it has no gig yet. The server checks the same
+ * (409 OFFER_NOT_CONVERTIBLE / ALREADY_CONVERTED).
+ */
+export function canConvertOffer(
+  offer: Pick<OfferSummary, 'status' | 'eventDate' | 'gigId'>,
+  today: string = todayIso(),
+): boolean {
+  return offer.status === 'ACCEPTED' && offer.gigId === null && offer.eventDate >= today;
 }

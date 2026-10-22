@@ -97,6 +97,7 @@ const en: Resources = {
     BUDGET_NOT_EMPTY: 'The year already has budget numbers.',
     CLIENT_IN_USE: 'The client is in use: gigs or offers are linked to it.',
     ALREADY_CONVERTED: 'A gig has already been made from this offer.',
+    OFFER_NOT_CONVERTIBLE: 'Only an accepted offer whose date has not passed can be converted to a gig.',
     CANNOT_REMOVE_SELF: 'You cannot remove your own partner status.',
     LAST_PARTNER: 'The last partner cannot be removed.',
     COST_LINE_ON_PURCHASE_ORDER: 'The line is on a purchase order. Change the purchase order first.',

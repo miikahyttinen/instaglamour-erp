@@ -11,7 +11,7 @@ import { Notice } from '../../components/Notice';
 import { StatusTag } from '../../components/StatusTag';
 import { apiErrorMessage, offerStatusLabel } from '../../i18n/labels';
 import type { CopyResult } from './offerOptions';
-import { offerDisplayStatus } from './offerStatus';
+import { canConvertOffer, offerDisplayStatus } from './offerStatus';
 
 const TONE = { OPEN: 'info', EXPIRED: 'warn', ACCEPTED: 'ok', REJECTED: 'danger' } as const;
 
@@ -122,8 +122,10 @@ export function ConfirmDialog<T>({
 }
 
 /**
- * Gig column / action: the gig link once converted, else Convert (UC-031). `size="md"` is the
- * page-head action (full-size button look); the table uses the small one.
+ * Gig column / action: the gig link once converted, else Convert (UC-031) when the offer can be
+ * converted (BR-109: accepted, event date today or later). Otherwise nothing: "–" in the table,
+ * no action on the offer page. `size="md"` is the page-head action (full-size button look); the
+ * table uses the small one.
  */
 export function GigCell({
   offer,
@@ -146,6 +148,7 @@ export function GigCell({
       </Link>
     );
   }
+  if (!canConvertOffer(offer)) return size === 'md' ? null : <>–</>;
   // UC-031: opens the convert modal (ConvertDialog).
   return (
     <Button size={size} onClick={onConvert} aria-label={t('convert.buttonLabel', { event: offer.eventName })}>
