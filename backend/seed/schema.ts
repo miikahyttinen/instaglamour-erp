@@ -50,7 +50,7 @@ const costLine = z.strictObject({
   paidBy: email.optional(),
 });
 
-const gig = z.strictObject({
+const event = z.strictObject({
   startDate: isoDate,
   endDate: isoDate.optional(),
   status: z.enum(['SOLD', 'CANCELLED']).default('SOLD'),
@@ -171,7 +171,7 @@ export const seedSchema = z.strictObject({
   settings: z.record(z.string(), z.union([cents, z.string().max(5000)])),
   budgetCategories: z.array(budgetCategory).default([]),
   clients: z.array(z.strictObject({ name, notes: z.string().max(5000).optional() })).default([]),
-  gigs: z.array(gig).default([]),
+  events: z.array(event).default([]),
   offers: z.array(offer).default([]),
   references: z.array(reference).default([]),
   tasks: z
@@ -224,8 +224,27 @@ function duplicates(values: string[]): string[] {
   return [...dup];
 }
 
-export function validateSeed(input: unknown): ValidationResult {
-  const parsed = seedSchema.safeParse(input);
+/**
+ * Legacy alias (TASK-032, Gig → Event): files written before the rename have a top-level `gigs`
+ * list. It is read as `events`; having both is an error. Other inputs pass through unchanged.
+ */
+export const LEGACY_EVENTS_KEY = 'gigs';
+
+function normalizeLegacyKeys(input: unknown): { input: unknown; errors: string[] } {
+  if (typeof input !== 'object' || input === null || Array.isArray(input) || !Object.hasOwn(input, LEGACY_EVENTS_KEY)) {
+    return { input, errors: [] };
+  }
+  const { [LEGACY_EVENTS_KEY]: legacy, ...rest } = input as Record<string, unknown>;
+  if (Object.hasOwn(rest, 'events')) {
+    return { input, errors: [`${LEGACY_EVENTS_KEY}: legacy name of events; use only one of "events" and "${LEGACY_EVENTS_KEY}"`] };
+  }
+  return { input: { ...rest, events: legacy }, errors: [] };
+}
+
+export function validateSeed(rawInput: unknown): ValidationResult {
+  const normalized = normalizeLegacyKeys(rawInput);
+  if (normalized.errors.length > 0) return { ok: false, errors: normalized.errors };
+  const parsed = seedSchema.safeParse(normalized.input);
   if (!parsed.success) {
     return {
       ok: false,
@@ -265,8 +284,8 @@ export function validateSeed(input: unknown): ValidationResult {
     }
   }
 
-  data.gigs.forEach((g, i) => {
-    const at = `gigs.${i}`;
+  data.events.forEach((g, i) => {
+    const at = `events.${i}`;
     if (g.endDate && g.endDate < g.startDate) errors.push(`${at}.endDate: before startDate`);
     if (!partnerEmails.has(g.seller)) errors.push(`${at}.seller: unknown partner ${g.seller}`);
     if (!partnerEmails.has(g.producer)) errors.push(`${at}.producer: unknown partner ${g.producer}`);

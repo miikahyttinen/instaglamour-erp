@@ -1,18 +1,18 @@
-/** Gig endpoints (UC-002…UC-004, UC-007, UC-009, UC-010, UC-012, UC-013, UC-025). Synthetic data only. */
+/** Event endpoints (UC-002…UC-004, UC-007, UC-009, UC-010, UC-012, UC-013, UC-025). Synthetic data only. */
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SETTING_KEYS } from '../src/domain/enums.js';
 import { closeTestDb, login, resetDb, testDb } from './helpers.js';
 import {
   call,
-  createGig,
+  createEvent,
   FEES,
-  gigBody,
+  eventBody,
   history,
   setSetting,
   startSession,
   UNKNOWN_ID,
   type Session,
-} from './gigFixtures.js';
+} from './eventFixtures.js';
 
 let s: Session;
 
@@ -26,15 +26,15 @@ afterEach(async () => {
 });
 afterAll(closeTestDb);
 
-const lineTypes = (gig: { costLines: { type: string }[] }) => gig.costLines.map((l) => l.type);
+const lineTypes = (event: { costLines: { type: string }[] }) => event.costLines.map((l) => l.type);
 
-describe('POST /api/gigs', () => {
-  it('creates a SOLD gig with template lines and internal lines (BR-020, BR-021)', async () => {
+describe('POST /api/events', () => {
+  it('creates a SOLD event with template lines and internal lines (BR-020, BR-021)', async () => {
     const { world } = s;
-    const res = await call(s, 'POST', '/api/gigs', gigBody(world, { additionalSalesCents: 20000, additionalSalesDescription: 'Extra set' }));
+    const res = await call(s, 'POST', '/api/events', eventBody(world, { additionalSalesCents: 20000, additionalSalesDescription: 'Extra set' }));
     expect(res.statusCode).toBe(201);
-    const gig = res.json();
-    expect(gig).toMatchObject({
+    const event = res.json();
+    expect(event).toMatchObject({
       id: expect.any(String),
       startDate: '2026-05-01',
       endDate: null,
@@ -63,11 +63,11 @@ describe('POST /api/gigs', () => {
       deletedAt: null,
       attachments: [],
     });
-    expect(lineTypes(gig)).toEqual(['VOC', 'BASS', 'OFFICE', 'SALES', 'PRODUCTION']);
-    const [voc, bass, office, sales, production] = gig.costLines;
+    expect(lineTypes(event)).toEqual(['VOC', 'BASS', 'OFFICE', 'SALES', 'PRODUCTION']);
+    const [voc, bass, office, sales, production] = event.costLines;
     expect(voc).toEqual({
       id: expect.any(String),
-      gigId: gig.id,
+      eventId: event.id,
       type: 'VOC',
       personId: null,
       description: null,
@@ -84,39 +84,39 @@ describe('POST /api/gigs', () => {
     expect(sales).toMatchObject({ budgetedCents: FEES.sales, personId: world.a.personId, joinsLoadIn: null });
     expect(production).toMatchObject({ budgetedCents: FEES.production, personId: world.b.personId, joinsLoadIn: null });
 
-    expect(await history(s, gig.id)).toEqual([
+    expect(await history(s, event.id)).toEqual([
       expect.objectContaining({ type: 'CREATED', partnerId: world.a.id, reason: null, details: {} }),
     ]);
   });
 
   it('keeps line order stable on reload (creation order)', async () => {
-    const gig = await createGig(s);
-    const again = (await call(s, 'GET', `/api/gigs/${gig.id}`)).json();
-    expect(again.costLines.map((l: { id: string }) => l.id)).toEqual(gig.costLines.map((l: { id: string }) => l.id));
+    const event = await createEvent(s);
+    const again = (await call(s, 'GET', `/api/events/${event.id}`)).json();
+    expect(again.costLines.map((l: { id: string }) => l.id)).toEqual(event.costLines.map((l: { id: string }) => l.id));
   });
 
   it('uses current settings for the internal lines', async () => {
     await setSetting(SETTING_KEYS.officeDefault, 20000);
-    const gig = await createGig(s);
-    expect(gig.costLines.find((l: { type: string }) => l.type === 'OFFICE').budgetedCents).toBe(20000);
+    const event = await createEvent(s);
+    expect(event.costLines.find((l: { type: string }) => l.type === 'OFFICE').budgetedCents).toBe(20000);
   });
 
   it('custom lineup gets only Office, Sales and Production (UC-002 A1)', async () => {
-    const gig = await createGig(s, { lineupTemplateId: null, lineupName: 'Custom Band' });
-    expect(gig.lineupTemplateId).toBeNull();
-    expect(gig.lineupName).toBe('Custom Band');
-    expect(lineTypes(gig)).toEqual(['OFFICE', 'SALES', 'PRODUCTION']);
-    expect(gig.notFullyStaffed).toBe(false);
+    const event = await createEvent(s, { lineupTemplateId: null, lineupName: 'Custom Band' });
+    expect(event.lineupTemplateId).toBeNull();
+    expect(event.lineupName).toBe('Custom Band');
+    expect(lineTypes(event)).toEqual(['OFFICE', 'SALES', 'PRODUCTION']);
+    expect(event.notFullyStaffed).toBe(false);
   });
 
   it('keeps an explicit lineup name with a template', async () => {
-    const gig = await createGig(s, { lineupName: 'Template A Plus' });
-    expect(gig.lineupName).toBe('Template A Plus');
-    expect(lineTypes(gig)).toHaveLength(5);
+    const event = await createEvent(s, { lineupName: 'Template A Plus' });
+    expect(event.lineupName).toBe('Template A Plus');
+    expect(lineTypes(event)).toHaveLength(5);
   });
 
-  it('accepts a multi-day gig and minimal input', async () => {
-    const res = await call(s, 'POST', '/api/gigs', {
+  it('accepts a multi-day event and minimal input', async () => {
+    const res = await call(s, 'POST', '/api/events', {
       startDate: '2026-07-01',
       endDate: '2026-07-02',
       lineupName: 'Custom',
@@ -168,57 +168,57 @@ describe('POST /api/gigs', () => {
     [{ lineupTemplateId: UNKNOWN_ID }, { lineupTemplateId: 'UNKNOWN_REFERENCE' }],
     [{ lineupTemplateId: null, lineupName: null }, { lineupName: 'REQUIRED' }],
   ])('rejects %j', async (overrides, fields) => {
-    const res = await call(s, 'POST', '/api/gigs', gigBody(s.world, overrides));
+    const res = await call(s, 'POST', '/api/events', eventBody(s.world, overrides));
     expect(res.statusCode).toBe(400);
     expect(res.json()).toEqual({ error: { code: 'VALIDATION_ERROR', message: expect.any(String), fields } });
-    expect(await testDb().gig.count()).toBe(0);
+    expect(await testDb().event.count()).toBe(0);
   });
 
   it('returns 401 without a session', async () => {
-    const res = await s.app.inject({ method: 'POST', url: '/api/gigs', payload: gigBody(s.world) });
+    const res = await s.app.inject({ method: 'POST', url: '/api/events', payload: eventBody(s.world) });
     expect(res.statusCode).toBe(401);
   });
 });
 
-describe('GET /api/gigs/{id}', () => {
-  it('returns the gig detail', async () => {
-    const gig = await createGig(s);
-    const res = await call(s, 'GET', `/api/gigs/${gig.id}`);
+describe('GET /api/events/{id}', () => {
+  it('returns the event detail', async () => {
+    const event = await createEvent(s);
+    const res = await call(s, 'GET', `/api/events/${event.id}`);
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toEqual(gig);
+    expect(res.json()).toEqual(event);
   });
 
-  it('returns deleted gigs (read-only) with deletedAt', async () => {
-    const gig = await createGig(s);
-    await call(s, 'POST', `/api/gigs/${gig.id}/delete`, { reason: 'Duplicate' });
-    const res = await call(s, 'GET', `/api/gigs/${gig.id}`);
+  it('returns deleted events (read-only) with deletedAt', async () => {
+    const event = await createEvent(s);
+    await call(s, 'POST', `/api/events/${event.id}/delete`, { reason: 'Duplicate' });
+    const res = await call(s, 'GET', `/api/events/${event.id}`);
     expect(res.statusCode).toBe(200);
     expect(res.json().deletedAt).toEqual(expect.any(String));
   });
 
   it.each([UNKNOWN_ID, 'nope'])('404 for unknown id %s', async (id) => {
-    const res = await call(s, 'GET', `/api/gigs/${id}`);
+    const res = await call(s, 'GET', `/api/events/${id}`);
     expect(res.statusCode).toBe(404);
     expect(res.json().error.code).toBe('NOT_FOUND');
   });
 });
 
 describe('played (BR-010)', () => {
-  it('is true for a SOLD gig that started before today (Helsinki)', async () => {
+  it('is true for a SOLD event that started before today (Helsinki)', async () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date('2026-06-14T21:30:00.000Z')); // already 2026-06-15 in Helsinki
-    const past = await createGig(s, { startDate: '2026-06-14' });
-    const today = await createGig(s, { startDate: '2026-06-15' });
+    const past = await createEvent(s, { startDate: '2026-06-14' });
+    const today = await createEvent(s, { startDate: '2026-06-15' });
     expect(past.played).toBe(true);
     expect(today.played).toBe(false);
-    await call(s, 'POST', `/api/gigs/${past.id}/cancel`, { reason: 'Client cancelled' });
-    expect((await call(s, 'GET', `/api/gigs/${past.id}`)).json().played).toBe(false);
+    await call(s, 'POST', `/api/events/${past.id}/cancel`, { reason: 'Client cancelled' });
+    expect((await call(s, 'GET', `/api/events/${past.id}`)).json().played).toBe(false);
   });
 });
 
-describe('GET /api/gigs', () => {
-  const list = (query: string) => call(s, 'GET', `/api/gigs?${query}`);
-  const venues = (body: { gigs: { venue: string }[] }) => body.gigs.map((g) => g.venue);
+describe('GET /api/events', () => {
+  const list = (query: string) => call(s, 'GET', `/api/events?${query}`);
+  const venues = (body: { events: { venue: string }[] }) => body.events.map((g) => g.venue);
 
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['Date'] });
@@ -227,35 +227,35 @@ describe('GET /api/gigs', () => {
 
   async function seedYear() {
     const { world } = s;
-    const g1 = await createGig(s, { startDate: '2026-03-01', venue: 'Venue A', priceCents: 100000 });
-    const g2 = await createGig(s, { startDate: '2026-08-01', venue: 'Venue B', priceCents: 200000, sellerId: world.b.id, producerId: world.c.id, notes: 'Rooftop party' });
-    const g3 = await createGig(s, { startDate: '2026-06-15', venue: 'Venue C', priceCents: 100000, lineupTemplateId: null, lineupName: 'Duo Night' });
-    const cancelled = await createGig(s, { startDate: '2026-04-01', venue: 'Venue D', priceCents: 100000 });
-    await call(s, 'POST', `/api/gigs/${cancelled.id}/cancel`, { reason: 'Client cancelled' });
-    await call(s, 'PATCH', `/api/gigs/${cancelled.id}`, { priceCents: 20000, notes: 'Cancellation fee billed' });
-    const deleted = await createGig(s, { startDate: '2026-05-01', venue: 'Venue E', priceCents: 900000 });
-    await call(s, 'POST', `/api/gigs/${deleted.id}/delete`, { reason: 'Duplicate' });
-    await createGig(s, { startDate: '2027-01-10', venue: 'Venue F' });
+    const g1 = await createEvent(s, { startDate: '2026-03-01', venue: 'Venue A', priceCents: 100000 });
+    const g2 = await createEvent(s, { startDate: '2026-08-01', venue: 'Venue B', priceCents: 200000, sellerId: world.b.id, producerId: world.c.id, notes: 'Rooftop party' });
+    const g3 = await createEvent(s, { startDate: '2026-06-15', venue: 'Venue C', priceCents: 100000, lineupTemplateId: null, lineupName: 'Duo Night' });
+    const cancelled = await createEvent(s, { startDate: '2026-04-01', venue: 'Venue D', priceCents: 100000 });
+    await call(s, 'POST', `/api/events/${cancelled.id}/cancel`, { reason: 'Client cancelled' });
+    await call(s, 'PATCH', `/api/events/${cancelled.id}`, { priceCents: 20000, notes: 'Cancellation fee billed' });
+    const deleted = await createEvent(s, { startDate: '2026-05-01', venue: 'Venue E', priceCents: 900000 });
+    await call(s, 'POST', `/api/events/${deleted.id}/delete`, { reason: 'Duplicate' });
+    await createEvent(s, { startDate: '2027-01-10', venue: 'Venue F' });
     return { g1, g2, g3, cancelled, deleted };
   }
 
-  it('defaults to SOLD, non-deleted gigs of the year sorted by start date', async () => {
+  it('defaults to SOLD, non-deleted events of the year sorted by start date', async () => {
     await seedYear();
     const res = await list('year=2026');
     expect(res.statusCode).toBe(200);
     expect(venues(res.json())).toEqual(['Venue A', 'Venue C', 'Venue B']);
-    const [a, c] = res.json().gigs;
+    const [a, c] = res.json().events;
     expect(a.played).toBe(true);
     expect(c.played).toBe(false); // starts today
     expect(a).not.toHaveProperty('costLines');
   });
 
-  it('yearSummary ignores filters, includes cancelled gigs and excludes deleted ones (BR-082)', async () => {
+  it('yearSummary ignores filters, includes cancelled events and excludes deleted ones (BR-082)', async () => {
     await seedYear();
     const expected = {
-      gigCount: 3,
+      eventCount: 3,
       cancelledCount: 1,
-      soldGigsSumCents: 100000 + 200000 + 100000 + 20000,
+      soldEventsSumCents: 100000 + 200000 + 100000 + 20000,
       budgetedCostsCents: 3 * 80000 + 30000,
       actualCostsCents: 0,
       marginBudgetCents: 420000 - 270000,
@@ -264,13 +264,13 @@ describe('GET /api/gigs', () => {
     for (const q of ['year=2026', 'year=2026&status=CANCELLED', 'year=2026&q=nothing', 'year=2026&deleted=true&status=ALL']) {
       expect((await list(q)).json().yearSummary).toEqual(expected);
     }
-    expect((await list('year=2027')).json().yearSummary).toMatchObject({ gigCount: 1, cancelledCount: 0, soldGigsSumCents: 100000 });
+    expect((await list('year=2027')).json().yearSummary).toMatchObject({ eventCount: 1, cancelledCount: 0, soldEventsSumCents: 100000 });
     expect((await list('year=2025')).json()).toEqual({
-      gigs: [],
+      events: [],
       yearSummary: {
-        gigCount: 0,
+        eventCount: 0,
         cancelledCount: 0,
-        soldGigsSumCents: 0,
+        soldEventsSumCents: 0,
         budgetedCostsCents: 0,
         actualCostsCents: 0,
         marginBudgetCents: 0,
@@ -293,11 +293,11 @@ describe('GET /api/gigs', () => {
     expect(venues((await list('year=2026&q=duo')).json())).toEqual(['Venue C']); // lineup name
     expect(venues((await list('year=2026&q=venue%20a')).json())).toEqual(['Venue A']); // venue
     expect(venues((await list('year=2026&deleted=true')).json())).toEqual(['Venue E']);
-    expect((await list('year=2026&deleted=true')).json().gigs[0].deletedAt).toEqual(expect.any(String));
+    expect((await list('year=2026&deleted=true')).json().events[0].deletedAt).toEqual(expect.any(String));
   });
 
   it('uses the start date year (BR-080)', async () => {
-    await createGig(s, { startDate: '2026-12-31', endDate: '2027-01-01', venue: 'Venue NYE' });
+    await createEvent(s, { startDate: '2026-12-31', endDate: '2027-01-01', venue: 'Venue NYE' });
     expect(venues((await list('year=2026')).json())).toEqual(['Venue NYE']);
     expect(venues((await list('year=2027')).json())).toEqual([]);
   });
@@ -315,14 +315,14 @@ describe('GET /api/gigs', () => {
   });
 
   it('returns 401 without a session', async () => {
-    expect((await s.app.inject({ method: 'GET', url: '/api/gigs?year=2026' })).statusCode).toBe(401);
+    expect((await s.app.inject({ method: 'GET', url: '/api/events?year=2026' })).statusCode).toBe(401);
   });
 });
 
-describe('PATCH /api/gigs/{id}', () => {
+describe('PATCH /api/events/{id}', () => {
   it('updates fields and logs one UPDATED with every change (UC-004, UC-007)', async () => {
-    const gig = await createGig(s);
-    const res = await call(s, 'PATCH', `/api/gigs/${gig.id}`, {
+    const event = await createEvent(s);
+    const res = await call(s, 'PATCH', `/api/events/${event.id}`, {
       venue: 'Venue Y',
       lineupName: 'Template A Big',
       technicalSetup: 'SET_A',
@@ -334,7 +334,7 @@ describe('PATCH /api/gigs/{id}', () => {
       notes: 'Note 1',
     });
     expect(res.statusCode).toBe(200);
-    const { gig: updated, movedCostLineIds } = res.json();
+    const { event: updated, movedCostLineIds } = res.json();
     expect(movedCostLineIds).toEqual([]);
     expect(updated).toMatchObject({
       venue: 'Venue Y',
@@ -348,7 +348,7 @@ describe('PATCH /api/gigs/{id}', () => {
       marginBudgetCents: 130000,
       notes: 'Note 1',
     });
-    const events = await history(s, gig.id);
+    const events = await history(s, event.id);
     expect(events.map((e) => e.type)).toEqual(['UPDATED', 'CREATED']);
     expect(events[0]!.details).toEqual({
       changes: [
@@ -367,36 +367,36 @@ describe('PATCH /api/gigs/{id}', () => {
   });
 
   it('logs only changed fields and nothing when nothing changed', async () => {
-    const gig = await createGig(s);
-    await call(s, 'PATCH', `/api/gigs/${gig.id}`, { venue: 'Venue X', priceCents: 200000 });
-    const res = await call(s, 'PATCH', `/api/gigs/${gig.id}`, { venue: 'Venue X' });
+    const event = await createEvent(s);
+    await call(s, 'PATCH', `/api/events/${event.id}`, { venue: 'Venue X', priceCents: 200000 });
+    const res = await call(s, 'PATCH', `/api/events/${event.id}`, { venue: 'Venue X' });
     expect(res.statusCode).toBe(200);
-    const events = await history(s, gig.id);
+    const events = await history(s, event.id);
     expect(events.map((e) => e.type)).toEqual(['UPDATED', 'CREATED']);
     expect(events[0]!.details.changes).toEqual([{ field: 'priceCents', from: 100000, to: 200000 }]);
   });
 
   it('creates with technical setup, logistics and house technician', async () => {
-    const gig = await createGig(s, { technicalSetup: 'SET_C', logistics: 'TAXI', houseTechnician: true });
-    expect(gig).toMatchObject({ technicalSetup: 'SET_C', logistics: 'TAXI', houseTechnician: true });
-    const again = (await call(s, 'GET', `/api/gigs/${gig.id}`)).json();
+    const event = await createEvent(s, { technicalSetup: 'SET_C', logistics: 'TAXI', houseTechnician: true });
+    expect(event).toMatchObject({ technicalSetup: 'SET_C', logistics: 'TAXI', houseTechnician: true });
+    const again = (await call(s, 'GET', `/api/events/${event.id}`)).json();
     expect(again).toMatchObject({ technicalSetup: 'SET_C', logistics: 'TAXI', houseTechnician: true });
   });
 
   it.each(['HOUSE_TECH', 'SET_A', 'SET_B', 'SET_C'])('accepts technicalSetup %s', async (value) => {
-    expect((await createGig(s, { technicalSetup: value })).technicalSetup).toBe(value);
+    expect((await createEvent(s, { technicalSetup: value })).technicalSetup).toBe(value);
   });
 
   it.each(['OWN_VAN', 'RENTAL_VAN', 'TAXI', 'OTHER'])('accepts logistics %s', async (value) => {
-    expect((await createGig(s, { logistics: value })).logistics).toBe(value);
+    expect((await createEvent(s, { logistics: value })).logistics).toBe(value);
   });
 
   it('clears technical setup and logistics with null and logs old → new', async () => {
-    const gig = await createGig(s, { technicalSetup: 'SET_B', logistics: 'RENTAL_VAN', houseTechnician: true });
-    const res = await call(s, 'PATCH', `/api/gigs/${gig.id}`, { technicalSetup: null, logistics: null, houseTechnician: false });
+    const event = await createEvent(s, { technicalSetup: 'SET_B', logistics: 'RENTAL_VAN', houseTechnician: true });
+    const res = await call(s, 'PATCH', `/api/events/${event.id}`, { technicalSetup: null, logistics: null, houseTechnician: false });
     expect(res.statusCode).toBe(200);
-    expect(res.json().gig).toMatchObject({ technicalSetup: null, logistics: null, houseTechnician: false });
-    const events = await history(s, gig.id);
+    expect(res.json().event).toMatchObject({ technicalSetup: null, logistics: null, houseTechnician: false });
+    const events = await history(s, event.id);
     expect(events[0]!.details.changes).toEqual([
       { field: 'technicalSetup', from: 'SET_B', to: null },
       { field: 'logistics', from: 'RENTAL_VAN', to: null },
@@ -405,30 +405,30 @@ describe('PATCH /api/gigs/{id}', () => {
   });
 
   it('writes no event when the three fields are unchanged', async () => {
-    const gig = await createGig(s, { technicalSetup: 'SET_A', logistics: 'OTHER', houseTechnician: true });
-    const res = await call(s, 'PATCH', `/api/gigs/${gig.id}`, { technicalSetup: 'SET_A', logistics: 'OTHER', houseTechnician: true });
+    const event = await createEvent(s, { technicalSetup: 'SET_A', logistics: 'OTHER', houseTechnician: true });
+    const res = await call(s, 'PATCH', `/api/events/${event.id}`, { technicalSetup: 'SET_A', logistics: 'OTHER', houseTechnician: true });
     expect(res.statusCode).toBe(200);
-    expect((await history(s, gig.id)).map((e) => e.type)).toEqual(['CREATED']);
+    expect((await history(s, event.id)).map((e) => e.type)).toEqual(['CREATED']);
   });
 
   it('keeps the other two fields when only one is sent', async () => {
-    const gig = await createGig(s, { technicalSetup: 'SET_A', logistics: 'OWN_VAN', houseTechnician: true });
-    const res = await call(s, 'PATCH', `/api/gigs/${gig.id}`, { logistics: 'TAXI' });
-    expect(res.json().gig).toMatchObject({ technicalSetup: 'SET_A', logistics: 'TAXI', houseTechnician: true });
+    const event = await createEvent(s, { technicalSetup: 'SET_A', logistics: 'OWN_VAN', houseTechnician: true });
+    const res = await call(s, 'PATCH', `/api/events/${event.id}`, { logistics: 'TAXI' });
+    expect(res.json().event).toMatchObject({ technicalSetup: 'SET_A', logistics: 'TAXI', houseTechnician: true });
   });
 
   it('clears optional text with null or blank', async () => {
-    const gig = await createGig(s, { notes: 'Note 1' });
-    const res = await call(s, 'PATCH', `/api/gigs/${gig.id}`, { notes: '  ' });
-    expect(res.json().gig.notes).toBeNull();
+    const event = await createEvent(s, { notes: 'Note 1' });
+    const res = await call(s, 'PATCH', `/api/events/${event.id}`, { notes: '  ' });
+    expect(res.json().event.notes).toBeNull();
   });
 
-  it('is allowed on a cancelled gig (BR-013)', async () => {
-    const gig = await createGig(s);
-    await call(s, 'POST', `/api/gigs/${gig.id}/cancel`, { reason: 'Client cancelled' });
-    const res = await call(s, 'PATCH', `/api/gigs/${gig.id}`, { priceCents: 0, additionalSalesCents: 0, notes: 'Nothing billed' });
+  it('is allowed on a cancelled event (BR-013)', async () => {
+    const event = await createEvent(s);
+    await call(s, 'POST', `/api/events/${event.id}/cancel`, { reason: 'Client cancelled' });
+    const res = await call(s, 'PATCH', `/api/events/${event.id}`, { priceCents: 0, additionalSalesCents: 0, notes: 'Nothing billed' });
     expect(res.statusCode).toBe(200);
-    expect(res.json().gig).toMatchObject({ status: 'CANCELLED', totalPriceCents: 0 });
+    expect(res.json().event).toMatchObject({ status: 'CANCELLED', totalPriceCents: 0 });
   });
 
   it.each([
@@ -447,37 +447,37 @@ describe('PATCH /api/gigs/{id}', () => {
     [{ producerId: 'x' }, { producerId: 'UNKNOWN_REFERENCE' }],
     [{ additionalSalesDescription: 'x'.repeat(501) }, { additionalSalesDescription: 'TOO_LONG' }],
   ])('rejects %j', async (payload, fields) => {
-    const gig = await createGig(s);
-    const res = await call(s, 'PATCH', `/api/gigs/${gig.id}`, payload);
+    const event = await createEvent(s);
+    const res = await call(s, 'PATCH', `/api/events/${event.id}`, payload);
     expect(res.statusCode).toBe(400);
     expect(res.json().error).toEqual({ code: 'VALIDATION_ERROR', message: expect.any(String), fields });
-    expect((await history(s, gig.id)).map((e) => e.type)).toEqual(['CREATED']);
+    expect((await history(s, event.id)).map((e) => e.type)).toEqual(['CREATED']);
   });
 
-  it('404 for an unknown gig, 409 GIG_DELETED for a deleted gig', async () => {
-    expect((await call(s, 'PATCH', `/api/gigs/${UNKNOWN_ID}`, { venue: 'Venue Y' })).statusCode).toBe(404);
-    const gig = await createGig(s);
-    await call(s, 'POST', `/api/gigs/${gig.id}/delete`, { reason: 'Duplicate' });
-    const res = await call(s, 'PATCH', `/api/gigs/${gig.id}`, { venue: 'Venue Y' });
+  it('404 for an unknown event, 409 EVENT_DELETED for a deleted event', async () => {
+    expect((await call(s, 'PATCH', `/api/events/${UNKNOWN_ID}`, { venue: 'Venue Y' })).statusCode).toBe(404);
+    const event = await createEvent(s);
+    await call(s, 'POST', `/api/events/${event.id}/delete`, { reason: 'Duplicate' });
+    const res = await call(s, 'PATCH', `/api/events/${event.id}`, { venue: 'Venue Y' });
     expect(res.statusCode).toBe(409);
-    expect(res.json().error.code).toBe('GIG_DELETED');
+    expect(res.json().error.code).toBe('EVENT_DELETED');
   });
 });
 
 describe('seller / producer change (BR-027)', () => {
   it('moves the old seller’s unpaid Sales lines only, incl. the split case', async () => {
     const { world } = s;
-    const gig = await createGig(s); // seller A, producer B
-    const salesA = gig.costLines.find((l: { type: string }) => l.type === 'SALES');
+    const event = await createEvent(s); // seller A, producer B
+    const salesA = event.costLines.find((l: { type: string }) => l.type === 'SALES');
     // A second, paid Sales line of A, and a split Sales line of Person 1.
-    const paidA = (await call(s, 'POST', `/api/gigs/${gig.id}/cost-lines`, { type: 'SALES', personId: world.a.personId, budgetedCents: 10000 })).json().gig.costLines.at(-1);
+    const paidA = (await call(s, 'POST', `/api/events/${event.id}/cost-lines`, { type: 'SALES', personId: world.a.personId, budgetedCents: 10000 })).json().event.costLines.at(-1);
     await call(s, 'POST', `/api/cost-lines/${paidA.id}/pay`, {});
-    const split = (await call(s, 'POST', `/api/gigs/${gig.id}/cost-lines`, { type: 'SALES', personId: world.p1.id, budgetedCents: 10000 })).json().gig.costLines.at(-1);
-    const unpaidA2 = (await call(s, 'POST', `/api/gigs/${gig.id}/cost-lines`, { type: 'SALES', personId: world.a.personId, budgetedCents: 20000 })).json().gig.costLines.at(-1);
+    const split = (await call(s, 'POST', `/api/events/${event.id}/cost-lines`, { type: 'SALES', personId: world.p1.id, budgetedCents: 10000 })).json().event.costLines.at(-1);
+    const unpaidA2 = (await call(s, 'POST', `/api/events/${event.id}/cost-lines`, { type: 'SALES', personId: world.a.personId, budgetedCents: 20000 })).json().event.costLines.at(-1);
 
-    const res = await call(s, 'PATCH', `/api/gigs/${gig.id}`, { sellerId: world.c.id });
+    const res = await call(s, 'PATCH', `/api/events/${event.id}`, { sellerId: world.c.id });
     expect(res.statusCode).toBe(200);
-    const { gig: updated, movedCostLineIds } = res.json();
+    const { event: updated, movedCostLineIds } = res.json();
     expect(movedCostLineIds).toEqual([salesA.id, unpaidA2.id]);
     const byId = new Map(updated.costLines.map((l: { id: string }) => [l.id, l]));
     expect(byId.get(salesA.id)).toMatchObject({ personId: world.c.personId, budgetedCents: FEES.sales });
@@ -486,8 +486,8 @@ describe('seller / producer change (BR-027)', () => {
     expect(byId.get(split.id)).toMatchObject({ personId: world.p1.id });
     expect(updated.sellerId).toBe(world.c.id);
 
-    const [event] = await history(s, gig.id);
-    expect(event).toMatchObject({
+    const [entry] = await history(s, event.id);
+    expect(entry).toMatchObject({
       type: 'UPDATED',
       details: { changes: [{ field: 'sellerId', from: world.a.id, to: world.c.id }], movedCostLineIds: [salesA.id, unpaidA2.id] },
     });
@@ -495,36 +495,36 @@ describe('seller / producer change (BR-027)', () => {
 
   it('moves Production lines on producer change and both on a combined change', async () => {
     const { world } = s;
-    const gig = await createGig(s);
-    const sales = gig.costLines.find((l: { type: string }) => l.type === 'SALES');
-    const production = gig.costLines.find((l: { type: string }) => l.type === 'PRODUCTION');
-    const res = await call(s, 'PATCH', `/api/gigs/${gig.id}`, { sellerId: world.b.id, producerId: world.c.id });
+    const event = await createEvent(s);
+    const sales = event.costLines.find((l: { type: string }) => l.type === 'SALES');
+    const production = event.costLines.find((l: { type: string }) => l.type === 'PRODUCTION');
+    const res = await call(s, 'PATCH', `/api/events/${event.id}`, { sellerId: world.b.id, producerId: world.c.id });
     expect(res.json().movedCostLineIds).toEqual([sales.id, production.id]);
-    const lines = res.json().gig.costLines;
+    const lines = res.json().event.costLines;
     expect(lines.find((l: { id: string }) => l.id === sales.id).personId).toBe(world.b.personId);
     expect(lines.find((l: { id: string }) => l.id === production.id).personId).toBe(world.c.personId);
   });
 
   it('moves nothing when the old seller has no unpaid Sales line', async () => {
     const { world } = s;
-    const gig = await createGig(s);
-    const sales = gig.costLines.find((l: { type: string }) => l.type === 'SALES');
+    const event = await createEvent(s);
+    const sales = event.costLines.find((l: { type: string }) => l.type === 'SALES');
     await call(s, 'PATCH', `/api/cost-lines/${sales.id}`, { personId: world.p2.id });
-    const res = await call(s, 'PATCH', `/api/gigs/${gig.id}`, { sellerId: world.c.id });
+    const res = await call(s, 'PATCH', `/api/events/${event.id}`, { sellerId: world.c.id });
     expect(res.json().movedCostLineIds).toEqual([]);
-    expect(res.json().gig.costLines.find((l: { id: string }) => l.id === sales.id).personId).toBe(world.p2.id);
+    expect(res.json().event.costLines.find((l: { id: string }) => l.id === sales.id).personId).toBe(world.p2.id);
   });
 });
 
-describe('POST /api/gigs/{id}/move (UC-009)', () => {
+describe('POST /api/events/{id}/move (UC-009)', () => {
   it('changes the dates, keeps status and staff, logs MOVED with old and new dates', async () => {
-    const gig = await createGig(s, { startDate: '2026-05-01' });
-    const res = await call(s, 'POST', `/api/gigs/${gig.id}/move`, { startDate: '2027-02-01', endDate: '2027-02-02', reason: 'Venue asked' });
+    const event = await createEvent(s, { startDate: '2026-05-01' });
+    const res = await call(s, 'POST', `/api/events/${event.id}/move`, { startDate: '2027-02-01', endDate: '2027-02-02', reason: 'Venue asked' });
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toEqual({ gig: expect.objectContaining({ startDate: '2027-02-01', endDate: '2027-02-02', year: 2027, status: 'SOLD' }), warnings: [] });
-    expect(res.json().gig.costLines).toEqual(gig.costLines);
-    const [event] = await history(s, gig.id);
-    expect(event).toMatchObject({
+    expect(res.json()).toEqual({ event: expect.objectContaining({ startDate: '2027-02-01', endDate: '2027-02-02', year: 2027, status: 'SOLD' }), warnings: [] });
+    expect(res.json().event.costLines).toEqual(event.costLines);
+    const [entry] = await history(s, event.id);
+    expect(entry).toMatchObject({
       type: 'MOVED',
       reason: 'Venue asked',
       details: { from: { startDate: '2026-05-01', endDate: null }, to: { startDate: '2027-02-01', endDate: '2027-02-02' } },
@@ -532,11 +532,11 @@ describe('POST /api/gigs/{id}/move (UC-009)', () => {
   });
 
   it('reason is optional; same dates log nothing', async () => {
-    const gig = await createGig(s);
-    expect((await call(s, 'POST', `/api/gigs/${gig.id}/move`, { startDate: '2026-05-01' })).statusCode).toBe(200);
-    expect((await history(s, gig.id)).map((e) => e.type)).toEqual(['CREATED']);
-    await call(s, 'POST', `/api/gigs/${gig.id}/move`, { startDate: '2026-05-02', endDate: null });
-    expect((await history(s, gig.id))[0]).toMatchObject({ type: 'MOVED', reason: null });
+    const event = await createEvent(s);
+    expect((await call(s, 'POST', `/api/events/${event.id}/move`, { startDate: '2026-05-01' })).statusCode).toBe(200);
+    expect((await history(s, event.id)).map((e) => e.type)).toEqual(['CREATED']);
+    await call(s, 'POST', `/api/events/${event.id}/move`, { startDate: '2026-05-02', endDate: null });
+    expect((await history(s, event.id))[0]).toMatchObject({ type: 'MOVED', reason: null });
   });
 
   it.each([
@@ -544,48 +544,48 @@ describe('POST /api/gigs/{id}/move (UC-009)', () => {
     [{ startDate: '2026-13-01' }, { startDate: 'INVALID_DATE' }],
     [{ startDate: '2026-05-02', endDate: '2026-05-01' }, { endDate: 'END_BEFORE_START' }],
   ])('rejects %j', async (payload, fields) => {
-    const gig = await createGig(s);
-    const res = await call(s, 'POST', `/api/gigs/${gig.id}/move`, payload);
+    const event = await createEvent(s);
+    const res = await call(s, 'POST', `/api/events/${event.id}/move`, payload);
     expect(res.statusCode).toBe(400);
     expect(res.json().error.fields).toEqual(fields);
   });
 
-  it('409 for a cancelled gig, 409 GIG_DELETED for a deleted gig, 404 for unknown', async () => {
-    const gig = await createGig(s);
-    await call(s, 'POST', `/api/gigs/${gig.id}/cancel`, { reason: 'Client cancelled' });
-    const res = await call(s, 'POST', `/api/gigs/${gig.id}/move`, { startDate: '2026-06-01' });
+  it('409 for a cancelled event, 409 EVENT_DELETED for a deleted event, 404 for unknown', async () => {
+    const event = await createEvent(s);
+    await call(s, 'POST', `/api/events/${event.id}/cancel`, { reason: 'Client cancelled' });
+    const res = await call(s, 'POST', `/api/events/${event.id}/move`, { startDate: '2026-06-01' });
     expect(res.statusCode).toBe(409);
     expect(res.json().error.code).toBe('INVALID_STATUS_TRANSITION');
 
-    const other = await createGig(s);
-    await call(s, 'POST', `/api/gigs/${other.id}/delete`, { reason: 'Duplicate' });
-    expect((await call(s, 'POST', `/api/gigs/${other.id}/move`, { startDate: '2026-06-01' })).json().error.code).toBe('GIG_DELETED');
-    expect((await call(s, 'POST', `/api/gigs/${UNKNOWN_ID}/move`, { startDate: '2026-06-01' })).statusCode).toBe(404);
+    const other = await createEvent(s);
+    await call(s, 'POST', `/api/events/${other.id}/delete`, { reason: 'Duplicate' });
+    expect((await call(s, 'POST', `/api/events/${other.id}/move`, { startDate: '2026-06-01' })).json().error.code).toBe('EVENT_DELETED');
+    expect((await call(s, 'POST', `/api/events/${UNKNOWN_ID}/move`, { startDate: '2026-06-01' })).statusCode).toBe(404);
   });
 });
 
 describe('cancel / uncancel (UC-010, UC-012)', () => {
   it('cancel requires a reason, sets CANCELLED and logs it; uncancel reverts and keeps the history', async () => {
-    const gig = await createGig(s);
-    const noReason = await call(s, 'POST', `/api/gigs/${gig.id}/cancel`, { reason: ' ' });
+    const event = await createEvent(s);
+    const noReason = await call(s, 'POST', `/api/events/${event.id}/cancel`, { reason: ' ' });
     expect(noReason.statusCode).toBe(400);
     expect(noReason.json().error.fields).toEqual({ reason: 'REQUIRED' });
-    expect((await call(s, 'POST', `/api/gigs/${gig.id}/cancel`)).json().error.fields).toEqual({ reason: 'REQUIRED' });
+    expect((await call(s, 'POST', `/api/events/${event.id}/cancel`)).json().error.fields).toEqual({ reason: 'REQUIRED' });
 
-    const res = await call(s, 'POST', `/api/gigs/${gig.id}/cancel`, { reason: 'Client cancelled' });
+    const res = await call(s, 'POST', `/api/events/${event.id}/cancel`, { reason: 'Client cancelled' });
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toMatchObject({ id: gig.id, status: 'CANCELLED', costLines: expect.any(Array) });
+    expect(res.json()).toMatchObject({ id: event.id, status: 'CANCELLED', costLines: expect.any(Array) });
 
-    const again = await call(s, 'POST', `/api/gigs/${gig.id}/cancel`, { reason: 'Again' });
+    const again = await call(s, 'POST', `/api/events/${event.id}/cancel`, { reason: 'Again' });
     expect(again.statusCode).toBe(409);
     expect(again.json().error.code).toBe('INVALID_STATUS_TRANSITION');
 
-    expect((await call(s, 'POST', `/api/gigs/${gig.id}/uncancel`, {})).statusCode).toBe(400);
-    const back = await call(s, 'POST', `/api/gigs/${gig.id}/uncancel`, { reason: 'Back on' });
+    expect((await call(s, 'POST', `/api/events/${event.id}/uncancel`, {})).statusCode).toBe(400);
+    const back = await call(s, 'POST', `/api/events/${event.id}/uncancel`, { reason: 'Back on' });
     expect(back.statusCode).toBe(200);
     expect(back.json().status).toBe('SOLD');
 
-    const events = await history(s, gig.id);
+    const events = await history(s, event.id);
     expect(events.map((e) => [e.type, e.reason])).toEqual([
       ['UNCANCELLED', 'Back on'],
       ['CANCELLED', 'Client cancelled'],
@@ -594,41 +594,41 @@ describe('cancel / uncancel (UC-010, UC-012)', () => {
     expect(events[0]!.details).toEqual({});
   });
 
-  it('uncancel of a SOLD gig is 409; both are 409 GIG_DELETED on a deleted gig; 404 unknown', async () => {
-    const gig = await createGig(s);
-    expect((await call(s, 'POST', `/api/gigs/${gig.id}/uncancel`, { reason: 'x' })).json().error.code).toBe('INVALID_STATUS_TRANSITION');
-    await call(s, 'POST', `/api/gigs/${gig.id}/delete`, { reason: 'Duplicate' });
-    expect((await call(s, 'POST', `/api/gigs/${gig.id}/cancel`, { reason: 'x' })).json().error.code).toBe('GIG_DELETED');
-    expect((await call(s, 'POST', `/api/gigs/${gig.id}/uncancel`, { reason: 'x' })).json().error.code).toBe('GIG_DELETED');
-    expect((await call(s, 'POST', `/api/gigs/${UNKNOWN_ID}/cancel`, { reason: 'x' })).statusCode).toBe(404);
+  it('uncancel of a SOLD event is 409; both are 409 EVENT_DELETED on a deleted event; 404 unknown', async () => {
+    const event = await createEvent(s);
+    expect((await call(s, 'POST', `/api/events/${event.id}/uncancel`, { reason: 'x' })).json().error.code).toBe('INVALID_STATUS_TRANSITION');
+    await call(s, 'POST', `/api/events/${event.id}/delete`, { reason: 'Duplicate' });
+    expect((await call(s, 'POST', `/api/events/${event.id}/cancel`, { reason: 'x' })).json().error.code).toBe('EVENT_DELETED');
+    expect((await call(s, 'POST', `/api/events/${event.id}/uncancel`, { reason: 'x' })).json().error.code).toBe('EVENT_DELETED');
+    expect((await call(s, 'POST', `/api/events/${UNKNOWN_ID}/cancel`, { reason: 'x' })).statusCode).toBe(404);
   });
 });
 
 describe('delete / restore (UC-025)', () => {
-  it('soft-deletes with a reason, hides the gig and restores all data', async () => {
-    const gig = await createGig(s);
-    expect((await call(s, 'POST', `/api/gigs/${gig.id}/delete`, {})).json().error.fields).toEqual({ reason: 'REQUIRED' });
+  it('soft-deletes with a reason, hides the event and restores all data', async () => {
+    const event = await createEvent(s);
+    expect((await call(s, 'POST', `/api/events/${event.id}/delete`, {})).json().error.fields).toEqual({ reason: 'REQUIRED' });
 
-    const res = await call(s, 'POST', `/api/gigs/${gig.id}/delete`, { reason: 'Duplicate' });
+    const res = await call(s, 'POST', `/api/events/${event.id}/delete`, { reason: 'Duplicate' });
     expect(res.statusCode).toBe(204);
     expect(res.body).toBe('');
-    const row = await testDb().gig.findUniqueOrThrow({ where: { id: gig.id } });
+    const row = await testDb().event.findUniqueOrThrow({ where: { id: event.id } });
     expect(row.deletedAt).not.toBeNull();
     expect(row.deletedById).toBe(s.world.a.id);
-    expect((await call(s, 'GET', '/api/gigs?year=2026')).json().gigs).toEqual([]);
+    expect((await call(s, 'GET', '/api/events?year=2026')).json().events).toEqual([]);
 
-    const twice = await call(s, 'POST', `/api/gigs/${gig.id}/delete`, { reason: 'Again' });
+    const twice = await call(s, 'POST', `/api/events/${event.id}/delete`, { reason: 'Again' });
     expect(twice.statusCode).toBe(409);
-    expect(twice.json().error.code).toBe('GIG_DELETED');
+    expect(twice.json().error.code).toBe('EVENT_DELETED');
 
-    const restored = await call(s, 'POST', `/api/gigs/${gig.id}/restore`);
+    const restored = await call(s, 'POST', `/api/events/${event.id}/restore`);
     expect(restored.statusCode).toBe(200);
     const { updatedAt: _u1, ...after } = restored.json();
-    const { updatedAt: _u2, ...before } = gig;
+    const { updatedAt: _u2, ...before } = event;
     expect(after).toEqual(before);
-    expect((await call(s, 'GET', '/api/gigs?year=2026')).json().gigs).toHaveLength(1);
+    expect((await call(s, 'GET', '/api/events?year=2026')).json().events).toHaveLength(1);
 
-    const events = await history(s, gig.id);
+    const events = await history(s, event.id);
     expect(events.map((e) => [e.type, e.reason])).toEqual([
       ['RESTORED', null],
       ['DELETED', 'Duplicate'],
@@ -636,38 +636,38 @@ describe('delete / restore (UC-025)', () => {
     ]);
   });
 
-  it('restore of a non-deleted gig is 409; unknown is 404', async () => {
-    const gig = await createGig(s);
-    const res = await call(s, 'POST', `/api/gigs/${gig.id}/restore`);
+  it('restore of a non-deleted event is 409; unknown is 404', async () => {
+    const event = await createEvent(s);
+    const res = await call(s, 'POST', `/api/events/${event.id}/restore`);
     expect(res.statusCode).toBe(409);
     expect(res.json().error.code).toBe('INVALID_STATUS_TRANSITION');
-    expect((await call(s, 'POST', `/api/gigs/${UNKNOWN_ID}/restore`)).statusCode).toBe(404);
-    expect((await call(s, 'POST', `/api/gigs/${UNKNOWN_ID}/delete`, { reason: 'x' })).statusCode).toBe(404);
+    expect((await call(s, 'POST', `/api/events/${UNKNOWN_ID}/restore`)).statusCode).toBe(404);
+    expect((await call(s, 'POST', `/api/events/${UNKNOWN_ID}/delete`, { reason: 'x' })).statusCode).toBe(404);
   });
 
-  it('no endpoint physically deletes a gig or edits history', async () => {
-    const gig = await createGig(s);
-    expect((await call(s, 'DELETE', `/api/gigs/${gig.id}`)).statusCode).toBe(404);
-    expect((await call(s, 'DELETE', `/api/gigs/${gig.id}/history`)).statusCode).toBe(404);
-    expect((await call(s, 'PATCH', `/api/gigs/${gig.id}/history`, {})).statusCode).toBe(404);
-    expect(await testDb().gig.count()).toBe(1);
+  it('no endpoint physically deletes an event or edits history', async () => {
+    const event = await createEvent(s);
+    expect((await call(s, 'DELETE', `/api/events/${event.id}`)).statusCode).toBe(404);
+    expect((await call(s, 'DELETE', `/api/events/${event.id}/history`)).statusCode).toBe(404);
+    expect((await call(s, 'PATCH', `/api/events/${event.id}/history`, {})).statusCode).toBe(404);
+    expect(await testDb().event.count()).toBe(1);
   });
 });
 
-describe('GET /api/gigs/{id}/history (UC-013)', () => {
-  it('lists events newest first with partner and time, also for deleted gigs', async () => {
-    const gig = await createGig(s);
+describe('GET /api/events/{id}/history (UC-013)', () => {
+  it('lists events newest first with partner and time, also for deleted events', async () => {
+    const event = await createEvent(s);
     const cookieB = await login(s.app, 'partner.b@example.com');
-    await s.app.inject({ method: 'PATCH', url: `/api/gigs/${gig.id}`, headers: { cookie: cookieB }, payload: { venue: 'Venue Y' } });
-    await call(s, 'POST', `/api/gigs/${gig.id}/delete`, { reason: 'Duplicate' });
+    await s.app.inject({ method: 'PATCH', url: `/api/events/${event.id}`, headers: { cookie: cookieB }, payload: { venue: 'Venue Y' } });
+    await call(s, 'POST', `/api/events/${event.id}/delete`, { reason: 'Duplicate' });
 
-    const res = await call(s, 'GET', `/api/gigs/${gig.id}/history`);
+    const res = await call(s, 'GET', `/api/events/${event.id}/history`);
     expect(res.statusCode).toBe(200);
     const events = res.json();
     expect(events.map((e: { type: string }) => e.type)).toEqual(['DELETED', 'UPDATED', 'CREATED']);
     expect(events[1]).toEqual({
       id: expect.any(String),
-      gigId: gig.id,
+      eventId: event.id,
       type: 'UPDATED',
       partnerId: s.world.b.id,
       at: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/),
@@ -676,9 +676,28 @@ describe('GET /api/gigs/{id}/history (UC-013)', () => {
     });
   });
 
-  it('404 for an unknown gig; 401 without a session', async () => {
-    expect((await call(s, 'GET', `/api/gigs/${UNKNOWN_ID}/history`)).statusCode).toBe(404);
-    const gig = await createGig(s);
-    expect((await s.app.inject({ method: 'GET', url: `/api/gigs/${gig.id}/history` })).statusCode).toBe(401);
+  it('404 for an unknown event; 401 without a session', async () => {
+    expect((await call(s, 'GET', `/api/events/${UNKNOWN_ID}/history`)).statusCode).toBe(404);
+    const event = await createEvent(s);
+    expect((await s.app.inject({ method: 'GET', url: `/api/events/${event.id}/history` })).statusCode).toBe(401);
+  });
+});
+
+describe('old gig paths are gone (TASK-032: no aliases)', () => {
+  it('answers 404 NOT_FOUND on /api/gigs… and /api/offers/{id}/gig-draft', async () => {
+    const event = await createEvent(s);
+    for (const [method, url] of [
+      ['GET', '/api/gigs?year=2026'],
+      ['POST', '/api/gigs'],
+      ['GET', `/api/gigs/${event.id}`],
+      ['GET', `/api/gigs/${event.id}/history`],
+      ['POST', `/api/gigs/${event.id}/cancel`],
+      ['GET', `/api/offers/${UNKNOWN_ID}/gig-draft`],
+    ] as const) {
+      const res = await call(s, method, url);
+      expect(res.statusCode, url).toBe(404);
+      expect(res.json().error.code, url).toBe('NOT_FOUND');
+    }
+    expect((await call(s, 'GET', `/api/events/${event.id}`)).json().status).toBe('SOLD');
   });
 });

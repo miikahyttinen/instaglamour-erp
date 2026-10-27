@@ -1,13 +1,13 @@
 /**
- * People: roles and gig count (TASK-027; docs/api-contract.md "People: roles and gig count").
+ * People: roles and event count (TASK-027; docs/api-contract.md "People: roles and event count").
  * Synthetic data only; money is multiples of 10000 cents.
  */
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { CostType } from '../src/generated/prisma/enums.js';
 import { dateFromIso, todayIso } from '../src/domain/dates.js';
-import { loadGigCounts } from '../src/people/store.js';
+import { loadEventCounts } from '../src/people/store.js';
 import { closeTestDb, resetDb, testDb } from './helpers.js';
-import { call, startSession, UNKNOWN_ID, type Json, type Session } from './gigFixtures.js';
+import { call, startSession, UNKNOWN_ID, type Json, type Session } from './eventFixtures.js';
 
 let s: Session;
 
@@ -27,12 +27,12 @@ function daysFromToday(days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-/** A gig written directly, with cost lines `[type, personId]`. */
-async function gigWith(
+/** An event written directly, with cost lines `[type, personId]`. */
+async function eventWith(
   lines: [CostType, string | null][],
   options: { startDate?: string; status?: 'SOLD' | 'CANCELLED'; deleted?: boolean } = {},
 ) {
-  return testDb().gig.create({
+  return testDb().event.create({
     data: {
       startDate: dateFromIso(options.startDate ?? daysFromToday(-10)),
       status: options.status ?? 'SOLD',
@@ -53,48 +53,48 @@ async function person(id: string): Promise<Json> {
   return res.json().find((p: Json) => p.id === id);
 }
 
-describe('Person.gigCount', () => {
-  it('counts distinct played SOLD non-deleted gigs with a musician-role line, all years', async () => {
+describe('Person.eventCount', () => {
+  it('counts distinct played SOLD non-deleted events with a musician-role line, all years', async () => {
     const { p1, p2 } = s.world;
-    await gigWith([['VOC', p1.id], ['BACKING_VOC', p1.id], ['BASS', p2.id]]); // two lines on one gig = 1
-    await gigWith([['GUITAR', p1.id]], { startDate: '2020-06-01' }); // an earlier year counts
-    await gigWith([['DRUMS', p1.id]], { status: 'CANCELLED' }); // cancelled: no
-    await gigWith([['DRUMS', p1.id]], { deleted: true }); // deleted: no
-    await gigWith([['DRUMS', p1.id]], { startDate: daysFromToday(1) }); // upcoming: no
-    await gigWith([['DRUMS', p1.id]], { startDate: todayIso() }); // today = not played yet
-    await gigWith([['OFFICE', p1.id], ['FUEL', p1.id]]); // only internal / expense lines: no
-    await gigWith([['VOC', null]]); // unstaffed line: nobody
+    await eventWith([['VOC', p1.id], ['BACKING_VOC', p1.id], ['BASS', p2.id]]); // two lines on one event = 1
+    await eventWith([['GUITAR', p1.id]], { startDate: '2020-06-01' }); // an earlier year counts
+    await eventWith([['DRUMS', p1.id]], { status: 'CANCELLED' }); // cancelled: no
+    await eventWith([['DRUMS', p1.id]], { deleted: true }); // deleted: no
+    await eventWith([['DRUMS', p1.id]], { startDate: daysFromToday(1) }); // upcoming: no
+    await eventWith([['DRUMS', p1.id]], { startDate: todayIso() }); // today = not played yet
+    await eventWith([['OFFICE', p1.id], ['FUEL', p1.id]]); // only internal / expense lines: no
+    await eventWith([['VOC', null]]); // unstaffed line: nobody
 
-    expect((await person(p1.id)).gigCount).toBe(2);
-    expect((await person(p2.id)).gigCount).toBe(1);
-    expect((await person(s.world.p3.id)).gigCount).toBe(0);
+    expect((await person(p1.id)).eventCount).toBe(2);
+    expect((await person(p2.id)).eventCount).toBe(1);
+    expect((await person(s.world.p3.id)).eventCount).toBe(0);
   });
 
   it('counts a partner who plays and appears in POST, PATCH and partner responses', async () => {
     const a = s.world.a;
-    await gigWith([['KEYS', a.personId], ['SALES', a.personId]]);
-    expect((await person(a.personId)).gigCount).toBe(1);
+    await eventWith([['KEYS', a.personId], ['SALES', a.personId]]);
+    expect((await person(a.personId)).eventCount).toBe(1);
 
     const patched = await call(s, 'PATCH', `/api/people/${a.personId}`, { name: 'Partner A' });
-    expect(patched.json().person).toMatchObject({ gigCount: 1, roles: [] });
+    expect(patched.json().person).toMatchObject({ eventCount: 1, roles: [] });
 
     const created = await call(s, 'POST', '/api/people', { name: 'Person 4' });
-    expect(created.json().person).toMatchObject({ gigCount: 0, roles: [] });
+    expect(created.json().person).toMatchObject({ eventCount: 0, roles: [] });
 
     const revoked = await call(s, 'DELETE', `/api/people/${s.world.b.personId}/partner`);
     expect(revoked.statusCode).toBe(200);
-    expect(revoked.json()).toMatchObject({ gigCount: 0, roles: [] });
+    expect(revoked.json()).toMatchObject({ eventCount: 0, roles: [] });
   });
 
   it('loads the counts of a whole list with one grouped query', async () => {
     const { p1, p2, p3 } = s.world;
-    await gigWith([['VOC', p1.id], ['BASS', p2.id]]);
-    await gigWith([['VOC', p1.id]]);
-    const counts = await loadGigCounts(testDb(), [p1.id, p2.id, p3.id]);
+    await eventWith([['VOC', p1.id], ['BASS', p2.id]]);
+    await eventWith([['VOC', p1.id]]);
+    const counts = await loadEventCounts(testDb(), [p1.id, p2.id, p3.id]);
     expect(Object.fromEntries(counts)).toEqual({ [p1.id]: 2, [p2.id]: 1 });
-    expect((await loadGigCounts(testDb(), [])).size).toBe(0);
-    // `today` is a parameter: a date before the gigs counts nothing
-    expect((await loadGigCounts(testDb(), [p1.id], '2000-01-01')).size).toBe(0);
+    expect((await loadEventCounts(testDb(), [])).size).toBe(0);
+    // `today` is a parameter: a date before the events counts nothing
+    expect((await loadEventCounts(testDb(), [p1.id], '2000-01-01')).size).toBe(0);
   });
 });
 
@@ -104,7 +104,7 @@ describe('PATCH /api/people/{id} roles', () => {
     const res = await call(s, 'PATCH', `/api/people/${id}`, { roles: ['DJ', 'VOC', 'BASS'] });
     expect(res.statusCode).toBe(200);
     expect(res.json()).toEqual({
-      person: { id, name: 'Person 1', active: true, partner: null, roles: ['VOC', 'BASS', 'DJ'], gigCount: 0 },
+      person: { id, name: 'Person 1', active: true, partner: null, roles: ['VOC', 'BASS', 'DJ'], eventCount: 0 },
       warnings: [],
     });
     expect((await testDb().person.findUniqueOrThrow({ where: { id } })).roles).toEqual(['VOC', 'BASS', 'DJ']);

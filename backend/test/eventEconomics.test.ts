@@ -1,6 +1,6 @@
-/** Pure gig rules: economics (BR-001…BR-006), played (BR-010), staffing (BR-023), year sums (BR-082), load-in (BR-026). */
+/** Pure event rules: economics (BR-001…BR-006), played (BR-010), staffing (BR-023), year sums (BR-082), load-in (BR-026). */
 import { describe, expect, it } from 'vitest';
-import { gigEconomics, isNotFullyStaffed, isPlayed, marginPct, yearGigSummary } from '../src/domain/gigEconomics.js';
+import { eventEconomics, isNotFullyStaffed, isPlayed, marginPct, yearEventSummary } from '../src/domain/eventEconomics.js';
 import { switchLoadIn } from '../src/domain/loadIn.js';
 
 const line = (budgetedCents: number, paid?: number) => ({
@@ -11,9 +11,9 @@ const line = (budgetedCents: number, paid?: number) => ({
   paidAt: paid === undefined ? null : new Date(),
 });
 
-describe('gigEconomics', () => {
+describe('eventEconomics', () => {
   it('computes total price, budgeted/actual costs and margins', () => {
-    const e = gigEconomics({
+    const e = eventEconomics({
       priceCents: 100000,
       additionalSalesCents: 20000,
       costLines: [line(30000), line(20000, 10000), line(10000)],
@@ -31,11 +31,11 @@ describe('gigEconomics', () => {
 
   it('ignores actual amounts of unpaid lines', () => {
     const unpaidWithAmount = { ...line(10000), actualCents: 10000 };
-    expect(gigEconomics({ priceCents: 0, additionalSalesCents: 0, costLines: [unpaidWithAmount] }).actualCostsCents).toBe(0);
+    expect(eventEconomics({ priceCents: 0, additionalSalesCents: 0, costLines: [unpaidWithAmount] }).actualCostsCents).toBe(0);
   });
 
   it('has null percentages when total price is 0 (BR-004)', () => {
-    const e = gigEconomics({ priceCents: 0, additionalSalesCents: 0, costLines: [line(10000)] });
+    const e = eventEconomics({ priceCents: 0, additionalSalesCents: 0, costLines: [line(10000)] });
     expect(e.marginBudgetPct).toBeNull();
     expect(e.marginActualPct).toBeNull();
     expect(e.marginBudgetCents).toBe(-10000);
@@ -67,16 +67,16 @@ describe('isPlayed / isNotFullyStaffed', () => {
   });
 });
 
-describe('yearGigSummary (BR-082)', () => {
+describe('yearEventSummary (BR-082)', () => {
   it('counts SOLD and CANCELLED separately and sums both', () => {
-    const s = yearGigSummary([
+    const s = yearEventSummary([
       { status: 'SOLD', priceCents: 100000, additionalSalesCents: 0, costLines: [line(30000, 30000)] },
       { status: 'CANCELLED', priceCents: 20000, additionalSalesCents: 10000, costLines: [line(20000)] },
     ]);
     expect(s).toEqual({
-      gigCount: 1,
+      eventCount: 1,
       cancelledCount: 1,
-      soldGigsSumCents: 130000,
+      soldEventsSumCents: 130000,
       budgetedCostsCents: 50000,
       actualCostsCents: 30000,
       marginBudgetCents: 80000,

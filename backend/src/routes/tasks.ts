@@ -5,8 +5,8 @@ import type { AppDeps } from '../app.js';
 import { dateFromIso, isoFromDate, todayIso } from '../domain/dates.js';
 import type { Task } from '../generated/prisma/client.js';
 import { notFound, parseInput, validationError } from '../http/errors.js';
-import { isoDate, LONG_TEXT_MAX, oneOf, optionalText, requiredText } from '../gigs/schemas.js';
-import { isUuid } from '../gigs/store.js';
+import { isoDate, LONG_TEXT_MAX, oneOf, optionalText, requiredText } from '../events/schemas.js';
+import { isUuid } from '../events/store.js';
 
 type IdParams = { Params: { id: string } };
 

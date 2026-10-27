@@ -9,8 +9,8 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import type { AppDeps } from '../app.js';
 import type { Prisma, Reference } from '../generated/prisma/client.js';
-import { flag, optionalText, requiredText } from '../gigs/schemas.js';
-import { inTransaction, isUuid } from '../gigs/store.js';
+import { flag, optionalText, requiredText } from '../events/schemas.js';
+import { inTransaction, isUuid } from '../events/store.js';
 import { AppError, notFound, parseInput, validationError } from '../http/errors.js';
 import {
   AUTHOR_MAX,

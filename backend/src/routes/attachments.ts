@@ -4,8 +4,8 @@ import type { FastifyInstance } from 'fastify';
 import type { AppDeps } from '../app.js';
 import { AppError, notFound } from '../http/errors.js';
 import { UploadDir } from '../fileStore/uploadDir.js';
-import { toAttachmentDto } from '../gigs/serialize.js';
-import { assertNotDeleted, inTransaction, isUuid, logEvent, requireGigDetail } from '../gigs/store.js';
+import { toAttachmentDto } from '../events/serialize.js';
+import { assertNotDeleted, inTransaction, isUuid, logHistory, requireEventDetail } from '../events/store.js';
 
 type IdParams = { Params: { id: string } };
 
@@ -49,10 +49,10 @@ export function attachmentRoutes(app: FastifyInstance, deps: AppDeps): void {
   const { db, config } = deps;
   const uploads = new UploadDir(config.uploadDir);
 
-  app.post<IdParams>('/api/gigs/:id/attachments', async (request, reply) => {
+  app.post<IdParams>('/api/events/:id/attachments', async (request, reply) => {
     const me = request.requirePartner();
-    const gig = await requireGigDetail(db, request.params.id);
-    assertNotDeleted(gig);
+    const event = await requireEventDetail(db, request.params.id);
+    assertNotDeleted(event);
 
     const upload = await uploads.receive(request, { maxBytes: MAX_ATTACHMENT_BYTES, tooLargeMessage: 'File is larger than 20 MB' });
     const filename = cleanFilename(upload.filename);
@@ -63,10 +63,10 @@ export function attachmentRoutes(app: FastifyInstance, deps: AppDeps): void {
       if (!contentType) throw new AppError('UNSUPPORTED_FILE_TYPE', 'Only PDF, DOCX, PNG and JPG files are allowed');
       const attachment = await inTransaction(db, async (tx) => {
         const created = await tx.attachment.create({
-          data: { gigId: gig.id, filename, contentType, sizeBytes: upload.sizeBytes, storageKey, uploadedById: me.id },
+          data: { eventId: event.id, filename, contentType, sizeBytes: upload.sizeBytes, storageKey, uploadedById: me.id },
         });
-        await logEvent(tx, {
-          gigId: gig.id,
+        await logHistory(tx, {
+          eventId: event.id,
           type: 'ATTACHMENT_ADDED',
           partnerId: me.id,
           details: { attachmentId: created.id, filename },
@@ -98,13 +98,13 @@ export function attachmentRoutes(app: FastifyInstance, deps: AppDeps): void {
   app.delete<IdParams>('/api/attachments/:id', async (request, reply) => {
     const me = request.requirePartner();
     const { id } = request.params;
-    const attachment = isUuid(id) ? await db.attachment.findUnique({ where: { id }, include: { gig: true } }) : null;
+    const attachment = isUuid(id) ? await db.attachment.findUnique({ where: { id }, include: { event: true } }) : null;
     if (!attachment || attachment.deletedAt) throw notFound('Attachment not found');
-    assertNotDeleted(attachment.gig);
+    assertNotDeleted(attachment.event);
     await inTransaction(db, async (tx) => {
       await tx.attachment.update({ where: { id: attachment.id }, data: { deletedAt: new Date() } });
-      await logEvent(tx, {
-        gigId: attachment.gigId,
+      await logHistory(tx, {
+        eventId: attachment.eventId,
         type: 'ATTACHMENT_REMOVED',
         partnerId: me.id,
         details: { attachmentId: attachment.id, filename: attachment.filename },

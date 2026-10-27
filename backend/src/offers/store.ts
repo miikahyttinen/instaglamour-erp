@@ -5,23 +5,23 @@
 import { isoFromDate, todayIso } from '../domain/dates.js';
 import { OFFER_SETTING_KEYS } from '../domain/enums.js';
 import type { Offer, OfferDisposition, OfferEvent, OfferEventType, Prisma } from '../generated/prisma/client.js';
-import { insertGig, type GigCreateInput, type GigFees, type PreparedGig } from '../gigs/create.js';
-import { isUuid, type Tx } from '../gigs/store.js';
+import { insertEvent, type EventCreateInput, type EventFees, type PreparedEvent } from '../events/create.js';
+import { isUuid, type Tx } from '../events/store.js';
 import { AppError, notFound } from '../http/errors.js';
 import { imageVersion, publicReferenceImageUrl, type PublicReferenceSource } from '../references/store.js';
 import { SPOTIFY_URL } from './constants.js';
 import { sharePath } from './shareToken.js';
 
-/** What the offer serializers need: client name, converted gig id and the seller's public contact. */
+/** What the offer serializers need: client name, converted event id and the seller's public contact. */
 export const offerInclude = {
   client: { select: { name: true } },
-  gig: { select: { id: true } },
+  event: { select: { id: true } },
   seller: { select: { email: true, phone: true, person: { select: { name: true } } } },
 } as const satisfies Prisma.OfferInclude;
 
 export type OfferWithRefs = Offer & {
   client: { name: string };
-  gig: { id: string } | null;
+  event: { id: string } | null;
   seller: { email: string; phone: string | null; person: { name: string } };
 };
 
@@ -55,7 +55,7 @@ export function toOfferSummaryDto(offer: OfferWithRefs, today: string) {
     disposition: offer.disposition,
     status: offerStatus(offer.disposition),
     expired: isExpired(offer, today),
-    gigId: offer.gig?.id ?? null,
+    eventId: offer.event?.id ?? null,
     createdAt: offer.createdAt.toISOString(),
     updatedAt: offer.updatedAt.toISOString(),
     deletedAt: offer.deletedAt?.toISOString() ?? null,
@@ -67,7 +67,7 @@ export type OfferSummaryDto = ReturnType<typeof toOfferSummaryDto>;
 /**
  * Contract `PublicOffer` (BR-104): the ONLY shape the public endpoint returns, and `OfferDetail.preview`.
  * Built field by field from an explicit whitelist — never spread an offer row in here: price,
- * disposition, source, event type, gig, ids and the token must never reach the customer.
+ * disposition, source, event type, event, ids and the token must never reach the customer.
  */
 export interface PublicOfferDto {
   eventName: string;
@@ -194,22 +194,22 @@ export async function loadOfferSettings(db: Tx): Promise<OfferSettings> {
   };
 }
 
-/** The offer fields the BR-105 gig prefill reads. */
+/** The offer fields the BR-105 event prefill reads. */
 type DraftSource = Pick<Offer, 'eventDate' | 'eventName' | 'venue' | 'city' | 'priceCents' | 'clientId' | 'sellerId'> & {
   seller: { active: boolean; personId: string };
 };
 
 /**
- * The gig a conversion prefills (BR-105) as a GigCreate: start date = event date, custom lineup
+ * The event a conversion prefills (BR-105) as a EventCreate: start date = event date, custom lineup
  * named after the event, venue "venue, city", client, price (0 if empty), seller and producer =
- * offer seller. BR-111: a removed (inactive) partner is never chosen for a new gig, so if the
+ * offer seller. BR-111: a removed (inactive) partner is never chosen for a new event, so if the
  * offer's seller has been removed, the converting partner is used instead.
  */
-export async function offerGigDraft(
+export async function offerEventDraft(
   tx: Tx,
   offer: DraftSource,
   callerPartnerId: string,
-): Promise<{ draft: GigCreateInput & { clientId: string }; partnerPersonId: string }> {
+): Promise<{ draft: EventCreateInput & { clientId: string }; partnerPersonId: string }> {
   const partner = offer.seller.active
     ? { id: offer.sellerId, personId: offer.seller.personId }
     : await tx.partner.findUniqueOrThrow({ where: { id: callerPartnerId }, select: { id: true, personId: true } });
@@ -246,7 +246,7 @@ export async function requireConvertibleOffer(tx: Tx, offerId: string, options: 
     ? await tx.offer.findUnique({
         where: { id: offerId },
         include: {
-          gig: { select: { id: true } },
+          event: { select: { id: true } },
           seller: { select: { personId: true, active: true } },
           client: { select: { deletedAt: true } },
         },
@@ -254,38 +254,38 @@ export async function requireConvertibleOffer(tx: Tx, offerId: string, options: 
     : null;
   if (!offer) throw notFound('Offer not found');
   assertOfferNotDeleted(offer);
-  if (offer.gig) throw new AppError('ALREADY_CONVERTED', 'The offer already has a gig');
+  if (offer.event) throw new AppError('ALREADY_CONVERTED', 'The offer already has an event');
   if (!options.historical && (offer.disposition !== 'WON' || isoFromDate(offer.eventDate) < todayIso()))
     throw new AppError('OFFER_NOT_CONVERTIBLE', 'Only an accepted offer whose event date is today or later can be converted');
   return offer;
 }
 
 /**
- * Convert an offer to a gig (BR-105) inside the caller's transaction. The offer row is locked
+ * Convert an offer to an event (BR-105) inside the caller's transaction. The offer row is locked
  * first, so concurrent conversions of the same offer run one after the other and the second one
- * sees the first one's gig (409 ALREADY_CONVERTED). The unique gig.offer_id is the last line of
+ * sees the first one's event (409 ALREADY_CONVERTED). The unique event.offer_id is the last line of
  * defence; callers map its unique violation to ALREADY_CONVERTED as well.
  *
- * `gig` = a GigCreate already validated by `prepareGigCreate` (the edited form); without it the
- * gig is created from the BR-105 prefill as is. `historical: true` (seed/import `converted: true`)
+ * `event` = a EventCreate already validated by `prepareEventCreate` (the edited form); without it the
+ * event is created from the BR-105 prefill as is. `historical: true` (seed/import `converted: true`)
  * is exempt from BR-109 and may convert any offer, e.g. an open or past one.
  */
 export async function convertOfferInTx(
   tx: Prisma.TransactionClient,
-  input: { offerId: string; partnerId: string; fees: GigFees; gig?: PreparedGig; historical?: boolean },
-): Promise<{ gigId: string }> {
+  input: { offerId: string; partnerId: string; fees: EventFees; event?: PreparedEvent; historical?: boolean },
+): Promise<{ eventId: string }> {
   const locked = await tx.$queryRaw<{ id: string }[]>`
     SELECT "id"::text FROM "offer" WHERE "id" = ${input.offerId}::uuid FOR UPDATE`;
   if (locked.length === 0) throw notFound('Offer not found');
 
   const offer = await requireConvertibleOffer(tx, input.offerId, { historical: input.historical });
 
-  let gig = input.gig;
-  if (!gig) {
-    const { draft, partnerPersonId } = await offerGigDraft(tx, offer, input.partnerId);
-    gig = { input: draft, template: null, sellerPersonId: partnerPersonId, producerPersonId: partnerPersonId };
+  let event = input.event;
+  if (!event) {
+    const { draft, partnerPersonId } = await offerEventDraft(tx, offer, input.partnerId);
+    event = { input: draft, template: null, sellerPersonId: partnerPersonId, producerPersonId: partnerPersonId };
   }
-  const gigId = await insertGig(tx, gig, { partnerId: input.partnerId, fees: input.fees, offerId: offer.id });
+  const eventId = await insertEvent(tx, event, { partnerId: input.partnerId, fees: input.fees, offerId: offer.id });
 
   if (offer.disposition !== 'WON') {
     await tx.offer.update({ where: { id: offer.id }, data: { disposition: 'WON' } });
@@ -296,9 +296,9 @@ export async function convertOfferInTx(
       details: { from: offer.disposition, to: 'WON' },
     });
   } else {
-    // Touch updatedAt: the offer gained a gig.
+    // Touch updatedAt: the offer gained an event.
     await tx.offer.update({ where: { id: offer.id }, data: { updatedAt: new Date() } });
   }
-  await logOfferEvent(tx, { offerId: offer.id, type: 'CONVERTED', partnerId: input.partnerId, details: { gigId } });
-  return { gigId };
+  await logOfferEvent(tx, { offerId: offer.id, type: 'CONVERTED', partnerId: input.partnerId, details: { eventId } });
+  return { eventId };
 }

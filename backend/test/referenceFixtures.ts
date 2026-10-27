@@ -1,5 +1,5 @@
 /** Reference (testimonial) test helpers. Synthetic quotes and tiny fake image files only (BR-090). */
-import { call, type Json, type Session } from './gigFixtures.js';
+import { call, type Json, type Session } from './eventFixtures.js';
 
 export const PNG = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.from('synthetic png')]);
 export const JPG = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.from('synthetic jpg')]);

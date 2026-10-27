@@ -79,9 +79,9 @@
     { "name": "Client B ry", "notes": "Synthetic demo association." },
     { "name": "Client C Ltd" },
     { "name": "Client D Oy", "notes": "Synthetic demo client; prefers email." },
-    { "name": "Client E Oy", "notes": "Synthetic demo client without gigs yet." }
+    { "name": "Client E Oy", "notes": "Synthetic demo client without events yet." }
   ],
-  "gigs": [
+  "events": [
     {
       "startDate": "2026-02-14",
       "lineupTemplate": "Template A",
@@ -327,7 +327,7 @@
     { "quoteFi": "Esimerkkilainaus 3: piilotettu.", "quoteEn": "Example quote 3: hidden.", "author": "— Person 3", "active": false }
   ],
   "tasks": [
-    { "title": "Update website gig calendar", "owner": "partner.a@example.com", "dueDate": "2026-09-15" },
+    { "title": "Update website event calendar", "owner": "partner.a@example.com", "dueDate": "2026-09-15" },
     { "title": "Renew equipment insurance", "owner": "partner.b@example.com", "dueDate": "2026-11-30", "description": "Compare two offers." },
     { "title": "Plan spring promo", "owner": "partner.c@example.com" },
     { "title": "Order new cables", "owner": "partner.d@example.com", "dueDate": "2026-08-01", "status": "DONE" }
@@ -335,7 +335,7 @@
   "hours": [
     { "partner": "partner.a@example.com", "date": "2026-01-12", "comment": "Sales calls", "hours": 3 },
     { "partner": "partner.a@example.com", "date": "2026-02-02", "comment": "Contract work", "hours": 1.5 },
-    { "partner": "partner.b@example.com", "date": "2026-02-13", "comment": "Gig production", "hours": 6 },
+    { "partner": "partner.b@example.com", "date": "2026-02-13", "comment": "Event production", "hours": 6 },
     { "partner": "partner.c@example.com", "date": "2026-04-20", "comment": "Rehearsal planning", "hours": 2.25 },
     { "partner": "partner.d@example.com", "date": "2026-09-01", "comment": "Bookkeeping", "hours": 4 },
     { "partner": "partner.e@example.com", "date": "2026-09-22", "comment": "Marketing", "hours": 0.75 }

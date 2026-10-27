@@ -4,8 +4,8 @@ import { z } from 'zod';
 import type { AppDeps } from '../app.js';
 import { dateFromIso, isoFromDate } from '../domain/dates.js';
 import { forbidden, notFound, parseInput } from '../http/errors.js';
-import { isoDate, requiredText, yearString } from '../gigs/schemas.js';
-import { isUuid, yearDateRange } from '../gigs/store.js';
+import { isoDate, requiredText, yearString } from '../events/schemas.js';
+import { isUuid, yearDateRange } from '../events/store.js';
 import { isValidHours, loadHoursTotals, toHourEntryDto } from '../hours/store.js';
 
 type IdParams = { Params: { id: string } };

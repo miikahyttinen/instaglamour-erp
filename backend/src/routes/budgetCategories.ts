@@ -9,8 +9,8 @@ import type { AppDeps } from '../app.js';
 import { toBudgetCategoryDto } from '../budget/store.js';
 import { Prisma, type BudgetCategory } from '../generated/prisma/client.js';
 import { notFound, parseInput, validationError } from '../http/errors.js';
-import { requiredText } from '../gigs/schemas.js';
-import { inTransaction, isUuid, type Tx } from '../gigs/store.js';
+import { requiredText } from '../events/schemas.js';
+import { inTransaction, isUuid, type Tx } from '../events/store.js';
 
 type IdParams = { Params: { id: string } };
 

@@ -2,7 +2,7 @@
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { isUniqueViolation } from '../src/routes/budgetCategories.js';
 import { closeTestDb, resetDb, testApp, testDb } from './helpers.js';
-import { call, createBudgetCategory, startSession, UNKNOWN_ID, type Session } from './gigFixtures.js';
+import { call, createBudgetCategory, startSession, UNKNOWN_ID, type Session } from './eventFixtures.js';
 
 let s: Session;
 

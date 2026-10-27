@@ -5,7 +5,7 @@
  */
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { revokePartner } from '../src/partners/store.js';
-import { call, createGig, gigBody, startSession, UNKNOWN_ID, type Json, type Session } from './gigFixtures.js';
+import { call, createEvent, eventBody, startSession, UNKNOWN_ID, type Json, type Session } from './eventFixtures.js';
 import { closeTestDb, FakeGoogle, login, resetDb, testApp, testDb } from './helpers.js';
 
 let s: Session;
@@ -39,7 +39,7 @@ describe('PUT /api/people/{id}/partner — grant', () => {
       active: true,
       partner: { id: expect.any(String), email: 'person.one@example.com', active: true },
       roles: [],
-      gigCount: 0,
+      eventCount: 0,
     });
     const partnerId = res.json().partner.id as string;
 
@@ -52,8 +52,8 @@ describe('PUT /api/people/{id}/partner — grant', () => {
     expect((await me(cookie)).json()).toMatchObject({ id: partnerId, name: 'Person 1', active: true });
     const ref = (await call(s, 'GET', '/api/reference')).json();
     expect(ref.partners.find((p: Json) => p.id === partnerId)).toMatchObject({ active: true, name: 'Person 1' });
-    const gig = await call(s, 'POST', '/api/gigs', gigBody(s.world, { sellerId: partnerId, producerId: partnerId }));
-    expect(gig.statusCode).toBe(201);
+    const event = await call(s, 'POST', '/api/events', eventBody(s.world, { sellerId: partnerId, producerId: partnerId }));
+    expect(event.statusCode).toBe(201);
     const task = await call(s, 'POST', '/api/tasks', { title: 'Task 1', ownerId: partnerId });
     expect(task.statusCode).toBe(201);
   });
@@ -186,7 +186,7 @@ describe('DELETE /api/people/{id}/partner — revoke', () => {
       active: true,
       partner: { id: s.world.b.id, email: 'partner.b@example.com', active: false },
       roles: [],
-      gigCount: 0,
+      eventCount: 0,
     });
 
     const row = await testDb().partner.findUniqueOrThrow({ where: { id: s.world.b.id } });
@@ -311,7 +311,7 @@ describe('DELETE /api/people/{id}/partner — revoke', () => {
 describe('re-grant a removed partner', () => {
   it('re-activates the same Partner row (id kept), clears revocation, and allows sign-in again', async () => {
     const oldCookie = await login(s.app, 'partner.b@example.com');
-    const gig = await createGig(s, { sellerId: s.world.b.id, producerId: s.world.b.id });
+    const event = await createEvent(s, { sellerId: s.world.b.id, producerId: s.world.b.id });
     expect((await del(s.world.b.personId)).statusCode).toBe(200);
 
     const res = await put(s.world.b.personId, { email: 'partner.b.new@example.com' });
@@ -321,10 +321,10 @@ describe('re-grant a removed partner', () => {
     expect(row).toMatchObject({ active: true, grantedById: s.world.a.id, revokedById: null, revokedAt: null });
     expect(await testDb().partner.count({ where: { personId: s.world.b.personId } })).toBe(1);
 
-    // Old sessions stay dead; the gig is still theirs.
+    // Old sessions stay dead; the event is still theirs.
     expect((await me(oldCookie)).statusCode).toBe(401);
     await login(s.app, 'partner.b.new@example.com');
-    expect((await call(s, 'GET', `/api/gigs/${gig.id}`)).json()).toMatchObject({ sellerId: s.world.b.id });
+    expect((await call(s, 'GET', `/api/events/${event.id}`)).json()).toMatchObject({ sellerId: s.world.b.id });
   });
 
   it('re-granting with the old email works too', async () => {
@@ -372,20 +372,20 @@ describe('people list and reference', () => {
 });
 
 describe('new choices reject removed partners; existing records keep them (BR-111)', () => {
-  it('gigs: new seller/producer must be active; an unchanged removed one is kept', async () => {
-    const gig = await createGig(s, { sellerId: s.world.c.id, producerId: s.world.c.id });
+  it('events: new seller/producer must be active; an unchanged removed one is kept', async () => {
+    const event = await createEvent(s, { sellerId: s.world.c.id, producerId: s.world.c.id });
     await del(s.world.c.personId);
 
-    const create = await call(s, 'POST', '/api/gigs', gigBody(s.world, { sellerId: s.world.c.id, producerId: s.world.c.id }));
+    const create = await call(s, 'POST', '/api/events', eventBody(s.world, { sellerId: s.world.c.id, producerId: s.world.c.id }));
     expect(create.statusCode).toBe(400);
     expect(create.json().error.fields).toEqual({ sellerId: 'UNKNOWN_REFERENCE', producerId: 'UNKNOWN_REFERENCE' });
 
-    const edit = await call(s, 'PATCH', `/api/gigs/${gig.id}`, { venue: 'Venue Y', sellerId: s.world.c.id });
+    const edit = await call(s, 'PATCH', `/api/events/${event.id}`, { venue: 'Venue Y', sellerId: s.world.c.id });
     expect(edit.statusCode).toBe(200);
-    expect(edit.json().gig).toMatchObject({ venue: 'Venue Y', sellerId: s.world.c.id, producerId: s.world.c.id });
+    expect(edit.json().event).toMatchObject({ venue: 'Venue Y', sellerId: s.world.c.id, producerId: s.world.c.id });
 
-    const other = await createGig(s);
-    const change = await call(s, 'PATCH', `/api/gigs/${other.id}`, { producerId: s.world.c.id });
+    const other = await createEvent(s);
+    const change = await call(s, 'PATCH', `/api/events/${other.id}`, { producerId: s.world.c.id });
     expect(change.statusCode).toBe(400);
     expect(change.json().error.fields).toEqual({ producerId: 'UNKNOWN_REFERENCE' });
   });
@@ -444,7 +444,7 @@ describe('new choices reject removed partners; existing records keep them (BR-11
     expect(missingTask.statusCode).toBe(404);
   });
 
-  it("converting an offer whose seller was removed makes the converting partner the gig's seller and producer", async () => {
+  it("converting an offer whose seller was removed makes the converting partner the event's seller and producer", async () => {
     const client = await testDb().client.create({ data: { name: 'Client A Oy' } });
     const body = {
       clientId: client.id,
@@ -465,9 +465,9 @@ describe('new choices reject removed partners; existing records keep them (BR-11
 
     const res = await call(s, 'POST', `/api/offers/${removedSeller.id}/convert`);
     expect(res.statusCode).toBe(201);
-    const { gig, offer } = res.json();
-    expect(gig).toMatchObject({ sellerId: s.world.a.id, producerId: s.world.a.id });
-    expect(gig.costLines.map((l: { type: string; personId: string | null }) => [l.type, l.personId])).toEqual([
+    const { event, offer } = res.json();
+    expect(event).toMatchObject({ sellerId: s.world.a.id, producerId: s.world.a.id });
+    expect(event.costLines.map((l: { type: string; personId: string | null }) => [l.type, l.personId])).toEqual([
       ['OFFICE', null],
       ['SALES', s.world.a.personId],
       ['PRODUCTION', s.world.a.personId],
@@ -476,7 +476,7 @@ describe('new choices reject removed partners; existing records keep them (BR-11
 
     // An active seller is still used as before.
     const kept = (await call(s, 'POST', `/api/offers/${activeSeller.id}/convert`)).json();
-    expect(kept.gig).toMatchObject({ sellerId: s.world.b.id, producerId: s.world.b.id });
+    expect(kept.event).toMatchObject({ sellerId: s.world.b.id, producerId: s.world.b.id });
   });
 
   it("a removed partner's hours stay readable", async () => {

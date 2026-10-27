@@ -7,7 +7,7 @@ import { todayIso } from '../src/domain/dates.js';
 import { newShareToken } from '../src/offers/shareToken.js';
 import { completedMonths, computeOfferStats, helsinkiYearMonth, type OfferStatsRow } from '../src/offers/stats.js';
 import { closeTestDb, resetDb, testApp, testDb } from './helpers.js';
-import { call, startSession, type Json, type Session } from './gigFixtures.js';
+import { call, startSession, type Json, type Session } from './eventFixtures.js';
 
 // "Now" for the pure tests: 2026-10-20 13:00 in Helsinki.
 const NOW = new Date('2026-10-20T10:00:00.000Z');

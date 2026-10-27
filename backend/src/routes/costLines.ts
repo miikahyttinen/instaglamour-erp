@@ -5,19 +5,19 @@ import type { AppDeps } from '../app.js';
 import { todayIso } from '../domain/dates.js';
 import { COST_TYPES, DESCRIPTION_REQUIRED_TYPES, isMusicianRole, isPayable } from '../domain/enums.js';
 import { switchLoadIn } from '../domain/loadIn.js';
-import type { CostLine, Gig, Prisma } from '../generated/prisma/client.js';
+import type { CostLine, Event, Prisma } from '../generated/prisma/client.js';
 import { AppError, notFound, parseInput, validationError, type FieldCode } from '../http/errors.js';
-import { money, oneOf, optionalText } from '../gigs/schemas.js';
-import { toGigDetailDto } from '../gigs/serialize.js';
+import { money, oneOf, optionalText } from '../events/schemas.js';
+import { toEventDetailDto } from '../events/serialize.js';
 import {
   assertNotDeleted,
   doubleBookingWarnings,
   inTransaction,
   isUuid,
-  logEvent,
-  requireGigDetail,
+  logHistory,
+  requireEventDetail,
   type Warning,
-} from '../gigs/store.js';
+} from '../events/store.js';
 import { assertCostLineNotOnPurchaseOrder } from '../purchaseOrders/lock.js';
 import { loadFeeSettings } from './reference.js';
 
@@ -45,28 +45,28 @@ export function costLineRoutes(app: FastifyInstance, deps: AppDeps): void {
   const personExists = async (personId: string) =>
     isUuid(personId) && (await db.person.count({ where: { id: personId } })) > 0;
 
-  /** The line and its gig; 404 if unknown, 409 if the gig is deleted. */
-  const requireMutableLine = async (id: string): Promise<CostLine & { gig: Gig }> => {
-    const line = isUuid(id) ? await db.costLine.findUnique({ where: { id }, include: { gig: true } }) : null;
+  /** The line and its event; 404 if unknown, 409 if the event is deleted. */
+  const requireMutableLine = async (id: string): Promise<CostLine & { event: Event }> => {
+    const line = isUuid(id) ? await db.costLine.findUnique({ where: { id }, include: { event: true } }) : null;
     if (!line) throw notFound('Cost line not found');
-    assertNotDeleted(line.gig);
+    assertNotDeleted(line.event);
     return line;
   };
 
-  const result = async (gigId: string, warnings: Warning[] = []) => ({
-    gig: toGigDetailDto(await requireGigDetail(db, gigId), todayIso()),
+  const result = async (eventId: string, warnings: Warning[] = []) => ({
+    event: toEventDetailDto(await requireEventDetail(db, eventId), todayIso()),
     warnings,
   });
 
-  const warningsFor = (gig: Gig, line: { type: string; personId: string | null }) =>
-    doubleBookingWarnings(db, { gigId: gig.id, startDate: gig.startDate, endDate: gig.endDate, lines: [line] });
+  const warningsFor = (event: Event, line: { type: string; personId: string | null }) =>
+    doubleBookingWarnings(db, { eventId: event.id, startDate: event.startDate, endDate: event.endDate, lines: [line] });
 
   // ---------------------------------------------------------------- add
-  app.post<IdParams>('/api/gigs/:id/cost-lines', async (request) => {
+  app.post<IdParams>('/api/events/:id/cost-lines', async (request) => {
     const me = request.requirePartner();
     const body = parseInput(createBody, request.body);
-    const gig = await requireGigDetail(db, request.params.id);
-    assertNotDeleted(gig);
+    const event = await requireEventDetail(db, request.params.id);
+    assertNotDeleted(event);
 
     const fields: Record<string, FieldCode> = {};
     if (DESCRIPTION_REQUIRED_TYPES.has(body.type) && !body.description) fields.description = 'DESCRIPTION_REQUIRED';
@@ -74,14 +74,14 @@ export function costLineRoutes(app: FastifyInstance, deps: AppDeps): void {
     if (Object.keys(fields).length > 0) throw validationError(fields);
 
     const personId = body.personId ?? null;
-    // A new line goes last: its creation time is after every existing line of the gig.
-    const latest = gig.costLines.reduce((max, l) => Math.max(max, l.createdAt.getTime()), 0);
+    // A new line goes last: its creation time is after every existing line of the event.
+    const latest = event.costLines.reduce((max, l) => Math.max(max, l.createdAt.getTime()), 0);
     const createdAt = new Date(Math.max(Date.now(), latest + 1));
     await inTransaction(db, async (tx) => {
       const line = await tx.costLine.create({
         data: {
           createdAt,
-          gigId: gig.id,
+          eventId: event.id,
           type: body.type,
           personId,
           description: body.description ?? null,
@@ -89,14 +89,14 @@ export function costLineRoutes(app: FastifyInstance, deps: AppDeps): void {
           joinsLoadIn: isMusicianRole(body.type) ? true : null,
         },
       });
-      await logEvent(tx, {
-        gigId: gig.id,
+      await logHistory(tx, {
+        eventId: event.id,
         type: 'COST_ADDED',
         partnerId: me.id,
         details: { costLineId: line.id, type: line.type, personId, budgetedCents: line.budgetedCents },
       });
     });
-    return result(gig.id, await warningsFor(gig, { type: body.type, personId }));
+    return result(event.id, await warningsFor(event, { type: body.type, personId }));
   });
 
   // ---------------------------------------------------------------- edit
@@ -148,8 +148,8 @@ export function costLineRoutes(app: FastifyInstance, deps: AppDeps): void {
           where: { id: line.id },
           data: { personId, description, budgetedCents, joinsLoadIn, loadInDeductionAppliedCents },
         });
-        await logEvent(tx, {
-          gigId: line.gigId,
+        await logHistory(tx, {
+          eventId: line.eventId,
           type: 'COST_UPDATED',
           partnerId: me.id,
           details: { costLineId: line.id, type: line.type, changes: changes as Prisma.InputJsonArray },
@@ -157,8 +157,8 @@ export function costLineRoutes(app: FastifyInstance, deps: AppDeps): void {
       });
     }
 
-    const warnings = personId !== line.personId ? await warningsFor(line.gig, { type: line.type, personId }) : [];
-    return result(line.gigId, warnings);
+    const warnings = personId !== line.personId ? await warningsFor(line.event, { type: line.type, personId }) : [];
+    return result(line.eventId, warnings);
   });
 
   // ---------------------------------------------------------------- remove
@@ -168,14 +168,14 @@ export function costLineRoutes(app: FastifyInstance, deps: AppDeps): void {
     await inTransaction(db, async (tx) => {
       await assertCostLineNotOnPurchaseOrder(tx, line.id);
       await tx.costLine.delete({ where: { id: line.id } });
-      await logEvent(tx, {
-        gigId: line.gigId,
+      await logHistory(tx, {
+        eventId: line.eventId,
         type: 'COST_REMOVED',
         partnerId: me.id,
         details: { costLineId: line.id, type: line.type, personId: line.personId, budgetedCents: line.budgetedCents },
       });
     });
-    return result(line.gigId);
+    return result(line.eventId);
   });
 
   // ---------------------------------------------------------------- pay / unpay (BR-025, BR-008)
@@ -193,14 +193,14 @@ export function costLineRoutes(app: FastifyInstance, deps: AppDeps): void {
         // Already paid: only the amount changes; the original payment time and partner stay.
         data: line.paidAt ? { actualCents } : { actualCents, paidAt: new Date(), paidById: me.id },
       });
-      await logEvent(tx, {
-        gigId: line.gigId,
+      await logHistory(tx, {
+        eventId: line.eventId,
         type: 'COST_PAID',
         partnerId: me.id,
         details: { costLineId: line.id, type: line.type, actualCents },
       });
     });
-    return result(line.gigId);
+    return result(line.eventId);
   });
 
   app.post<IdParams>('/api/cost-lines/:id/unpay', async (request) => {
@@ -211,14 +211,14 @@ export function costLineRoutes(app: FastifyInstance, deps: AppDeps): void {
       await assertCostLineNotOnPurchaseOrder(tx, line.id);
       if (line.paidAt) {
         await tx.costLine.update({ where: { id: line.id }, data: { actualCents: null, paidAt: null, paidById: null } });
-        await logEvent(tx, {
-          gigId: line.gigId,
+        await logHistory(tx, {
+          eventId: line.eventId,
           type: 'COST_UNPAID',
           partnerId: me.id,
           details: { costLineId: line.id, type: line.type, previousActualCents: line.actualCents },
         });
       }
     });
-    return result(line.gigId);
+    return result(line.eventId);
   });
 }

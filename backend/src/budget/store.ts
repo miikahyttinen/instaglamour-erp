@@ -3,7 +3,7 @@
  * rows and totals: `GET /api/budget` and the year page both use it.
  */
 import type { BudgetCategory, BudgetYear, Prisma } from '../generated/prisma/client.js';
-import type { Tx } from '../gigs/store.js';
+import type { Tx } from '../events/store.js';
 
 export interface BudgetAmounts {
   budgetExpenseCents: number;

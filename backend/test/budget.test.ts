@@ -1,7 +1,7 @@
 /** Budget endpoints (UC-020; BR-060, BR-062). Synthetic data only; money is 1000 or multiples of 10000 cents. */
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { closeTestDb, resetDb, testDb } from './helpers.js';
-import { call, createBudgetCategory, startSession, UNKNOWN_ID, type Json, type Session } from './gigFixtures.js';
+import { call, createBudgetCategory, startSession, UNKNOWN_ID, type Json, type Session } from './eventFixtures.js';
 
 let s: Session;
 let cats: Awaited<ReturnType<typeof seedCategories>>;

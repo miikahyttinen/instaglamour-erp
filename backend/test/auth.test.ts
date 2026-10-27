@@ -57,7 +57,7 @@ describe('global 401', () => {
     ['GET', '/api/me'],
     ['PATCH', '/api/me'],
     ['GET', '/api/reference'],
-    ['GET', '/api/gigs?year=2026'],
+    ['GET', '/api/events?year=2026'],
     ['GET', '/api/does-not-exist'],
   ] as const;
 
