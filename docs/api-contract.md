@@ -475,6 +475,7 @@ Details: `averageByCreatedYear[].count` = priced offers in the average, `average
 | Seed/import | top-level `gigs`, `ImportSummary.gigs` | `events` (the loader **also accepts `gigs`** as a legacy alias; both together → validation error) |
 | Status enum | `SOLD`, `CANCELLED` | unchanged |
 
+Also renamed by the same rule (TASK-032): year page `events.eventCount`, `events.soldEventsSumCents`, `upcomingEvents`; clients `gigCount` → `eventCount`, `GET /api/clients/{id}` → `{ client, events, offers }`; double-booking warning `otherEventId`, `otherEventStartDate`, `otherEventLineupName`; history entry `eventId`; PATCH/move responses `{ event, … }`; FreelancerLine / PO line `eventStartDate`, `eventEndDate`, `eventVenue`, `eventLineupName`, `eventStatus`; offer history `CONVERTED {eventId}`. `GET /api/events` returns `{ events: [EventSummary], yearSummary }` (`yearSummary` keeps its name). Stored history/import JSON keys are migrated too.
 No compatibility aliases for old API paths (no external clients). The UI renames routes `/gigs…` → `/events…` and redirects old `/gigs…` URLs. Labels: FI **Tapahtumat / Tapahtuma**, EN **Events / Event**; "Muuta keikaksi" → **"Muuta tapahtumaksi" / "Convert to event"**; people column "Keikkoja" → **"Tapahtumia" / "Events"**.
 
 ## Change log
