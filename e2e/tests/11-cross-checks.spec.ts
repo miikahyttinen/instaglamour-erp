@@ -12,7 +12,7 @@ import {
   tagOf,
   test,
 } from './helpers';
-import { costField, costLine, createGigViaApi, gigListRows, reference, suffix } from './gigs';
+import { costField, costLine, createEventViaApi, eventListRows, reference, suffix } from './events';
 import { clearFiltersButton, tickColumnValues } from './excel';
 
 // Extra integration checks beyond the nine smoke flows: places where the UI depends on
@@ -21,12 +21,12 @@ import { clearFiltersButton, tickColumnValues } from './excel';
 test('changing the seller moves the unpaid Sales line and the UI names it (BR-027)', async ({ page }, testInfo) => {
   await signIn(page);
   const venue = `Venue ${tagOf(testInfo)}-${suffix()}`;
-  const gig = await createGigViaApi(page, { startDate: '2026-12-05', venue });
+  const event = await createEventViaApi(page, { startDate: '2026-12-05', venue });
   const ref = await reference(page);
   const partnerB = ref.partners.find((p) => p.name === 'Partner B');
 
-  await page.goto(`/gigs/${gig.id}`);
-  await expectNoEditSaveButtons(page.getByRole('main'), 'gig page');
+  await page.goto(`/events/${event.id}`);
+  await expectNoEditSaveButtons(page.getByRole('main'), 'event page');
   // The hint is shown next to the seller / producer selects before anything is changed.
   await expect(page.getByText('Vanhan myyjän / tuottajan maksamattomat')).toBeVisible();
   // The select saves on change: one PATCH with just the seller.
@@ -39,7 +39,7 @@ test('changing the seller moves the unpaid Sales line and the UI names it (BR-02
   const sales = costLine(page, 'Myynti');
   await expect(sales.getByLabel('Henkilö: Myynti').locator('option:checked')).toHaveText('Partner B');
 
-  const after = await api(page).get(`/gigs/${gig.id}`);
+  const after = await api(page).get(`/events/${event.id}`);
   expect(after.sellerId).toBe(partnerB?.id);
   await page.reload();
   await expect(seller.locator('option:checked')).toHaveText('Partner B');
@@ -66,15 +66,15 @@ test('English amounts are parsed and shown in EN format (budget)', async ({ page
   expect(budget.totals.budgetExpenseCents).toBe(120000);
 });
 
-test('year page of an empty year still lists upcoming gigs (contract: regardless of year)', async ({ page }) => {
+test('year page of an empty year still lists upcoming events (contract: regardless of year)', async ({ page }) => {
   await signIn(page, undefined, { selectedYear: 2040 });
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 1, name: 'Vuosi 2040' })).toBeVisible();
   const data = await api(page).get('/years/2040');
-  expect(data.gigs.gigCount).toBe(0);
-  expect(data.upcomingGigs.length).toBeGreaterThan(0);
-  const upcoming = page.getByRole('region', { name: 'Tulevat keikat' });
-  await expect(upcoming.getByRole('link')).toHaveCount(data.upcomingGigs.length + 1); // + section heading link
+  expect(data.events.eventCount).toBe(0);
+  expect(data.upcomingEvents.length).toBeGreaterThan(0);
+  const upcoming = page.getByRole('region', { name: 'Tulevat tapahtumat' });
+  await expect(upcoming.getByRole('link')).toHaveCount(data.upcomingEvents.length + 1); // + section heading link
 });
 
 test('hours saved for another year show a notice and are not added to this year', async ({ page }, testInfo) => {
@@ -98,10 +98,10 @@ test('hours saved for another year show a notice and are not added to this year'
   expect(next.some((e) => e.comment === comment)).toBe(true);
 });
 
-test('gig list search and the Tila filter: cancelled gigs only after ticking "Peruttu"', async ({ page }) => {
+test('event list search and the Tila filter: cancelled events only after ticking "Peruttu"', async ({ page }) => {
   await signIn(page);
-  await page.goto('/gigs');
-  const rows = gigListRows(page); // one table "Keikkalista"; cards below 600 px
+  await page.goto('/events');
+  const rows = eventListRows(page); // one table "Tapahtumalista"; cards below 600 px
   // "Näytä myös perutut" is gone: the Tila column filter replaces it (TASK-144).
   await expect(page.getByLabel('Näytä myös perutut')).toHaveCount(0);
   await tickColumnValues(page, 'Tila', ['Peruttu']);
@@ -110,13 +110,13 @@ test('gig list search and the Tila filter: cancelled gigs only after ticking "Pe
   await expect(rows).toHaveCount(1);
   await expect(rows.first()).toContainText('Venue Z');
   await expect(rows.first()).toContainText('Peruttu');
-  // The search goes to the API (q), the Tila filter is client-side over the returned gigs.
-  const viaApi = await api(page).get(`/gigs?year=${CURRENT_YEAR}&status=ALL&q=venue%20z`);
-  expect(viaApi.gigs.map((g: { venue: string; status: string }) => [g.venue, g.status])).toEqual([['Venue Z', 'CANCELLED']]);
+  // The search goes to the API (q), the Tila filter is client-side over the returned events.
+  const viaApi = await api(page).get(`/events?year=${CURRENT_YEAR}&status=ALL&q=venue%20z`);
+  expect(viaApi.events.map((g: { venue: string; status: string }) => [g.venue, g.status])).toEqual([['Venue Z', 'CANCELLED']]);
 
   // A fresh visit with the same search: the default Tila filter (Myyty + Soitettu) hides it.
-  await page.goto('/gigs?q=venue%20z');
-  await expect(page.getByText('Ei suodattimia vastaavia keikkoja.')).toBeVisible();
+  await page.goto('/events?q=venue%20z');
+  await expect(page.getByText('Ei suodattimia vastaavia tapahtumia.')).toBeVisible();
   await expect(rows).toHaveCount(0);
   await clearFiltersButton(page).click();
   await expect(rows).toHaveCount(1);

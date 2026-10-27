@@ -1,5 +1,5 @@
 import type { Locator, Page } from '@playwright/test';
-import { costLines, gigListRows, gigTable } from './gigs';
+import { costLines, eventListRows, eventTable } from './events';
 import {
   CURRENT_YEAR,
   expect,
@@ -18,15 +18,15 @@ import {
 import { busyIds, MAIN_PAGE_NAMES, mainPages, openLoaded, type BusyIds } from './pages';
 
 // Layout v2 (docs/design.md → Layout v2, TASK-125…130): collapsible sidebar on desktop, ☰ drawer
-// on phones, the gig list as one Excel-style table (TASK-144), compact cost rows by container width.
+// on phones, the event list as one Excel-style table (TASK-144), compact cost rows by container width.
 // Read-only flows: nothing here changes the shared database.
 
-// Ten items: Asiakkaat after Keikat (TASK-015…139); Vuosi first, then Tarjoukset (TASK-142);
-// Ostotilaukset after Keikat (TASK-152); Tietojen tuonti last (TASK-154).
+// Ten items: Asiakkaat after Tapahtumat (TASK-015…139); Vuosi first, then Tarjoukset (TASK-142);
+// Ostotilaukset after Tapahtumat (TASK-152); Tietojen tuonti last (TASK-154).
 const NAV: { label: string; path: string }[] = [
   { label: 'Vuosi', path: '/' },
   { label: 'Tarjoukset', path: '/offers' },
-  { label: 'Keikat', path: '/gigs' },
+  { label: 'Tapahtumat', path: '/events' },
   { label: 'Ostotilaukset', path: '/purchase-orders' },
   { label: 'Asiakkaat', path: '/clients' },
   { label: 'Henkilöt', path: '/people' },
@@ -37,10 +37,10 @@ const NAV: { label: string; path: string }[] = [
 ];
 const SIDEBAR_KEY = 'ig-sidebar'; // frontend/src/layout/sidebarState.ts
 /**
- * Gig list columns that are always shown (TASK-144 ExcelTable; priority 1 in TASK-147, which hides
+ * Event list columns that are always shown (TASK-144 ExcelTable; priority 1 in TASK-147, which hides
  * lower-priority columns on narrower tables). Found by their sort buttons in the header.
  */
-const GIG_ALWAYS_COLUMNS = ['Kokoonpano', 'Päivä', 'Paikka', 'Tila', 'Kokonaishinta', 'Kate-%'];
+const EVENT_ALWAYS_COLUMNS = ['Kokoonpano', 'Päivä', 'Paikka', 'Tila', 'Kokonaishinta', 'Kate-%'];
 
 function sidebarNav(page: Page): Locator {
   return page.getByRole('navigation', { name: NAV_NAME });
@@ -79,7 +79,7 @@ test.describe('desktop sidebar', () => {
     await expect(page.getByRole('heading', { level: 1, name: `Vuosi ${CURRENT_YEAR}` })).toBeVisible();
     // Default: expanded, labels visible; no phone controls.
     await expectExpanded(page);
-    await expect(sidebarNav(page).getByText('Keikat', { exact: true })).toBeVisible();
+    await expect(sidebarNav(page).getByText('Tapahtumat', { exact: true })).toBeVisible();
     await expect(menuButton(page)).toHaveCount(0);
     await expect(navDrawer(page)).toHaveCount(0);
 
@@ -93,8 +93,8 @@ test.describe('desktop sidebar', () => {
 
     // Same browser, another tab: also collapsed.
     const other = await context.newPage();
-    await other.goto('/gigs');
-    await expect(other.getByRole('heading', { level: 1, name: `Keikat ${CURRENT_YEAR}` })).toBeVisible();
+    await other.goto('/events');
+    await expect(other.getByRole('heading', { level: 1, name: `Tapahtumat ${CURRENT_YEAR}` })).toBeVisible();
     await expectCollapsed(other);
     await other.close();
 
@@ -175,27 +175,27 @@ test.describe('desktop sidebar', () => {
     await expect(third).toHaveAccessibleName(NAV[2]!.label);
   });
 
-  test('gig list: one Excel-style table "Keikkalista" at every desktop width (1199, 1200, 1440 px)', async ({ page }) => {
+  test('event list: one Excel-style table "Tapahtumalista" at every desktop width (1199, 1200, 1440 px)', async ({ page }) => {
     // TASK-144: no separate card list any more; below 600 px the same table is laid out as cards.
     for (const w of [1199, 1200, 1440]) {
       await page.setViewportSize({ width: w, height: 800 });
-      await openLoaded(page, '/gigs');
-      const table = gigTable(page);
+      await openLoaded(page, '/events');
+      const table = eventTable(page);
       await expect(table, `${w} px: table`).toBeVisible();
-      await expect(page.getByRole('list', { name: 'Keikkalista' }), `${w} px: no card list`).toHaveCount(0);
-      for (const column of GIG_ALWAYS_COLUMNS) {
+      await expect(page.getByRole('list', { name: 'Tapahtumalista' }), `${w} px: no card list`).toHaveCount(0);
+      for (const column of EVENT_ALWAYS_COLUMNS) {
         await expect(table.getByRole('button', { name: column, exact: true }), `${w} px: "${column}" header`).toBeVisible();
       }
       for (const column of ['Kokoonpano', 'Paikka', 'Tila']) {
         await expect(table.getByRole('button', { name: `Suodata: ${column}`, exact: true }), `${w} px: filter ${column}`).toBeVisible();
       }
-      await expect(gigListRows(page).first()).toBeVisible();
-      await expectNoHorizontalScroll(page, `gig list at ${w} px`);
+      await expect(eventListRows(page).first()).toBeVisible();
+      await expectNoHorizontalScroll(page, `event list at ${w} px`);
     }
   });
 
-  test('gig page cost list: compact rows next to the expanded sidebar at 1280 px, full table at 1440 px', async ({ page }) => {
-    const { gigId } = await busyIds(page);
+  test('event page cost list: compact rows next to the expanded sidebar at 1280 px, full table at 1440 px', async ({ page }) => {
+    const { eventId } = await busyIds(page);
     const table = page.getByRole('table', { name: 'Kulut ja miehitys' });
     // Compact rows keep the table semantics; the header row group is only visually hidden (1 px clip).
     const headerHeight = () => table.locator('thead').evaluate((e) => e.getBoundingClientRect().height);
@@ -205,19 +205,19 @@ test.describe('desktop sidebar', () => {
       [1440, false],
     ] as const) {
       await page.setViewportSize({ width: w, height: 800 });
-      await openLoaded(page, `/gigs/${gigId}`);
+      await openLoaded(page, `/events/${eventId}`);
       await expectExpanded(page);
       await expect(table).toBeVisible();
       expect(await costLines(page).count(), `${w} px: cost lines are named rowgroups`).toBeGreaterThan(0);
       if (compact) expect(await headerHeight(), `${w} px: compact rows`).toBeLessThanOrEqual(1);
       else expect(await headerHeight(), `${w} px: full table with column headers`).toBeGreaterThan(1);
-      await expectNoHorizontalScroll(page, `gig page at ${w} px`);
+      await expectNoHorizontalScroll(page, `event page at ${w} px`);
     }
   });
 
-  // F-006-style check after TASK-147 (responsive Excel tables): Keikat and Tarjoukset use the full
+  // F-006-style check after TASK-147 (responsive Excel tables): Tapahtumat and Tarjoukset use the full
   // content width and never scroll sideways; lower-priority columns are hidden instead.
-  test('Keikat and Tarjoukset: no page or table horizontal overflow at 1200 / 1440 / 1920 px, the table fills the width', async ({ page }) => {
+  test('Tapahtumat and Tarjoukset: no page or table horizontal overflow at 1200 / 1440 / 1920 px, the table fills the width', async ({ page }) => {
     const tableBox = () =>
       page.evaluate(() => {
         const wrap = document.querySelector<HTMLElement>('main .table-wrap');
@@ -236,7 +236,7 @@ test.describe('desktop sidebar', () => {
     for (const mode of ['expanded', 'collapsed'] as const) {
       await page.addInitScript(([key, value]) => window.localStorage.setItem(key, value), [SIDEBAR_KEY, mode]);
       for (const [name, path] of [
-        ['Keikat', '/gigs?f.allStatuses=1'],
+        ['Tapahtumat', '/events?f.allStatuses=1'],
         ['Tarjoukset', '/offers'],
       ] as const) {
         for (const w of [1200, 1440, 1920]) {

@@ -20,8 +20,8 @@ export async function personByName(page: Page, name: string): Promise<{ id: stri
 export type TechnicalSetup = 'HOUSE_TECH' | 'SET_A' | 'SET_B' | 'SET_C';
 export type Logistics = 'OWN_VAN' | 'RENTAL_VAN' | 'TAXI' | 'OTHER';
 
-/** Creates a Template B gig through the API (setup for flows that are not about creating). */
-export async function createGigViaApi(
+/** Creates a Template B event through the API (setup for flows that are not about creating). */
+export async function createEventViaApi(
   page: Page,
   opts: {
     startDate: string;
@@ -44,7 +44,7 @@ export async function createGigViaApi(
   const me = (await api(page).get('/me')) as { id: string };
   const template = ref.lineupTemplates.find((t) => t.name === SEED.templateB.name);
   if (!template) throw new Error('Template B missing from the example seed');
-  return api(page).post('/gigs', {
+  return api(page).post('/events', {
     startDate: opts.startDate,
     endDate: null,
     lineupTemplateId: template.id,
@@ -68,14 +68,14 @@ export function suffix(): string {
   return Math.random().toString(36).slice(2, 7);
 }
 
-// ---- Gig page and gig list locators (markup after the design restyle, TASK-110…116) ----
+// ---- Event page and event list locators (markup after the design restyle, TASK-110…116) ----
 
-/** One cost line on the gig page: each line is its own `<tbody aria-label="<type>">`. */
+/** One cost line on the event page: each line is its own `<tbody aria-label="<type>">`. */
 export function costLine(page: Page, label: string): Locator {
   return page.getByRole('table', { name: 'Kulut ja miehitys' }).getByRole('rowgroup', { name: label, exact: true });
 }
 
-/** All cost lines on the gig page (the header rowgroup has column headers, no cells). */
+/** All cost lines on the event page (the header rowgroup has column headers, no cells). */
 export function costLines(page: Page): Locator {
   return page
     .getByRole('table', { name: 'Kulut ja miehitys' })
@@ -84,7 +84,7 @@ export function costLines(page: Page): Locator {
 }
 
 /**
- * Economics stat tile on the gig page (`Kulut`, `Kate`, `Kate-%`): the big figure is the budget,
+ * Economics stat tile on the event page (`Kulut`, `Kate`, `Kate-%`): the big figure is the budget,
  * the secondary figure (caption "Toteuma") is the actual.
  */
 export function econTile(page: Page, label: string): { budget: Locator; actual: Locator } {
@@ -98,17 +98,17 @@ export function econTile(page: Page, label: string): { budget: Locator; actual: 
   };
 }
 
-/** The live "Kokonaishinta: …" line under the price inputs of the new gig form. */
+/** The live "Kokonaishinta: …" line under the price inputs of the new event form. */
 export function totalPriceLine(page: Page): Locator {
   return page.getByRole('main').locator('p', { hasText: /^Kokonaishinta:/ });
 }
 
-/** Gig page: the saved total price under the inline price fields (`role="group"`). */
+/** Event page: the saved total price under the inline price fields (`role="group"`). */
 export function totalPrice(page: Page): Locator {
   return page.getByRole('main').getByRole('group', { name: 'Kokonaishinta', exact: true });
 }
 
-/** Cost line field on the gig page, e.g. `costField(page, 'Budjetti', 'Laulu')` → "Budjetti: Laulu". */
+/** Cost line field on the event page, e.g. `costField(page, 'Budjetti', 'Laulu')` → "Budjetti: Laulu". */
 export function costField(page: Page, field: 'Budjetti' | 'Kuvaus' | 'Maksettu summa' | 'Henkilö', line: string): Locator {
   return page
     .getByRole('table', { name: 'Kulut ja miehitys' })
@@ -116,14 +116,14 @@ export function costField(page: Page, field: 'Budjetti' | 'Kuvaus' | 'Maksettu s
 }
 
 /**
- * The gig list (TASK-144): one Excel-style table "Keikkalista" at every width; below 600 px the
+ * The event list (TASK-144): one Excel-style table "Tapahtumalista" at every width; below 600 px the
  * same table is laid out as cards (CSS), so rows are always table rows.
  */
-export function gigTable(page: Page): Locator {
-  return page.getByRole('table', { name: 'Keikkalista', exact: true });
+export function eventTable(page: Page): Locator {
+  return page.getByRole('table', { name: 'Tapahtumalista', exact: true });
 }
 
-/** Data rows of the gig list (cards on phones are the same rows). */
-export function gigListRows(page: Page): Locator {
-  return gigTable(page).getByRole('row').filter({ has: page.getByRole('cell') });
+/** Data rows of the event list (cards on phones are the same rows). */
+export function eventListRows(page: Page): Locator {
+  return eventTable(page).getByRole('row').filter({ has: page.getByRole('cell') });
 }

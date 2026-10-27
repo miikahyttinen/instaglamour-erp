@@ -15,7 +15,7 @@ import {
   tagOf,
   test,
 } from './helpers';
-import { createGigViaApi, suffix } from './gigs';
+import { createEventViaApi, suffix } from './events';
 
 interface ApiPerson {
   id: string;
@@ -72,12 +72,12 @@ test('add, rename and deactivate a person; person page lists their lines', async
   await page.reload();
   await expect(list.getByLabel(`Nimi: ${renamed}`, { exact: true })).toHaveValue(renamed);
 
-  // Give the person a line on a gig (setup through the API), then open the person page.
+  // Give the person a line on an event (setup through the API), then open the person page.
   const person = ((await api(page).get('/people?active=all')) as ApiPerson[]).find((p) => p.name === renamed);
   expect(person, 'renamed person is returned by the API').toBeTruthy();
   const venue = `Venue ${tag}-${s}`;
-  const gig = await createGigViaApi(page, { startDate: tag === 'M' ? '2026-12-12' : '2026-12-19', venue });
-  const guitar = gig.costLines.find((l) => l.type === 'GUITAR');
+  const event = await createEventViaApi(page, { startDate: tag === 'M' ? '2026-12-12' : '2026-12-19', venue });
+  const guitar = event.costLines.find((l) => l.type === 'GUITAR');
   await api(page).patch(`/cost-lines/${guitar?.id}`, { personId: person?.id });
 
   await list.getByRole('link', { name: `Avaa: ${renamed}`, exact: true }).click();
@@ -109,7 +109,7 @@ test('add, rename and deactivate a person; person page lists their lines', async
   // The "inactive" tag sits in the page head next to the name.
   await expect(page.getByRole('heading', { level: 1, name: renamed })).toBeVisible();
   await expect(pageHead(page).locator('.page-subtitle .tag')).toHaveText('Ei käytössä');
-  // The line on the gig is kept.
+  // The line on the event is kept.
   await expect(lines.getByRole('row', { name: new RegExp(venue) })).toBeVisible();
   await page.reload();
   await expect(active).not.toBeChecked();

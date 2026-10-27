@@ -14,7 +14,7 @@ import {
   tagOf,
   test,
 } from './helpers';
-import { suffix } from './gigs';
+import { suffix } from './events';
 import { partnerFilter, tableTotal, totalsTable } from './hours';
 
 interface Totals {

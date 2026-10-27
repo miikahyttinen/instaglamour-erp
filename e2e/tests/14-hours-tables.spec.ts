@@ -1,4 +1,4 @@
-import { suffix } from './gigs';
+import { suffix } from './events';
 import {
   api,
   CURRENT_YEAR,

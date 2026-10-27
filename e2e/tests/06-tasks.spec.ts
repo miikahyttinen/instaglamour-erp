@@ -13,7 +13,7 @@ import {
   tagOf,
   test,
 } from './helpers';
-import { suffix } from './gigs';
+import { suffix } from './events';
 
 interface ApiTask {
   id: string;

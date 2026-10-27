@@ -37,7 +37,7 @@ test('switch language to English and change the year', async ({ page }) => {
   }
   const year = await api(page).get(`/years/${CURRENT_YEAR}`);
   await expect(
-    page.getByRole('region', { name: 'Gigs' }).getByRole('link', { name: `Sold gigs sum ${enMoney(year.gigs.soldGigsSumCents)}` }),
+    page.getByRole('region', { name: 'Events' }).getByRole('link', { name: `Sold events sum ${enMoney(year.events.soldEventsSumCents)}` }),
   ).toBeVisible();
   await expectNoHorizontalScroll(page, 'year page (EN)');
 
@@ -45,25 +45,25 @@ test('switch language to English and change the year', async ({ page }) => {
   await page.getByRole('button', { name: 'Next year' }).click();
   await expect(page.getByRole('heading', { level: 1, name: `Year ${CURRENT_YEAR + 1}` })).toBeVisible();
   await expect(page.getByRole('combobox', { name: 'Selected year' })).toHaveValue(String(CURRENT_YEAR + 1));
-  await goNav(page, 'Gigs');
-  await expect(page.getByRole('heading', { level: 1, name: `Gigs ${CURRENT_YEAR + 1}` })).toBeVisible();
+  await goNav(page, 'Events');
+  await expect(page.getByRole('heading', { level: 1, name: `Events ${CURRENT_YEAR + 1}` })).toBeVisible();
   await page.getByRole('combobox', { name: 'Selected year' }).selectOption(String(CURRENT_YEAR));
-  await expect(page.getByRole('heading', { level: 1, name: `Gigs ${CURRENT_YEAR}` })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: `Events ${CURRENT_YEAR}` })).toBeVisible();
   await page.getByRole('button', { name: 'Previous year' }).click();
-  await expect(page.getByRole('heading', { level: 1, name: `Gigs ${CURRENT_YEAR - 1}` })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: `Events ${CURRENT_YEAR - 1}` })).toBeVisible();
 
   // Both preferences are stored on the server and survive a reload.
   await page.reload();
-  await expect(page.getByRole('heading', { level: 1, name: `Gigs ${CURRENT_YEAR - 1}` })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: `Events ${CURRENT_YEAR - 1}` })).toBeVisible();
   const me = await api(page).get('/me');
   expect(me.language).toBe('en');
   expect(me.selectedYear).toBe(CURRENT_YEAR - 1);
-  await expectNoHorizontalScroll(page, 'gig list (EN)');
+  await expectNoHorizontalScroll(page, 'event list (EN)');
   await expectSignedInShown(page, 'Signed in as Partner C');
 
   // Back to Finnish.
   await (await languageButton(page, 'Change language to Suomi')).click();
-  await expect(page.getByRole('heading', { level: 1, name: `Keikat ${CURRENT_YEAR - 1}` })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: `Tapahtumat ${CURRENT_YEAR - 1}` })).toBeVisible();
   // The UI switches right away; the PATCH /api/me may land a moment later.
   await expect.poll(async () => (await api(page).get('/me')).language, 'language saved on the server').toBe('fi');
 });

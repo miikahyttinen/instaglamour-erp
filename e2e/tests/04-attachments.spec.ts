@@ -1,5 +1,5 @@
 import { api, expect, expectNoHorizontalScroll, signIn, tagOf, test } from './helpers';
-import { createGigViaApi, suffix } from './gigs';
+import { createEventViaApi, suffix } from './events';
 
 /** A tiny, valid, synthetic one-page PDF. */
 function syntheticPdf(): Buffer {
@@ -26,11 +26,11 @@ test('upload, download and remove a PDF attachment', async ({ page }, testInfo) 
   await signIn(page);
   const tag = tagOf(testInfo);
   const venue = `Venue ${tag}-${suffix()}`;
-  const gig = await createGigViaApi(page, { startDate: tag === 'M' ? '2026-11-14' : '2026-11-21', venue });
+  const event = await createEventViaApi(page, { startDate: tag === 'M' ? '2026-11-14' : '2026-11-21', venue });
   const pdf = syntheticPdf();
   const filename = `synthetic-contract-${tag}.pdf`;
 
-  await page.goto(`/gigs/${gig.id}`);
+  await page.goto(`/events/${event.id}`);
   await expect(page.getByText('Ei liitteitä.')).toBeVisible();
 
   await page.getByLabel('Lisää tiedosto', { exact: true }).setInputFiles({
@@ -43,7 +43,7 @@ test('upload, download and remove a PDF attachment', async ({ page }, testInfo) 
   const link = list.getByRole('link', { name: filename });
   await expect(link).toBeVisible();
   await expect(list).toContainText('Partner A');
-  await expectNoHorizontalScroll(page, 'gig with attachment');
+  await expectNoHorizontalScroll(page, 'event with attachment');
 
   // Download through the same URL the link uses (same-origin, session cookie).
   const href = await link.getAttribute('href');
@@ -73,9 +73,9 @@ test('upload, download and remove a PDF attachment', async ({ page }, testInfo) 
   await expect(dialog).toBeHidden();
   await expect(page.getByText('Ei liitteitä.')).toBeVisible();
 
-  const after = await api(page).get(`/gigs/${gig.id}`);
+  const after = await api(page).get(`/events/${event.id}`);
   expect(after.attachments).toHaveLength(0);
-  const history = await api(page).get(`/gigs/${gig.id}/history`);
+  const history = await api(page).get(`/events/${event.id}/history`);
   expect(history.slice(0, 2).map((e: { type: string }) => e.type)).toEqual(['ATTACHMENT_REMOVED', 'ATTACHMENT_ADDED']);
   // A removed attachment is no longer downloadable.
   expect((await page.request.get(href ?? '')).status()).toBe(404);
@@ -86,10 +86,10 @@ test('upload, download and remove a PDF attachment', async ({ page }, testInfo) 
 test('a fake PDF is refused by the server with a translated message', async ({ page }, testInfo) => {
   await signIn(page);
   const venue = `Venue ${tagOf(testInfo)}-${suffix()}`;
-  const gig = await createGigViaApi(page, { startDate: '2026-11-28', venue });
-  await page.goto(`/gigs/${gig.id}`);
+  const event = await createEventViaApi(page, { startDate: '2026-11-28', venue });
+  await page.goto(`/events/${event.id}`);
   const [response] = await Promise.all([
-    page.waitForResponse((r) => r.url().endsWith(`/api/gigs/${gig.id}/attachments`)),
+    page.waitForResponse((r) => r.url().endsWith(`/api/events/${event.id}/attachments`)),
     page.getByLabel('Lisää tiedosto', { exact: true }).setInputFiles({
       name: 'not-really.pdf',
       mimeType: 'application/pdf',

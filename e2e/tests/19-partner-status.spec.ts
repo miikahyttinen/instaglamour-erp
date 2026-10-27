@@ -10,7 +10,7 @@ import {
   test,
   trackWrites,
 } from './helpers';
-import { createGigViaApi, suffix } from './gigs';
+import { createEventViaApi, suffix } from './events';
 import { totalsTable } from './hours';
 import { createClientViaApi, createOfferViaApi, offerYear } from './offers';
 
@@ -185,7 +185,7 @@ test('removing a partner ends their session and sign-in; the name stays on their
       venue: 'Venue F',
     });
     expect(offer.sellerId).toBe(partner.id);
-    const gig = await createGigViaApi(other, { startDate: `${year}-08-15`, venue: `Venue ${tag}-${s}-former` });
+    const event = await createEventViaApi(other, { startDate: `${year}-08-15`, venue: `Venue ${tag}-${s}-former` });
     const taskTitle = `Synthetic task ${tag}-${s}-former`;
     const task = (await api(other).post('/tasks', { title: taskTitle })) as { id: string; ownerId: string };
     expect(task.ownerId).toBe(partner.id);
@@ -243,11 +243,11 @@ test('removing a partner ends their session and sign-in; the name stays on their
     await expect(owner.locator('option', { hasText: name })).toHaveCount(0);
     await taskDialog.getByRole('button', { name: 'Peruuta' }).click();
 
-    // AC-4: the name stays on their offer, gig, task and hours.
+    // AC-4: the name stays on their offer, event, task and hours.
     await page.goto(`/offers/${offer.id}`);
     await expect(page.getByRole('heading', { level: 1, name: offer.eventName })).toBeVisible();
     await expect(page.getByRole('main').getByLabel('Myyjä', { exact: true }).locator('option:checked')).toHaveText(name);
-    await page.goto(`/gigs/${gig.id}`);
+    await page.goto(`/events/${event.id}`);
     await expect(page.getByRole('main').getByLabel('Myyjä', { exact: true }).locator('option:checked')).toHaveText(name);
     await expect(page.getByRole('main').getByLabel('Tuottaja', { exact: true }).locator('option:checked')).toHaveText(name);
     await page.goto('/tasks');

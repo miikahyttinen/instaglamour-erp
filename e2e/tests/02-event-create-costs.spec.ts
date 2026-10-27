@@ -14,12 +14,12 @@ import {
   tagOf,
   test,
 } from './helpers';
-import { costField, costLine, costLines, createGigViaApi, econTile, suffix, totalPriceLine } from './gigs';
+import { costField, costLine, costLines, createEventViaApi, econTile, suffix, totalPriceLine } from './events';
 import { yearFigure } from './year';
 
-// Flow 2: create gig from a template → cost lines → assign a person → load-in switch → mark paid →
+// Flow 2: create event from a template → cost lines → assign a person → load-in switch → mark paid →
 // economics update (UC-002, UC-005).
-test('create a gig from a template, staff it, switch load-in, mark paid', async ({ page }, testInfo) => {
+test('create an event from a template, staff it, switch load-in, mark paid', async ({ page }, testInfo) => {
   await signIn(page);
   const tag = tagOf(testInfo);
   const venue = `Venue ${tag}-${suffix()}`;
@@ -30,19 +30,19 @@ test('create a gig from a template, staff it, switch load-in, mark paid', async 
   const budgeted = 3 * fee + 3 * internal;
 
   await page.goto('/');
-  await goNav(page, 'Keikat');
-  await page.getByRole('link', { name: 'Uusi keikka' }).first().click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Uusi keikka' })).toBeVisible();
-  await expectNoHorizontalScroll(page, 'new gig');
+  await goNav(page, 'Tapahtumat');
+  await page.getByRole('link', { name: 'Uusi tapahtuma' }).first().click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Uusi tapahtuma' })).toBeVisible();
+  await expectNoHorizontalScroll(page, 'new event');
 
   await page.getByLabel('Alkupäivä').fill(startDate);
   await page.getByLabel('Kokoonpano', { exact: true }).selectOption({ label: SEED.templateB.name });
   await page.getByLabel('Paikka').fill(venue);
   await page.getByLabel('Hinta (alv 0 %)').fill(fiInput(priceCents));
   await expect(totalPriceLine(page)).toContainText(fiMoney(priceCents));
-  await page.getByRole('button', { name: 'Luo keikka' }).click();
+  await page.getByRole('button', { name: 'Luo tapahtuma' }).click();
 
-  // Gig page with the template's cost lines (BR-020) plus office/sales/production (BR-021).
+  // Event page with the template's cost lines (BR-020) plus office/sales/production (BR-021).
   await expect(page.getByRole('heading', { level: 1, name: `${SEED.templateB.name} · ${venue}` })).toBeVisible();
   const lines = costLines(page);
   await expect(lines).toHaveCount(6);
@@ -52,7 +52,7 @@ test('create a gig from a template, staff it, switch load-in, mark paid', async 
   await expect(econTile(page, 'Kulut').budget).toHaveText(fiMoney(budgeted));
   await expect(econTile(page, 'Kulut').actual).toHaveText(fiMoney(0));
   await expect(page.getByRole('note').filter({ hasText: 'Miehitys kesken' })).toBeVisible();
-  await expectNoHorizontalScroll(page, 'gig page');
+  await expectNoHorizontalScroll(page, 'event page');
 
   // Assign a person to the vocals line.
   const voc = costLine(page, 'Laulu');
@@ -87,10 +87,10 @@ test('create a gig from a template, staff it, switch load-in, mark paid', async 
 
   // The backend agrees with what the page shows.
   const id = page.url().split('/').pop() ?? '';
-  const gig = await api(page).get(`/gigs/${id}`);
-  expect(gig.actualCostsCents).toBe(vocBudget);
-  expect(gig.budgetedCostsCents).toBe(budgeted - SEED.loadInDeductionCents);
-  const vocLine = gig.costLines.find((l: { type: string }) => l.type === 'VOC');
+  const event = await api(page).get(`/events/${id}`);
+  expect(event.actualCostsCents).toBe(vocBudget);
+  expect(event.budgetedCostsCents).toBe(budgeted - SEED.loadInDeductionCents);
+  const vocLine = event.costLines.find((l: { type: string }) => l.type === 'VOC');
   expect(vocLine.joinsLoadIn).toBe(false);
   expect(vocLine.loadInDeductionAppliedCents).toBe(SEED.loadInDeductionCents);
   expect(vocLine.paidAt).not.toBeNull();
@@ -99,45 +99,45 @@ test('create a gig from a template, staff it, switch load-in, mark paid', async 
   const history = page.getByRole('list', { name: 'Muutoshistoria' });
   await expect(history.getByText('Merkitty maksetuksi')).toBeVisible();
   await expect(history.getByText('Kuluriviä muutettu').first()).toBeVisible();
-  await expect(history.getByText('Keikka luotu')).toBeVisible();
-  await expectNoHorizontalScroll(page, 'gig page after edits');
+  await expect(history.getByText('Tapahtuma luotu')).toBeVisible();
+  await expectNoHorizontalScroll(page, 'event page after edits');
 
-  // Without a reload, the gig list summary and the year page (both loaded earlier in this session)
+  // Without a reload, the event list summary and the year page (both loaded earlier in this session)
   // show the new figures.
   const year = await api(page).get('/years/2026');
-  expect(year.gigs.soldGigsSumCents).toBeGreaterThanOrEqual(priceCents);
-  await page.getByRole('main').getByRole('link', { name: 'Keikat', exact: true }).click(); // back link
+  expect(year.events.soldEventsSumCents).toBeGreaterThanOrEqual(priceCents);
+  await page.getByRole('main').getByRole('link', { name: 'Tapahtumat', exact: true }).click(); // back link
   const summary = page.getByRole('region', { name: 'Vuosi yhteensä' });
-  await expect(summary).toContainText(`Myytyjen keikkojen summa${fiMoney(year.gigs.soldGigsSumCents)}`);
-  await expect(summary).toContainText(`Kulut, toteuma${fiMoney(year.gigs.actualCostsCents)}`);
+  await expect(summary).toContainText(`Myytyjen tapahtumien summa${fiMoney(year.events.soldEventsSumCents)}`);
+  await expect(summary).toContainText(`Kulut, toteuma${fiMoney(year.events.actualCostsCents)}`);
   await expect(page.getByRole('link', { name: `${SEED.templateB.name} · ${venue}` })).toBeVisible();
   await goNav(page, 'Vuosi');
-  const gigsRegion = page.getByRole('region', { name: 'Keikat' });
-  await expect(gigsRegion.getByRole('link', { name: `Keikkoja ${year.gigs.gigCount}` })).toBeVisible();
+  const eventsRegion = page.getByRole('region', { name: 'Tapahtumat' });
+  await expect(eventsRegion.getByRole('link', { name: `Tapahtumia ${year.events.eventCount}` })).toBeVisible();
   await expect(
-    gigsRegion.getByRole('link', { name: `Myytyjen keikkojen summa ${fiMoney(year.gigs.soldGigsSumCents)}` }),
+    eventsRegion.getByRole('link', { name: `Myytyjen tapahtumien summa ${fiMoney(year.events.soldEventsSumCents)}` }),
   ).toBeVisible();
   // Actual costs are the secondary figure inside the budgeted-costs tile (a link to the list).
   await expect(
-    yearFigure(gigsRegion.getByRole('link', { name: /^Kulut, budjetti / }), 'Kulut, toteuma'),
-  ).toHaveText(fiMoney(year.gigs.actualCostsCents));
+    yearFigure(eventsRegion.getByRole('link', { name: /^Kulut, budjetti / }), 'Kulut, toteuma'),
+  ).toHaveText(fiMoney(year.events.actualCostsCents));
 });
 
-// Double booking (BR-022): assigning someone who already plays a seed gig that day warns but saves.
-test('double booking shows a warning naming the other gig', async ({ page }, testInfo) => {
+// Double booking (BR-022): assigning someone who already plays a seed event that day warns but saves.
+test('double booking shows a warning naming the other event', async ({ page }, testInfo) => {
   await signIn(page);
   const venue = `Venue ${tagOf(testInfo)}-${suffix()}`;
   // The example seed has Person 1 on vocals at Venue X on 2026-10-17 (Template A).
-  const gig = await createGigViaApi(page, { startDate: '2026-10-17', venue });
+  const event = await createEventViaApi(page, { startDate: '2026-10-17', venue });
 
-  await page.goto(`/gigs/${gig.id}`);
+  await page.goto(`/events/${event.id}`);
   const guitar = costLine(page, 'Kitara');
   await guitar.getByLabel('Henkilö: Kitara').selectOption({ label: 'Person 1' });
-  const warning = page.getByRole('alert').filter({ hasText: 'Päällekkäinen keikka' });
-  await expect(warning).toContainText('Person 1 on samaan aikaan myös keikalla (17.10.2026):');
+  const warning = page.getByRole('alert').filter({ hasText: 'Päällekkäinen tapahtuma' });
+  await expect(warning).toContainText('Person 1 on samaan aikaan myös tapahtumassa (17.10.2026):');
   await expect(warning.getByRole('link', { name: 'Template A' })).toBeVisible();
   await expect(guitar.getByLabel('Henkilö: Kitara').locator('option:checked')).toHaveText('Person 1');
-  await expectNoHorizontalScroll(page, 'gig page with warning');
+  await expectNoHorizontalScroll(page, 'event page with warning');
   // The select saved on change: still there after a reload.
   await page.reload();
   await expect(costField(page, 'Henkilö', 'Kitara').locator('option:checked')).toHaveText('Person 1');
@@ -153,9 +153,9 @@ test('cost lines are edited in place; Esc and invalid amounts are not saved', as
   const guitarBudget = 30000;
   const djPaid = 10000;
   const note = 'Synthetic note';
-  const gig = await createGigViaApi(page, { startDate: '2026-11-28', venue });
+  const event = await createEventViaApi(page, { startDate: '2026-11-28', venue });
 
-  await page.goto(`/gigs/${gig.id}`);
+  await page.goto(`/events/${event.id}`);
   await expect(costLines(page)).toHaveCount(6);
   await expectNoEditSaveButtons(page.getByRole('table', { name: 'Kulut ja miehitys' }), 'cost lines');
 
@@ -197,7 +197,7 @@ test('cost lines are edited in place; Esc and invalid amounts are not saved', as
   await expect(voc).not.toHaveAttribute('aria-invalid', 'true');
   await expect(econTile(page, 'Kulut').budget).toHaveText(fiMoney(budgeted - fee + guitarBudget));
   await expect(econTile(page, 'Kulut').actual).toHaveText(fiMoney(djPaid));
-  const saved = await api(page).get(`/gigs/${gig.id}`);
+  const saved = await api(page).get(`/events/${event.id}`);
   const byType = (type: string) => saved.costLines.find((l: { type: string }) => l.type === type);
   expect(byType('GUITAR').budgetedCents).toBe(guitarBudget);
   expect(byType('VOC').budgetedCents).toBe(fee);

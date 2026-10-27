@@ -15,7 +15,7 @@ import {
   test,
   trackWrites,
 } from './helpers';
-import { suffix } from './gigs';
+import { suffix } from './events';
 import type { Locator, Page } from '@playwright/test';
 
 // Seed rows of backend/seed/seed.example.json (synthetic), in seed order.

@@ -2,16 +2,16 @@ import { execFileSync } from 'node:child_process';
 import type { APIRequestContext, Browser, BrowserContext, Locator, Page, Response, TestInfo } from '@playwright/test';
 // Shared e2e configuration (database name, repo root) — the same module playwright.config.ts uses.
 import { e2eDbName, repoRoot } from '../scripts/env.mjs';
-import { createGigViaApi, suffix } from './gigs';
+import { createEventViaApi, suffix } from './events';
 import { api, expect, tagOf } from './helpers';
 
 // Purchase orders (UC-033, UC-034, BR-113…BR-119): API setup and locators. Synthetic data only.
 
-/** Played gigs go to a past year of their own per project so no other spec's figures move. */
+/** Played events go to a past year of their own per project so no other spec's figures move. */
 export function poPastYear(testInfo: TestInfo): number {
   return tagOf(testInfo) === 'M' ? 2023 : 2024;
 }
-/** Upcoming gigs: far in the future (last in "upcoming gigs"), one year per project. */
+/** Upcoming events: far in the future (last in "upcoming events"), one year per project. */
 export function poFutureYear(testInfo: TestInfo): number {
   return tagOf(testInfo) === 'M' ? 2046 : 2047;
 }
@@ -48,21 +48,21 @@ interface CostLine {
 }
 
 /** Adds a cost line for a person and returns its id. */
-export async function addLine(page: Page, gigId: string, personId: string, type: string, budgetedCents: number): Promise<string> {
-  const before = (await api(page).get(`/gigs/${gigId}`)) as { costLines: CostLine[] };
+export async function addLine(page: Page, eventId: string, personId: string, type: string, budgetedCents: number): Promise<string> {
+  const before = (await api(page).get(`/events/${eventId}`)) as { costLines: CostLine[] };
   const known = new Set(before.costLines.map((l) => l.id));
-  const res = (await api(page).post(`/gigs/${gigId}/cost-lines`, { type, personId, budgetedCents })) as {
-    gig: { costLines: CostLine[] };
+  const res = (await api(page).post(`/events/${eventId}/cost-lines`, { type, personId, budgetedCents })) as {
+    event: { costLines: CostLine[] };
   };
-  const line = res.gig.costLines.find((l) => !known.has(l.id));
+  const line = res.event.costLines.find((l) => !known.has(l.id));
   if (!line) throw new Error('new cost line not returned');
   return line.id;
 }
 
-export async function costLineOf(page: Page, gigId: string, lineId: string): Promise<CostLine> {
-  const gig = (await api(page).get(`/gigs/${gigId}`)) as { costLines: CostLine[] };
-  const line = gig.costLines.find((l) => l.id === lineId);
-  if (!line) throw new Error(`cost line ${lineId} not on gig ${gigId}`);
+export async function costLineOf(page: Page, eventId: string, lineId: string): Promise<CostLine> {
+  const event = (await api(page).get(`/events/${eventId}`)) as { costLines: CostLine[] };
+  const line = event.costLines.find((l) => l.id === lineId);
+  if (!line) throw new Error(`cost line ${lineId} not on event ${eventId}`);
   return line;
 }
 
@@ -100,7 +100,7 @@ export interface PurchaseOrder {
   totalCents: number;
   createdAt: string;
   paidAt: string | null;
-  lines: { costLineId: string; gigId: string; amountCents: number }[];
+  lines: { costLineId: string; eventId: string; amountCents: number }[];
 }
 
 export async function poByNumber(page: Page, number: string): Promise<PurchaseOrder> {
@@ -127,7 +127,7 @@ export function backdatePo(number: string, years: number): void {
 }
 
 /**
- * Small setup: a tagged person with one fee line on a played gig and its freelancer link.
+ * Small setup: a tagged person with one fee line on a played event and its freelancer link.
  * `name` gets a random suffix.
  */
 export async function personWithPlayedFee(
@@ -135,14 +135,14 @@ export async function personWithPlayedFee(
   testInfo: TestInfo,
   label: string,
   opts: { type?: string; budgetedCents?: number; month?: string } = {},
-): Promise<{ person: Person; gigId: string; venue: string; lineId: string; sharePath: string }> {
+): Promise<{ person: Person; eventId: string; venue: string; lineId: string; sharePath: string }> {
   const tag = tagOf(testInfo);
   const s = suffix();
   const person = await createPersonViaApi(page, `${label} ${tag}-${s}`);
   const venue = `Venue ${label} ${tag}-${s}`;
-  const gig = await createGigViaApi(page, { startDate: `${poPastYear(testInfo)}-${opts.month ?? '06'}-15`, venue });
-  const lineId = await addLine(page, gig.id, person.id, opts.type ?? 'DRUMS', opts.budgetedCents ?? 30000);
-  return { person, gigId: gig.id, venue, lineId, sharePath: await freelancerPath(page, person.id) };
+  const event = await createEventViaApi(page, { startDate: `${poPastYear(testInfo)}-${opts.month ?? '06'}-15`, venue });
+  const lineId = await addLine(page, event.id, person.id, opts.type ?? 'DRUMS', opts.budgetedCents ?? 30000);
+  return { person, eventId: event.id, venue, lineId, sharePath: await freelancerPath(page, person.id) };
 }
 
 // ---- Anonymous (freelancer) browser ----
@@ -187,7 +187,7 @@ export function feeTable(page: Page): Locator {
 export function feeRows(page: Page): Locator {
   return feeTable(page).getByRole('row').filter({ has: page.getByRole('cell') });
 }
-/** The fee row of a gig venue and role, e.g. ("Venue X", "Rummut"). */
+/** The fee row of an event venue and role, e.g. ("Venue X", "Rummut"). */
 export function feeRow(page: Page, venue: string, role: string): Locator {
   return feeRows(page).filter({ hasText: venue }).filter({ hasText: role });
 }
