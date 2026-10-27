@@ -68,7 +68,7 @@ A session of a partner who is no longer active is refused (401) and deleted.
 Partner status (UC-032, BR-110…112) is managed with `PUT/DELETE /api/people/{id}/partner`
 (`src/partners/store.ts`). Every grant/revoke runs in one transaction under a Postgres advisory lock
 (`pg_advisory_xact_lock`), so the "not yourself" / "not the last active partner" guards hold under
-concurrent requests. Removal deactivates the partner (the row and its id stay, so old gigs, offers,
+concurrent requests. Removal deactivates the partner (the row and its id stay, so old events, offers,
 tasks and hours keep it) and deletes all its sessions in the same transaction; changing an active
 partner's email also ends its sessions (except the requester's own). The email must be in
 `AUTH_ALLOWED_DOMAIN` (checked on the server) and is unique case-insensitively (DB index
@@ -95,19 +95,19 @@ spoof it and bypass the limit).
   first). Removing partner status makes the same token work again. Existing POs of a person who becomes
   a partner stay manageable as before. The public view whitelists fields (FreelancerView / PublicPurchaseOrder).
 - **Creating a PO** (public POST) runs in one transaction: `pg_advisory_xact_lock` per person, then
-  `SELECT … FOR UPDATE` on the cost lines and `FOR SHARE` on their gigs, then the BR-114 check for every
+  `SELECT … FOR UPDATE` on the cost lines and `FOR SHARE` on their events, then the BR-114 check for every
   id — all or nothing (409 `COST_LINE_NOT_ELIGIBLE`, `details.costLineIds`). FUEL lines are never
   eligible (and not shown) because they can't be paid. Numbers: name slug + `purchase_order_seq`
   (global, never reused; gaps are possible after a failed request).
 - **One active PO per cost line:** `purchase_order_line.active` is true while the PO is OPEN/PAID; the
   partial unique index `purchase_order_line_active_cost_line_key` backs the code check. Line snapshots
-  (`cost_line_ref`, gig, type, description, amount) keep cancelled POs intact if a freed cost line is
+  (`cost_line_ref`, event, type, description, amount) keep cancelled POs intact if a freed cost line is
   deleted later (`cost_line_id` is then null).
 - **Lock (BR-118, `src/purchaseOrders/lock.ts`):** checked inside the mutating transaction after a row
-  lock on the cost line / gig, so it can't race PO creation. PATCH counts as locked only if person,
+  lock on the cost line / event, so it can't race PO creation. PATCH counts as locked only if person,
   amount or load-in would actually change (description, or re-sending the same values, is allowed).
-  Changing a gig's seller/producer doesn't move SALES/PRODUCTION lines that are on a PO (BR-027).
-- **Pay / unpay** update the cost lines and write gig events `COST_PAID` / `COST_UNPAID` with
+  Changing an event's seller/producer doesn't move SALES/PRODUCTION lines that are on a PO (BR-027).
+- **Pay / unpay** update the cost lines and write event history entries `COST_PAID` / `COST_UNPAID` with
   `details.purchaseOrderNumber`. Every PO change appends a `purchase_order_event` (CREATED has
   `partner_id` null = the freelancer).
 - **List year** = year of `created_at` in Europe/Helsinki; `q` (number or current person name,
@@ -133,6 +133,20 @@ spoof it and bypass the limit).
   roles and setting values are ever *updated*; everything else is insert-only (*skipped* if present).
   The seed command prints the same summary as a table.
 
+## Gig → Event rename (TASK-032, SaaS phase 1)
+
+"Gig" is called **Event** everywhere (api-contract "Rename Gig → Event"): routes `/api/events…` and
+`/api/offers/{id}/event-draft`, fields `eventId`, `eventStartDate`…, error `EVENT_DELETED`; no aliases
+for old paths. Migration `20261027120000_rename_gig_event` renames in place and keeps all data: tables
+`gig` → `event`, `gig_event` → `event_history`, `gig_technical_setup_legacy` →
+`event_technical_setup_legacy`, every `gig_id` → `event_id`, enums `GigStatus` → `EventStatus` and
+`GigEventType` → `EventHistoryType`, plus constraint/index/sequence names; stored JSON keys that the API
+returns as-is are renamed too (offer history `CONVERTED {gigId}` → `{eventId}`, import log summary
+`gigs` → `events`). Prisma models: `Event`, `EventHistory` (relation `Event.history`),
+`EventTechnicalSetupLegacy`. Seed/import files with the old top-level `gigs` key still load
+(`seed/README.md`). Older migrations and their tests (`test/migration*.test.ts`) keep the old names
+because they run against the schema as it was then.
+
 ## Layout
 
 ```
@@ -141,14 +155,14 @@ seed/              seed command, format (README.md), synthetic example
 src/app.ts         Fastify app: cookies, auth gate, error handler, routes
 src/auth/          Google OAuth + sessions
 src/domain/        shared enums (CostType, TechnicalSetup…), dates, default cost lines,
-                   gig economics / year gig sums (gigEconomics.ts), load-in switch (loadIn.ts)
-src/gigs/          gig data access (events, double-booking check, year gigs), input schemas, serializers
+                   event economics / year event sums (eventEconomics.ts), load-in switch (loadIn.ts)
+src/events/         event data access (history, double-booking check, year events), input schemas, serializers
 src/hours/         hour entries + loadHoursTotals (single source for /api/hours/totals and the year page)
 src/import/        data import checks (domain, no photos) + ImportRun DTO (routes/import.ts, UC-035)
 src/clients/       client lookup + name-uniqueness check (routes/clients.ts; soft delete, BR-100/101)
 src/offers/        offers (routes/offers.ts): derived status/expired (BR-102), year summary (BR-106),
-                   convert-to-gig in one transaction (row lock + unique gig.offer_id, BR-105; if the
-                   offer's seller is an inactive partner, the converting partner becomes the gig's
+                   convert-to-event in one transaction (row lock + unique event.offer_id, BR-105; if the
+                   offer's seller is an inactive partner, the converting partner becomes the event's
                    seller and producer, BR-111),
                    PublicOffer whitelist serializer (also OfferDetail.preview) and share tokens
                    (32 CSPRNG bytes, base64url; looked up by SHA-256, BR-104)
