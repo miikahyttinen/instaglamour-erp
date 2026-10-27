@@ -457,7 +457,28 @@ OfferStats = {
 Details: `averageByCreatedYear[].count` = priced offers in the average, `averageCents` rounded to a cent; `openByEventType` lists only types with open offers (may be `[]`), ties by count, null last; `createdByMonth` counts back from today (ignores `year`); win `pct` 1 decimal, untyped decided offers count only in the overall rate; open offers beyond year+3 are only in `openByEventType`.
 `year` missing/invalid → 400 `INVALID_VALUE`. The existing `GET /api/offers` `summary` stays (unused by the new cards).
 
+## Rename Gig → Event (owner decision 2026-10-27, SaaS phase 1)
+**Everything called "gig" in this document is now "event".** Behaviour is unchanged; only names change. Mapping (old → new):
+
+| Area | Old | New |
+|---|---|---|
+| Paths | `/api/gigs…` (all sub-paths) | `/api/events…` |
+| Paths | `GET /api/offers/{id}/gig-draft` | `GET /api/offers/{id}/event-draft` |
+| Shapes | `GigSummary`, `GigDetail`, `GigCreate`, `GigUpdate` | `EventSummary`, `EventDetail`, `EventCreate`, `EventUpdate` |
+| Shapes | `GigEvent` (history entry) | `EventHistoryEntry` |
+| Fields | `gigId` (CostLine, Attachment, Offer, PurchaseOrderLine, …) | `eventId` |
+| Fields | `gigStartDate`, `gigEndDate`, `gigVenue`, `gigLineupName`, `gigStatus` | `eventStartDate`, `eventEndDate`, `eventVenue`, `eventLineupName`, `eventStatus` |
+| Fields | `Person.gigCount` | `Person.eventCount` |
+| Fields | convert response `{ offer, gig }` | `{ offer, event }` |
+| Fields | year page `gigs` object, `yearSummary` of the list | `events` |
+| Errors | `GIG_DELETED` | `EVENT_DELETED` |
+| Seed/import | top-level `gigs`, `ImportSummary.gigs` | `events` (the loader **also accepts `gigs`** as a legacy alias; both together → validation error) |
+| Status enum | `SOLD`, `CANCELLED` | unchanged |
+
+No compatibility aliases for old API paths (no external clients). The UI renames routes `/gigs…` → `/events…` and redirects old `/gigs…` URLs. Labels: FI **Tapahtumat / Tapahtuma**, EN **Events / Event**; "Muuta keikaksi" → **"Muuta tapahtumaksi" / "Convert to event"**; people column "Keikkoja" → **"Tapahtumia" / "Events"**.
+
 ## Change log
+- 2026-10-27 – Rename Gig → Event across API, data and UI (SaaS phase 1) (PM)
 - 2026-10-22 – Convert only ACCEPTED offers with event date ≥ today: 409 OFFER_NOT_CONVERTIBLE on gig-draft and convert (PM)
 - 2026-10-20 – Convert to gig via an editable prefilled form: GET /api/offers/{id}/gig-draft, convert accepts GigCreate (PM)
 - 2026-10-20 – GET /api/offers/stats (offer KPI cards) (PM)
