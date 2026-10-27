@@ -4,7 +4,7 @@
  */
 import { isoFromDate } from '../domain/dates.js';
 import type { HourEntry } from '../generated/prisma/client.js';
-import { yearDateRange, type Tx } from '../gigs/store.js';
+import { yearDateRange, type Tx } from '../events/store.js';
 
 /** BR-050: 0.25…24 in 0.25 steps. */
 export function isValidHours(value: number): boolean {

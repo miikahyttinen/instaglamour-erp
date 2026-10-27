@@ -4,9 +4,9 @@ import { z } from 'zod';
 import type { AppDeps } from '../app.js';
 import { isoFromDate } from '../domain/dates.js';
 import { notFound, parseInput, validationError } from '../http/errors.js';
-import { requiredText, yearString } from '../gigs/schemas.js';
-import { compareCostLines, costLinePurchaseOrderInclude, toCostLineDto } from '../gigs/serialize.js';
-import { isUuid, yearDateRange } from '../gigs/store.js';
+import { requiredText, yearString } from '../events/schemas.js';
+import { compareCostLines, costLinePurchaseOrderInclude, toCostLineDto } from '../events/serialize.js';
+import { isUuid, yearDateRange } from '../events/store.js';
 import { currentSessionTokenHash } from '../auth/session.js';
 import { grantPartner, isInAllowedDomain, normalizeEmail, revokePartner } from '../partners/store.js';
 import { MUSICIAN_ROLES, isMusicianRole, normalizeRoles, type MusicianRole } from '../domain/enums.js';
@@ -120,23 +120,23 @@ export function peopleRoutes(app: FastifyInstance, deps: AppDeps): void {
     return toPersonDtoWithCount(db, await requirePerson(request.params.id));
   });
 
-  /** The person's cost lines on non-deleted gigs of the year (UC-014 A2), in gig order. */
+  /** The person's cost lines on non-deleted events of the year (UC-014 A2), in event order. */
   app.get<IdParams>('/api/people/:id/cost-lines', async (request) => {
     const { year } = parseInput(costLinesQuery, request.query);
     const person = await requirePerson(request.params.id);
     const lines = await db.costLine.findMany({
-      where: { personId: person.id, gig: { deletedAt: null, startDate: yearDateRange(year) } },
-      include: { gig: true, ...costLinePurchaseOrderInclude },
+      where: { personId: person.id, event: { deletedAt: null, startDate: yearDateRange(year) } },
+      include: { event: true, ...costLinePurchaseOrderInclude },
     });
     lines.sort(
       (a, b) =>
-        a.gig.startDate.getTime() - b.gig.startDate.getTime() ||
-        a.gig.createdAt.getTime() - b.gig.createdAt.getTime() ||
-        (a.gig.id < b.gig.id ? -1 : a.gig.id > b.gig.id ? 1 : 0) ||
+        a.event.startDate.getTime() - b.event.startDate.getTime() ||
+        a.event.createdAt.getTime() - b.event.createdAt.getTime() ||
+        (a.event.id < b.event.id ? -1 : a.event.id > b.event.id ? 1 : 0) ||
         compareCostLines(a, b),
     );
 
-    // Same rules as the gig economics: budgeted = Σ budgeted (BR-001), actual = Σ actual of paid lines (BR-002).
+    // Same rules as the event economics: budgeted = Σ budgeted (BR-001), actual = Σ actual of paid lines (BR-002).
     let budgetedCents = 0;
     let actualCents = 0;
     for (const line of lines) {
@@ -145,13 +145,13 @@ export function peopleRoutes(app: FastifyInstance, deps: AppDeps): void {
     }
 
     return {
-      lines: lines.map(({ gig, ...line }) => ({
+      lines: lines.map(({ event, ...line }) => ({
         costLine: toCostLineDto(line),
-        gigId: gig.id,
-        gigStartDate: isoFromDate(gig.startDate),
-        gigLineupName: gig.lineupName,
-        gigVenue: gig.venue,
-        gigStatus: gig.status,
+        eventId: event.id,
+        eventStartDate: isoFromDate(event.startDate),
+        eventLineupName: event.lineupName,
+        eventVenue: event.venue,
+        eventStatus: event.status,
       })),
       totals: { budgetedCents, actualCents },
     };

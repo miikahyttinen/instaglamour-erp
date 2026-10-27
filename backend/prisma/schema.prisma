@@ -22,7 +22,7 @@ enum Language {
   en
 }
 
-enum GigStatus {
+enum EventStatus {
   SOLD
   CANCELLED
 }
@@ -83,7 +83,7 @@ enum Logistics {
   OTHER
 }
 
-enum GigEventType {
+enum EventHistoryType {
   CREATED
   UPDATED
   MOVED
@@ -158,17 +158,17 @@ enum OfferEventType {
 // ---------------------------------------------------------------------------
 
 model Person {
-  id              String   @id @default(uuid()) @db.Uuid
+  id              String     @id @default(uuid()) @db.Uuid
   name            String
-  active          Boolean  @default(true)
+  active          Boolean    @default(true)
   /// Secret freelancer link token (BR-113): 32 CSPRNG bytes, base64url (43 chars). The DB default
   /// gives every new row one (also seed rows); regenerate replaces it (src/purchaseOrders/token.ts).
-  freelancerToken String   @unique @default(dbgenerated("translate(rtrim(encode(sha256(convert_to(gen_random_uuid()::text || gen_random_uuid()::text || gen_random_uuid()::text, 'UTF8')), 'base64'), '='), '+/', '-_')")) @map("freelancer_token")
+  freelancerToken String     @unique @default(dbgenerated("translate(rtrim(encode(sha256(convert_to(gen_random_uuid()::text || gen_random_uuid()::text || gen_random_uuid()::text, 'UTF8')), 'base64'), '='), '+/', '-_')")) @map("freelancer_token")
   /// Roles the person can play (TASK-027): musician-role codes only (validated in the app), unique,
   /// stored in MUSICIAN_ROLES order. Backfilled from cost lines; the seed fills it only when empty.
   roles           CostType[] @default([])
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+  createdAt       DateTime   @default(now()) @map("created_at")
+  updatedAt       DateTime   @updatedAt @map("updated_at")
 
   partner        Partner?
   costLines      CostLine[]
@@ -201,12 +201,12 @@ model Partner {
   revokedBy               Partner?             @relation("PartnerRevokedBy", fields: [revokedById], references: [id], onDelete: SetNull)
   granted                 Partner[]            @relation("PartnerGrantedBy")
   revoked                 Partner[]            @relation("PartnerRevokedBy")
-  soldGigs                Gig[]                @relation("GigSeller")
-  producedGigs            Gig[]                @relation("GigProducer")
-  deletedGigs             Gig[]                @relation("GigDeletedBy")
+  soldEvents              Event[]              @relation("EventSeller")
+  producedEvents          Event[]              @relation("EventProducer")
+  deletedEvents           Event[]              @relation("EventDeletedBy")
   paidCostLines           CostLine[]           @relation("CostLinePaidBy")
   uploadedAttachments     Attachment[]
-  gigEvents               GigEvent[]
+  eventHistory            EventHistory[]
   tasks                   Task[]
   hourEntries             HourEntry[]
   sessions                Session[]
@@ -245,8 +245,8 @@ model LineupTemplate {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  roles TemplateRole[]
-  gigs  Gig[]
+  roles  TemplateRole[]
+  events Event[]
 
   @@map("lineup_template")
 }
@@ -280,14 +280,14 @@ model Setting {
 }
 
 // ---------------------------------------------------------------------------
-// Gigs
+// Events
 // ---------------------------------------------------------------------------
 
-model Gig {
+model Event {
   id                         String          @id @default(uuid()) @db.Uuid
   startDate                  DateTime        @map("start_date") @db.Date
   endDate                    DateTime?       @map("end_date") @db.Date
-  status                     GigStatus       @default(SOLD)
+  status                     EventStatus     @default(SOLD)
   lineupTemplateId           String?         @map("lineup_template_id") @db.Uuid
   lineupName                 String          @map("lineup_name")
   venue                      String
@@ -302,7 +302,7 @@ model Gig {
   notes                      String?
   /// Optional client (BR-100); a linked client can't be deleted (BR-101).
   clientId                   String?         @map("client_id") @db.Uuid
-  /// The offer this gig was converted from (BR-105); unique = at most one gig per offer.
+  /// The offer this event was converted from (BR-105); unique = at most one event per offer.
   offerId                    String?         @unique @map("offer_id") @db.Uuid
   deletedAt                  DateTime?       @map("deleted_at")
   deletedById                String?         @map("deleted_by") @db.Uuid
@@ -310,21 +310,21 @@ model Gig {
   updatedAt                  DateTime        @updatedAt @map("updated_at")
 
   lineupTemplate     LineupTemplate?     @relation(fields: [lineupTemplateId], references: [id])
-  seller             Partner             @relation("GigSeller", fields: [sellerId], references: [id])
-  producer           Partner             @relation("GigProducer", fields: [producerId], references: [id])
-  deletedBy          Partner?            @relation("GigDeletedBy", fields: [deletedById], references: [id])
+  seller             Partner             @relation("EventSeller", fields: [sellerId], references: [id])
+  producer           Partner             @relation("EventProducer", fields: [producerId], references: [id])
+  deletedBy          Partner?            @relation("EventDeletedBy", fields: [deletedById], references: [id])
   client             Client?             @relation(fields: [clientId], references: [id], onDelete: Restrict)
   offer              Offer?              @relation(fields: [offerId], references: [id], onDelete: Restrict)
   costLines          CostLine[]
   attachments        Attachment[]
-  events             GigEvent[]
+  history            EventHistory[]
   purchaseOrderLines PurchaseOrderLine[]
 
-  technicalSetupLegacy GigTechnicalSetupLegacy?
+  technicalSetupLegacy EventTechnicalSetupLegacy?
 
   @@index([startDate])
   @@index([clientId])
-  @@map("gig")
+  @@map("event")
 }
 
 // ---------------------------------------------------------------------------
@@ -342,7 +342,7 @@ model Client {
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
 
-  gigs   Gig[]
+  events Event[]
   offers Offer[]
 
   @@map("client")
@@ -352,8 +352,8 @@ model Client {
 // Offers (UC-028…UC-031, BR-102…BR-107)
 // ---------------------------------------------------------------------------
 
-/// An offer to a client. Status is derived from the disposition (BR-102). The gig created by
-/// "Convert to gig" points back here (gig.offer_id, unique).
+/// An offer to a client. Status is derived from the disposition (BR-102). The event created by
+/// "Convert to event" points back here (event.offer_id, unique).
 model Offer {
   id             String           @id @default(uuid()) @db.Uuid
   clientId       String           @map("client_id") @db.Uuid
@@ -384,7 +384,7 @@ model Offer {
 
   client Client       @relation(fields: [clientId], references: [id], onDelete: Restrict)
   seller Partner      @relation("OfferSeller", fields: [sellerId], references: [id])
-  gig    Gig?
+  event  Event?
   events OfferEvent[]
 
   @@index([eventDate])
@@ -412,21 +412,21 @@ model OfferEvent {
   @@map("offer_event")
 }
 
-/// Original multi-select technical_setup array of gigs that existed before TASK-010 (migration
+/// Original multi-select technical_setup array of events that existed before TASK-010 (migration
 /// 20261005120000_technical_setup_single_logistics). Kept so no information is lost; not used by the API.
-model GigTechnicalSetupLegacy {
-  gigId          String   @id @map("gig_id") @db.Uuid
+model EventTechnicalSetupLegacy {
+  eventId        String   @id @map("event_id") @db.Uuid
   technicalSetup String[] @map("technical_setup")
   migratedAt     DateTime @default(now()) @map("migrated_at")
 
-  gig Gig @relation(fields: [gigId], references: [id], onDelete: Cascade)
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
-  @@map("gig_technical_setup_legacy")
+  @@map("event_technical_setup_legacy")
 }
 
 model CostLine {
   id                          String    @id @default(uuid()) @db.Uuid
-  gigId                       String    @map("gig_id") @db.Uuid
+  eventId                     String    @map("event_id") @db.Uuid
   type                        CostType
   personId                    String?   @map("person_id") @db.Uuid
   description                 String?
@@ -440,19 +440,19 @@ model CostLine {
   createdAt                   DateTime  @default(now()) @map("created_at")
   updatedAt                   DateTime  @updatedAt @map("updated_at")
 
-  gig                Gig                 @relation(fields: [gigId], references: [id], onDelete: Cascade)
+  event              Event               @relation(fields: [eventId], references: [id], onDelete: Cascade)
   person             Person?             @relation(fields: [personId], references: [id])
   paidBy             Partner?            @relation("CostLinePaidBy", fields: [paidById], references: [id])
   purchaseOrderLines PurchaseOrderLine[]
 
-  @@index([gigId])
+  @@index([eventId])
   @@index([personId])
   @@map("cost_line")
 }
 
 model Attachment {
   id           String    @id @default(uuid()) @db.Uuid
-  gigId        String    @map("gig_id") @db.Uuid
+  eventId      String    @map("event_id") @db.Uuid
   filename     String
   contentType  String    @map("content_type")
   sizeBytes    Int       @map("size_bytes")
@@ -464,32 +464,32 @@ model Attachment {
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
 
-  gig        Gig     @relation(fields: [gigId], references: [id], onDelete: Cascade)
+  event      Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
   uploadedBy Partner @relation(fields: [uploadedById], references: [id])
 
-  @@index([gigId])
+  @@index([eventId])
   @@map("attachment")
 }
 
-/// Full, append-only gig history (BR-015).
-model GigEvent {
-  id        String       @id @default(uuid()) @db.Uuid
-  gigId     String       @map("gig_id") @db.Uuid
-  type      GigEventType
-  partnerId String       @map("partner_id") @db.Uuid
-  at        DateTime     @default(now())
+/// Full, append-only event history (BR-015).
+model EventHistory {
+  id        String           @id @default(uuid()) @db.Uuid
+  eventId   String           @map("event_id") @db.Uuid
+  type      EventHistoryType
+  partnerId String           @map("partner_id") @db.Uuid
+  at        DateTime         @default(now())
   reason    String?
-  details   Json         @default("{}")
+  details   Json             @default("{}")
   /// Insertion order; breaks ties between events with the same `at` (history is newest first).
-  seq       BigInt       @default(autoincrement())
-  createdAt DateTime     @default(now()) @map("created_at")
-  updatedAt DateTime     @updatedAt @map("updated_at")
+  seq       BigInt           @default(autoincrement())
+  createdAt DateTime         @default(now()) @map("created_at")
+  updatedAt DateTime         @updatedAt @map("updated_at")
 
-  gig     Gig     @relation(fields: [gigId], references: [id], onDelete: Cascade)
+  event   Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
   partner Partner @relation(fields: [partnerId], references: [id])
 
-  @@index([gigId, at])
-  @@map("gig_event")
+  @@index([eventId, at])
+  @@map("event_history")
 }
 
 // ---------------------------------------------------------------------------
@@ -654,13 +654,13 @@ model PurchaseOrder {
 /// is OPEN or PAID; a cost line is on at most one active line (partial unique index
 /// "purchase_order_line_active_cost_line_key", migration only). `costLineRef` always keeps the
 /// original cost line id; `costLineId` (the FK) becomes null if the cost line is deleted after
-/// the PO was cancelled. gig/type/description are snapshots for that case.
+/// the PO was cancelled. event/type/description are snapshots for that case.
 model PurchaseOrderLine {
   id              String   @id @default(uuid()) @db.Uuid
   purchaseOrderId String   @map("purchase_order_id") @db.Uuid
   costLineId      String?  @map("cost_line_id") @db.Uuid
   costLineRef     String   @map("cost_line_ref") @db.Uuid
-  gigId           String   @map("gig_id") @db.Uuid
+  eventId         String   @map("event_id") @db.Uuid
   type            CostType
   description     String?
   amountCents     Int      @map("amount_cents")
@@ -671,11 +671,11 @@ model PurchaseOrderLine {
 
   purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
   costLine      CostLine?     @relation(fields: [costLineId], references: [id], onDelete: SetNull)
-  gig           Gig           @relation(fields: [gigId], references: [id], onDelete: Restrict)
+  event         Event         @relation(fields: [eventId], references: [id], onDelete: Restrict)
 
   @@unique([purchaseOrderId, position])
   @@index([costLineId])
-  @@index([gigId])
+  @@index([eventId])
   @@map("purchase_order_line")
 }
 

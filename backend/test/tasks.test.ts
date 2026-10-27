@@ -1,7 +1,7 @@
 /** Task endpoints (UC-017, BR-030). Synthetic data only. */
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { closeTestDb, resetDb, testDb } from './helpers.js';
-import { call, startSession, UNKNOWN_ID, type Json, type Session } from './gigFixtures.js';
+import { call, startSession, UNKNOWN_ID, type Json, type Session } from './eventFixtures.js';
 
 let s: Session;
 

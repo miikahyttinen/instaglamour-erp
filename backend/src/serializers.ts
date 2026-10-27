@@ -35,16 +35,16 @@ export interface PersonDto {
   partner: PersonPartner | null;
   /** TASK-027: roles the person can play, unique, in MUSICIAN_ROLES order. */
   roles: MusicianRole[];
-  /** TASK-027: played SOLD non-deleted gigs with a musician-role line for the person (all years). */
-  gigCount: number;
+  /** TASK-027: played SOLD non-deleted events with a musician-role line for the person (all years). */
+  eventCount: number;
 }
 
-/** Prisma `include` that loads what `toPersonDto` needs (plus `gigCount`, see src/people/store.ts). */
+/** Prisma `include` that loads what `toPersonDto` needs (plus `eventCount`, see src/people/store.ts). */
 export const personInclude = { partner: { select: { id: true, email: true, active: true } } } as const;
 
 export type PersonWithPartner = Person & { partner: PersonPartner | null };
 
-export function toPersonDto(person: PersonWithPartner, gigCount: number): PersonDto {
+export function toPersonDto(person: PersonWithPartner, eventCount: number): PersonDto {
   const { partner } = person;
   return {
     id: person.id,
@@ -52,6 +52,6 @@ export function toPersonDto(person: PersonWithPartner, gigCount: number): Person
     active: person.active,
     partner: partner ? { id: partner.id, email: partner.email, active: partner.active } : null,
     roles: normalizeRoles(person.roles),
-    gigCount,
+    eventCount,
   };
 }

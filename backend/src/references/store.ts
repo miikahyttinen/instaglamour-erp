@@ -5,7 +5,7 @@
 import { createReadStream } from 'node:fs';
 import type { FastifyReply } from 'fastify';
 import type { Reference } from '../generated/prisma/client.js';
-import type { Tx } from '../gigs/store.js';
+import type { Tx } from '../events/store.js';
 import type { UploadDir } from '../fileStore/uploadDir.js';
 
 /** Max upload size of a reference photo. */

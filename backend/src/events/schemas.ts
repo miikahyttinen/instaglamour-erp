@@ -1,4 +1,4 @@
-/** Input field schemas shared by the gig endpoints. Issues map to contract field codes (see http/errors.ts). */
+/** Input field schemas shared by the event endpoints. Issues map to contract field codes (see http/errors.ts). */
 import { z } from 'zod';
 import { isIsoDate } from '../domain/dates.js';
 import { LOGISTICS, TECHNICAL_SETUPS } from '../domain/enums.js';

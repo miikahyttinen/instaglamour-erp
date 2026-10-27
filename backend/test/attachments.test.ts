@@ -5,7 +5,7 @@ import path from 'node:path';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { cleanFilename, detectContentType, MAX_ATTACHMENT_BYTES } from '../src/routes/attachments.js';
 import { closeTestDb, resetDb, testDb } from './helpers.js';
-import { call, createGig, history, startSession, UNKNOWN_ID, type Session } from './gigFixtures.js';
+import { call, createEvent, history, startSession, UNKNOWN_ID, type Session } from './eventFixtures.js';
 
 const PDF = Buffer.from('%PDF-1.4\n% synthetic test file\n');
 const PNG = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.from('synthetic')]);
@@ -39,25 +39,25 @@ function multipart(filename: string, content: Buffer, contentType = 'application
   return { payload, headers: { 'content-type': `multipart/form-data; boundary=${boundary}` } };
 }
 
-function upload(gigId: string, filename: string, content: Buffer, contentType?: string, field?: string, cookie = s.cookie) {
+function upload(eventId: string, filename: string, content: Buffer, contentType?: string, field?: string, cookie = s.cookie) {
   const { payload, headers } = multipart(filename, content, contentType, field);
   return s.app.inject({
     method: 'POST',
-    url: `/api/gigs/${gigId}/attachments`,
+    url: `/api/events/${eventId}/attachments`,
     headers: { ...headers, ...(cookie ? { cookie } : {}) },
     payload,
   });
 }
 
-describe('POST /api/gigs/{id}/attachments', () => {
+describe('POST /api/events/{id}/attachments', () => {
   it('stores a PDF in UPLOAD_DIR, returns 201 Attachment, lists it and logs ATTACHMENT_ADDED', async () => {
-    const gig = await createGig(s);
-    const res = await upload(gig.id, 'contract.pdf', PDF, 'application/pdf');
+    const event = await createEvent(s);
+    const res = await upload(event.id, 'contract.pdf', PDF, 'application/pdf');
     expect(res.statusCode).toBe(201);
     const attachment = res.json();
     expect(attachment).toEqual({
       id: expect.any(String),
-      gigId: gig.id,
+      eventId: event.id,
       filename: 'contract.pdf',
       contentType: 'application/pdf',
       sizeBytes: PDF.length,
@@ -69,11 +69,11 @@ describe('POST /api/gigs/{id}/attachments', () => {
     expect(files).toHaveLength(1);
     expect(await readFile(path.join(uploadDir, files[0]!))).toEqual(PDF);
 
-    const detail = (await call(s, 'GET', `/api/gigs/${gig.id}`)).json();
+    const detail = (await call(s, 'GET', `/api/events/${event.id}`)).json();
     expect(detail.attachments).toEqual([attachment]);
 
-    const [event] = await history(s, gig.id);
-    expect(event).toMatchObject({ type: 'ATTACHMENT_ADDED', details: { attachmentId: attachment.id, filename: 'contract.pdf' } });
+    const [entry] = await history(s, event.id);
+    expect(entry).toMatchObject({ type: 'ATTACHMENT_ADDED', details: { attachmentId: attachment.id, filename: 'contract.pdf' } });
   });
 
   it.each([
@@ -82,18 +82,18 @@ describe('POST /api/gigs/{id}/attachments', () => {
     ['photo.jpeg', JPG, 'image/jpeg'],
     ['rider.docx', ZIP, DOCX_TYPE],
   ])('accepts %s', async (filename, content, expectedType) => {
-    const gig = await createGig(s);
-    const res = await upload(gig.id, filename, content);
+    const event = await createEvent(s);
+    const res = await upload(event.id, filename, content);
     expect(res.statusCode).toBe(201);
     expect(res.json().contentType).toBe(expectedType);
   });
 
   it('lists attachments newest first', async () => {
-    const gig = await createGig(s);
-    await upload(gig.id, 'first.pdf', PDF);
+    const event = await createEvent(s);
+    await upload(event.id, 'first.pdf', PDF);
     await new Promise((r) => setTimeout(r, 5));
-    await upload(gig.id, 'second.png', PNG);
-    const detail = (await call(s, 'GET', `/api/gigs/${gig.id}`)).json();
+    await upload(event.id, 'second.png', PNG);
+    const detail = (await call(s, 'GET', `/api/events/${event.id}`)).json();
     expect(detail.attachments.map((a: { filename: string }) => a.filename)).toEqual(['second.png', 'first.pdf']);
   });
 
@@ -103,8 +103,8 @@ describe('POST /api/gigs/{id}/attachments', () => {
     ['archive.zip', ZIP, 'application/zip'],
     ['empty.pdf', Buffer.alloc(0), 'application/pdf'],
   ])('rejects %s with 415 and stores nothing', async (filename, content, type) => {
-    const gig = await createGig(s);
-    const res = await upload(gig.id, filename, content, type);
+    const event = await createEvent(s);
+    const res = await upload(event.id, filename, content, type);
     expect(res.statusCode).toBe(415);
     expect(res.json().error.code).toBe('UNSUPPORTED_FILE_TYPE');
     expect(await readdir(uploadDir)).toEqual([]);
@@ -112,9 +112,9 @@ describe('POST /api/gigs/{id}/attachments', () => {
   });
 
   it('rejects files over 20 MB with 413 and stores nothing', async () => {
-    const gig = await createGig(s);
+    const event = await createEvent(s);
     const big = Buffer.concat([PDF, Buffer.alloc(MAX_ATTACHMENT_BYTES)]);
-    const res = await upload(gig.id, 'big.pdf', big, 'application/pdf');
+    const res = await upload(event.id, 'big.pdf', big, 'application/pdf');
     expect(res.statusCode).toBe(413);
     expect(res.json().error.code).toBe('FILE_TOO_LARGE');
     expect(await readdir(uploadDir)).toEqual([]);
@@ -122,45 +122,45 @@ describe('POST /api/gigs/{id}/attachments', () => {
   });
 
   it('accepts exactly 20 MB', async () => {
-    const gig = await createGig(s);
+    const event = await createEvent(s);
     const max = Buffer.concat([PDF, Buffer.alloc(MAX_ATTACHMENT_BYTES - PDF.length)]);
-    const res = await upload(gig.id, 'max.pdf', max, 'application/pdf');
+    const res = await upload(event.id, 'max.pdf', max, 'application/pdf');
     expect(res.statusCode).toBe(201);
     expect(res.json().sizeBytes).toBe(MAX_ATTACHMENT_BYTES);
   });
 
   it('400 without a file part or without multipart', async () => {
-    const gig = await createGig(s);
-    const wrongField = await upload(gig.id, 'contract.pdf', PDF, 'application/pdf', 'document');
+    const event = await createEvent(s);
+    const wrongField = await upload(event.id, 'contract.pdf', PDF, 'application/pdf', 'document');
     expect(wrongField.statusCode).toBe(400);
     expect(wrongField.json().error.fields).toEqual({ file: 'REQUIRED' });
-    const json = await call(s, 'POST', `/api/gigs/${gig.id}/attachments`, {});
+    const json = await call(s, 'POST', `/api/events/${event.id}/attachments`, {});
     expect(json.statusCode).toBe(400);
     expect(json.json().error.fields).toEqual({ file: 'REQUIRED' });
   });
 
-  it('404 unknown gig; 409 deleted gig; 401 without a session', async () => {
+  it('404 unknown event; 409 deleted event; 401 without a session', async () => {
     expect((await upload(UNKNOWN_ID, 'contract.pdf', PDF)).statusCode).toBe(404);
-    const gig = await createGig(s);
-    expect((await upload(gig.id, 'contract.pdf', PDF, undefined, undefined, '')).statusCode).toBe(401);
-    await call(s, 'POST', `/api/gigs/${gig.id}/delete`, { reason: 'Duplicate' });
-    const res = await upload(gig.id, 'contract.pdf', PDF);
+    const event = await createEvent(s);
+    expect((await upload(event.id, 'contract.pdf', PDF, undefined, undefined, '')).statusCode).toBe(401);
+    await call(s, 'POST', `/api/events/${event.id}/delete`, { reason: 'Duplicate' });
+    const res = await upload(event.id, 'contract.pdf', PDF);
     expect(res.statusCode).toBe(409);
-    expect(res.json().error.code).toBe('GIG_DELETED');
+    expect(res.json().error.code).toBe('EVENT_DELETED');
     expect(await readdir(uploadDir)).toEqual([]);
   });
 
   it('strips directories from the file name', async () => {
-    const gig = await createGig(s);
-    const res = await upload(gig.id, '../../etc/contract.pdf', PDF);
+    const event = await createEvent(s);
+    const res = await upload(event.id, '../../etc/contract.pdf', PDF);
     expect(res.json().filename).toBe('contract.pdf');
   });
 });
 
 describe('GET /api/attachments/{id}/download', () => {
   it('serves the file inline for PDF/images and as attachment for DOCX', async () => {
-    const gig = await createGig(s);
-    const pdf = (await upload(gig.id, 'sopimus ä.pdf', PDF)).json();
+    const event = await createEvent(s);
+    const pdf = (await upload(event.id, 'sopimus ä.pdf', PDF)).json();
     const res = await call(s, 'GET', `/api/attachments/${pdf.id}/download`);
     expect(res.statusCode).toBe(200);
     expect(res.headers['content-type']).toBe('application/pdf');
@@ -168,15 +168,15 @@ describe('GET /api/attachments/{id}/download', () => {
     expect(res.headers['x-content-type-options']).toBe('nosniff');
     expect(res.rawPayload).toEqual(PDF);
 
-    const docx = (await upload(gig.id, 'rider.docx', ZIP)).json();
+    const docx = (await upload(event.id, 'rider.docx', ZIP)).json();
     const d = await call(s, 'GET', `/api/attachments/${docx.id}/download`);
     expect(d.headers['content-type']).toBe(DOCX_TYPE);
     expect(d.headers['content-disposition']).toMatch(/^attachment; filename="rider.docx"/);
   });
 
   it('requires a session', async () => {
-    const gig = await createGig(s);
-    const pdf = (await upload(gig.id, 'contract.pdf', PDF)).json();
+    const event = await createEvent(s);
+    const pdf = (await upload(event.id, 'contract.pdf', PDF)).json();
     const res = await s.app.inject({ method: 'GET', url: `/api/attachments/${pdf.id}/download` });
     expect(res.statusCode).toBe(401);
     expect(res.rawPayload).not.toEqual(PDF);
@@ -184,41 +184,41 @@ describe('GET /api/attachments/{id}/download', () => {
 
   it('404 for unknown and removed attachments', async () => {
     expect((await call(s, 'GET', `/api/attachments/${UNKNOWN_ID}/download`)).statusCode).toBe(404);
-    const gig = await createGig(s);
-    const pdf = (await upload(gig.id, 'contract.pdf', PDF)).json();
+    const event = await createEvent(s);
+    const pdf = (await upload(event.id, 'contract.pdf', PDF)).json();
     await call(s, 'DELETE', `/api/attachments/${pdf.id}`);
     expect((await call(s, 'GET', `/api/attachments/${pdf.id}/download`)).statusCode).toBe(404);
   });
 });
 
 describe('DELETE /api/attachments/{id}', () => {
-  it('soft-deletes (row and file kept), hides it from the gig and logs ATTACHMENT_REMOVED', async () => {
-    const gig = await createGig(s);
-    const pdf = (await upload(gig.id, 'contract.pdf', PDF)).json();
+  it('soft-deletes (row and file kept), hides it from the event and logs ATTACHMENT_REMOVED', async () => {
+    const event = await createEvent(s);
+    const pdf = (await upload(event.id, 'contract.pdf', PDF)).json();
     const res = await call(s, 'DELETE', `/api/attachments/${pdf.id}`);
     expect(res.statusCode).toBe(204);
-    expect((await call(s, 'GET', `/api/gigs/${gig.id}`)).json().attachments).toEqual([]);
+    expect((await call(s, 'GET', `/api/events/${event.id}`)).json().attachments).toEqual([]);
     const row = await testDb().attachment.findUniqueOrThrow({ where: { id: pdf.id } });
     expect(row.deletedAt).not.toBeNull();
     expect(await readdir(uploadDir)).toHaveLength(1);
-    const [event] = await history(s, gig.id);
-    expect(event).toMatchObject({ type: 'ATTACHMENT_REMOVED', details: { attachmentId: pdf.id, filename: 'contract.pdf' } });
+    const [entry] = await history(s, event.id);
+    expect(entry).toMatchObject({ type: 'ATTACHMENT_REMOVED', details: { attachmentId: pdf.id, filename: 'contract.pdf' } });
 
     expect((await call(s, 'DELETE', `/api/attachments/${pdf.id}`)).statusCode).toBe(404);
   });
 
-  it('404 unknown; 409 on a deleted gig; 401 without a session', async () => {
+  it('404 unknown; 409 on a deleted event; 401 without a session', async () => {
     expect((await call(s, 'DELETE', `/api/attachments/${UNKNOWN_ID}`)).statusCode).toBe(404);
-    const gig = await createGig(s);
-    const pdf = (await upload(gig.id, 'contract.pdf', PDF)).json();
+    const event = await createEvent(s);
+    const pdf = (await upload(event.id, 'contract.pdf', PDF)).json();
     expect((await s.app.inject({ method: 'DELETE', url: `/api/attachments/${pdf.id}` })).statusCode).toBe(401);
-    await call(s, 'POST', `/api/gigs/${gig.id}/delete`, { reason: 'Duplicate' });
+    await call(s, 'POST', `/api/events/${event.id}/delete`, { reason: 'Duplicate' });
     const res = await call(s, 'DELETE', `/api/attachments/${pdf.id}`);
     expect(res.statusCode).toBe(409);
-    expect(res.json().error.code).toBe('GIG_DELETED');
-    // Restore brings the attachment back with the gig.
-    await call(s, 'POST', `/api/gigs/${gig.id}/restore`);
-    expect((await call(s, 'GET', `/api/gigs/${gig.id}`)).json().attachments).toEqual([pdf]);
+    expect(res.json().error.code).toBe('EVENT_DELETED');
+    // Restore brings the attachment back with the event.
+    await call(s, 'POST', `/api/events/${event.id}/restore`);
+    expect((await call(s, 'GET', `/api/events/${event.id}`)).json().attachments).toEqual([pdf]);
   });
 });
 

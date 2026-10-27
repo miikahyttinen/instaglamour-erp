@@ -1,7 +1,7 @@
-/** Gig rows → contract JSON (docs/api-contract.md: GigSummary, GigDetail, CostLine, Attachment, GigEvent). */
+/** Event rows → contract JSON (docs/api-contract.md: EventSummary, EventDetail, CostLine, Attachment, EventHistoryEntry). */
 import { isoFromDate } from '../domain/dates.js';
-import { gigEconomics, isNotFullyStaffed, isPlayed } from '../domain/gigEconomics.js';
-import type { Attachment, CostLine, Gig, GigEvent, Prisma, PurchaseOrderStatus } from '../generated/prisma/client.js';
+import { eventEconomics, isNotFullyStaffed, isPlayed } from '../domain/eventEconomics.js';
+import type { Attachment, CostLine, Event, EventHistory, Prisma, PurchaseOrderStatus } from '../generated/prisma/client.js';
 
 /**
  * Prisma include for a cost line's OPEN/PAID purchase order (CostLine.purchaseOrder). A line is on
@@ -20,7 +20,7 @@ export type CostLineWithPurchaseOrder = CostLine & {
 
 export interface CostLineDto {
   id: string;
-  gigId: string;
+  eventId: string;
   type: string;
   personId: string | null;
   description: string | null;
@@ -37,7 +37,7 @@ export function toCostLineDto(line: CostLineWithPurchaseOrder): CostLineDto {
   const po = line.purchaseOrderLines[0]?.purchaseOrder;
   return {
     id: line.id,
-    gigId: line.gigId,
+    eventId: line.eventId,
     type: line.type,
     personId: line.personId,
     description: line.description,
@@ -53,7 +53,7 @@ export function toCostLineDto(line: CostLineWithPurchaseOrder): CostLineDto {
 
 export interface AttachmentDto {
   id: string;
-  gigId: string;
+  eventId: string;
   filename: string;
   contentType: string;
   sizeBytes: number;
@@ -64,7 +64,7 @@ export interface AttachmentDto {
 export function toAttachmentDto(a: Attachment): AttachmentDto {
   return {
     id: a.id,
-    gigId: a.gigId,
+    eventId: a.eventId,
     filename: a.filename,
     contentType: a.contentType,
     sizeBytes: a.sizeBytes,
@@ -73,71 +73,71 @@ export function toAttachmentDto(a: Attachment): AttachmentDto {
   };
 }
 
-/** Contract order of a gig's cost lines: creation time, then id. */
+/** Contract order of an event's cost lines: creation time, then id. */
 export function compareCostLines(a: CostLine, b: CostLine): number {
   const t = a.createdAt.getTime() - b.createdAt.getTime();
   if (t !== 0) return t;
   return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
 }
 
-/** A gig as the serializers need it: its cost lines and the name of its client (BR-100). */
-export type GigWithLines = Gig & { costLines: CostLine[]; client: { name: string } | null };
-export type GigWithDetail = Omit<GigWithLines, 'costLines'> & {
+/** An event as the serializers need it: its cost lines and the name of its client (BR-100). */
+export type EventWithLines = Event & { costLines: CostLine[]; client: { name: string } | null };
+export type EventWithDetail = Omit<EventWithLines, 'costLines'> & {
   costLines: CostLineWithPurchaseOrder[];
   attachments: Attachment[];
 };
 
-export function toGigSummaryDto(gig: GigWithLines, today: string) {
-  const startDate = isoFromDate(gig.startDate);
+export function toEventSummaryDto(event: EventWithLines, today: string) {
+  const startDate = isoFromDate(event.startDate);
   return {
-    id: gig.id,
+    id: event.id,
     startDate,
-    endDate: gig.endDate ? isoFromDate(gig.endDate) : null,
-    year: gig.startDate.getUTCFullYear(),
-    status: gig.status,
-    played: isPlayed(gig.status, startDate, today),
-    lineupTemplateId: gig.lineupTemplateId,
-    lineupName: gig.lineupName,
-    venue: gig.venue,
-    technicalSetup: gig.technicalSetup,
-    logistics: gig.logistics,
-    houseTechnician: gig.houseTechnician,
-    sellerId: gig.sellerId,
-    producerId: gig.producerId,
-    priceCents: gig.priceCents,
-    additionalSalesCents: gig.additionalSalesCents,
-    additionalSalesDescription: gig.additionalSalesDescription,
-    notes: gig.notes,
-    clientId: gig.clientId,
-    clientName: gig.client?.name ?? null,
-    offerId: gig.offerId,
-    ...gigEconomics(gig),
-    notFullyStaffed: isNotFullyStaffed(gig.costLines),
-    deletedAt: gig.deletedAt?.toISOString() ?? null,
-    createdAt: gig.createdAt.toISOString(),
-    updatedAt: gig.updatedAt.toISOString(),
+    endDate: event.endDate ? isoFromDate(event.endDate) : null,
+    year: event.startDate.getUTCFullYear(),
+    status: event.status,
+    played: isPlayed(event.status, startDate, today),
+    lineupTemplateId: event.lineupTemplateId,
+    lineupName: event.lineupName,
+    venue: event.venue,
+    technicalSetup: event.technicalSetup,
+    logistics: event.logistics,
+    houseTechnician: event.houseTechnician,
+    sellerId: event.sellerId,
+    producerId: event.producerId,
+    priceCents: event.priceCents,
+    additionalSalesCents: event.additionalSalesCents,
+    additionalSalesDescription: event.additionalSalesDescription,
+    notes: event.notes,
+    clientId: event.clientId,
+    clientName: event.client?.name ?? null,
+    offerId: event.offerId,
+    ...eventEconomics(event),
+    notFullyStaffed: isNotFullyStaffed(event.costLines),
+    deletedAt: event.deletedAt?.toISOString() ?? null,
+    createdAt: event.createdAt.toISOString(),
+    updatedAt: event.updatedAt.toISOString(),
   };
 }
 
-export type GigSummaryDto = ReturnType<typeof toGigSummaryDto>;
+export type EventSummaryDto = ReturnType<typeof toEventSummaryDto>;
 
-export function toGigDetailDto(gig: GigWithDetail, today: string) {
+export function toEventDetailDto(event: EventWithDetail, today: string) {
   return {
-    ...toGigSummaryDto(gig, today),
-    costLines: [...gig.costLines].sort(compareCostLines).map(toCostLineDto),
-    attachments: gig.attachments
+    ...toEventSummaryDto(event, today),
+    costLines: [...event.costLines].sort(compareCostLines).map(toCostLineDto),
+    attachments: event.attachments
       .filter((a) => a.deletedAt === null)
       .sort((a, b) => b.uploadedAt.getTime() - a.uploadedAt.getTime() || (a.id < b.id ? 1 : -1))
       .map(toAttachmentDto),
   };
 }
 
-export type GigDetailDto = ReturnType<typeof toGigDetailDto>;
+export type EventDetailDto = ReturnType<typeof toEventDetailDto>;
 
-export function toGigEventDto(e: GigEvent) {
+export function toEventHistoryEntryDto(e: EventHistory) {
   return {
     id: e.id,
-    gigId: e.gigId,
+    eventId: e.eventId,
     type: e.type,
     partnerId: e.partnerId,
     at: e.at.toISOString(),

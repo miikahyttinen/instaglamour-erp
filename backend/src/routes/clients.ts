@@ -1,8 +1,8 @@
 /**
  * Clients (docs/api-contract.md "Clients"; UC-027, BR-100, BR-101).
  * A client is a name + notes. Names are unique case-insensitively (trimmed) among non-deleted
- * clients. Deleting is soft and only allowed when no gig links to the client.
- * Offers (TASK-016) are counted and listed too, and block deletion like gigs.
+ * clients. Deleting is soft and only allowed when no event links to the client.
+ * Offers (TASK-016) are counted and listed too, and block deletion like events.
  */
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
@@ -11,9 +11,9 @@ import { clientNameTaken, findActiveClient, toClientDto } from '../clients/store
 import { todayIso } from '../domain/dates.js';
 import type { Client } from '../generated/prisma/client.js';
 import { AppError, notFound, parseInput, validationError } from '../http/errors.js';
-import { LONG_TEXT_MAX, optionalText, requiredText, SHORT_TEXT_MAX } from '../gigs/schemas.js';
-import { toGigSummaryDto } from '../gigs/serialize.js';
-import { gigSummaryInclude, inTransaction, type Tx } from '../gigs/store.js';
+import { LONG_TEXT_MAX, optionalText, requiredText, SHORT_TEXT_MAX } from '../events/schemas.js';
+import { toEventSummaryDto } from '../events/serialize.js';
+import { eventSummaryInclude, inTransaction, type Tx } from '../events/store.js';
 import { offerInclude, toOfferSummaryDto } from '../offers/store.js';
 import { isUniqueViolation } from './budgetCategories.js';
 
@@ -59,11 +59,11 @@ export function clientRoutes(app: FastifyInstance, deps: AppDeps): void {
     const clients = await db.client.findMany({
       where: { deletedAt: null, ...(search ? { name: { contains: search, mode: 'insensitive' } } : {}) },
       include: {
-        _count: { select: { gigs: { where: { deletedAt: null } }, offers: { where: { deletedAt: null } } } },
+        _count: { select: { events: { where: { deletedAt: null } }, offers: { where: { deletedAt: null } } } },
       },
       orderBy: [{ name: 'asc' }, { id: 'asc' }],
     });
-    return clients.map((c) => ({ ...toClientDto(c), gigCount: c._count.gigs, offerCount: c._count.offers }));
+    return clients.map((c) => ({ ...toClientDto(c), eventCount: c._count.events, offerCount: c._count.offers }));
   });
 
   // ---------------------------------------------------------------- create
@@ -81,9 +81,9 @@ export function clientRoutes(app: FastifyInstance, deps: AppDeps): void {
   // ---------------------------------------------------------------- read
   app.get<IdParams>('/api/clients/:id', async (request) => {
     const client = await requireActiveClient(db, request.params.id);
-    const gigs = await db.gig.findMany({
+    const events = await db.event.findMany({
       where: { clientId: client.id, deletedAt: null },
-      include: gigSummaryInclude,
+      include: eventSummaryInclude,
       orderBy: [{ startDate: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }],
     });
     const offers = await db.offer.findMany({
@@ -94,7 +94,7 @@ export function clientRoutes(app: FastifyInstance, deps: AppDeps): void {
     const today = todayIso();
     return {
       client: toClientDto(client),
-      gigs: gigs.map((g) => toGigSummaryDto(g, today)),
+      events: events.map((g) => toEventSummaryDto(g, today)),
       offers: offers.map((o) => toOfferSummaryDto(o, today)),
     };
   });
@@ -123,11 +123,11 @@ export function clientRoutes(app: FastifyInstance, deps: AppDeps): void {
         SELECT "id"::text FROM "client" WHERE "id" = ${id}::uuid AND "deleted_at" IS NULL FOR UPDATE`;
       if (locked.length === 0) throw notFound('Client not found');
       const client = { id };
-      // Deleted gigs/offers count too: restoring one must never leave it linked to a deleted client.
+      // Deleted events/offers count too: restoring one must never leave it linked to a deleted client.
       const links =
-        (await tx.gig.count({ where: { clientId: client.id } })) +
+        (await tx.event.count({ where: { clientId: client.id } })) +
         (await tx.offer.count({ where: { clientId: client.id } }));
-      if (links > 0) throw new AppError('CLIENT_IN_USE', 'Gigs or offers link to this client');
+      if (links > 0) throw new AppError('CLIENT_IN_USE', 'Events or offers link to this client');
       await tx.client.update({ where: { id: client.id }, data: { deletedAt: new Date() } });
     });
     return reply.status(204).send();

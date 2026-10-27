@@ -7,7 +7,7 @@ import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { currentYear } from '../src/domain/dates.js';
 import { PUBLIC_RATE_LIMIT } from '../src/http/publicGuard.js';
 import { closeTestDb, resetDb, testDb } from './helpers.js';
-import { call, createGig, history, startSession, UNKNOWN_ID, type Json, type Session } from './gigFixtures.js';
+import { call, createEvent, history, startSession, UNKNOWN_ID, type Json, type Session } from './eventFixtures.js';
 
 let s: Session;
 
@@ -39,14 +39,14 @@ async function tokenOf(personId: string): Promise<string> {
 /** The given fields of each row, e.g. pick(lines, 'state', 'amountCents') → [['PAID', 1000], …]. */
 const pick = (rows: Record<string, unknown>[], ...keys: string[]): unknown[][] => rows.map((r) => keys.map((k) => r[k]));
 
-const lineOf = (gig: Json, type: string): Json => gig.costLines.find((l: Json) => l.type === type);
+const lineOf = (event: Json, type: string): Json => event.costLines.find((l: Json) => l.type === type);
 
-/** A gig (Template A: VOC 30000, BASS 20000 + internal lines) with Person 1 on VOC, Person 2 on BASS. */
-async function gigWithPeople(startDate: string, overrides: Record<string, unknown> = {}): Promise<Json> {
-  const gig = await createGig(s, { startDate, ...overrides });
-  await call(s, 'PATCH', `/api/cost-lines/${lineOf(gig, 'VOC').id}`, { personId: s.world.p1.id });
-  const res = await call(s, 'PATCH', `/api/cost-lines/${lineOf(gig, 'BASS').id}`, { personId: s.world.p2.id });
-  return res.json().gig;
+/** An event (Template A: VOC 30000, BASS 20000 + internal lines) with Person 1 on VOC, Person 2 on BASS. */
+async function eventWithPeople(startDate: string, overrides: Record<string, unknown> = {}): Promise<Json> {
+  const event = await createEvent(s, { startDate, ...overrides });
+  await call(s, 'PATCH', `/api/cost-lines/${lineOf(event, 'VOC').id}`, { personId: s.world.p1.id });
+  const res = await call(s, 'PATCH', `/api/cost-lines/${lineOf(event, 'BASS').id}`, { personId: s.world.p2.id });
+  return res.json().event;
 }
 
 const view = async (token: string): Promise<Json> => {
@@ -70,16 +70,16 @@ async function poByNumber(number: string): Promise<Json> {
   return po;
 }
 
-const getGig = async (id: string): Promise<Json> => (await call(s, 'GET', `/api/gigs/${id}`)).json();
+const getEvent = async (id: string): Promise<Json> => (await call(s, 'GET', `/api/events/${id}`)).json();
 
-/** Played gig + Person 1's VOC line on an OPEN PO. */
+/** Played event + Person 1's VOC line on an OPEN PO. */
 async function openPo() {
-  const gig = await gigWithPeople(PAST);
+  const event = await eventWithPeople(PAST);
   const token = await tokenOf(s.world.p1.id);
-  const voc = lineOf(gig, 'VOC');
+  const voc = lineOf(event, 'VOC');
   const created = await createPo(token, [voc.id]);
   const po = await poByNumber(created.number);
-  return { gig, token, voc, created, po };
+  return { event, token, voc, created, po };
 }
 
 // ======================================================================== freelancer link
@@ -152,8 +152,8 @@ describe('active partners have no freelancer link (BR-113)', () => {
   });
 
   it('public GET/POST are 404 for an active partner; removing partner status restores the same link', async () => {
-    const gig = await gigWithPeople(PAST);
-    const voc = lineOf(gig, 'VOC');
+    const event = await eventWithPeople(PAST);
+    const voc = lineOf(event, 'VOC');
     const token = await tokenOf(s.world.p1.id);
 
     expect((await makePartner(s.world.p1.id)).statusCode).toBe(200);
@@ -177,8 +177,8 @@ describe('active partners have no freelancer link (BR-113)', () => {
   });
 
   it('POs of a person who becomes a partner stay manageable (list, pay, unpay, cancel)', async () => {
-    const g1 = await gigWithPeople(PAST);
-    const g2 = await gigWithPeople(PAST_2);
+    const g1 = await eventWithPeople(PAST);
+    const g2 = await eventWithPeople(PAST_2);
     const token = await tokenOf(s.world.p1.id);
     const first = await createPo(token, [lineOf(g1, 'VOC').id]);
     const second = await createPo(token, [lineOf(g2, 'VOC').id]);
@@ -197,30 +197,30 @@ describe('active partners have no freelancer link (BR-113)', () => {
 
 // ======================================================================== public view
 describe('GET /api/public/freelancers/{token} (UC-033)', () => {
-  it('shows only own fee lines with their states, newest gig first (BR-113, BR-114)', async () => {
-    const old = await gigWithPeople('2025-12-01');
-    const played = await gigWithPeople(PAST);
-    const upcoming = await gigWithPeople(FUTURE);
+  it('shows only own fee lines with their states, newest event first (BR-113, BR-114)', async () => {
+    const old = await eventWithPeople('2025-12-01');
+    const played = await eventWithPeople(PAST);
+    const upcoming = await eventWithPeople(FUTURE);
     // Paid line
     await call(s, 'POST', `/api/cost-lines/${lineOf(old, 'VOC').id}/pay`, { actualCents: 40000 });
-    // Hidden: deleted gig, cancelled gig, zero amount, FUEL, other person
-    const deleted = await gigWithPeople(PAST);
-    await call(s, 'POST', `/api/gigs/${deleted.id}/delete`, { reason: 'Reason 1' });
-    const cancelled = await gigWithPeople(PAST);
-    await call(s, 'POST', `/api/gigs/${cancelled.id}/cancel`, { reason: 'Reason 1' });
-    const zero = await gigWithPeople(PAST_2);
+    // Hidden: deleted event, cancelled event, zero amount, FUEL, other person
+    const deleted = await eventWithPeople(PAST);
+    await call(s, 'POST', `/api/events/${deleted.id}/delete`, { reason: 'Reason 1' });
+    const cancelled = await eventWithPeople(PAST);
+    await call(s, 'POST', `/api/events/${cancelled.id}/cancel`, { reason: 'Reason 1' });
+    const zero = await eventWithPeople(PAST_2);
     await call(s, 'PATCH', `/api/cost-lines/${lineOf(zero, 'VOC').id}`, { budgetedCents: 0 });
-    await call(s, 'POST', `/api/gigs/${played.id}/cost-lines`, { type: 'FUEL', personId: s.world.p1.id, budgetedCents: 10000 });
-    // A second own line on the played gig (description shown)
+    await call(s, 'POST', `/api/events/${played.id}/cost-lines`, { type: 'FUEL', personId: s.world.p1.id, budgetedCents: 10000 });
+    // A second own line on the played event (description shown)
     const extra = (
-      await call(s, 'POST', `/api/gigs/${played.id}/cost-lines`, {
+      await call(s, 'POST', `/api/events/${played.id}/cost-lines`, {
         type: 'OTHER_ROLE',
         personId: s.world.p1.id,
         description: 'Role 1',
         budgetedCents: 10000,
       })
     ).json();
-    const extraLine = extra.gig.costLines.at(-1);
+    const extraLine = extra.event.costLines.at(-1);
 
     const v = await view(await tokenOf(s.world.p1.id));
     expect(Object.keys(v).sort()).toEqual(['lines', 'name', 'purchaseOrders']);
@@ -229,8 +229,8 @@ describe('GET /api/public/freelancers/{token} (UC-033)', () => {
     expect(v.lines).toEqual([
       {
         costLineId: lineOf(upcoming, 'VOC').id,
-        gigStartDate: FUTURE,
-        gigEndDate: null,
+        eventStartDate: FUTURE,
+        eventEndDate: null,
         venue: 'Venue X',
         type: 'VOC',
         description: null,
@@ -238,17 +238,17 @@ describe('GET /api/public/freelancers/{token} (UC-033)', () => {
         state: 'UPCOMING',
         purchaseOrderNumber: null,
       },
-      expect.objectContaining({ costLineId: lineOf(played, 'VOC').id, gigStartDate: PAST, state: 'SELECTABLE', amountCents: 30000 }),
+      expect.objectContaining({ costLineId: lineOf(played, 'VOC').id, eventStartDate: PAST, state: 'SELECTABLE', amountCents: 30000 }),
       expect.objectContaining({ costLineId: extraLine.id, description: 'Role 1', type: 'OTHER_ROLE', state: 'SELECTABLE', amountCents: 10000 }),
-      expect.objectContaining({ costLineId: lineOf(old, 'VOC').id, gigStartDate: '2025-12-01', state: 'PAID', amountCents: 40000 }),
+      expect.objectContaining({ costLineId: lineOf(old, 'VOC').id, eventStartDate: '2025-12-01', state: 'PAID', amountCents: 40000 }),
     ]);
   });
 
   it('never leaks client, price, notes, other people or partner data; noindex, no session needed', async () => {
     const client = await testDb().client.create({ data: { name: 'Client Secret Oy', notes: 'Client secret note' } });
-    const gig = await gigWithPeople(PAST, { priceCents: 1230000, notes: 'Internal gig note', clientId: client.id });
+    const event = await eventWithPeople(PAST, { priceCents: 1230000, notes: 'Internal event note', clientId: client.id });
     const token = await tokenOf(s.world.p1.id);
-    await createPo(token, [lineOf(gig, 'VOC').id]);
+    await createPo(token, [lineOf(event, 'VOC').id]);
 
     const res = await anon('GET', `/api/public/freelancers/${token}`);
     expect(res.statusCode).toBe(200);
@@ -259,25 +259,25 @@ describe('GET /api/public/freelancers/{token} (UC-033)', () => {
       '1230000',
       'Client Secret Oy',
       'Client secret note',
-      'Internal gig note',
+      'Internal event note',
       'Person 2',
       'Partner A',
       'partner.a@example.com',
-      gig.id,
+      event.id,
       s.world.a.id,
       s.world.p1.id,
       s.world.p2.id,
-      lineOf(gig, 'BASS').id,
+      lineOf(event, 'BASS').id,
       'Template A',
     ]) {
       expect(raw).not.toContain(secret);
     }
     const v = res.json();
     expect(Object.keys(v.lines[0]).sort()).toEqual(
-      ['amountCents', 'costLineId', 'description', 'gigEndDate', 'gigStartDate', 'purchaseOrderNumber', 'state', 'type', 'venue'].sort(),
+      ['amountCents', 'costLineId', 'description', 'eventEndDate', 'eventStartDate', 'purchaseOrderNumber', 'state', 'type', 'venue'].sort(),
     );
     expect(Object.keys(v.purchaseOrders[0]).sort()).toEqual(['createdAt', 'lines', 'number', 'paidAt', 'status', 'totalCents']);
-    expect(Object.keys(v.purchaseOrders[0].lines[0]).sort()).toEqual(['amountCents', 'description', 'gigStartDate', 'type', 'venue']);
+    expect(Object.keys(v.purchaseOrders[0].lines[0]).sort()).toEqual(['amountCents', 'description', 'eventStartDate', 'type', 'venue']);
   });
 
   it('404 for unknown, malformed, regenerated tokens and inactive people', async () => {
@@ -326,9 +326,9 @@ describe('GET /api/public/freelancers/{token} (UC-033)', () => {
 
 // ======================================================================== public create
 describe('POST /api/public/freelancers/{token}/purchase-orders (BR-114…BR-116)', () => {
-  it('creates one PO from fees of several gigs; lines show ON_PO; partners see it; logged CREATED by the freelancer', async () => {
-    const g1 = await gigWithPeople(PAST);
-    const g2 = await gigWithPeople(PAST_2);
+  it('creates one PO from fees of several events; lines show ON_PO; partners see it; logged CREATED by the freelancer', async () => {
+    const g1 = await eventWithPeople(PAST);
+    const g2 = await eventWithPeople(PAST_2);
     const token = await tokenOf(s.world.p1.id);
     const res = await anon('POST', `/api/public/freelancers/${token}/purchase-orders`, {
       costLineIds: [lineOf(g2, 'VOC').id, lineOf(g1, 'VOC').id],
@@ -342,10 +342,10 @@ describe('POST /api/public/freelancers/{token}/purchase-orders (BR-114…BR-116)
       totalCents: 60000,
       createdAt: expect.any(String),
       paidAt: null,
-      // Oldest gig first
+      // Oldest event first
       lines: [
-        { gigStartDate: PAST, venue: 'Venue X', type: 'VOC', description: null, amountCents: 30000 },
-        { gigStartDate: PAST_2, venue: 'Venue X', type: 'VOC', description: null, amountCents: 30000 },
+        { eventStartDate: PAST, venue: 'Venue X', type: 'VOC', description: null, amountCents: 30000 },
+        { eventStartDate: PAST_2, venue: 'Venue X', type: 'VOC', description: null, amountCents: 30000 },
       ],
     });
 
@@ -373,15 +373,15 @@ describe('POST /api/public/freelancers/{token}/purchase-orders (BR-114…BR-116)
       lines: [
         {
           costLineId: lineOf(g1, 'VOC').id,
-          gigId: g1.id,
-          gigStartDate: PAST,
-          gigVenue: 'Venue X',
-          gigLineupName: 'Template A',
+          eventId: g1.id,
+          eventStartDate: PAST,
+          eventVenue: 'Venue X',
+          eventLineupName: 'Template A',
           type: 'VOC',
           description: null,
           amountCents: 30000,
         },
-        expect.objectContaining({ costLineId: lineOf(g2, 'VOC').id, gigId: g2.id, gigStartDate: PAST_2 }),
+        expect.objectContaining({ costLineId: lineOf(g2, 'VOC').id, eventId: g2.id, eventStartDate: PAST_2 }),
       ],
     });
 
@@ -392,7 +392,7 @@ describe('POST /api/public/freelancers/{token}/purchase-orders (BR-114…BR-116)
   });
 
   it('numbers use the name at creation and a global running number', async () => {
-    const g = await gigWithPeople(PAST);
+    const g = await eventWithPeople(PAST);
     await testDb().person.update({ where: { id: s.world.p1.id }, data: { name: 'Pärsön Ö' } });
     const a = await createPo(await tokenOf(s.world.p1.id), [lineOf(g, 'VOC').id]);
     const b = await createPo(await tokenOf(s.world.p2.id), [lineOf(g, 'BASS').id]);
@@ -425,21 +425,21 @@ describe('POST /api/public/freelancers/{token}/purchase-orders (BR-114…BR-116)
   });
 
   it('409 COST_LINE_NOT_ELIGIBLE lists exactly the offending ids; nothing is created', async () => {
-    const played = await gigWithPeople(PAST);
-    const upcoming = await gigWithPeople(FUTURE);
-    const paid = await gigWithPeople(PAST_2);
+    const played = await eventWithPeople(PAST);
+    const upcoming = await eventWithPeople(FUTURE);
+    const paid = await eventWithPeople(PAST_2);
     await call(s, 'POST', `/api/cost-lines/${lineOf(paid, 'VOC').id}/pay`, {});
-    const zero = await gigWithPeople(PAST);
+    const zero = await eventWithPeople(PAST);
     await call(s, 'PATCH', `/api/cost-lines/${lineOf(zero, 'VOC').id}`, { budgetedCents: 0 });
-    const cancelled = await gigWithPeople(PAST);
-    await call(s, 'POST', `/api/gigs/${cancelled.id}/cancel`, { reason: 'Reason 1' });
-    const deleted = await gigWithPeople(PAST);
-    await call(s, 'POST', `/api/gigs/${deleted.id}/delete`, { reason: 'Reason 1' });
+    const cancelled = await eventWithPeople(PAST);
+    await call(s, 'POST', `/api/events/${cancelled.id}/cancel`, { reason: 'Reason 1' });
+    const deleted = await eventWithPeople(PAST);
+    await call(s, 'POST', `/api/events/${deleted.id}/delete`, { reason: 'Reason 1' });
     const fuel = (
-      await call(s, 'POST', `/api/gigs/${played.id}/cost-lines`, { type: 'FUEL', personId: s.world.p1.id, budgetedCents: 10000 })
-    ).json().gig.costLines.at(-1);
+      await call(s, 'POST', `/api/events/${played.id}/cost-lines`, { type: 'FUEL', personId: s.world.p1.id, budgetedCents: 10000 })
+    ).json().event.costLines.at(-1);
     const token = await tokenOf(s.world.p1.id);
-    const onPo = await gigWithPeople(PAST);
+    const onPo = await eventWithPeople(PAST);
     await createPo(token, [lineOf(onPo, 'VOC').id]);
     const before = await testDb().purchaseOrder.count();
 
@@ -447,8 +447,8 @@ describe('POST /api/public/freelancers/{token}/purchase-orders (BR-114…BR-116)
       lineOf(upcoming, 'VOC').id, // not played
       lineOf(paid, 'VOC').id, // paid
       lineOf(zero, 'VOC').id, // amount 0
-      lineOf(cancelled, 'VOC').id, // cancelled gig
-      lineOf(deleted, 'VOC').id, // deleted gig
+      lineOf(cancelled, 'VOC').id, // cancelled event
+      lineOf(deleted, 'VOC').id, // deleted event
       lineOf(played, 'BASS').id, // someone else's
       lineOf(played, 'OFFICE').id, // nobody's
       fuel.id, // FUEL can't be paid
@@ -467,8 +467,8 @@ describe('POST /api/public/freelancers/{token}/purchase-orders (BR-114…BR-116)
   });
 
   it('two parallel creates with the same line: one 201, one 409 (advisory + row locks)', async () => {
-    const g = await gigWithPeople(PAST);
-    const g2 = await gigWithPeople(PAST_2);
+    const g = await eventWithPeople(PAST);
+    const g2 = await eventWithPeople(PAST_2);
     const token = await tokenOf(s.world.p1.id);
     const url = `/api/public/freelancers/${token}/purchase-orders`;
     for (let round = 0; round < 3; round++) {
@@ -484,20 +484,20 @@ describe('POST /api/public/freelancers/{token}/purchase-orders (BR-114…BR-116)
     }
   });
 
-  it('parallel gig cancel / amount change and PO creation never leave a locked line changed', async () => {
+  it('parallel event cancel / amount change and PO creation never leave a locked line changed', async () => {
     const token = await tokenOf(s.world.p1.id);
     for (let round = 0; round < 5; round++) {
-      const g = await gigWithPeople(PAST);
+      const g = await eventWithPeople(PAST);
       const voc = lineOf(g, 'VOC');
       const [created, cancelled, patched] = await Promise.all([
         anon('POST', `/api/public/freelancers/${token}/purchase-orders`, { costLineIds: [voc.id] }),
-        call(s, 'POST', `/api/gigs/${g.id}/cancel`, { reason: 'Reason 1' }),
+        call(s, 'POST', `/api/events/${g.id}/cancel`, { reason: 'Reason 1' }),
         call(s, 'PATCH', `/api/cost-lines/${voc.id}`, { budgetedCents: 10000 }),
       ]);
-      const after = await getGig(g.id);
+      const after = await getEvent(g.id);
       const line = lineOf(after, 'VOC');
       if (created.statusCode === 201) {
-        // The PO snapshot is the line's amount and the gig stayed SOLD.
+        // The PO snapshot is the line's amount and the event stayed SOLD.
         expect(cancelled.statusCode).toBe(409);
         expect(after.status).toBe('SOLD');
         expect(created.json().totalCents).toBe(line.budgetedCents);
@@ -516,8 +516,8 @@ describe('POST /api/public/freelancers/{token}/purchase-orders (BR-114…BR-116)
 // ======================================================================== partner list
 describe('GET /api/purchase-orders (UC-034)', () => {
   it('year (by creation, Helsinki) is required unless q; q searches number and name in all years; status filter', async () => {
-    const g = await gigWithPeople(PAST);
-    const g2 = await gigWithPeople(PAST_2);
+    const g = await eventWithPeople(PAST);
+    const g2 = await eventWithPeople(PAST_2);
     const a = await createPo(await tokenOf(s.world.p1.id), [lineOf(g, 'VOC').id]);
     const b = await createPo(await tokenOf(s.world.p2.id), [lineOf(g, 'BASS').id]);
     const c = await createPo(await tokenOf(s.world.p1.id), [lineOf(g2, 'VOC').id]);
@@ -583,9 +583,9 @@ describe('PO detail, pay, unpay, cancel (BR-117)', () => {
     }
   });
 
-  it('pay marks every line paid with the PO amount, logs on the gig with the PO number; unpay reverts', async () => {
-    const g1 = await gigWithPeople(PAST);
-    const g2 = await gigWithPeople(PAST_2);
+  it('pay marks every line paid with the PO amount, logs on the event with the PO number; unpay reverts', async () => {
+    const g1 = await eventWithPeople(PAST);
+    const g2 = await eventWithPeople(PAST_2);
     const token = await tokenOf(s.world.p1.id);
     const created = await createPo(token, [lineOf(g1, 'VOC').id, lineOf(g2, 'VOC').id]);
     const po = await poByNumber(created.number);
@@ -595,14 +595,14 @@ describe('PO detail, pay, unpay, cancel (BR-117)', () => {
     const paidPo = paid.json();
     expect(paidPo).toMatchObject({ status: 'PAID', paidBy: s.world.a.id, paidAt: expect.any(String) });
 
-    const gig1 = await getGig(g1.id);
-    expect(lineOf(gig1, 'VOC')).toMatchObject({
+    const event1 = await getEvent(g1.id);
+    expect(lineOf(event1, 'VOC')).toMatchObject({
       actualCents: 30000,
       paidAt: paidPo.paidAt,
       paidBy: s.world.a.id,
       purchaseOrder: { id: po.id, number: po.number, status: 'PAID' },
     });
-    expect(gig1.actualCostsCents).toBe(30000);
+    expect(event1.actualCostsCents).toBe(30000);
     const ev = (await history(s, g1.id))[0]!;
     expect(ev).toMatchObject({
       type: 'COST_PAID',
@@ -627,14 +627,14 @@ describe('PO detail, pay, unpay, cancel (BR-117)', () => {
     const unpaid = await call(s, 'POST', `/api/purchase-orders/${po.id}/unpay`);
     expect(unpaid.statusCode).toBe(200);
     expect(unpaid.json()).toMatchObject({ status: 'OPEN', paidAt: null, paidBy: null });
-    const gig1b = await getGig(g1.id);
-    expect(lineOf(gig1b, 'VOC')).toMatchObject({
+    const event1b = await getEvent(g1.id);
+    expect(lineOf(event1b, 'VOC')).toMatchObject({
       actualCents: null,
       paidAt: null,
       paidBy: null,
       purchaseOrder: { id: po.id, number: po.number, status: 'OPEN' },
     });
-    expect(gig1b.actualCostsCents).toBe(0);
+    expect(event1b.actualCostsCents).toBe(0);
     expect((await history(s, g1.id))[0]).toMatchObject({
       type: 'COST_UNPAID',
       details: { costLineId: lineOf(g1, 'VOC').id, type: 'VOC', previousActualCents: 30000, purchaseOrderNumber: po.number },
@@ -653,7 +653,7 @@ describe('PO detail, pay, unpay, cancel (BR-117)', () => {
   });
 
   it('cancel needs a reason, frees the lines (selectable again) and is final', async () => {
-    const { po, voc, gig, token } = await openPo();
+    const { po, voc, event, token } = await openPo();
     for (const [body, code] of [
       [{}, 'REQUIRED'],
       [{ reason: '  ' }, 'REQUIRED'],
@@ -675,7 +675,7 @@ describe('PO detail, pay, unpay, cancel (BR-117)', () => {
       cancelReason: 'Reason 1',
       lines: po.lines,
     });
-    expect(lineOf(await getGig(gig.id), 'VOC').purchaseOrder).toBeNull();
+    expect(lineOf(await getEvent(event.id), 'VOC').purchaseOrder).toBeNull();
     const v = await view(token);
     expect(v.lines[0]).toMatchObject({ costLineId: voc.id, state: 'SELECTABLE', purchaseOrderNumber: null });
     expect(v.purchaseOrders[0]).toMatchObject({ number: po.number, status: 'CANCELLED' });
@@ -704,7 +704,7 @@ describe('PO detail, pay, unpay, cancel (BR-117)', () => {
   });
 
   it('GET /api/purchase-orders/events: newest first across POs, limit 1…200', async () => {
-    const g = await gigWithPeople(PAST);
+    const g = await eventWithPeople(PAST);
     const a = await createPo(await tokenOf(s.world.p1.id), [lineOf(g, 'VOC').id]);
     const b = await createPo(await tokenOf(s.world.p2.id), [lineOf(g, 'BASS').id]);
     const poA = await poByNumber(a.number);
@@ -743,20 +743,20 @@ describe('lock (BR-118)', () => {
     expect(res.json().error).toMatchObject({ code: 'COST_LINE_ON_PURCHASE_ORDER', details: { purchaseOrderNumber: number } });
   };
 
-  it('CostLine.purchaseOrder in gig detail, cost line responses and person cost lines', async () => {
-    const { gig, voc, po } = await openPo();
+  it('CostLine.purchaseOrder in event detail, cost line responses and person cost lines', async () => {
+    const { event, voc, po } = await openPo();
     const ref = { id: po.id, number: po.number, status: 'OPEN' };
-    const detail = await getGig(gig.id);
+    const detail = await getEvent(event.id);
     expect(lineOf(detail, 'VOC').purchaseOrder).toEqual(ref);
     expect(lineOf(detail, 'BASS').purchaseOrder).toBeNull();
     const patched = await call(s, 'PATCH', `/api/cost-lines/${voc.id}`, { description: 'Note 1' });
-    expect(lineOf(patched.json().gig, 'VOC').purchaseOrder).toEqual(ref);
+    expect(lineOf(patched.json().event, 'VOC').purchaseOrder).toEqual(ref);
     const people = (await call(s, 'GET', `/api/people/${s.world.p1.id}/cost-lines?year=2026`)).json();
     expect(people.lines[0].costLine.purchaseOrder).toEqual(ref);
   });
 
-  it('OPEN PO: person, amount, load-in, delete, pay, unpay → 409; description and same values OK; gig cancel/delete → 409', async () => {
-    const { gig, voc, po } = await openPo();
+  it('OPEN PO: person, amount, load-in, delete, pay, unpay → 409; description and same values OK; event cancel/delete → 409', async () => {
+    const { event, voc, po } = await openPo();
     const url = `/api/cost-lines/${voc.id}`;
     expectLocked(await call(s, 'PATCH', url, { personId: s.world.p2.id }), po.number);
     expectLocked(await call(s, 'PATCH', url, { personId: null }), po.number);
@@ -765,8 +765,8 @@ describe('lock (BR-118)', () => {
     expectLocked(await call(s, 'DELETE', url), po.number);
     expectLocked(await call(s, 'POST', `${url}/pay`, {}), po.number);
     expectLocked(await call(s, 'POST', `${url}/unpay`), po.number);
-    expectLocked(await call(s, 'POST', `/api/gigs/${gig.id}/cancel`, { reason: 'Reason 1' }), po.number);
-    expectLocked(await call(s, 'POST', `/api/gigs/${gig.id}/delete`, { reason: 'Reason 1' }), po.number);
+    expectLocked(await call(s, 'POST', `/api/events/${event.id}/cancel`, { reason: 'Reason 1' }), po.number);
+    expectLocked(await call(s, 'POST', `/api/events/${event.id}/delete`, { reason: 'Reason 1' }), po.number);
 
     // Validation still comes first
     expect((await call(s, 'PATCH', url, { budgetedCents: -1 })).statusCode).toBe(400);
@@ -778,45 +778,45 @@ describe('lock (BR-118)', () => {
       joinsLoadIn: true,
     });
     expect(ok.statusCode).toBe(200);
-    expect(lineOf(ok.json().gig, 'VOC')).toMatchObject({ description: 'Note 1', personId: s.world.p1.id, budgetedCents: 30000 });
+    expect(lineOf(ok.json().event, 'VOC')).toMatchObject({ description: 'Note 1', personId: s.world.p1.id, budgetedCents: 30000 });
     // The PO shows the current description
     expect((await call(s, 'GET', `/api/purchase-orders/${po.id}`)).json().lines[0].description).toBe('Note 1');
 
-    // Nothing changed on the line or gig
-    const after = await getGig(gig.id);
+    // Nothing changed on the line or event
+    const after = await getEvent(event.id);
     expect(after.status).toBe('SOLD');
     expect(after.deletedAt).toBeNull();
     expect(lineOf(after, 'VOC')).toMatchObject({ personId: s.world.p1.id, budgetedCents: 30000, paidAt: null });
-    // Other lines of the gig are not locked
-    expect((await call(s, 'PATCH', `/api/cost-lines/${lineOf(gig, 'BASS').id}`, { budgetedCents: 10000 })).statusCode).toBe(200);
+    // Other lines of the event are not locked
+    expect((await call(s, 'PATCH', `/api/cost-lines/${lineOf(event, 'BASS').id}`, { budgetedCents: 10000 })).statusCode).toBe(200);
   });
 
-  it('PAID PO: the line stays locked but the gig can be cancelled; cancelled PO unlocks', async () => {
-    const { gig, voc, po } = await openPo();
+  it('PAID PO: the line stays locked but the event can be cancelled; cancelled PO unlocks', async () => {
+    const { event, voc, po } = await openPo();
     await call(s, 'POST', `/api/purchase-orders/${po.id}/pay`);
     expectLocked(await call(s, 'POST', `/api/cost-lines/${voc.id}/unpay`), po.number);
     expectLocked(await call(s, 'PATCH', `/api/cost-lines/${voc.id}`, { budgetedCents: 10000 }), po.number);
-    expect((await call(s, 'POST', `/api/gigs/${gig.id}/cancel`, { reason: 'Reason 1' })).statusCode).toBe(200);
-    await call(s, 'POST', `/api/gigs/${gig.id}/uncancel`, { reason: 'Reason 1' });
+    expect((await call(s, 'POST', `/api/events/${event.id}/cancel`, { reason: 'Reason 1' })).statusCode).toBe(200);
+    await call(s, 'POST', `/api/events/${event.id}/uncancel`, { reason: 'Reason 1' });
 
     await call(s, 'POST', `/api/purchase-orders/${po.id}/unpay`);
     await call(s, 'POST', `/api/purchase-orders/${po.id}/cancel`, { reason: 'Reason 1' });
     expect((await call(s, 'PATCH', `/api/cost-lines/${voc.id}`, { budgetedCents: 10000 })).statusCode).toBe(200);
-    expect((await call(s, 'POST', `/api/gigs/${gig.id}/delete`, { reason: 'Reason 1' })).statusCode).toBe(204);
+    expect((await call(s, 'POST', `/api/events/${event.id}/delete`, { reason: 'Reason 1' })).statusCode).toBe(204);
   });
 
   it('changing the seller does not move a SALES line that is on a PO (BR-027 + BR-118)', async () => {
     const { c } = s.world;
-    const gig = await createGig(s, { startDate: PAST, sellerId: c.id });
-    const sales = lineOf(gig, 'SALES');
+    const event = await createEvent(s, { startDate: PAST, sellerId: c.id });
+    const sales = lineOf(event, 'SALES');
     expect(sales.personId).toBe(c.personId);
     // Active partners have no freelancer link (BR-113): the PO is made while C is not a partner.
     expect((await call(s, 'DELETE', `/api/people/${c.personId}/partner`)).statusCode).toBe(200);
     const created = await createPo(await tokenOf(c.personId), [sales.id]);
     expect((await call(s, 'PUT', `/api/people/${c.personId}/partner`, { email: c.email })).statusCode).toBe(200);
-    const res = await call(s, 'PATCH', `/api/gigs/${gig.id}`, { sellerId: s.world.a.id });
+    const res = await call(s, 'PATCH', `/api/events/${event.id}`, { sellerId: s.world.a.id });
     expect(res.statusCode).toBe(200);
     expect(res.json().movedCostLineIds).toEqual([]);
-    expect(lineOf(res.json().gig, 'SALES')).toMatchObject({ personId: c.personId, purchaseOrder: { number: created.number } });
+    expect(lineOf(res.json().event, 'SALES')).toMatchObject({ personId: c.personId, purchaseOrder: { number: created.number } });
   });
 });

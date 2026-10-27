@@ -48,8 +48,8 @@ at once can't create duplicates. Import files contain real data: keep them out o
 | Setting | key | Value updated |
 | Budget category (row) | `code` if given, else `name` (case-insensitive; removed rows count too) | Inserted only if missing — partners manage the rows in the app, so a re-run never renames, reorders or brings back a row they removed |
 | Client | `name` (case-insensitive, trimmed; non-deleted clients) | Inserted only if missing — partners manage clients in the app, so a re-run never changes notes or brings back a deleted client (a deleted client's name creates a new client) |
-| Gig | `startDate` + `venue` + `lineupName` | Inserted only if missing (never overwrites app edits — so adding `client` to an already-loaded gig does not link it; set the client in the app) |
-| Offer | `client` + `eventName` + `eventDate` (deleted offers count too) | Inserted only if missing, with a new random share link. `converted: true` also creates the gig per BR-105 (disposition WON). `createdAt` (TASK-028) sets the offer's created/updated time and the time of its "created" history event on insert; an existing offer is never changed, and the offer's year stays its `eventDate` |
+| Event | `startDate` + `venue` + `lineupName` | Inserted only if missing (never overwrites app edits — so adding `client` to an already-loaded event does not link it; set the client in the app) |
+| Offer | `client` + `eventName` + `eventDate` (deleted offers count too) | Inserted only if missing, with a new random share link. `converted: true` also creates the event per BR-105 (disposition WON). `createdAt` (TASK-028) sets the offer's created/updated time and the time of its "created" history event on insert; an existing offer is never changed, and the offer's year stays its `eventDate` |
 | Task | `title` + owner | Inserted only if missing |
 | Hour entry | partner + `date` + `comment` | Inserted only if missing |
 | Budget row | `category` + `year` | Inserted only if missing |
@@ -61,7 +61,7 @@ Nothing is ever deleted except with `--reset` (which empties the database but le
 
 All money is **integer cents** (EUR, excl. VAT): `30000` = 300.00 €. Dates are `YYYY-MM-DD`.
 Partners, templates, people, clients and budget categories are referenced by email / name (budget categories: name or `code`).
-`clients` is optional: older seed files without it (and gigs without `client`) still load.
+`clients` is optional: older seed files without it (and events without `client`) still load.
 `offers`, partner `phone` and the `offers.*` settings are optional too (TASK-016), and so is `references` (TASK-018).
 
 ```jsonc
@@ -95,7 +95,7 @@ Partners, templates, people, clients and budget categories are referenced by ema
   "clients": [                        // optional (BR-100); real client names only in seed.local.json
     { "name": "Client A Oy", "notes": "…" }                     // name unique, case-insensitive; notes optional
   ],
-  "gigs": [
+  "events": [
     {
       "startDate": "2026-05-01", "endDate": "2026-05-02",   // endDate optional, ≥ startDate
       "status": "SOLD",                                     // SOLD (default) | CANCELLED
@@ -133,7 +133,7 @@ Partners, templates, people, clients and budget categories are referenced by ema
       "source": "EMAIL",                                    // optional: EMAIL | WEBSITE | INSTAGRAM | OTHER
       "eventType": "CORPORATE",                             // optional: PRIVATE | WEDDING | CORPORATE
       "disposition": "PENDING",                             // optional, default PENDING (see domain-model.md)
-      "converted": false,                                   // optional; true = also create its gig (BR-105), disposition WON
+      "converted": false,                                   // optional; true = also create its event (BR-105), disposition WON
       "createdAt": "2026-10-14T17:09:01.341414+00:00"      // optional: when the offer was made (ISO 8601 with offset or Z,
                                                             // any fraction of a second, not in the future); default: load time
     }
@@ -158,13 +158,13 @@ Partners, templates, people, clients and budget categories are referenced by ema
 }
 ```
 
-Unknown keys are rejected (catches typos). Seeded gigs get a `CREATED` history event by their seller.
+Unknown keys are rejected (catches typos). Seeded events get a `CREATED` history event by their seller.
 
 ### Technical setup format change (TASK-010)
 
 `technicalSetup` used to be a list. It is now **one value or omitted**, and two new fields exist.
-A gig in an older seed file (e.g. your `seed.local.json`) with a list is rejected with a hint; convert it the
-same way the database migration converts existing gigs:
+An event in an older seed file (e.g. your `seed.local.json`) with a list is rejected with a hint; convert it the
+same way the database migration converts existing events:
 
 | Old list contains | New fields |
 |---|---|
@@ -212,6 +212,13 @@ Every offer now shows the same Spotify link, a constant in code (`src/offers/con
 no Spotify field any more. Older files still load: the setting `offers.default_spotify_url` and a per-offer
 `spotifyUrl` are accepted and ignored (not stored). You can delete them from your local seed. Existing
 setting rows and the `offer.spotify_url` column stay in the database, unused.
+
+### Gig → Event rename (TASK-032)
+
+The top-level list is now called `events` (it used to be `gigs`), and the import/seed summary counts it
+as `events`. Older files still load: a top-level `gigs` list is read as `events` (error messages then
+say `events.N…`). A file with **both** `events` and `gigs` is rejected. Renaming the key in your
+`seed.local.json` is recommended but not required.
 
 ## Making your local seed
 

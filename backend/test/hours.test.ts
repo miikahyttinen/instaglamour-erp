@@ -2,7 +2,7 @@
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { isValidHours } from '../src/hours/store.js';
 import { closeTestDb, login, resetDb, testDb } from './helpers.js';
-import { call, startSession, UNKNOWN_ID, type Json, type Session } from './gigFixtures.js';
+import { call, startSession, UNKNOWN_ID, type Json, type Session } from './eventFixtures.js';
 
 let s: Session;
 

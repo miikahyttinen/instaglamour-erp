@@ -55,7 +55,7 @@ async function emailTakenByOther(db: Db | Tx, email: string, personId: string): 
 
 /**
  * Make / keep the person an active partner with `email` (already validated and normalised).
- * Re-activating a removed partner keeps its id (and so its gigs, offers, tasks, hours).
+ * Re-activating a removed partner keeps its id (and so its events, offers, tasks, hours).
  * Changing an active partner's email revokes its sessions except `keepTokenHash` (the
  * requester's own session when they change their own email): sessions belong to the old account.
  */

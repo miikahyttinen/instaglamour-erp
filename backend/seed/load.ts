@@ -13,8 +13,8 @@
  *   partners have since edited in the app is never overwritten:
  *   budget category (code if given, else name, case-insensitive; removed rows count too — partners
  *   manage the rows in the app), client (name, case-insensitive, among non-deleted clients),
- *   gig (startDate + venue + lineupName; an existing gig's client is never changed),
- *   offer (client + eventName + eventDate; a `converted` offer also gets its gig, BR-105), task (title + owner),
+ *   event (startDate + venue + lineupName; an existing event's client is never changed),
+ *   offer (client + eventName + eventDate; a `converted` offer also gets its event, BR-105), task (title + owner),
  *   hour entry (partner + date + comment), budget row (category + year),
  *   reference (quoteFi + author; appended after the existing ones, its photo copied to UPLOAD_DIR).
  *
@@ -72,7 +72,7 @@ export const SEED_SUMMARY_KEYS = [
   'settings',
   'budgetCategories',
   'clients',
-  'gigs',
+  'events',
   'offers',
   'references',
   'tasks',
@@ -123,11 +123,11 @@ export async function emptyDatabase(tx: Tx): Promise<void> {
   await tx.purchaseOrder.deleteMany();
   await tx.reference.deleteMany();
   await tx.offerEvent.deleteMany();
-  await tx.gigEvent.deleteMany();
+  await tx.eventHistory.deleteMany();
   await tx.attachment.deleteMany();
   await tx.costLine.deleteMany();
-  await tx.gigTechnicalSetupLegacy.deleteMany();
-  await tx.gig.deleteMany();
+  await tx.eventTechnicalSetupLegacy.deleteMany();
+  await tx.event.deleteMany();
   await tx.offer.deleteMany();
   await tx.client.deleteMany();
   await tx.task.deleteMany();
@@ -433,14 +433,14 @@ async function applySeed(
   const partnerId = (email: string) => partnerByEmail.get(email)!.id;
   const partnerPersonId = (email: string) => partnerByEmail.get(email)!.personId;
 
-  // Gigs (insert only)
-  for (const g of data.gigs) {
+  // Events (insert only)
+  for (const g of data.events) {
     const template = g.lineupTemplate ? templateByName.get(g.lineupTemplate) : undefined;
     const lineupName = g.lineupName ?? g.lineupTemplate!;
     const startDate = dateFromIso(g.startDate);
-    const exists = await tx.gig.findFirst({ where: { startDate, venue: g.venue, lineupName } });
+    const exists = await tx.event.findFirst({ where: { startDate, venue: g.venue, lineupName } });
     if (exists) {
-      summary.gigs.skipped++;
+      summary.events.skipped++;
       continue;
     }
 
@@ -463,7 +463,7 @@ async function applySeed(
       });
 
     const createdBase = Date.now();
-    const gig = await tx.gig.create({
+    const event = await tx.event.create({
       data: {
         startDate,
         endDate: g.endDate ? dateFromIso(g.endDate) : null,
@@ -485,8 +485,8 @@ async function applySeed(
         costLines: { createMany: { data: lines.map((l, i) => ({ ...l, createdAt: new Date(createdBase + i)})) } },
       },
     });
-    await tx.gigEvent.create({ data: { gigId: gig.id, type: 'CREATED', partnerId: partnerId(g.seller), details: {} } });
-    summary.gigs.created++;
+    await tx.eventHistory.create({ data: { eventId: event.id, type: 'CREATED', partnerId: partnerId(g.seller), details: {} } });
+    summary.events.created++;
   }
 
   // Offers (insert only; natural key client + eventName + eventDate, deleted offers count too)

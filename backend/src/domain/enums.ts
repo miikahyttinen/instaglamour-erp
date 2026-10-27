@@ -11,7 +11,7 @@ import type {
   TechnicalSetup,
 } from '../generated/prisma/enums.js';
 
-/** People roles that play / work the gig: load-in switch and staffing check apply (BR-023, BR-026). */
+/** People roles that play / work the event: load-in switch and staffing check apply (BR-023, BR-026). */
 export const MUSICIAN_ROLES = [
   'VOC',
   'BACKING_VOC',
@@ -49,10 +49,10 @@ export const EXPENSE_CATEGORIES = [
 
 export const COST_TYPES = [...MUSICIAN_ROLES, ...INTERNAL_ROLES, ...EXPENSE_CATEGORIES] as const;
 
-/** Single choice (domain-model.md "TechnicalSetup"); a gig may also have none (null). */
+/** Single choice (domain-model.md "TechnicalSetup"); an event may also have none (null). */
 export const TECHNICAL_SETUPS = ['HOUSE_TECH', 'SET_A', 'SET_B', 'SET_C'] as const satisfies readonly TechnicalSetup[];
 
-/** Single choice (domain-model.md "Logistics"); a gig may also have none (null). */
+/** Single choice (domain-model.md "Logistics"); an event may also have none (null). */
 export const LOGISTICS = ['OWN_VAN', 'RENTAL_VAN', 'TAXI', 'OTHER'] as const satisfies readonly Logistics[];
 
 export type MusicianRole = (typeof MUSICIAN_ROLES)[number];
