@@ -682,3 +682,22 @@ describe('GET /api/events/{id}/history (UC-013)', () => {
     expect((await s.app.inject({ method: 'GET', url: `/api/events/${event.id}/history` })).statusCode).toBe(401);
   });
 });
+
+describe('old gig paths are gone (TASK-032: no aliases)', () => {
+  it('answers 404 NOT_FOUND on /api/gigs… and /api/offers/{id}/gig-draft', async () => {
+    const event = await createEvent(s);
+    for (const [method, url] of [
+      ['GET', '/api/gigs?year=2026'],
+      ['POST', '/api/gigs'],
+      ['GET', `/api/gigs/${event.id}`],
+      ['GET', `/api/gigs/${event.id}/history`],
+      ['POST', `/api/gigs/${event.id}/cancel`],
+      ['GET', `/api/offers/${UNKNOWN_ID}/gig-draft`],
+    ] as const) {
+      const res = await call(s, method, url);
+      expect(res.statusCode, url).toBe(404);
+      expect(res.json().error.code, url).toBe('NOT_FOUND');
+    }
+    expect((await call(s, 'GET', `/api/events/${event.id}`)).json().status).toBe('SOLD');
+  });
+});

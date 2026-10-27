@@ -302,6 +302,57 @@ describe('loadSeed: clients (TASK-015)', () => {
   });
 });
 
+/** The example file as written before TASK-032: top-level `gigs` instead of `events`. */
+function legacyExample() {
+  const { events, ...rest } = example();
+  return { ...rest, gigs: events };
+}
+
+describe('seed key `gigs` is a legacy alias of `events` (TASK-032)', () => {
+  it('validates a file with only `gigs` exactly like the same file with `events`', () => {
+    const legacy = validateSeed(legacyExample());
+    const current = validateSeed(example());
+    expect(legacy.ok).toBe(true);
+    expect(current.ok).toBe(true);
+    if (legacy.ok && current.ok) expect(legacy.data).toEqual(current.data);
+  });
+
+  it('reports errors in a legacy list under events.N', () => {
+    const data = legacyExample();
+    data.gigs[0]!.seller = 'nobody@example.com';
+    const result = validateSeed(data);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.errors).toContain('events.0.seller: unknown partner nobody@example.com');
+  });
+
+  it('rejects a file with both `events` and `gigs` (even an empty list)', () => {
+    for (const gigs of [[], example().events]) {
+      const result = validateSeed({ ...example(), gigs });
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.errors).toEqual(['gigs: legacy name of events; use only one of "events" and "gigs"']);
+    }
+  });
+
+  it('loads a legacy file into the same events and counts them as `events`', async () => {
+    const summary = await loadSeed(testDb(), legacyExample());
+    expect(summary.events).toEqual({ created: example().events.length, updated: 0, skipped: 0 });
+    expect(summary).not.toHaveProperty('gigs');
+    const legacyState = await snapshot();
+    // Same data: re-running the current file finds every event already there
+    const again = await loadSeed(testDb(), example());
+    expect(again.events).toEqual({ created: 0, updated: 0, skipped: example().events.length });
+    // ... and loading the current file into an empty database gives the same rows.
+    await resetDb();
+    await loadSeed(testDb(), example());
+    expect(await snapshot()).toEqual(legacyState);
+  });
+
+  it('loadSeed rejects both keys and loads nothing', async () => {
+    await expect(loadSeed(testDb(), { ...example(), gigs: [] })).rejects.toBeInstanceOf(SeedValidationError);
+    expect(await testDb().event.count()).toBe(0);
+  });
+});
+
 describe('loadSeed', () => {
   it('loads technicalSetup, logistics and houseTechnician (defaults null / null / false)', async () => {
     await loadSeed(testDb(), example());

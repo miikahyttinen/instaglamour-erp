@@ -183,6 +183,24 @@ describe('POST /api/import', () => {
     expect(await snapshot()).toEqual(before);
   });
 
+  it('accepts the legacy top-level `gigs` key and reports it as `events` (TASK-032)', async () => {
+    const { events, ...rest } = example();
+    const res = await post({ ...rest, gigs: events }, '?filename=old.json');
+    expect(res.statusCode).toBe(200);
+    expect(res.json().summary.events).toEqual({ created: (events as unknown[]).length, updated: 0, skipped: 0 });
+    expect(res.json().summary).not.toHaveProperty('gigs');
+    expect((await snapshot()).event).toBeGreaterThanOrEqual((events as unknown[]).length);
+  });
+
+  it('rejects a document with both `events` and `gigs` and imports nothing (TASK-032)', async () => {
+    const before = await snapshot();
+    const res = await post({ ...example(), gigs: [] });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.code).toBe('VALIDATION_ERROR');
+    expect(errorsOf(res)).toEqual(['gigs: legacy name of events; use only one of "events" and "gigs"']);
+    expect(await snapshot()).toEqual(before);
+  });
+
   it('reports cross-reference errors with the same texts as the seed command', async () => {
     const doc = example();
     (doc.tasks as { owner: string }[])[0]!.owner = `nobody@${TEST_DOMAIN}`;
