@@ -5,7 +5,7 @@ import { db } from '../../mocks/data';
 import { errorResponse } from '../../mocks/util';
 import { server } from '../../mocks/server';
 import { testFile } from '../../test/files';
-import { addMockGig, TEST_YEAR } from '../../test/gigFixtures';
+import { addMockEvent, TEST_YEAR } from '../../test/eventFixtures';
 import { renderApp, signInMock } from '../../test/renderApp';
 import { attachmentProblem } from './attachmentRules';
 
@@ -33,8 +33,8 @@ describe('attachments (UC-008)', () => {
   });
 
   it('uploads a file, lists it with uploader and logs it; removal asks first', async () => {
-    const gig = addMockGig();
-    const { user } = renderApp(`/gigs/${gig.id}`);
+    const event = addMockEvent();
+    const { user } = renderApp(`/events/${event.id}`);
     expect(await screen.findByText('Ei liitteitä.')).toBeInTheDocument();
     // Phone camera input is offered next to the file picker.
     expect(screen.getByLabelText('Ota kuva', { selector: 'input' })).toHaveAttribute('capture', 'environment');
@@ -55,28 +55,28 @@ describe('attachments (UC-008)', () => {
     expect(dialog).toHaveTextContent('Poistetaanko liite contract.pdf?');
     await user.click(within(dialog).getByRole('button', { name: 'Poista' }));
     expect(await screen.findByText('Ei liitteitä.')).toBeInTheDocument();
-    expect(db.gigs.attachments.find((a) => a.gigId === gig.id)?.deletedAt).not.toBeNull();
+    expect(db.events.attachments.find((a) => a.eventId === event.id)?.deletedAt).not.toBeNull();
     await waitFor(() => expect(historyItems()[0]).toHaveTextContent(/Liite poistettu.*contract\.pdf/));
   });
 
   it('rejects wrong types and too large files before uploading', async () => {
-    const gig = addMockGig();
-    const { user } = renderApp(`/gigs/${gig.id}`);
+    const event = addMockEvent();
+    const { user } = renderApp(`/events/${event.id}`);
     await screen.findByText('Ei liitteitä.');
     const input = screen.getByLabelText('Lisää tiedosto', { selector: 'input' });
     await user.upload(input, testFile('big.pdf', 'application/pdf', 21 * 1024 * 1024));
     expect(await screen.findByRole('alert')).toHaveTextContent('Tiedosto on liian suuri (enintään 20 Mt).');
-    expect(db.gigs.attachments.filter((a) => a.gigId === gig.id)).toHaveLength(0);
+    expect(db.events.attachments.filter((a) => a.eventId === event.id)).toHaveLength(0);
   });
 
   it('shows translated server errors (415 / 413)', async () => {
     server.use(
-      http.post('/api/gigs/:id/attachments', () =>
+      http.post('/api/events/:id/attachments', () =>
         errorResponse(415, 'UNSUPPORTED_FILE_TYPE', 'English server text'),
       ),
     );
-    const gig = addMockGig();
-    const { user } = renderApp(`/gigs/${gig.id}`);
+    const event = addMockEvent();
+    const { user } = renderApp(`/events/${event.id}`);
     await screen.findByText('Ei liitteitä.');
     await user.upload(
       screen.getByLabelText('Lisää tiedosto', { selector: 'input' }),

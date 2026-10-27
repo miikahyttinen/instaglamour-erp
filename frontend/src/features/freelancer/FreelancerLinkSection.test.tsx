@@ -5,7 +5,7 @@ import { db } from '../../mocks/data';
 import { freelancerToken } from '../../mocks/freelancerStore';
 import { server } from '../../mocks/server';
 import { errorResponse } from '../../mocks/util';
-import { person } from '../../test/gigFixtures';
+import { person } from '../../test/eventFixtures';
 import { renderApp, signInMock } from '../../test/renderApp';
 
 describe('person page → Freelancer-linkki (UC-034 A4)', () => {

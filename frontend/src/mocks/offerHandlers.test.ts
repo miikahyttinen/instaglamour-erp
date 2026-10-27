@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { ApiError } from '../api/client';
-import { gigsApi, offersApi, publicOffersApi } from '../api/endpoints';
-import { addMockClient, TEST_YEAR } from '../test/gigFixtures';
+import { eventsApi, offersApi, publicOffersApi } from '../api/endpoints';
+import { addMockClient, TEST_YEAR } from '../test/eventFixtures';
 import { addMockOffer } from '../test/offerFixtures';
 import { signInMock } from '../test/renderApp';
 import type { OfferCreate, OfferUpdate } from '../api/types';
@@ -121,7 +121,7 @@ describe('offers mock (contract → Offers, BR-102…BR-106)', () => {
     expect((await publicOffersApi.get(tokenOf(regenerated.sharePath))).eventName).toBe('E');
   });
 
-  it('convert creates the gig per BR-105, sets WON and refuses a second time (UC-031)', async () => {
+  it('convert creates the event per BR-105, sets WON and refuses a second time (UC-031)', async () => {
     const offer = addMockOffer({
       clientId,
       city: 'City Y',
@@ -129,9 +129,9 @@ describe('offers mock (contract → Offers, BR-102…BR-106)', () => {
       sellerId: db.partners[1]!.id,
       disposition: 'WON',
     });
-    const { offer: converted, gig } = await offersApi.convert(offer.id);
-    expect(converted).toMatchObject({ disposition: 'WON', status: 'ACCEPTED', gigId: gig.id });
-    expect(gig).toMatchObject({
+    const { offer: converted, event } = await offersApi.convert(offer.id);
+    expect(converted).toMatchObject({ disposition: 'WON', status: 'ACCEPTED', eventId: event.id });
+    expect(event).toMatchObject({
       startDate: offer.eventDate,
       venue: 'Venue X, City Y',
       lineupName: 'Event 1',
@@ -142,14 +142,14 @@ describe('offers mock (contract → Offers, BR-102…BR-106)', () => {
       producerId: db.partners[1]!.id,
       offerId: offer.id,
     });
-    expect((await gigsApi.history(gig.id)).map((e) => e.type)).toEqual(['CREATED']);
+    expect((await eventsApi.history(event.id)).map((e) => e.type)).toEqual(['CREATED']);
     // Already WON (BR-109), so converting logs no disposition change.
     expect((await offersApi.history(offer.id)).map((e) => e.type)).toEqual(['CONVERTED', 'CREATED']);
     await expectApiError(offersApi.convert(offer.id), 409, 'ALREADY_CONVERTED');
-    expect(db.gigs.gigs.filter((g) => g.offerId === offer.id)).toHaveLength(1);
+    expect(db.events.events.filter((g) => g.offerId === offer.id)).toHaveLength(1);
   });
 
-  it('gig-draft prefills per BR-105, falls back to the caller for an inactive seller, 409s', async () => {
+  it('event-draft prefills per BR-105, falls back to the caller for an inactive seller, 409s', async () => {
     const offer = addMockOffer({
       clientId,
       city: 'City Y',
@@ -157,7 +157,7 @@ describe('offers mock (contract → Offers, BR-102…BR-106)', () => {
       sellerId: db.partners[1]!.id,
       disposition: 'WON',
     });
-    expect(await offersApi.gigDraft(offer.id)).toMatchObject({
+    expect(await offersApi.eventDraft(offer.id)).toMatchObject({
       startDate: offer.eventDate,
       venue: 'Venue X, City Y',
       lineupName: 'Event 1',
@@ -168,29 +168,29 @@ describe('offers mock (contract → Offers, BR-102…BR-106)', () => {
       producerId: db.partners[1]!.id,
     });
     db.partners[1]!.active = false;
-    const draft = await offersApi.gigDraft(offer.id);
+    const draft = await offersApi.eventDraft(offer.id);
     expect(draft.sellerId).toBe(db.partners[0]!.id);
     expect(draft.producerId).toBe(db.partners[0]!.id);
     await offersApi.convert(offer.id);
-    await expectApiError(offersApi.gigDraft(offer.id), 409, 'ALREADY_CONVERTED');
+    await expectApiError(offersApi.eventDraft(offer.id), 409, 'ALREADY_CONVERTED');
     const deleted = addMockOffer({ clientId });
     await offersApi.delete(deleted.id);
-    await expectApiError(offersApi.gigDraft(deleted.id), 409, 'INVALID_STATUS_TRANSITION');
+    await expectApiError(offersApi.eventDraft(deleted.id), 409, 'INVALID_STATUS_TRANSITION');
   });
 
-  it('convert with a body creates the gig from the body and validates it like POST /api/gigs', async () => {
+  it('convert with a body creates the event from the body and validates it like POST /api/events', async () => {
     const offer = addMockOffer({ clientId, priceCents: 50000, disposition: 'WON' });
-    const draft = await offersApi.gigDraft(offer.id);
+    const draft = await offersApi.eventDraft(offer.id);
     await expectApiError(offersApi.convert(offer.id, { ...draft, venue: ' ' }), 400, 'VALIDATION_ERROR');
-    expect((await offersApi.get(offer.id)).gigId).toBeNull();
-    const { offer: converted, gig } = await offersApi.convert(offer.id, {
+    expect((await offersApi.get(offer.id)).eventId).toBeNull();
+    const { offer: converted, event } = await offersApi.convert(offer.id, {
       ...draft,
       venue: 'Venue Q',
       lineupName: 'Edited',
       priceCents: 70000,
     });
-    expect(gig).toMatchObject({ venue: 'Venue Q', lineupName: 'Edited', priceCents: 70000, offerId: offer.id });
-    expect(converted).toMatchObject({ disposition: 'WON', gigId: gig.id });
+    expect(event).toMatchObject({ venue: 'Venue Q', lineupName: 'Edited', priceCents: 70000, offerId: offer.id });
+    expect(converted).toMatchObject({ disposition: 'WON', eventId: event.id });
   });
 
   it('only accepted offers dated today or later can be converted (BR-109)', async () => {
@@ -202,18 +202,18 @@ describe('offers mock (contract → Offers, BR-102…BR-106)', () => {
       addMockOffer({ clientId, disposition: 'WON', eventDate: '2020-05-02' }), // past
     ];
     for (const offer of blocked) {
-      await expectApiError(offersApi.gigDraft(offer.id), 409, 'OFFER_NOT_CONVERTIBLE');
+      await expectApiError(offersApi.eventDraft(offer.id), 409, 'OFFER_NOT_CONVERTIBLE');
       await expectApiError(offersApi.convert(offer.id), 409, 'OFFER_NOT_CONVERTIBLE');
-      expect((await offersApi.get(offer.id)).gigId).toBeNull();
+      expect((await offersApi.get(offer.id)).eventId).toBeNull();
     }
     const todays = addMockOffer({ clientId, disposition: 'WON', eventDate: today });
-    expect((await offersApi.gigDraft(todays.id)).startDate).toBe(today);
-    const { gig } = await offersApi.convert(todays.id);
-    expect(gig.offerId).toBe(todays.id);
+    expect((await offersApi.eventDraft(todays.id)).startDate).toBe(today);
+    const { event } = await offersApi.convert(todays.id);
+    expect(event.offerId).toBe(todays.id);
     // ALREADY_CONVERTED is checked first, even once the date has passed.
     db.offers.offers.find((o) => o.id === todays.id)!.eventDate = '2020-01-01';
     await expectApiError(offersApi.convert(todays.id), 409, 'ALREADY_CONVERTED');
-    await expectApiError(offersApi.gigDraft(todays.id), 409, 'ALREADY_CONVERTED');
+    await expectApiError(offersApi.eventDraft(todays.id), 409, 'ALREADY_CONVERTED');
   });
 
   it('a deleted offer is read-only and its link is gone; restore brings both back', async () => {

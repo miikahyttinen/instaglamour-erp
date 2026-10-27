@@ -27,7 +27,7 @@ describe('app shell', () => {
 
     for (const [label, heading] of [
       ['Tarjoukset', 'Tarjoukset 2030'],
-      ['Keikat', 'Keikat 2030'],
+      ['Tapahtumat', 'Tapahtumat 2030'],
       ['Ostotilaukset', 'Ostotilaukset 2030'],
       ['Asiakkaat', 'Asiakkaat'],
       ['Henkilöt', 'Henkilöt'],
@@ -53,19 +53,19 @@ describe('app shell', () => {
       }
     });
 
-    const { user } = renderApp('/gigs');
-    await screen.findByRole('heading', { name: 'Keikat 2030' });
+    const { user } = renderApp('/events');
+    await screen.findByRole('heading', { name: 'Tapahtumat 2030' });
 
     await user.click(screen.getByRole('button', { name: 'Seuraava vuosi' }));
-    expect(await screen.findByRole('heading', { name: 'Keikat 2031' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Tapahtumat 2031' })).toBeInTheDocument();
     await waitFor(() => expect(db.partners[0]!.selectedYear).toBe(2031));
 
     await user.click(screen.getByRole('button', { name: 'Edellinen vuosi' }));
     await user.click(screen.getByRole('button', { name: 'Edellinen vuosi' }));
-    expect(await screen.findByRole('heading', { name: 'Keikat 2029' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Tapahtumat 2029' })).toBeInTheDocument();
 
     await user.selectOptions(yearSelect(), '2027');
-    expect(await screen.findByRole('heading', { name: 'Keikat 2027' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Tapahtumat 2027' })).toBeInTheDocument();
     await waitFor(() => expect(db.partners[0]!.selectedYear).toBe(2027));
     expect(patches.map((p) => p.selectedYear)).toEqual([2031, 2030, 2029, 2027]);
     server.events.removeAllListeners();
@@ -97,7 +97,7 @@ describe('app shell', () => {
     expect(screen.getByRole('heading', { name: /^Year \d{4}$/ })).toBeInTheDocument();
     // The drawer stays open and is translated too.
     const panel = screen.getByRole('dialog', { name: 'Main menu' });
-    expect(within(panel).getByRole('link', { name: 'Gigs' })).toBeInTheDocument();
+    expect(within(panel).getByRole('link', { name: 'Events' })).toBeInTheDocument();
     expect(within(panel).getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
     expect(within(panel).getByRole('button', { name: 'Change language to Suomi' })).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: 'Selected year' })).toBeInTheDocument();
@@ -157,7 +157,7 @@ describe('app shell', () => {
     const { user, queryClient } = renderApp('/');
     await screen.findByRole('heading', { name: /^Vuosi/ });
     await waitFor(() => expect(queryClient.getQueryData(['reference'])).toBeDefined());
-    await user.click(within(mainNav()).getByRole('link', { name: 'Keikat' }));
+    await user.click(within(mainNav()).getByRole('link', { name: 'Tapahtumat' }));
     await user.click(within(mainNav()).getByRole('link', { name: 'Tunnit' }));
     expect(calls).toBe(1);
   });
@@ -170,24 +170,24 @@ describe('app shell', () => {
 
   it('renders every route inside the shared page container', async () => {
     signInMock();
-    const { container } = renderApp('/gigs');
-    const heading = await screen.findByRole('heading', { name: /^Keikat/ });
+    const { container } = renderApp('/events');
+    const heading = await screen.findByRole('heading', { name: /^Tapahtumat/ });
     expect(heading.closest('main > .page-container')).not.toBeNull();
     expect(container.querySelectorAll('.page-container')).toHaveLength(1);
   });
 
   it('shows the logo as the home link (phone top bar and desktop sidebar)', async () => {
     signInMock();
-    const { unmount } = renderApp('/gigs');
-    await screen.findByRole('heading', { name: /^Keikat/ });
+    const { unmount } = renderApp('/events');
+    await screen.findByRole('heading', { name: /^Tapahtumat/ });
     const home = screen.getByRole('link', { name: 'Instaglamour ERP' });
     expect(home).toHaveAttribute('href', '/');
     expect(within(home).getByRole('img')).toBeInTheDocument();
     unmount();
 
     desktop();
-    renderApp('/gigs');
-    await screen.findByRole('heading', { name: /^Keikat/ });
+    renderApp('/events');
+    await screen.findByRole('heading', { name: /^Tapahtumat/ });
     expect(screen.getByRole('link', { name: 'Instaglamour ERP' })).toHaveAttribute('href', '/');
   });
 
@@ -315,15 +315,15 @@ describe('app shell', () => {
     it('has icon nav with the active item marked, the section in the top bar and no ☰', async () => {
       desktop();
       signInMock();
-      const { container } = renderApp('/gigs');
-      await screen.findByRole('heading', { name: /^Keikat/ });
+      const { container } = renderApp('/events');
+      await screen.findByRole('heading', { name: /^Tapahtumat/ });
       expect(screen.queryByRole('button', { name: 'Valikko' })).not.toBeInTheDocument();
 
       const links = within(mainNav()).getAllByRole('link');
       expect(links.map((l) => l.textContent)).toEqual([
         'Vuosi',
         'Tarjoukset',
-        'Keikat',
+        'Tapahtumat',
         'Ostotilaukset',
         'Asiakkaat',
         'Henkilöt',
@@ -333,9 +333,9 @@ describe('app shell', () => {
         'Tietojen tuonti',
       ]);
       for (const link of links) expect(link.querySelector('svg')).not.toBeNull();
-      expect(within(mainNav()).getByRole('link', { name: 'Keikat' })).toHaveAttribute('aria-current', 'page');
+      expect(within(mainNav()).getByRole('link', { name: 'Tapahtumat' })).toHaveAttribute('aria-current', 'page');
       expect(within(mainNav()).getByRole('link', { name: 'Vuosi' })).not.toHaveAttribute('aria-current');
-      expect(container.querySelector('.topbar-context')).toHaveTextContent('Keikat');
+      expect(container.querySelector('.topbar-context')).toHaveTextContent('Tapahtumat');
     });
 
     it('has year · language · theme · sign out in the top bar (Layout v2.1)', async () => {
@@ -417,13 +417,13 @@ describe('app shell', () => {
       const { user, container, unmount } = renderApp('/');
       await screen.findByRole('heading', { name: /^Vuosi/ });
       expect(container.querySelector('.shell')).not.toHaveClass('is-collapsed');
-      expect(within(mainNav()).getByRole('link', { name: 'Keikat' })).not.toHaveAttribute('data-tooltip');
+      expect(within(mainNav()).getByRole('link', { name: 'Tapahtumat' })).not.toHaveAttribute('data-tooltip');
 
       await user.click(screen.getByRole('button', { name: 'Pienennä valikko' }));
       expect(container.querySelector('.shell')).toHaveClass('is-collapsed');
       expect(window.localStorage.getItem(SIDEBAR_STORAGE_KEY)).toBe('collapsed');
-      const gigs = within(mainNav()).getByRole('link', { name: 'Keikat' });
-      expect(gigs).toHaveAttribute('data-tooltip', 'Keikat');
+      const events = within(mainNav()).getByRole('link', { name: 'Tapahtumat' });
+      expect(events).toHaveAttribute('data-tooltip', 'Tapahtumat');
       expect(screen.getByRole('button', { name: 'Laajenna valikko' })).toHaveAttribute(
         'data-tooltip',
         'Laajenna valikko',

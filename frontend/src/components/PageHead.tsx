@@ -5,7 +5,7 @@ export interface PageHeadProps {
   title: string;
   /** One mono line under the title, e.g. a year summary. */
   subtitle?: ReactNode;
-  /** Right-side actions, normally one ghost Button (e.g. "+ New gig"). */
+  /** Right-side actions, normally one ghost Button (e.g. "+ New event"). */
   actions?: ReactNode;
   /** Optional extra content inside the head, above the divider (e.g. a back link). */
   children?: ReactNode;

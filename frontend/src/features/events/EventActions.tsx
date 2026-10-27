@@ -3,51 +3,51 @@ import { Ban, CalendarClock, RotateCcw, Trash2, Undo2 } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { gigsApi } from '../../api/endpoints';
-import type { GigDetail, GigWithWarnings, Warning } from '../../api/types';
+import { eventsApi } from '../../api/endpoints';
+import type { EventDetail, EventWithWarnings, Warning } from '../../api/types';
 import { Button } from '../../components/Button';
 import { Dialog } from '../../components/Dialog';
 import { Notice } from '../../components/Notice';
 import { Field } from '../../components/fields';
 import { apiErrorMessage, apiFieldErrors } from '../../i18n/labels';
-import { useApplyGig } from './queries';
+import { useApplyEvent } from './queries';
 
 type ActionDialog = 'move' | 'cancel' | 'uncancel' | 'delete' | null;
 
 interface Props {
-  gig: GigDetail;
+  event: EventDetail;
   onCancelled: () => void;
   onUncancelled: () => void;
   onMoved: (warnings: Warning[]) => void;
   onRestored: () => void;
 }
 
-/** Move, Cancel / Uncancel, Delete — or Restore for a deleted gig (UC-009, 010, 012, 025). */
-export function GigActions({ gig, onCancelled, onUncancelled, onMoved, onRestored }: Props) {
+/** Move, Cancel / Uncancel, Delete — or Restore for a deleted event (UC-009, 010, 012, 025). */
+export function EventActions({ event, onCancelled, onUncancelled, onMoved, onRestored }: Props) {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const applyGig = useApplyGig();
+  const applyEvent = useApplyEvent();
   const [dialog, setDialog] = useState<ActionDialog>(null);
   const close = () => setDialog(null);
 
   const restore = useMutation({
-    mutationFn: () => gigsApi.restore(gig.id),
+    mutationFn: () => eventsApi.restore(event.id),
     onSuccess: (restored) => {
-      applyGig(restored, gig.id);
+      applyEvent(restored, event.id);
       onRestored();
     },
   });
 
-  if (gig.deletedAt) {
+  if (event.deletedAt) {
     return (
-      <div className="gig-actions">
+      <div className="event-actions">
         <Button
           variant="primary"
           icon={RotateCcw}
           disabled={restore.isPending}
           onClick={() => restore.mutate()}
         >
-          {t('gig.restore')}
+          {t('event.restore')}
         </Button>
         {restore.isError && (
           <Notice tone="danger" role="alert">
@@ -59,31 +59,31 @@ export function GigActions({ gig, onCancelled, onUncancelled, onMoved, onRestore
   }
 
   return (
-    <div className="gig-actions" role="group" aria-label={t('gig.actions.label')}>
-      {gig.status === 'SOLD' ? (
+    <div className="event-actions" role="group" aria-label={t('event.actions.label')}>
+      {event.status === 'SOLD' ? (
         <>
           <Button icon={CalendarClock} onClick={() => setDialog('move')}>
-            {t('gig.actions.move')}
+            {t('event.actions.move')}
           </Button>
           <Button icon={Ban} onClick={() => setDialog('cancel')}>
-            {t('gig.actions.cancel')}
+            {t('event.actions.cancel')}
           </Button>
         </>
       ) : (
         <Button icon={Undo2} onClick={() => setDialog('uncancel')}>
-          {t('gig.actions.uncancel')}
+          {t('event.actions.uncancel')}
         </Button>
       )}
       <Button variant="danger" icon={Trash2} onClick={() => setDialog('delete')}>
-        {t('gig.actions.delete')}
+        {t('event.actions.delete')}
       </Button>
 
       {dialog === 'move' && (
         <MoveDialog
-          gig={gig}
+          event={event}
           onClose={close}
           onDone={(result) => {
-            applyGig(result.gig, gig.id);
+            applyEvent(result.event, event.id);
             close();
             onMoved(result.warnings);
           }}
@@ -91,13 +91,13 @@ export function GigActions({ gig, onCancelled, onUncancelled, onMoved, onRestore
       )}
       {dialog === 'cancel' && (
         <ReasonDialog
-          title={t('gig.cancelTitle')}
-          intro={t('gig.cancelIntro')}
-          confirmLabel={t('gig.confirmCancel')}
-          mutationFn={(reason) => gigsApi.cancel(gig.id, { reason })}
+          title={t('event.cancelTitle')}
+          intro={t('event.cancelIntro')}
+          confirmLabel={t('event.confirmCancel')}
+          mutationFn={(reason) => eventsApi.cancel(event.id, { reason })}
           onClose={close}
           onDone={(updated) => {
-            applyGig(updated ?? null, gig.id);
+            applyEvent(updated ?? null, event.id);
             close();
             onCancelled();
           }}
@@ -105,13 +105,13 @@ export function GigActions({ gig, onCancelled, onUncancelled, onMoved, onRestore
       )}
       {dialog === 'uncancel' && (
         <ReasonDialog
-          title={t('gig.uncancelTitle')}
-          intro={t('gig.uncancelIntro')}
-          confirmLabel={t('gig.confirmUncancel')}
-          mutationFn={(reason) => gigsApi.uncancel(gig.id, { reason })}
+          title={t('event.uncancelTitle')}
+          intro={t('event.uncancelIntro')}
+          confirmLabel={t('event.confirmUncancel')}
+          mutationFn={(reason) => eventsApi.uncancel(event.id, { reason })}
           onClose={close}
           onDone={(updated) => {
-            applyGig(updated ?? null, gig.id);
+            applyEvent(updated ?? null, event.id);
             close();
             onUncancelled();
           }}
@@ -119,15 +119,15 @@ export function GigActions({ gig, onCancelled, onUncancelled, onMoved, onRestore
       )}
       {dialog === 'delete' && (
         <ReasonDialog
-          title={t('gig.deleteTitle')}
-          intro={t('gig.deleteIntro')}
-          confirmLabel={t('gig.confirmDelete')}
+          title={t('event.deleteTitle')}
+          intro={t('event.deleteIntro')}
+          confirmLabel={t('event.confirmDelete')}
           danger
-          mutationFn={(reason) => gigsApi.delete(gig.id, { reason })}
+          mutationFn={(reason) => eventsApi.delete(event.id, { reason })}
           onClose={close}
           onDone={() => {
-            applyGig(null, gig.id);
-            void navigate('/gigs', { state: { notice: 'deleted' } });
+            applyEvent(null, event.id);
+            void navigate('/events', { state: { notice: 'deleted' } });
           }}
         />
       )}
@@ -166,8 +166,8 @@ function ReasonDialog<T>({
   return (
     <Dialog title={title} onClose={onClose}>
       <form onSubmit={submit} noValidate>
-        <p className="gig-dialog-intro">{intro}</p>
-        <Field label={t('gig.reason')} error={fieldErrors.reason}>
+        <p className="event-dialog-intro">{intro}</p>
+        <Field label={t('event.reason')} error={fieldErrors.reason}>
           {(p) => (
             <textarea {...p} rows={3} required value={reason} onChange={(e) => setReason(e.target.value)} />
           )}
@@ -193,22 +193,22 @@ function ReasonDialog<T>({
 }
 
 function MoveDialog({
-  gig,
+  event,
   onClose,
   onDone,
 }: {
-  gig: GigDetail;
+  event: EventDetail;
   onClose: () => void;
-  onDone: (result: GigWithWarnings) => void;
+  onDone: (result: EventWithWarnings) => void;
 }) {
   const { t } = useTranslation();
-  const [startDate, setStartDate] = useState(gig.startDate);
-  const [endDate, setEndDate] = useState(gig.endDate ?? '');
+  const [startDate, setStartDate] = useState(event.startDate);
+  const [endDate, setEndDate] = useState(event.endDate ?? '');
   const [reason, setReason] = useState('');
   const [localErrors, setLocalErrors] = useState<Record<string, string>>({});
   const move = useMutation({
     mutationFn: () =>
-      gigsApi.move(gig.id, {
+      eventsApi.move(event.id, {
         startDate,
         endDate: endDate || null,
         ...(reason.trim() ? { reason: reason.trim() } : {}),
@@ -227,15 +227,15 @@ function MoveDialog({
   };
 
   return (
-    <Dialog title={t('gig.moveTitle')} onClose={onClose}>
+    <Dialog title={t('event.moveTitle')} onClose={onClose}>
       <form onSubmit={submit} noValidate>
         <div className="form-row">
-          <Field label={t('gig.newStartDate')} error={errors.startDate}>
+          <Field label={t('event.newStartDate')} error={errors.startDate}>
             {(p) => (
               <input {...p} type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
             )}
           </Field>
-          <Field label={t('gig.newEndDate')} error={errors.endDate}>
+          <Field label={t('event.newEndDate')} error={errors.endDate}>
             {(p) => (
               <input
                 {...p}
@@ -247,7 +247,7 @@ function MoveDialog({
             )}
           </Field>
         </div>
-        <Field label={t('gig.reasonOptional')} error={errors.reason}>
+        <Field label={t('event.reasonOptional')} error={errors.reason}>
           {(p) => <textarea {...p} rows={2} value={reason} onChange={(e) => setReason(e.target.value)} />}
         </Field>
         {move.isError && Object.keys(apiFieldErrors(t, move.error)).length === 0 && (
@@ -257,7 +257,7 @@ function MoveDialog({
         )}
         <div className="form-actions">
           <Button type="submit" variant="primary" disabled={move.isPending}>
-            {t('gig.confirmMove')}
+            {t('event.confirmMove')}
           </Button>
           <Button onClick={onClose}>{t('common.cancel')}</Button>
         </div>

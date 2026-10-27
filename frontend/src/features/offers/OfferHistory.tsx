@@ -44,9 +44,9 @@ export function OfferHistory({ offerId }: { offerId: Id }) {
                 {line}
               </p>
             ))}
-            {event.type === 'CONVERTED' && event.details?.gigId && (
+            {event.type === 'CONVERTED' && event.details?.eventId && (
               <p className="history-line">
-                {t('offerHistory.gigCreated')} <Link to={`/gigs/${event.details.gigId}`}>{t('offerHistory.openGig')}</Link>
+                {t('offerHistory.eventCreated')} <Link to={`/events/${event.details.eventId}`}>{t('offerHistory.openEvent')}</Link>
               </p>
             )}
           </li>

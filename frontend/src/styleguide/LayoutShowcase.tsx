@@ -200,7 +200,7 @@ export function LayoutShowcase({ theme }: { theme: Theme }) {
       ))}
 
       <SectionLabel>FieldList: one label column per section</SectionLabel>
-      <Card title="Gig info (inline)">
+      <Card title="Event info (inline)">
         <FieldList>
           <InlineText label="Venue" required value={demo.venue} onSave={(venue) => save({ venue })} />
           <InlineMoney label="Price" required value={demo.price} onSave={(price) => save({ price })} />

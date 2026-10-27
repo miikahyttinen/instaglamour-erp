@@ -6,7 +6,7 @@ import { server } from '../../mocks/server';
 import { errorResponse } from '../../mocks/util';
 import { referenceKey } from '../../reference/useReference';
 import type { ReferenceData } from '../../api/types';
-import { person } from '../../test/gigFixtures';
+import { person } from '../../test/eventFixtures';
 import { renderApp, signInMock } from '../../test/renderApp';
 
 const partnerB = () => db.partners.find((p) => p.name === 'Partner B')!;

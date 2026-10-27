@@ -2,7 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from '../../mocks/data';
 import { MOCK_SPOTIFY_URL } from '../../mocks/offerStore';
-import { addMockClient, addMockGig, TEST_YEAR } from '../../test/gigFixtures';
+import { addMockClient, addMockEvent, TEST_YEAR } from '../../test/eventFixtures';
 import { addMockOffer } from '../../test/offerFixtures';
 import { renderApp, signInMock } from '../../test/renderApp';
 
@@ -139,24 +139,24 @@ describe('offer page (UC-029, UC-031)', () => {
     const { user } = renderApp(`/offers/${offer.id}`);
     await screen.findByRole('heading', { level: 1, name: 'Event 2' });
     expect(screen.getByRole('button', { name: 'Kopioi julkinen linkki' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /Muuta keikaksi/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Muuta tapahtumaksi/ })).not.toBeInTheDocument();
     await user.selectOptions(screen.getByRole('combobox', { name: 'Lopputulos' }), 'Voitettu');
-    expect(await screen.findByRole('button', { name: 'Muuta keikaksi: Event 2' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Muuta tapahtumaksi: Event 2' })).toBeInTheDocument();
   });
 
-  it('converts to a gig in the modal; the gig page links back "From offer" (UC-031)', async () => {
+  it('converts to an event in the modal; the event page links back "From offer" (UC-031)', async () => {
     const offer = addMockOffer({ clientId, eventName: 'Event 1', disposition: 'WON' });
     const { user } = renderApp(`/offers/${offer.id}`);
-    await user.click(await screen.findByRole('button', { name: 'Muuta keikaksi: Event 1' }));
-    const dialog = screen.getByRole('dialog', { name: 'Muuta keikaksi' });
+    await user.click(await screen.findByRole('button', { name: 'Muuta tapahtumaksi: Event 1' }));
+    const dialog = screen.getByRole('dialog', { name: 'Muuta tapahtumaksi' });
     expect(await within(dialog).findByText('Tarkista, että tiedot ovat oikein.')).toBeInTheDocument();
-    await user.click(within(dialog).getByRole('button', { name: 'Muuta keikaksi' }));
-    expect(await screen.findByText(/Keikka luotu\./)).toBeInTheDocument();
-    const gigLink = await screen.findByRole('link', { name: 'Keikka: Event 1' });
-    expect(screen.queryByRole('button', { name: /Muuta keikaksi/ })).not.toBeInTheDocument();
-    expect(await screen.findByRole('list', { name: 'Muutoshistoria' })).toHaveTextContent('Muutettu keikaksi');
+    await user.click(within(dialog).getByRole('button', { name: 'Muuta tapahtumaksi' }));
+    expect(await screen.findByText(/Tapahtuma luotu\./)).toBeInTheDocument();
+    const eventLink = await screen.findByRole('link', { name: 'Tapahtuma: Event 1' });
+    expect(screen.queryByRole('button', { name: /Muuta tapahtumaksi/ })).not.toBeInTheDocument();
+    expect(await screen.findByRole('list', { name: 'Muutoshistoria' })).toHaveTextContent('Muutettu tapahtumaksi');
 
-    await user.click(gigLink);
+    await user.click(eventLink);
     const back = await screen.findByRole('link', { name: 'Event 1' });
     expect(back).toHaveAttribute('href', `/offers/${offer.id}`);
     expect(back.closest('p')).toHaveTextContent('Tarjouksesta: Event 1');
@@ -174,16 +174,16 @@ describe('offer page (UC-029, UC-031)', () => {
     expect(await screen.findByText(/Tarjous on poistettu/)).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'Paikka' })).toBeDisabled();
     expect(screen.queryByRole('button', { name: 'Kopioi julkinen linkki' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /Muuta keikaksi/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Muuta tapahtumaksi/ })).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Palauta tarjous' }));
     expect(await screen.findByText('Tarjous palautettu.')).toBeInTheDocument();
     expect(offer.deletedAt).toBeNull();
     expect(screen.getByRole('textbox', { name: 'Paikka' })).toBeEnabled();
   });
 
-  it('a gig without an offer shows no offer link', async () => {
-    const gig = addMockGig();
-    renderApp(`/gigs/${gig.id}`);
+  it('an event without an offer shows no offer link', async () => {
+    const event = addMockEvent();
+    renderApp(`/events/${event.id}`);
     await screen.findByRole('heading', { level: 1 });
     expect(screen.queryByText(/Tarjouksesta/)).not.toBeInTheDocument();
   });

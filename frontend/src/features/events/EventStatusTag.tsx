@@ -1,17 +1,17 @@
 import { useTranslation } from 'react-i18next';
-import type { GigDisplayStatus } from '../../api/enums';
+import type { EventDisplayStatus } from '../../api/enums';
 import { StatusTag } from '../../components/StatusTag';
-import { gigStatusLabel } from '../../i18n/labels';
-import { GIG_DELETED_TONE, GIG_STATUS_TONE } from './gigStatusTone';
+import { eventStatusLabel } from '../../i18n/labels';
+import { EVENT_DELETED_TONE, EVENT_STATUS_TONE } from './eventStatusTone';
 
-/** Gig status (Sold / Played / Cancelled) as a shared `StatusTag`. */
-export function GigStatusTag({ status }: { status: GigDisplayStatus }) {
+/** Event status (Sold / Played / Cancelled) as a shared `StatusTag`. */
+export function EventStatusTag({ status }: { status: EventDisplayStatus }) {
   const { t } = useTranslation();
-  return <StatusTag tone={GIG_STATUS_TONE[status]}>{gigStatusLabel(t, status)}</StatusTag>;
+  return <StatusTag tone={EVENT_STATUS_TONE[status]}>{eventStatusLabel(t, status)}</StatusTag>;
 }
 
-/** "Deleted" tag for a soft-deleted gig. */
-export function GigDeletedTag() {
+/** "Deleted" tag for a soft-deleted event. */
+export function EventDeletedTag() {
   const { t } = useTranslation();
-  return <StatusTag tone={GIG_DELETED_TONE}>{t('gigs.views.deleted')}</StatusTag>;
+  return <StatusTag tone={EVENT_DELETED_TONE}>{t('events.views.deleted')}</StatusTag>;
 }

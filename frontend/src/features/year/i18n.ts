@@ -2,12 +2,12 @@
 // Terms follow docs/glossary.md.
 
 export const fi = {
-  summary: 'Keikkoja {{gigs}} · Tunteja {{hours}}',
-  gigs: {
-    title: 'Keikat',
-    gigCount: 'Keikkoja',
+  summary: 'Tapahtumia {{events}} · Tunteja {{hours}}',
+  events: {
+    title: 'Tapahtumat',
+    eventCount: 'Tapahtumia',
     cancelledCount: 'Peruttuja',
-    soldGigsSum: 'Myytyjen keikkojen summa',
+    soldEventsSum: 'Myytyjen tapahtumien summa',
     budgetedCosts: 'Kulut, budjetti',
     actualCosts: 'Kulut, toteuma',
     marginBudget: 'Kate, budjetti',
@@ -30,23 +30,23 @@ export const fi = {
     yearResult: 'Vuoden tulos',
   },
   upcoming: {
-    title: 'Tulevat keikat',
-    none: 'Ei tulevia keikkoja.',
+    title: 'Tulevat tapahtumat',
+    none: 'Ei tulevia tapahtumia.',
     notFullyStaffed: 'Miehitys kesken',
-    showAll: 'Kaikki keikat',
+    showAll: 'Kaikki tapahtumat',
     date: 'Päivä',
-    gig: 'Keikka',
+    event: 'Tapahtuma',
     staffing: 'Miehitys',
   },
 };
 
 export const en: typeof fi = {
-  summary: 'Gigs {{gigs}} · Hours {{hours}}',
-  gigs: {
-    title: 'Gigs',
-    gigCount: 'Gigs',
+  summary: 'Events {{events}} · Hours {{hours}}',
+  events: {
+    title: 'Events',
+    eventCount: 'Events',
     cancelledCount: 'Cancelled',
-    soldGigsSum: 'Sold gigs sum',
+    soldEventsSum: 'Sold events sum',
     budgetedCosts: 'Costs, budget',
     actualCosts: 'Costs, actual',
     marginBudget: 'Margin, budget',
@@ -69,12 +69,12 @@ export const en: typeof fi = {
     yearResult: 'Year result',
   },
   upcoming: {
-    title: 'Upcoming gigs',
-    none: 'No upcoming gigs.',
+    title: 'Upcoming events',
+    none: 'No upcoming events.',
     notFullyStaffed: 'Not fully staffed',
-    showAll: 'All gigs',
+    showAll: 'All events',
     date: 'Date',
-    gig: 'Gig',
+    event: 'Event',
     staffing: 'Staffing',
   },
 };

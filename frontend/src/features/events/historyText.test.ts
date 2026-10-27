@@ -1,18 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { GIG_EVENT_TYPES } from '../../api/enums';
-import type { GigEvent, Partner, Person } from '../../api/types';
+import { EVENT_HISTORY_TYPES } from '../../api/enums';
+import type { EventHistoryEntry, Partner, Person } from '../../api/types';
 import i18n from '../../i18n';
-import { describeEvent, matchesFilter } from './historyText';
+import { describeEntry, matchesFilter } from './historyText';
 
 const partners = [
   { id: 'pa', personId: 'p-a', name: 'Partner A' },
   { id: 'pb', personId: 'p-b', name: 'Partner B' },
 ] as Partner[];
-const people: Person[] = [{ id: 'p1', name: 'Person 1', active: true, partner: null, roles: [], gigCount: 0 }];
+const people: Person[] = [{ id: 'p1', name: 'Person 1', active: true, partner: null, roles: [], eventCount: 0 }];
 const ctx = { partners, people };
 
-const base = { id: 'e', gigId: 'g', partnerId: 'pa', at: '2030-06-01T10:00:00.000Z', reason: null };
-const events: GigEvent[] = [
+const base = { id: 'e', eventId: 'g', partnerId: 'pa', at: '2030-06-01T10:00:00.000Z', reason: null };
+const entries: EventHistoryEntry[] = [
   { ...base, type: 'CREATED', details: {} },
   {
     ...base,
@@ -64,19 +64,19 @@ const events: GigEvent[] = [
 ];
 
 const describeAll = (lang: 'fi' | 'en') =>
-  events.map((e) => {
-    const { title, lines } = describeEvent(i18n.getFixedT(lang), lang, e, ctx);
+  entries.map((e) => {
+    const { title, lines } = describeEntry(i18n.getFixedT(lang), lang, e, ctx);
     return [title, ...lines].join(' | ').replace(/\s/g, ' ');
   });
 
 describe('history descriptions (UC-013)', () => {
-  it('covers every event type', () => {
-    expect(new Set(events.map((e) => e.type))).toEqual(new Set(GIG_EVENT_TYPES));
+  it('covers every entry type', () => {
+    expect(new Set(entries.map((e) => e.type))).toEqual(new Set(EVENT_HISTORY_TYPES));
   });
 
-  it('describes every event in Finnish with old → new values', () => {
+  it('describes every entry in Finnish with old → new values', () => {
     expect(describeAll('fi')).toEqual([
-      'Keikka luotu',
+      'Tapahtuma luotu',
       'Tietoja muutettu | Hinta: 1 000,00 € → 2 000,00 € | Myyjä: Partner A → Partner B | Tekniikka: – → Setti A | Logistiikka: Oma paku → Vuokrapaku | Talon teknikko: ei → kyllä | Muistiinpanot: – → Note | Siirrettyjä Myynti- / Tuotanto-rivejä: 1',
       'Siirretty | 1.6.2030 → 1.7.2030–2.7.2030 | Syy: Venue asked',
       'Peruttu | Syy: Called off',
@@ -93,7 +93,7 @@ describe('history descriptions (UC-013)', () => {
     ]);
   });
 
-  it('describes events in English', () => {
+  it('describes entries in English', () => {
     const en = describeAll('en');
     expect(en[1]).toBe(
       'Details changed | Price: €1,000.00 → €2,000.00 | Seller: Partner A → Partner B | Technical setup: – → Set A | Logistics: Own van → Rental van | House technician: no → yes | Notes: – → Note | Sales / Production lines moved: 1',
@@ -104,8 +104,8 @@ describe('history descriptions (UC-013)', () => {
     );
   });
 
-  it('still shows older multi-choice technical setup events', () => {
-    const legacy: GigEvent = {
+  it('still shows older multi-choice technical setup entries', () => {
+    const legacy: EventHistoryEntry = {
       ...base,
       type: 'UPDATED',
       details: {
@@ -118,38 +118,38 @@ describe('history descriptions (UC-013)', () => {
         movedCostLineIds: [],
       },
     };
-    expect(describeEvent(i18n.getFixedT('fi'), 'fi', legacy, ctx).lines).toEqual([
+    expect(describeEntry(i18n.getFixedT('fi'), 'fi', legacy, ctx).lines).toEqual([
       'Tekniikka: – → Talon tekniikka, Pakettiauto',
       'Tekniikka: Oma PA, Talon teknikko → Setti B',
       'Tekniikka: Setti A → –',
       'Tekniikka: Setti C → –',
     ]);
-    expect(describeEvent(i18n.getFixedT('en'), 'en', legacy, ctx).lines[1]).toBe(
+    expect(describeEntry(i18n.getFixedT('en'), 'en', legacy, ctx).lines[1]).toBe(
       'Technical setup: Own PA, House technician → Set B',
     );
   });
 
   it('filters by category', () => {
     const types = (filter: Parameters<typeof matchesFilter>[1]) =>
-      events.filter((e) => matchesFilter(e, filter)).map((e) => e.type);
+      entries.filter((e) => matchesFilter(e, filter)).map((e) => e.type);
     expect(types('status')).toEqual(['CREATED', 'MOVED', 'CANCELLED', 'UNCANCELLED', 'DELETED', 'RESTORED']);
     expect(types('details')).toEqual(['UPDATED']);
     expect(types('attachments')).toEqual(['ATTACHMENT_ADDED', 'ATTACHMENT_REMOVED']);
-    expect(types('all')).toHaveLength(events.length);
+    expect(types('all')).toHaveLength(entries.length);
   });
 
   it('names the purchase order of a payment made through one (UC-034)', () => {
-    const paid: GigEvent = {
+    const paid: EventHistoryEntry = {
       ...base,
       type: 'COST_PAID',
       details: { costLineId: 'l', type: 'VOC', actualCents: 10000, purchaseOrderNumber: 'PERSON-1-0001' },
     };
-    expect(describeEvent(i18n.getFixedT('fi'), 'fi', paid, ctx).lines[1]).toBe('Ostotilaus PERSON-1-0001');
-    const unpaid: GigEvent = {
+    expect(describeEntry(i18n.getFixedT('fi'), 'fi', paid, ctx).lines[1]).toBe('Ostotilaus PERSON-1-0001');
+    const unpaid: EventHistoryEntry = {
       ...base,
       type: 'COST_UNPAID',
       details: { costLineId: 'l', type: 'VOC', previousActualCents: 10000, purchaseOrderNumber: 'PERSON-1-0001' },
     };
-    expect(describeEvent(i18n.getFixedT('en'), 'en', unpaid, ctx).lines[1]).toBe('Purchase order PERSON-1-0001');
+    expect(describeEntry(i18n.getFixedT('en'), 'en', unpaid, ctx).lines[1]).toBe('Purchase order PERSON-1-0001');
   });
 });

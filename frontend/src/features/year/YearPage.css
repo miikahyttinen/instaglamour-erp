@@ -1,7 +1,7 @@
-/* Year page (UC-022). The sections sit on the same 12-column grid as the gig tiles
-   (--grid-gap columns, --section-gap rows): gigs and upcoming gigs span the width; once the
+/* Year page (UC-022). The sections sit on the same 12-column grid as the event tiles
+   (--grid-gap columns, --section-gap rows): events and upcoming events span the width; once the
    layout is at least 880 px wide (container query, so the sidebar state counts) hours | budget
-   sit side by side on the gig tiles' middle line, equally tall. Narrower, they stack, so the
+   sit side by side on the event tiles' middle line, equally tall. Narrower, they stack, so the
    budget table (category + two money columns) never scrolls sideways (TASK-148).
    Tokens and shared classes only. */
 
@@ -75,7 +75,7 @@
   row-gap: var(--space-1);
 }
 
-/* Gig tiles: 2 per row up to 1199 px (phones too), 4 per row from 1200 px. Each tile is a
+/* Event tiles: 2 per row up to 1199 px (phones too), 4 per row from 1200 px. Each tile is a
    4-row subgrid (label | figure | secondary | chart), so labels, figures, secondary figures
    and charts line up across a row and the tiles in a row are equally tall. */
 .stat-grid.year-tiles {
@@ -99,7 +99,7 @@
 }
 
 /* ---- Year result: emphasised tile in the page head ----
-   Phones: full width under the title. From 600 px: as wide as one gig tile (1 of 2, from
+   Phones: full width under the title. From 600 px: as wide as one event tile (1 of 2, from
    1200 px 1 of 4), right-aligned over the last one, figure on the title baseline. */
 
 .year-page .page-actions {
@@ -188,7 +188,7 @@
   text-decoration: underline;
 }
 
-/* ---- Upcoming gigs ---- */
+/* ---- Upcoming events ---- */
 
 .year-upcoming-link {
   color: inherit;
@@ -202,7 +202,7 @@
   font-variant-numeric: tabular-nums;
 }
 @media (max-width: 599px) {
-  /* Phone cards: no empty "staffing" line when the gig is fully staffed. */
+  /* Phone cards: no empty "staffing" line when the event is fully staffed. */
   .year-upcoming-table td:empty {
     display: none;
   }

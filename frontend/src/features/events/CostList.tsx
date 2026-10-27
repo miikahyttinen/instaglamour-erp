@@ -6,7 +6,7 @@ import { Link } from 'react-router-dom';
 import type { CostType } from '../../api/enums';
 import { isMusicianRole } from '../../api/enums';
 import { costLinesApi } from '../../api/endpoints';
-import type { CostLine, CostLineUpdate, GigDetail, GigWithWarnings, Person, Warning } from '../../api/types';
+import type { CostLine, CostLineUpdate, EventDetail, EventWithWarnings, Person, Warning } from '../../api/types';
 import { Button, IconButton } from '../../components/Button';
 import { Dialog } from '../../components/Dialog';
 import { Field, MoneyInput } from '../../components/fields';
@@ -19,10 +19,10 @@ import { centsToInput, formatDateTime, formatMoney } from '../../lib/format';
 import { parseMoneyField } from '../../lib/moneyField';
 import { usePartner, useReference } from '../../reference/useReference';
 import { InlinePersonSelect, PersonSelect } from './PersonSelect';
-import { personName, useApplyGig } from './queries';
+import { personName, useApplyEvent } from './queries';
 
 interface Props {
-  gig: GigDetail;
+  event: EventDetail;
   people: Person[] | undefined;
   readOnly: boolean;
   onWarnings: (warnings: Warning[]) => void;
@@ -33,32 +33,32 @@ const needsDescription = (type: CostType) => type === 'OTHER' || type === 'OTHER
 const DESCRIPTION_MAX = 5000;
 
 /** One list of fees and expenses with staffing, load-in switch and payments (UC-005). */
-export function CostList({ gig, people, readOnly, onWarnings }: Props) {
+export function CostList({ event, people, readOnly, onWarnings }: Props) {
   const { t } = useTranslation();
   const lang = useLang();
   const [adding, setAdding] = useState(false);
-  const applyGig = useApplyGig();
-  const onResult = (result: GigWithWarnings) => {
-    applyGig(result.gig, gig.id);
+  const applyEvent = useApplyEvent();
+  const onResult = (result: EventWithWarnings) => {
+    applyEvent(result.event, event.id);
     onWarnings(result.warnings);
   };
   const columnCount = readOnly ? 5 : 6;
 
   return (
     <div className="cost-list">
-      {gig.notFullyStaffed && (
+      {event.notFullyStaffed && (
         <p className="cost-staffing" role="note">
-          <StatusTag tone="warn">{t('gigs.notFullyStaffed')}</StatusTag>
+          <StatusTag tone="warn">{t('events.notFullyStaffed')}</StatusTag>
         </p>
       )}
-      {gig.costLines.length === 0 ? (
+      {event.costLines.length === 0 ? (
         <p className="table-empty">{t('costs.empty')}</p>
       ) : (
         // Hand-written .data-table (not <DataTable>): each line is its own named <tbody>, so the
         // pay form can open in a full-width row right under their line.
         <div className="table-wrap">
           <table className="data-table data-table-cards cost-table">
-            <caption className="visually-hidden">{t('gig.sections.costs')}</caption>
+            <caption className="visually-hidden">{t('event.sections.costs')}</caption>
             <thead>
               <tr>
                 <th scope="col">{t('costs.type')}</th>
@@ -69,15 +69,15 @@ export function CostList({ gig, people, readOnly, onWarnings }: Props) {
                 <th scope="col" className="num">
                   {t('costs.budgeted')}
                 </th>
-                <th scope="col">{t('gig.actual')}</th>
+                <th scope="col">{t('event.actual')}</th>
                 {!readOnly && (
                   <th scope="col">
-                    <span className="visually-hidden">{t('gig.actions.label')}</span>
+                    <span className="visually-hidden">{t('event.actions.label')}</span>
                   </th>
                 )}
               </tr>
             </thead>
-            {gig.costLines.map((line) => (
+            {event.costLines.map((line) => (
               <CostLineItem
                 key={line.id}
                 line={line}
@@ -93,17 +93,17 @@ export function CostList({ gig, people, readOnly, onWarnings }: Props) {
       <dl className="cost-totals">
         <div>
           <dt>{t('costs.totalBudgeted')}</dt>
-          <dd>{formatMoney(gig.budgetedCostsCents, lang)}</dd>
+          <dd>{formatMoney(event.budgetedCostsCents, lang)}</dd>
         </div>
         <div>
           <dt>{t('costs.totalActual')}</dt>
-          <dd>{formatMoney(gig.actualCostsCents, lang)}</dd>
+          <dd>{formatMoney(event.actualCostsCents, lang)}</dd>
         </div>
       </dl>
       {!readOnly &&
         (adding ? (
           <AddCostLineForm
-            gig={gig}
+            event={event}
             people={people}
             onDone={(result) => {
               onResult(result);
@@ -123,7 +123,7 @@ interface LineProps {
   people: Person[] | undefined;
   readOnly: boolean;
   columnCount: number;
-  onResult: (result: GigWithWarnings) => void;
+  onResult: (result: EventWithWarnings) => void;
 }
 
 function CostLineItem({ line, people, readOnly, columnCount, onResult }: LineProps) {
@@ -142,13 +142,13 @@ function CostLineItem({ line, people, readOnly, columnCount, onResult }: LinePro
 
   // Pay / unpay / remove are actions; the fields below save themselves (NFR-8).
   const mutation = useMutation({
-    mutationFn: (action: () => Promise<GigWithWarnings>) => action(),
+    mutationFn: (action: () => Promise<EventWithWarnings>) => action(),
     onSuccess: (result) => {
       onResult(result);
       setMode('view');
     },
   });
-  const run = (action: () => Promise<GigWithWarnings>) => mutation.mutate(action);
+  const run = (action: () => Promise<EventWithWarnings>) => mutation.mutate(action);
   const update = async (body: CostLineUpdate) => onResult(await costLinesApi.update(line.id, body));
   const hasExtraRow = (mutation.isError && mode !== 'remove') || mode === 'pay';
 
@@ -229,7 +229,7 @@ function CostLineItem({ line, people, readOnly, columnCount, onResult }: LinePro
           )}
         </td>
 
-        <td className="cost-paid" data-label={t('gig.actual')} title={lockedHint}>
+        <td className="cost-paid" data-label={t('event.actual')} title={lockedHint}>
           {paid && !readOnly && !po ? (
             // Paid: the amount stays editable (POST pay on a paid line updates the amount only).
             <div className="cost-paid-edit">
@@ -387,14 +387,14 @@ function PayForm({
 }
 
 function AddCostLineForm({
-  gig,
+  event,
   people,
   onDone,
   onCancel,
 }: {
-  gig: GigDetail;
+  event: EventDetail;
   people: Person[] | undefined;
-  onDone: (result: GigWithWarnings) => void;
+  onDone: (result: EventWithWarnings) => void;
   onCancel: () => void;
 }) {
   const { t } = useTranslation();
@@ -407,7 +407,7 @@ function AddCostLineForm({
   const [localErrors, setLocalErrors] = useState<Record<string, string>>({});
   const add = useMutation({
     mutationFn: () =>
-      costLinesApi.create(gig.id, {
+      costLinesApi.create(event.id, {
         type: type as CostType,
         personId,
         description: description.trim() || null,

@@ -77,11 +77,11 @@ describe('OfferPreview', () => {
       source: 'INSTAGRAM',
       eventType: 'CORPORATE',
       notes: 'Internal note Q',
-      gigId: 'gig-id-1',
+      eventId: 'event-id-1',
     };
     const { container } = render(<OfferPreview offer={leaky} />);
     const text = container.textContent ?? '';
-    for (const forbidden of ['1234', '1 234', '1,234', '€', 'LOST_PRICE', 'INSTAGRAM', 'CORPORATE', 'Internal note Q', 'offer-id-1', 'gig-id-1']) {
+    for (const forbidden of ['1234', '1 234', '1,234', '€', 'LOST_PRICE', 'INSTAGRAM', 'CORPORATE', 'Internal note Q', 'offer-id-1', 'event-id-1']) {
       expect(text).not.toContain(forbidden);
     }
     expect(container.innerHTML).not.toContain('123456');

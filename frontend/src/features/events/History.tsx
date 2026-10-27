@@ -7,15 +7,15 @@ import { useLang } from '../../i18n/useLang';
 import { formatDateTime } from '../../lib/format';
 import { useReference } from '../../reference/useReference';
 import { useClientList } from '../clients/queries';
-import { describeEvent, HISTORY_FILTERS, matchesFilter, type HistoryFilter } from './historyText';
-import { useGigHistory } from './queries';
+import { describeEntry, HISTORY_FILTERS, matchesFilter, type HistoryFilter } from './historyText';
+import { useEventHistory } from './queries';
 
 /** Read-only change log, newest first, with a type filter (UC-013). */
-export function History({ gigId, people }: { gigId: Id; people: Person[] | undefined }) {
+export function History({ eventId, people }: { eventId: Id; people: Person[] | undefined }) {
   const { t } = useTranslation();
   const lang = useLang();
   const { data: reference } = useReference();
-  const history = useGigHistory(gigId);
+  const history = useEventHistory(eventId);
   const { data: clients } = useClientList();
   const [filter, setFilter] = useState<HistoryFilter>('all');
 
@@ -27,15 +27,15 @@ export function History({ gigId, people }: { gigId: Id; people: Person[] | undef
       </Notice>
     );
   }
-  const events = history.data.filter((e) => matchesFilter(e, filter));
+  const entries = history.data.filter((e) => matchesFilter(e, filter));
   const ctx = { partners: reference?.partners, people, clients };
 
   return (
     <div className="history">
       <div className="field history-filter">
-        <label htmlFor={`history-filter-${gigId}`}>{t('history.filter')}</label>
+        <label htmlFor={`history-filter-${eventId}`}>{t('history.filter')}</label>
         <select
-          id={`history-filter-${gigId}`}
+          id={`history-filter-${eventId}`}
           value={filter}
           onChange={(e) => setFilter(e.target.value as HistoryFilter)}
         >
@@ -46,19 +46,19 @@ export function History({ gigId, people }: { gigId: Id; people: Person[] | undef
           ))}
         </select>
       </div>
-      {events.length === 0 ? (
+      {entries.length === 0 ? (
         <p className="muted">{t('history.empty')}</p>
       ) : (
-        <ol className="history-list" aria-label={t('gig.sections.history')}>
-          {events.map((event) => {
-            const { title, lines } = describeEvent(t, lang, event, ctx);
-            const partner = reference?.partners.find((p) => p.id === event.partnerId)?.name ?? '–';
+        <ol className="history-list" aria-label={t('event.sections.history')}>
+          {entries.map((entry) => {
+            const { title, lines } = describeEntry(t, lang, entry, ctx);
+            const partner = reference?.partners.find((p) => p.id === entry.partnerId)?.name ?? '–';
             return (
-              <li key={event.id} className="history-item">
+              <li key={entry.id} className="history-item">
                 <div className="history-title">
                   <strong className="history-event">{title}</strong>
                   <span className="meta history-meta">
-                    {formatDateTime(event.at, lang)} · {partner}
+                    {formatDateTime(entry.at, lang)} · {partner}
                   </span>
                 </div>
                 {lines.map((line, i) => (

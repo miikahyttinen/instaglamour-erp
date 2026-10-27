@@ -7,7 +7,7 @@ import { meKey } from '../../auth/useMe';
 import { referenceKey } from '../../reference/useReference';
 
 // Every people query starts with ['people'] so one invalidation refreshes this register and
-// the gig person pickers (gigs/queries.ts uses ['people', 'all']). Gig mutations refresh the
+// the event person pickers (events/queries.ts uses ['people', 'all']). Event mutations refresh the
 // cost lines through invalidateYearData (api/cache.ts).
 export const peopleKeys = {
   all: ['people'] as const,

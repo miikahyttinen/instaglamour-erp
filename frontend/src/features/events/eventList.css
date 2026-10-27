@@ -1,47 +1,47 @@
-/* Gig list (GigListPage). Tokens only; scoped under .gig-list-page.
+/* Event list (EventListPage). Tokens only; scoped under .event-list-page.
    The table is the shared ExcelTable (components/excelTable.css), same look as the offer list. */
 
 /* ---------- Year summary ---------- */
-.gig-list-page .gig-year-summary {
+.event-list-page .event-year-summary {
   margin: 0 0 var(--section-gap);
 }
 /* The cancelled-count line belongs to the tiles: keep it close, the section gap comes after. */
-.gig-list-page .gig-year-summary .gig-stat-grid {
+.event-list-page .event-year-summary .event-stat-grid {
   margin-bottom: 0;
 }
 /* Six small tiles: 2 per row on phones, 3 from 600 px (and at 900–1199 px next to the
    sidebar), 6 in one row from 1200 px. */
-.gig-list-page .gig-stat-grid > * {
+.event-list-page .event-stat-grid > * {
   --span: 6;
   --span-sm: 4;
   --span-lg: 2;
 }
-.gig-list-page .gig-stat-grid .stat-tile-value {
+.event-list-page .event-stat-grid .stat-tile-value {
   overflow-wrap: anywhere;
   margin-top: auto; /* tiles in a row are equally tall: the figures share one baseline */
 }
-.gig-list-page .gig-cancelled-count {
+.event-list-page .event-cancelled-count {
   margin: var(--space-3) 0 0;
 }
 
 /* ---------- Toolbar: view switch, search (as on the offer list) ---------- */
 /* The column filters live in the table headers (ExcelTable). */
-.gig-list-page .gig-toolbar {
+.event-list-page .event-toolbar {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
   margin: 0 0 var(--space-6);
 }
-.gig-list-page .gig-view-switch {
+.event-list-page .event-view-switch {
   align-self: flex-start;
 }
-.gig-list-page .gig-search label {
+.event-list-page .event-search label {
   margin-top: 0;
 }
-.gig-list-page .gig-search-input {
+.event-list-page .event-search-input {
   position: relative;
 }
-.gig-list-page .gig-search-icon {
+.event-list-page .event-search-icon {
   position: absolute;
   top: 50%;
   left: var(--space-3);
@@ -49,21 +49,21 @@
   color: var(--label);
   pointer-events: none;
 }
-.gig-list-page .gig-search-input input {
+.event-list-page .event-search-input input {
   padding-left: calc(var(--space-3) + var(--icon) + var(--space-2));
 }
 
 /* ---------- Notices, loading, empty ---------- */
-.gig-list-page > .notice {
+.event-list-page > .notice {
   margin: 0 0 var(--space-5);
 }
-.gig-list-page .gig-list-error {
+.event-list-page .event-list-error {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
 }
-.gig-list-page .gig-empty {
+.event-list-page .event-empty {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -73,80 +73,80 @@
   border-radius: var(--radius);
   color: var(--text-muted);
 }
-.gig-list-page .gig-empty p {
+.event-list-page .event-empty p {
   margin: 0;
 }
 
 /* ---------- Shared bits of rows ---------- */
-.gig-list-page .gig-date {
+.event-list-page .event-date {
   font-family: var(--font-mono);
   font-size: var(--fs-label);
   letter-spacing: 0.06em;
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
 }
-.gig-list-page .gig-main {
+.event-list-page .event-main {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-1) var(--space-2);
   min-width: 0;
 }
-.gig-list-page .gig-link {
+.event-list-page .event-link {
   color: var(--text);
   font-weight: var(--fw-bold);
   text-decoration: none;
   overflow-wrap: anywhere;
 }
-.gig-list-page .gig-link:hover,
-.gig-list-page .gig-client-link:hover {
+.event-list-page .event-link:hover,
+.event-list-page .event-client-link:hover {
   text-decoration: underline;
 }
-.gig-list-page .gig-client-link {
+.event-list-page .event-client-link {
   color: var(--text);
   text-decoration: none;
 }
-.gig-list-page .gig-margin-actual {
+.event-list-page .event-margin-actual {
   color: var(--text-muted);
   font-size: var(--fs-small);
 }
 /* Kate-%: each percentage stays on one line (no-break space before %); on a narrow table the
    actual one ("tot. 10,0 %") wraps under the budget one (TASK-147). */
-.gig-list-page .gig-table td.gig-col-margin {
+.event-list-page .event-table td.event-col-margin {
   white-space: normal;
   overflow-wrap: normal;
 }
-.gig-list-page .gig-margin-budget {
+.event-list-page .event-margin-budget {
   white-space: nowrap;
 }
 
 /* ---------- Table (ExcelTable, same look as the offer list) ---------- */
-.gig-list-page .gig-table td.gig-col-total {
+.event-list-page .event-table td.event-col-total {
   font-weight: var(--fw-bold);
 }
-.gig-list-page .gig-table td.gig-col-staffing {
+.event-list-page .event-table td.event-col-staffing {
   color: var(--text-muted);
 }
-.gig-list-page .gig-table tr.status-cancelled td {
+.event-list-page .event-table tr.status-cancelled td {
   color: var(--text-muted);
 }
-.gig-list-page .gig-table tr.status-cancelled .gig-link {
+.event-list-page .event-table tr.status-cancelled .event-link {
   color: var(--text-muted);
 }
-.gig-list-page .gig-table .gig-date-part {
+.event-list-page .event-table .event-date-part {
   display: inline-block;
   white-space: nowrap;
 }
 /* The date column fits its content (.excel-col-fit): a range stays on one line unless the table
    is narrow. */
 @container excel-table (min-width: 900px) {
-  .gig-list-page .gig-table .gig-date-range {
+  .event-list-page .event-table .event-date-range {
     white-space: nowrap;
   }
 }
 /* From 600 px (table rows): mono dates, as on the offer list. */
 @media (min-width: 600px) {
-  .gig-list-page .gig-table td.gig-col-date {
+  .event-list-page .event-table td.event-col-date {
     font-family: var(--font-mono);
     font-size: var(--fs-label);
     letter-spacing: 0.06em;
@@ -157,7 +157,7 @@
 
 /* ---------- Deleted view ---------- */
 /* Same frame and cell padding as DataTable, so it lines up with the active list. */
-.gig-list-page .gig-deleted-list {
+.event-list-page .event-deleted-list {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -165,7 +165,7 @@
   border: var(--hairline) solid var(--border);
   border-radius: var(--radius);
 }
-.gig-list-page .gig-deleted-row {
+.event-list-page .event-deleted-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
@@ -174,23 +174,23 @@
   padding: var(--cell-pad-y) var(--cell-pad-x);
   border-bottom: var(--hairline) solid var(--border);
 }
-.gig-list-page .gig-deleted-row:last-child {
+.event-list-page .event-deleted-row:last-child {
   border-bottom: 0;
 }
-.gig-list-page .gig-deleted-row .gig-date,
-.gig-list-page .gig-deleted-row .gig-main,
-.gig-list-page .gig-deleted-row .gig-restore {
+.event-list-page .event-deleted-row .event-date,
+.event-list-page .event-deleted-row .event-main,
+.event-list-page .event-deleted-row .event-restore {
   grid-column: 1 / -1;
 }
-.gig-list-page .gig-deleted-row .gig-main {
+.event-list-page .event-deleted-row .event-main {
   flex-direction: column;
   align-items: flex-start;
 }
-.gig-list-page .gig-deleted-row .gig-restore {
+.event-list-page .event-deleted-row .event-restore {
   justify-self: start;
   margin-top: var(--space-1);
 }
-.gig-list-page .gig-deleted-meta {
+.event-list-page .event-deleted-meta {
   display: inline-flex;
   flex-wrap: wrap;
   align-items: center;
@@ -200,23 +200,23 @@
 /* ---------- ≥ 900 px ---------- */
 @media (min-width: 900px) {
   /* Rows share one column grid (subgrid), so dates, names and buttons line up across rows. */
-  .gig-list-page .gig-deleted-list {
+  .event-list-page .event-deleted-list {
     display: grid;
     grid-template-columns: max-content minmax(0, 1fr) auto;
   }
-  .gig-list-page .gig-deleted-row {
+  .event-list-page .event-deleted-row {
     grid-column: 1 / -1;
     grid-template-columns: subgrid;
   }
-  .gig-list-page .gig-deleted-row .gig-date,
-  .gig-list-page .gig-deleted-row .gig-main,
-  .gig-list-page .gig-deleted-row .gig-restore {
+  .event-list-page .event-deleted-row .event-date,
+  .event-list-page .event-deleted-row .event-main,
+  .event-list-page .event-deleted-row .event-restore {
     grid-column: auto;
   }
-  .gig-list-page .gig-deleted-row .gig-restore {
+  .event-list-page .event-deleted-row .event-restore {
     margin-top: 0;
   }
-  .gig-list-page .gig-deleted-row .gig-main {
+  .event-list-page .event-deleted-row .event-main {
     flex-direction: row;
     align-items: center;
     gap: var(--space-1) var(--space-3);
@@ -225,7 +225,7 @@
 
 /* ---------- ≥ 600 px ---------- */
 @media (min-width: 600px) {
-  .gig-list-page .gig-search {
+  .event-list-page .event-search {
     max-width: calc(var(--label-w) * 2.5);
   }
 }

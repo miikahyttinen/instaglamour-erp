@@ -1,5 +1,5 @@
-// Mock handlers for docs/api-contract.md: Gigs, Cost lines, Attachments (People: peopleHandlers.ts).
-// Business logic lives in gigStore.ts.
+// Mock handlers for docs/api-contract.md: Events, Cost lines, Attachments (People: peopleHandlers.ts).
+// Business logic lives in eventStore.ts.
 import { http, HttpResponse } from 'msw';
 import type { CostType, FieldCode, Logistics, TechnicalSetup } from '../api/enums';
 import { COST_TYPES, isMusicianRole, LOGISTICS, TECHNICAL_SETUPS } from '../api/enums';
@@ -7,24 +7,24 @@ import type {
   CostLine,
   CostLineCreate,
   CostLineUpdate,
-  GigCreate,
-  GigListResponse,
-  GigMoveRequest,
-  GigUpdate,
-  GigUpdateResponse,
-  GigWithWarnings,
+  EventCreate,
+  EventListResponse,
+  EventMoveRequest,
+  EventUpdate,
+  EventUpdateResponse,
+  EventWithWarnings,
   ReasonRequest,
   Warning,
 } from '../api/types';
 import { todayIso } from '../lib/format';
 import { db } from './data';
-import type { MockGig, NewGigInput } from './gigStore';
+import type { MockEvent, NewEventInput } from './eventStore';
 import {
   addAttachment,
   addCostLine,
-  createGig,
+  createEvent,
   doubleBookingWarnings,
-  GIG_PATCH_FIELDS,
+  EVENT_PATCH_FIELDS,
   linesOf,
   logEvent,
   nowTs,
@@ -35,9 +35,9 @@ import {
   toSummary,
   unpayCostLine,
   updateCostLine,
-  updateGig,
+  updateEvent,
   yearTotals,
-} from './gigStore';
+} from './eventStore';
 import { currentPartner, errorResponse, unauthenticated, validationError } from './util';
 
 type Fields = Record<string, FieldCode>;
@@ -89,9 +89,9 @@ function checkPartner(fields: Fields, key: string, value: unknown, required: boo
 }
 
 /** technicalSetup / logistics: one code of the list or null; houseTechnician: boolean. */
-function checkGigOptions(
+function checkEventOptions(
   fields: Fields,
-  body: Pick<GigUpdate, 'technicalSetup' | 'logistics' | 'houseTechnician'>,
+  body: Pick<EventUpdate, 'technicalSetup' | 'logistics' | 'houseTechnician'>,
 ): void {
   const checkCode = (key: 'technicalSetup' | 'logistics', codes: readonly unknown[]) => {
     const value = body[key];
@@ -107,14 +107,14 @@ function checkGigOptions(
 /** clientId: an active client or null (UC-027); anything else → UNKNOWN_REFERENCE. */
 function checkClient(fields: Fields, value: unknown): void {
   if (value === undefined || value === null) return;
-  if (!db.gigs.clients.some((c) => c.id === value && c.deletedAt === null)) {
+  if (!db.events.clients.some((c) => c.id === value && c.deletedAt === null)) {
     fields.clientId = 'UNKNOWN_REFERENCE';
   }
 }
 
 function checkPerson(fields: Fields, value: unknown): void {
   if (value === undefined || value === null) return;
-  if (!db.gigs.people.some((p) => p.id === value)) fields.personId = 'UNKNOWN_REFERENCE';
+  if (!db.events.people.some((p) => p.id === value)) fields.personId = 'UNKNOWN_REFERENCE';
 }
 
 const blankToNull = (v: string | null | undefined): string | null =>
@@ -127,7 +127,7 @@ const ctx = () => ({
 });
 
 const notFound = () => errorResponse(404, 'NOT_FOUND', 'Not found');
-const gigDeleted = () => errorResponse(409, 'GIG_DELETED', 'Gig is deleted');
+const eventDeleted = () => errorResponse(409, 'EVENT_DELETED', 'Event is deleted');
 const badTransition = () =>
   errorResponse(409, 'INVALID_STATUS_TRANSITION', 'Not possible in this status');
 
@@ -137,16 +137,16 @@ export const onPurchaseOrder = (number: string) =>
     purchaseOrderNumber: number,
   });
 
-/** First line of the gig on an OPEN purchase order (blocks cancel / delete, BR-118). */
-const openPurchaseOrderOf = (gig: MockGig) =>
-  linesOf(db.gigs, gig.id).find((l) => l.purchaseOrder?.status === 'OPEN')?.purchaseOrder;
+/** First line of the event on an OPEN purchase order (blocks cancel / delete, BR-118). */
+const openPurchaseOrderOf = (event: MockEvent) =>
+  linesOf(db.events, event.id).find((l) => l.purchaseOrder?.status === 'OPEN')?.purchaseOrder;
 
-const findGig = (id: unknown): MockGig | undefined => db.gigs.gigs.find((g) => g.id === id);
+const findEvent = (id: unknown): MockEvent | undefined => db.events.events.find((g) => g.id === id);
 const findLine = (id: unknown): CostLine | undefined =>
-  db.gigs.costLines.find((l) => l.id === id);
+  db.events.costLines.find((l) => l.id === id);
 
-function touch(gig: MockGig): void {
-  gig.updatedAt = nowTs();
+function touch(event: MockEvent): void {
+  event.updatedAt = nowTs();
 }
 
 async function readJson<T>(request: Request): Promise<Partial<T>> {
@@ -158,8 +158,8 @@ async function readJson<T>(request: Request): Promise<Partial<T>> {
   }
 }
 
-function withWarnings(gig: MockGig, warnings: Warning[] = []) {
-  const body: GigWithWarnings = { gig: toDetail(db.gigs, gig), warnings };
+function withWarnings(event: MockEvent, warnings: Warning[] = []) {
+  const body: EventWithWarnings = { event: toDetail(db.events, event), warnings };
   return HttpResponse.json(body);
 }
 
@@ -168,12 +168,12 @@ function reasonOf(body: Partial<ReasonRequest>): string | null {
 }
 
 /**
- * Validates a GigCreate body (POST /api/gigs, and POST /api/offers/{id}/convert with a body) and
- * returns the field errors, or the cleaned createGig input.
+ * Validates a EventCreate body (POST /api/events, and POST /api/offers/{id}/convert with a body) and
+ * returns the field errors, or the cleaned createEvent input.
  */
-export function parseGigCreate(
-  body: Partial<GigCreate>,
-): { fields: Fields; input: null } | { fields: null; input: NewGigInput } {
+export function parseEventCreate(
+  body: Partial<EventCreate>,
+): { fields: Fields; input: null } | { fields: null; input: NewEventInput } {
   const fields: Fields = {};
   if (body.startDate === undefined || body.startDate === null || body.startDate === '') {
     fields.startDate = 'REQUIRED';
@@ -193,7 +193,7 @@ export function parseGigCreate(
     checkString(fields, 'lineupName', body.lineupName, true);
   }
   checkString(fields, 'venue', body.venue, true);
-  checkGigOptions(fields, body);
+  checkEventOptions(fields, body);
   checkPartner(fields, 'sellerId', body.sellerId, true);
   checkPartner(fields, 'producerId', body.producerId, true);
   checkMoney(fields, 'priceCents', body.priceCents, true);
@@ -224,14 +224,14 @@ export function parseGigCreate(
   };
 }
 
-/** createGig with the mock reference context. */
-export const createGigFromInput = (input: NewGigInput, actorId: string) =>
-  createGig(db.gigs, input, actorId, ctx());
+/** createEvent with the mock reference context. */
+export const createEventFromInput = (input: NewEventInput, actorId: string) =>
+  createEvent(db.events, input, actorId, ctx());
 
-// ---------- Gigs ----------
+// ---------- Events ----------
 
-export const gigHandlers = [
-  http.get('/api/gigs', ({ request }) => {
+export const eventHandlers = [
+  http.get('/api/events', ({ request }) => {
     if (!currentPartner()) return unauthenticated();
     const params = new URL(request.url).searchParams;
     const year = Number(params.get('year'));
@@ -245,7 +245,7 @@ export const gigHandlers = [
     const q = (params.get('q') ?? '').trim().toLowerCase();
     const today = todayIso();
 
-    const gigs = db.gigs.gigs
+    const events = db.events.events
       .filter((g) => g.startDate.startsWith(`${year}-`))
       .filter((g) => (deleted ? g.deletedAt !== null : g.deletedAt === null))
       .filter((g) => status === 'ALL' || g.status === status)
@@ -254,47 +254,47 @@ export const gigHandlers = [
       .filter((g) => !producerId || g.producerId === producerId)
       .filter((g) => {
         if (!q) return true;
-        const clientName = db.gigs.clients.find((c) => c.id === g.clientId)?.name ?? '';
+        const clientName = db.events.clients.find((c) => c.id === g.clientId)?.name ?? '';
         return [g.venue, g.lineupName, g.notes ?? '', clientName].some((text) =>
           text.toLowerCase().includes(q),
         );
       })
-      .map((g) => toSummary(db.gigs, g, today))
+      .map((g) => toSummary(db.events, g, today))
       .filter((g) => !notFullyStaffed || g.notFullyStaffed)
       .sort((a, b) => a.startDate.localeCompare(b.startDate));
 
-    const body: GigListResponse = { gigs, yearSummary: yearTotals(db.gigs, year) };
+    const body: EventListResponse = { events, yearSummary: yearTotals(db.events, year) };
     return HttpResponse.json(body);
   }),
 
-  http.post('/api/gigs', async ({ request }) => {
+  http.post('/api/events', async ({ request }) => {
     const me = currentPartner();
     if (!me) return unauthenticated();
-    const parsed = parseGigCreate(await readJson<GigCreate>(request));
+    const parsed = parseEventCreate(await readJson<EventCreate>(request));
     if (parsed.fields) return validationError(parsed.fields);
-    const gig = createGigFromInput(parsed.input, me.id);
-    return HttpResponse.json(toDetail(db.gigs, gig), { status: 201 });
+    const event = createEventFromInput(parsed.input, me.id);
+    return HttpResponse.json(toDetail(db.events, event), { status: 201 });
   }),
 
-  http.get('/api/gigs/:id', ({ params }) => {
+  http.get('/api/events/:id', ({ params }) => {
     if (!currentPartner()) return unauthenticated();
-    const gig = findGig(params.id);
-    return gig ? HttpResponse.json(toDetail(db.gigs, gig)) : notFound();
+    const event = findEvent(params.id);
+    return event ? HttpResponse.json(toDetail(db.events, event)) : notFound();
   }),
 
-  http.patch('/api/gigs/:id', async ({ params, request }) => {
+  http.patch('/api/events/:id', async ({ params, request }) => {
     const me = currentPartner();
     if (!me) return unauthenticated();
-    const gig = findGig(params.id);
-    if (!gig) return notFound();
-    if (gig.deletedAt) return gigDeleted();
-    const body = await readJson<GigUpdate & { startDate: unknown; endDate: unknown }>(request);
+    const event = findEvent(params.id);
+    if (!event) return notFound();
+    if (event.deletedAt) return eventDeleted();
+    const body = await readJson<EventUpdate & { startDate: unknown; endDate: unknown }>(request);
     const fields: Fields = {};
     if (body.startDate !== undefined) fields.startDate = 'NOT_EDITABLE';
     if (body.endDate !== undefined) fields.endDate = 'NOT_EDITABLE';
     if (body.lineupName !== undefined) checkString(fields, 'lineupName', body.lineupName, true);
     if (body.venue !== undefined) checkString(fields, 'venue', body.venue, true);
-    checkGigOptions(fields, body);
+    checkEventOptions(fields, body);
     if (body.sellerId !== undefined) checkPartner(fields, 'sellerId', body.sellerId, true);
     if (body.producerId !== undefined) checkPartner(fields, 'producerId', body.producerId, true);
     if (body.priceCents !== undefined) checkMoney(fields, 'priceCents', body.priceCents, true);
@@ -307,7 +307,7 @@ export const gigHandlers = [
     if (Object.keys(fields).length > 0) return validationError(fields);
 
     const patch: Record<string, unknown> = {};
-    for (const field of GIG_PATCH_FIELDS) {
+    for (const field of EVENT_PATCH_FIELDS) {
       const value = body[field];
       if (value === undefined) continue;
       patch[field] =
@@ -317,19 +317,19 @@ export const gigHandlers = [
             ? value.trim()
             : value;
     }
-    const { movedCostLineIds } = updateGig(db.gigs, gig, patch, db.partners, me.id);
-    const response: GigUpdateResponse = { gig: toDetail(db.gigs, gig), movedCostLineIds };
+    const { movedCostLineIds } = updateEvent(db.events, event, patch, db.partners, me.id);
+    const response: EventUpdateResponse = { event: toDetail(db.events, event), movedCostLineIds };
     return HttpResponse.json(response);
   }),
 
-  http.post('/api/gigs/:id/move', async ({ params, request }) => {
+  http.post('/api/events/:id/move', async ({ params, request }) => {
     const me = currentPartner();
     if (!me) return unauthenticated();
-    const gig = findGig(params.id);
-    if (!gig) return notFound();
-    if (gig.deletedAt) return gigDeleted();
-    if (gig.status !== 'SOLD') return badTransition();
-    const body = await readJson<GigMoveRequest>(request);
+    const event = findEvent(params.id);
+    if (!event) return notFound();
+    if (event.deletedAt) return eventDeleted();
+    if (event.status !== 'SOLD') return badTransition();
+    const body = await readJson<EventMoveRequest>(request);
     const fields: Fields = {};
     if (!body.startDate) fields.startDate = 'REQUIRED';
     else if (!isDate(body.startDate)) fields.startDate = 'INVALID_DATE';
@@ -342,98 +342,98 @@ export const gigHandlers = [
     checkString(fields, 'reason', body.reason, false, MAX_TEXT);
     if (Object.keys(fields).length > 0) return validationError(fields);
 
-    const from = { startDate: gig.startDate, endDate: gig.endDate };
-    gig.startDate = body.startDate!;
-    gig.endDate = body.endDate ?? null;
-    touch(gig);
+    const from = { startDate: event.startDate, endDate: event.endDate };
+    event.startDate = body.startDate!;
+    event.endDate = body.endDate ?? null;
+    touch(event);
     logEvent(
-      db.gigs,
-      gig.id,
+      db.events,
+      event.id,
       'MOVED',
       me.id,
-      { from, to: { startDate: gig.startDate, endDate: gig.endDate } },
+      { from, to: { startDate: event.startDate, endDate: event.endDate } },
       reasonOf(body),
     );
-    const warnings = doubleBookingWarnings(db.gigs, gig, linesOf(db.gigs, gig.id));
-    return withWarnings(gig, warnings);
+    const warnings = doubleBookingWarnings(db.events, event, linesOf(db.events, event.id));
+    return withWarnings(event, warnings);
   }),
 
   ...(['cancel', 'uncancel'] as const).map((action) =>
-    http.post(`/api/gigs/:id/${action}`, async ({ params, request }) => {
+    http.post(`/api/events/:id/${action}`, async ({ params, request }) => {
       const me = currentPartner();
       if (!me) return unauthenticated();
-      const gig = findGig(params.id);
-      if (!gig) return notFound();
-      if (gig.deletedAt) return gigDeleted();
+      const event = findEvent(params.id);
+      if (!event) return notFound();
+      if (event.deletedAt) return eventDeleted();
       const required = action === 'cancel' ? 'SOLD' : 'CANCELLED';
-      if (gig.status !== required) return badTransition();
+      if (event.status !== required) return badTransition();
       const reason = reasonOf(await readJson<ReasonRequest>(request));
       if (!reason) return validationError({ reason: 'REQUIRED' });
-      const openPo = action === 'cancel' ? openPurchaseOrderOf(gig) : undefined;
+      const openPo = action === 'cancel' ? openPurchaseOrderOf(event) : undefined;
       if (openPo) return onPurchaseOrder(openPo.number);
-      gig.status = action === 'cancel' ? 'CANCELLED' : 'SOLD';
-      touch(gig);
-      logEvent(db.gigs, gig.id, action === 'cancel' ? 'CANCELLED' : 'UNCANCELLED', me.id, {}, reason);
-      return HttpResponse.json(toDetail(db.gigs, gig));
+      event.status = action === 'cancel' ? 'CANCELLED' : 'SOLD';
+      touch(event);
+      logEvent(db.events, event.id, action === 'cancel' ? 'CANCELLED' : 'UNCANCELLED', me.id, {}, reason);
+      return HttpResponse.json(toDetail(db.events, event));
     }),
   ),
 
-  http.post('/api/gigs/:id/delete', async ({ params, request }) => {
+  http.post('/api/events/:id/delete', async ({ params, request }) => {
     const me = currentPartner();
     if (!me) return unauthenticated();
-    const gig = findGig(params.id);
-    if (!gig) return notFound();
-    if (gig.deletedAt) return gigDeleted();
+    const event = findEvent(params.id);
+    if (!event) return notFound();
+    if (event.deletedAt) return eventDeleted();
     const reason = reasonOf(await readJson<ReasonRequest>(request));
     if (!reason) return validationError({ reason: 'REQUIRED' });
-    const openPo = openPurchaseOrderOf(gig);
+    const openPo = openPurchaseOrderOf(event);
     if (openPo) return onPurchaseOrder(openPo.number);
-    gig.deletedAt = nowTs();
-    logEvent(db.gigs, gig.id, 'DELETED', me.id, {}, reason);
+    event.deletedAt = nowTs();
+    logEvent(db.events, event.id, 'DELETED', me.id, {}, reason);
     return new HttpResponse(null, { status: 204 });
   }),
 
-  http.post('/api/gigs/:id/restore', ({ params }) => {
+  http.post('/api/events/:id/restore', ({ params }) => {
     const me = currentPartner();
     if (!me) return unauthenticated();
-    const gig = findGig(params.id);
-    if (!gig) return notFound();
-    if (!gig.deletedAt) return badTransition();
-    gig.deletedAt = null;
-    touch(gig);
-    logEvent(db.gigs, gig.id, 'RESTORED', me.id);
-    return HttpResponse.json(toDetail(db.gigs, gig));
+    const event = findEvent(params.id);
+    if (!event) return notFound();
+    if (!event.deletedAt) return badTransition();
+    event.deletedAt = null;
+    touch(event);
+    logEvent(db.events, event.id, 'RESTORED', me.id);
+    return HttpResponse.json(toDetail(db.events, event));
   }),
 
-  http.get('/api/gigs/:id/history', ({ params }) => {
+  http.get('/api/events/:id/history', ({ params }) => {
     if (!currentPartner()) return unauthenticated();
-    if (!findGig(params.id)) return notFound();
-    const events = db.gigs.events
-      .filter((e) => e.gigId === params.id)
+    if (!findEvent(params.id)) return notFound();
+    const entries = db.events.history
+      .filter((e) => e.eventId === params.id)
       .sort((a, b) => b.at.localeCompare(a.at));
-    return HttpResponse.json(events);
+    return HttpResponse.json(entries);
   }),
 ];
 
 // ---------- Cost lines ----------
 
-function lineWithGig(id: unknown): { line: CostLine; gig: MockGig } | Response {
+function lineWithEvent(id: unknown): { line: CostLine; event: MockEvent } | Response {
   const line = findLine(id);
-  const gig = line ? findGig(line.gigId) : undefined;
-  if (!line || !gig) return notFound();
-  if (gig.deletedAt) return gigDeleted();
-  return { line, gig };
+  const event = line ? findEvent(line.eventId) : undefined;
+  if (!line || !event) return notFound();
+  if (event.deletedAt) return eventDeleted();
+  return { line, event };
 }
 
 const needsDescription = (type: CostType) => type === 'OTHER' || type === 'OTHER_ROLE';
 
 export const costLineHandlers = [
-  http.post('/api/gigs/:id/cost-lines', async ({ params, request }) => {
+  http.post('/api/events/:id/cost-lines', async ({ params, request }) => {
     const me = currentPartner();
     if (!me) return unauthenticated();
-    const gig = findGig(params.id);
-    if (!gig) return notFound();
-    if (gig.deletedAt) return gigDeleted();
+    const event = findEvent(params.id);
+    if (!event) return notFound();
+    if (event.deletedAt) return eventDeleted();
     const body = await readJson<CostLineCreate>(request);
     const fields: Fields = {};
     if (!body.type) fields.type = 'REQUIRED';
@@ -447,8 +447,8 @@ export const costLineHandlers = [
     if (Object.keys(fields).length > 0) return validationError(fields);
 
     const line = addCostLine(
-      db.gigs,
-      gig,
+      db.events,
+      event,
       {
         type: body.type!,
         personId: body.personId ?? null,
@@ -457,16 +457,16 @@ export const costLineHandlers = [
       },
       me.id,
     );
-    touch(gig);
-    return withWarnings(gig, doubleBookingWarnings(db.gigs, gig, [line]));
+    touch(event);
+    return withWarnings(event, doubleBookingWarnings(db.events, event, [line]));
   }),
 
   http.patch('/api/cost-lines/:id', async ({ params, request }) => {
     const me = currentPartner();
     if (!me) return unauthenticated();
-    const found = lineWithGig(params.id);
+    const found = lineWithEvent(params.id);
     if (found instanceof Response) return found;
-    const { line, gig } = found;
+    const { line, event } = found;
     const body = await readJson<CostLineUpdate & { type: unknown }>(request);
     const fields: Fields = {};
     if (body.type !== undefined) fields.type = 'NOT_EDITABLE';
@@ -492,7 +492,7 @@ export const costLineHandlers = [
 
     const personChanged = body.personId !== undefined && body.personId !== line.personId;
     updateCostLine(
-      db.gigs,
+      db.events,
       line,
       {
         personId: body.personId,
@@ -503,48 +503,48 @@ export const costLineHandlers = [
       db.reference.settings.loadInDeductionCents,
       me.id,
     );
-    touch(gig);
-    const warnings = personChanged ? doubleBookingWarnings(db.gigs, gig, [line]) : [];
-    return withWarnings(gig, warnings);
+    touch(event);
+    const warnings = personChanged ? doubleBookingWarnings(db.events, event, [line]) : [];
+    return withWarnings(event, warnings);
   }),
 
   http.delete('/api/cost-lines/:id', ({ params }) => {
     const me = currentPartner();
     if (!me) return unauthenticated();
-    const found = lineWithGig(params.id);
+    const found = lineWithEvent(params.id);
     if (found instanceof Response) return found;
     if (found.line.purchaseOrder) return onPurchaseOrder(found.line.purchaseOrder.number);
-    removeCostLine(db.gigs, found.line, me.id);
-    touch(found.gig);
-    return withWarnings(found.gig);
+    removeCostLine(db.events, found.line, me.id);
+    touch(found.event);
+    return withWarnings(found.event);
   }),
 
   http.post('/api/cost-lines/:id/pay', async ({ params, request }) => {
     const me = currentPartner();
     if (!me) return unauthenticated();
-    const found = lineWithGig(params.id);
+    const found = lineWithEvent(params.id);
     if (found instanceof Response) return found;
-    const { line, gig } = found;
+    const { line, event } = found;
     if (line.type === 'FUEL') return errorResponse(409, 'COST_NOT_PAYABLE', 'Fuel is not payable');
     const body = await readJson<{ actualCents: number }>(request);
     const fields: Fields = {};
     checkMoney(fields, 'actualCents', body.actualCents, false);
     if (Object.keys(fields).length > 0) return validationError(fields);
     if (line.purchaseOrder) return onPurchaseOrder(line.purchaseOrder.number);
-    payCostLine(db.gigs, line, body.actualCents ?? line.budgetedCents, me.id);
-    touch(gig);
-    return withWarnings(gig);
+    payCostLine(db.events, line, body.actualCents ?? line.budgetedCents, me.id);
+    touch(event);
+    return withWarnings(event);
   }),
 
   http.post('/api/cost-lines/:id/unpay', ({ params }) => {
     const me = currentPartner();
     if (!me) return unauthenticated();
-    const found = lineWithGig(params.id);
+    const found = lineWithEvent(params.id);
     if (found instanceof Response) return found;
     if (found.line.purchaseOrder) return onPurchaseOrder(found.line.purchaseOrder.number);
-    unpayCostLine(db.gigs, found.line, me.id);
-    touch(found.gig);
-    return withWarnings(found.gig);
+    unpayCostLine(db.events, found.line, me.id);
+    touch(found.event);
+    return withWarnings(found.event);
   }),
 ];
 
@@ -564,12 +564,12 @@ function detectType(file: File): string | null {
 }
 
 export const attachmentHandlers = [
-  http.post('/api/gigs/:id/attachments', async ({ params, request }) => {
+  http.post('/api/events/:id/attachments', async ({ params, request }) => {
     const me = currentPartner();
     if (!me) return unauthenticated();
-    const gig = findGig(params.id);
-    if (!gig) return notFound();
-    if (gig.deletedAt) return gigDeleted();
+    const event = findEvent(params.id);
+    if (!event) return notFound();
+    if (event.deletedAt) return eventDeleted();
     let file: FormDataEntryValue | null;
     try {
       file = (await request.formData()).get('file');
@@ -581,18 +581,18 @@ export const attachmentHandlers = [
     const contentType = detectType(file);
     if (!contentType) return errorResponse(415, 'UNSUPPORTED_FILE_TYPE', 'Unsupported type');
     const attachment = addAttachment(
-      db.gigs,
-      gig,
+      db.events,
+      event,
       { filename: file.name || 'file', contentType, content: file },
       me.id,
     );
-    touch(gig);
+    touch(event);
     return HttpResponse.json(publicAttachment(attachment), { status: 201 });
   }),
 
   http.get('/api/attachments/:id/download', ({ params }) => {
     if (!currentPartner()) return unauthenticated();
-    const attachment = db.gigs.attachments.find((a) => a.id === params.id && a.deletedAt === null);
+    const attachment = db.events.attachments.find((a) => a.id === params.id && a.deletedAt === null);
     if (!attachment) return notFound();
     const inline = attachment.contentType !== ALLOWED_TYPES_DOCX;
     return new HttpResponse(attachment.content, {
@@ -606,12 +606,12 @@ export const attachmentHandlers = [
   http.delete('/api/attachments/:id', ({ params }) => {
     const me = currentPartner();
     if (!me) return unauthenticated();
-    const attachment = db.gigs.attachments.find((a) => a.id === params.id && a.deletedAt === null);
+    const attachment = db.events.attachments.find((a) => a.id === params.id && a.deletedAt === null);
     if (!attachment) return notFound();
-    const gig = findGig(attachment.gigId);
-    if (gig?.deletedAt) return gigDeleted();
+    const event = findEvent(attachment.eventId);
+    if (event?.deletedAt) return eventDeleted();
     attachment.deletedAt = nowTs();
-    logEvent(db.gigs, attachment.gigId, 'ATTACHMENT_REMOVED', me.id, {
+    logEvent(db.events, attachment.eventId, 'ATTACHMENT_REMOVED', me.id, {
       attachmentId: attachment.id,
       filename: attachment.filename,
     });

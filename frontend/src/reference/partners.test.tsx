@@ -2,7 +2,7 @@ import { screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { Partner } from '../api/types';
 import { db } from '../mocks/data';
-import { addMockClient, TEST_YEAR } from '../test/gigFixtures';
+import { addMockClient, TEST_YEAR } from '../test/eventFixtures';
 import { addMockOffer } from '../test/offerFixtures';
 import { renderApp, signInMock } from '../test/renderApp';
 import { activePartners, partnerOptions } from './partners';

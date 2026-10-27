@@ -2,7 +2,7 @@
 import type { OfferSummary } from '../api/types';
 import { db } from '../mocks/data';
 import { createOffer, toOfferSummary, type MockOffer, type NewOfferInput } from '../mocks/offerStore';
-import { TEST_YEAR } from './gigFixtures';
+import { TEST_YEAR } from './eventFixtures';
 
 /**
  * Creates an offer (logged as created by Partner A) in TEST_YEAR. Status and expired are derived
@@ -32,5 +32,5 @@ export function addMockOffer(overrides: Partial<NewOfferInput> & { clientId: str
 
 /** The summary the API would return for a mock offer. */
 export function offerSummaryOf(offer: MockOffer): OfferSummary {
-  return toOfferSummary(offer, { clients: db.gigs.clients, partners: db.partners });
+  return toOfferSummary(offer, { clients: db.events.clients, partners: db.partners });
 }

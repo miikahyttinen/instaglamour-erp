@@ -4,7 +4,7 @@ import { setLanguage } from '../../i18n';
 import { formatMoneyWhole } from '../../lib/format';
 import { db } from '../../mocks/data';
 import { offerStats } from '../../mocks/offerStore';
-import { addMockClient, TEST_YEAR } from '../../test/gigFixtures';
+import { addMockClient, TEST_YEAR } from '../../test/eventFixtures';
 import { addMockOffer } from '../../test/offerFixtures';
 import { renderApp, signInMock } from '../../test/renderApp';
 
@@ -84,7 +84,7 @@ describe('offer KPI cards (BR-122, TASK-157)', () => {
     );
 
     // 3 Offers for the year by event date: all statuses.
-    const byYear = region(new RegExp(`^Tarjoukset vuodelle \\(keikan päivä\\) · ${TEST_YEAR}$`));
+    const byYear = region(new RegExp(`^Tarjoukset vuodelle \\(tapahtuman päivä\\) · ${TEST_YEAR}$`));
     expect(plain(byYear.textContent)).toContain(`4${fiMoney(350000)}Yhteensä`);
 
     // 4 Open offers value: selected year … +3.
@@ -129,7 +129,7 @@ describe('offer KPI cards (BR-122, TASK-157)', () => {
 
     const byYear = region(/^Tarjoukset vuodelle/);
     await user.click(within(byYear).getByRole('button', { name: new RegExp(`^${TEST_YEAR - 1}:`) }));
-    const selected = region(new RegExp(`^Tarjoukset vuodelle \\(keikan päivä\\) · ${TEST_YEAR - 1}$`));
+    const selected = region(new RegExp(`^Tarjoukset vuodelle \\(tapahtuman päivä\\) · ${TEST_YEAR - 1}$`));
     expect(plain(selected.textContent)).toContain(`1${fiMoney(300000)}Yhteensä`);
 
     const open = region(/^Avoimet tarjoukset · /);

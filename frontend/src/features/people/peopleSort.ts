@@ -1,9 +1,9 @@
-// Client-side sort of the people list (TASK-156): name, played gig count, partnership.
+// Client-side sort of the people list (TASK-156): name, played event count, partnership.
 import type { Person } from '../../api/types';
 import type { SortDir, TableSort } from '../../components/excelTableState';
 import { isPartner } from './partnerRules';
 
-export const PEOPLE_SORT_KEYS = ['name', 'gigCount', 'partner'] as const;
+export const PEOPLE_SORT_KEYS = ['name', 'eventCount', 'partner'] as const;
 export type PeopleSortKey = (typeof PEOPLE_SORT_KEYS)[number];
 
 export interface PeopleSort {
@@ -28,8 +28,8 @@ function compareBy(key: PeopleSortKey, a: Person, b: Person): number {
   switch (key) {
     case 'name':
       return byName(a, b);
-    case 'gigCount':
-      return a.gigCount - b.gigCount;
+    case 'eventCount':
+      return a.eventCount - b.eventCount;
     case 'partner':
       // Ascending = active partners first.
       return Number(isPartner(b)) - Number(isPartner(a));
@@ -37,7 +37,7 @@ function compareBy(key: PeopleSortKey, a: Person, b: Person): number {
 }
 
 /**
- * Sorted copy. `name`: alphabetical. `gigCount`: by number. `partner`: ascending = active partners
+ * Sorted copy. `name`: alphabetical. `eventCount`: by number. `partner`: ascending = active partners
  * first, then the others. Ties are always by name ascending (then the API order).
  */
 export function sortPeople(people: readonly Person[], sort: PeopleSort): Person[] {

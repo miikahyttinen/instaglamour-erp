@@ -31,7 +31,7 @@ const FILTERS: { value: PeopleActiveFilter; labelKey: string }[] = [
 
 const SORT_LABELS: Record<PeopleSortKey, string> = {
   name: 'people.name',
-  gigCount: 'people.gigCount',
+  eventCount: 'people.eventCount',
   partner: 'people.partner.column',
 };
 
@@ -69,10 +69,10 @@ function rowNames(people: readonly Person[]): Map<string, string> {
 /**
  * People register (UC-014): list (active by default), add; name and active are edited in place
  * (NFR-8: no Edit buttons, the name saves on blur / Enter, the switch on change). Partners have an
- * "Osakas" tag; each row shows the person's roles and played gig count. Filters on one line:
+ * "Osakas" tag; each row shows the person's roles and played event count. Filters on one line:
  * active status, role (`?role=`) and "only partners" (`?partner=true`), all kept in the URL.
- * Sorted client-side (TASK-156) by name / gig count / partnership via the column headers (phones:
- * a "Järjestys" select); `?sort=name|gigCount|partner&dir=asc|desc`, default name ascending.
+ * Sorted client-side (TASK-156) by name / event count / partnership via the column headers (phones:
+ * a "Järjestys" select); `?sort=name|eventCount|partner&dir=asc|desc`, default name ascending.
  */
 export function PeoplePage() {
   const { t } = useTranslation();
@@ -173,12 +173,12 @@ export function PeoplePage() {
         ),
     },
     {
-      key: 'gigCount',
-      label: t('people.gigCount'),
+      key: 'eventCount',
+      label: t('people.eventCount'),
       numeric: true,
-      className: 'people-gigs-cell',
-      ...sortProps('gigCount'),
-      cell: (person) => person.gigCount,
+      className: 'people-events-cell',
+      ...sortProps('eventCount'),
+      cell: (person) => person.eventCount,
     },
     {
       key: 'partner',

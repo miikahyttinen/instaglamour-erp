@@ -19,7 +19,7 @@ import { parseMoneyField } from '../../lib/moneyField';
 import { activePartners } from '../../reference/partners';
 import { useReference } from '../../reference/useReference';
 import { ClientSelect } from '../clients/ClientSelect';
-import { PartnerOptions } from '../gigs/formParts';
+import { PartnerOptions } from '../events/formParts';
 import { useOfferOptions } from './offerOptions';
 import { useApplyOffer } from './queries';
 import './offers.css';

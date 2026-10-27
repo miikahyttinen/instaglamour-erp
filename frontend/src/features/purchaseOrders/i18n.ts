@@ -1,5 +1,5 @@
 // Purchase order texts (UC-034, BR-117…BR-119): list, log, PO page and the PO tag / lock on the
-// gig cost list. Spread into fi.ts / en.ts. EN must have exactly the same keys as FI.
+// event cost list. Spread into fi.ts / en.ts. EN must have exactly the same keys as FI.
 
 export const fi = {
   purchaseOrders: {
@@ -11,7 +11,7 @@ export const fi = {
       number: 'Numero',
       freelancer: 'Freelancer',
       created: 'Luotu',
-      gigs: 'Keikat',
+      events: 'Tapahtumat',
       total: 'Summa',
       status: 'Tila',
     },
@@ -32,12 +32,12 @@ export const fi = {
     statusChanged: 'Ostotilauksen tila on jo muuttunut. Tiedot on päivitetty.',
     log: {
       title: 'Loki',
-      caption: 'Ostotilausten tapahtumat',
+      caption: 'Ostotilausten muutokset',
       time: 'Aika',
       number: 'Numero',
-      event: 'Tapahtuma',
+      event: 'Muutos',
       actor: 'Tekijä',
-      empty: 'Ei tapahtumia.',
+      empty: 'Ei muutoksia.',
       freelancer: 'Freelancer',
       CREATED: 'Luotu freelancerin linkillä',
       PAID: 'Merkitty maksetuksi',
@@ -60,18 +60,18 @@ export const fi = {
       actions: 'Toiminnot',
     },
     lines: {
-      date: 'Keikan päivä',
+      date: 'Tapahtuman päivä',
       venue: 'Paikka',
       lineup: 'Kokoonpano',
       role: 'Rooli',
       amount: 'Summa',
-      gig: 'Keikka',
-      openGig: 'Avaa keikka',
+      event: 'Tapahtuma',
+      openEvent: 'Avaa tapahtuma',
       total: 'Yhteensä',
     },
     unpayTitle: 'Peru maksu',
     unpayConfirm:
-      'Ostotilaus {{number}} palautetaan avoimeksi, ja sen palkkiot merkitään keikoilla maksamattomiksi.',
+      'Ostotilaus {{number}} palautetaan avoimeksi, ja sen palkkiot merkitään tapahtumissa maksamattomiksi.',
     cancelTitle: 'Peru ostotilaus',
     cancelIntro:
       'Palkkiot vapautuvat, ja freelancer voi tehdä niistä uuden ostotilauksen. Peruttua ostotilausta ei voi palauttaa.',
@@ -96,7 +96,7 @@ export const en: typeof fi = {
       number: 'Number',
       freelancer: 'Freelancer',
       created: 'Created',
-      gigs: 'Gigs',
+      events: 'Events',
       total: 'Total',
       status: 'Status',
     },
@@ -117,12 +117,12 @@ export const en: typeof fi = {
     statusChanged: 'The purchase order has already changed. The data has been refreshed.',
     log: {
       title: 'Log',
-      caption: 'Purchase order events',
+      caption: 'Purchase order changes',
       time: 'Time',
       number: 'Number',
-      event: 'Event',
+      event: 'Change',
       actor: 'By',
-      empty: 'No events.',
+      empty: 'No changes.',
       freelancer: 'Freelancer',
       CREATED: 'Created via the freelancer link',
       PAID: 'Marked paid',
@@ -145,18 +145,18 @@ export const en: typeof fi = {
       actions: 'Actions',
     },
     lines: {
-      date: 'Gig date',
+      date: 'Event date',
       venue: 'Venue',
       lineup: 'Lineup',
       role: 'Role',
       amount: 'Amount',
-      gig: 'Gig',
-      openGig: 'Open gig',
+      event: 'Event',
+      openEvent: 'Open event',
       total: 'Total',
     },
     unpayTitle: 'Unmark paid',
     unpayConfirm:
-      'Purchase order {{number}} goes back to open, and its fees are marked unpaid on the gigs.',
+      'Purchase order {{number}} goes back to open, and its fees are marked unpaid on the events.',
     cancelTitle: 'Cancel purchase order',
     cancelIntro:
       'The fees are freed and the freelancer can put them on a new purchase order. A cancelled purchase order cannot be restored.',

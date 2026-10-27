@@ -3,14 +3,14 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { formatMoney } from '../../lib/format';
 import { DESKTOP_QUERY, TABLET_QUERY } from '../../lib/useMediaQuery';
 import { db } from '../../mocks/data';
-import { person, TEST_YEAR } from '../../test/gigFixtures';
+import { person, TEST_YEAR } from '../../test/eventFixtures';
 import { installMatchMedia } from '../../test/matchMedia';
 import { addMockPurchaseOrder, clearPurchaseOrders, localTs } from '../../test/purchaseOrderFixtures';
 import { renderApp, signInMock } from '../../test/renderApp';
 
 const text = (el: HTMLElement) => (el.textContent ?? '').replace(/\s/g, ' ');
 const fiMoney = (cents: number) => formatMoney(cents, 'fi').replace(/\s/g, ' ');
-const costLine = (id: string) => db.gigs.costLines.find((l) => l.id === id)!;
+const costLine = (id: string) => db.events.costLines.find((l) => l.id === id)!;
 
 describe('purchase order page (UC-034)', () => {
   beforeEach(() => {
@@ -19,8 +19,8 @@ describe('purchase order page (UC-034)', () => {
     installMatchMedia({ [TABLET_QUERY]: true, [DESKTOP_QUERY]: true });
   });
 
-  it('shows number, status, freelancer link, totals, fee lines with gig links and the history', async () => {
-    const { po, gig } = addMockPurchaseOrder({ venue: 'Venue X', createdAt: localTs(TEST_YEAR, 6, 5, 9, 0) });
+  it('shows number, status, freelancer link, totals, fee lines with event links and the history', async () => {
+    const { po, event } = addMockPurchaseOrder({ venue: 'Venue X', createdAt: localTs(TEST_YEAR, 6, 5, 9, 0) });
     renderApp(`/purchase-orders/${po.id}`);
     expect(await screen.findByRole('heading', { level: 1, name: po.number })).toBeInTheDocument();
     expect(screen.getByText('Avoin')).toHaveClass('tag');
@@ -31,19 +31,19 @@ describe('purchase order page (UC-034)', () => {
 
     const lines = screen.getByRole('table', { name: 'Ostotilauksen palkkiot' });
     expect(within(lines).getAllByRole('columnheader').map((h) => h.textContent)).toEqual([
-      'Keikan päivä',
+      'Tapahtuman päivä',
       'Paikka',
       'Kokoonpano',
       'Rooli',
       'Summa',
-      'Keikka',
+      'Tapahtuma',
     ]);
     const row = within(lines).getAllByRole('row').find((r) => r.closest('tbody'))!;
     expect(text(row)).toContain(`1.6.${TEST_YEAR}`);
     expect(text(row)).toContain('Venue X');
     expect(text(row)).toContain('Template A');
     expect(text(row)).toContain('Laulu');
-    expect(within(row).getByRole('link', { name: 'Avaa keikka: Venue X' })).toHaveAttribute('href', `/gigs/${gig.id}`);
+    expect(within(row).getByRole('link', { name: 'Avaa tapahtuma: Venue X' })).toHaveAttribute('href', `/events/${event.id}`);
 
     const history = await screen.findByRole('table', { name: 'Historia' });
     expect(text(history)).toContain('Luotu freelancerin linkillä');

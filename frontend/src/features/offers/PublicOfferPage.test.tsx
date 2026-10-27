@@ -78,14 +78,14 @@ describe('PublicOfferPage /o/:token', () => {
           disposition: 'LOST_PRICE',
           source: 'WEBSITE',
           notes: 'Internal note Q',
-          gigId: 'gig-id-9',
+          eventId: 'event-id-9',
         }),
       ),
     );
     const { container } = renderApp(`/o/${DEMO_OFFER_TOKEN}`);
     await screen.findByRole('heading', { level: 1, name: 'Leaky Event' });
     const text = container.textContent ?? '';
-    for (const forbidden of ['9876', '9 876', '€', 'LOST_PRICE', 'WEBSITE', 'Internal note Q', 'gig-id-9']) {
+    for (const forbidden of ['9876', '9 876', '€', 'LOST_PRICE', 'WEBSITE', 'Internal note Q', 'event-id-9']) {
       expect(text).not.toContain(forbidden);
     }
   });

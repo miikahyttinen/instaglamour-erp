@@ -71,7 +71,7 @@ const ICONS: [string, LucideIcon][] = [
   ['Check', Check],
 ];
 
-interface DemoGig {
+interface DemoEvent {
   id: number;
   date: string;
   name: string;
@@ -81,11 +81,11 @@ interface DemoGig {
   price: number; // cents
 }
 
-const DEMO_GIGS: DemoGig[] = [
-  { id: 1, date: '2030-02-14', name: 'Gig 1', venue: 'Venue X', status: 'info', statusText: 'Sold', price: 200000 },
-  { id: 2, date: '2030-03-01', name: 'Gig 2', venue: 'Venue Y', status: 'warn', statusText: 'Not fully staffed', price: 150000 },
-  { id: 3, date: '2030-01-20', name: 'Gig 3', venue: 'Venue Z', status: 'danger', statusText: 'Cancelled', price: 100000 },
-  { id: 4, date: '2030-04-05', name: 'Gig 4', venue: 'Venue X', status: 'info', statusText: 'Played', price: 300000 },
+const DEMO_EVENTS: DemoEvent[] = [
+  { id: 1, date: '2030-02-14', name: 'Event 1', venue: 'Venue X', status: 'info', statusText: 'Sold', price: 200000 },
+  { id: 2, date: '2030-03-01', name: 'Event 2', venue: 'Venue Y', status: 'warn', statusText: 'Not fully staffed', price: 150000 },
+  { id: 3, date: '2030-01-20', name: 'Event 3', venue: 'Venue Z', status: 'danger', statusText: 'Cancelled', price: 100000 },
+  { id: 4, date: '2030-04-05', name: 'Event 4', venue: 'Venue X', status: 'info', statusText: 'Played', price: 300000 },
 ];
 
 const MONTH_BARS = [
@@ -156,9 +156,9 @@ function Showcase({ theme }: { theme: Theme }) {
   const [money, setMoney] = useState('1 000');
   const [name, setName] = useState('');
 
-  const sortedGigs = useMemo(() => {
+  const sortedEvents = useMemo(() => {
     const factor = sort.dir === 'asc' ? 1 : -1;
-    return [...DEMO_GIGS].sort((a, b) =>
+    return [...DEMO_EVENTS].sort((a, b) =>
       sort.key === 'date'
         ? a.date.localeCompare(b.date) * factor
         : (a.price - b.price) * factor,
@@ -167,7 +167,7 @@ function Showcase({ theme }: { theme: Theme }) {
   const toggleSort = (key: 'date' | 'price') =>
     setSort((s) => ({ key, dir: s.key === key && s.dir === 'asc' ? 'desc' : 'asc' }));
 
-  const columns: DataTableColumn<DemoGig>[] = [
+  const columns: DataTableColumn<DemoEvent>[] = [
     {
       key: 'date',
       label: 'Date',
@@ -175,7 +175,7 @@ function Showcase({ theme }: { theme: Theme }) {
       sort: sort.key === 'date' ? sort.dir : undefined,
       onSort: () => toggleSort('date'),
     },
-    { key: 'name', label: 'Gig', primary: true, cell: (g) => <a href="#gig">{g.name}</a> },
+    { key: 'name', label: 'Event', primary: true, cell: (g) => <a href="#event">{g.name}</a> },
     { key: 'venue', label: 'Venue', cell: (g) => g.venue },
     {
       key: 'status',
@@ -198,14 +198,14 @@ function Showcase({ theme }: { theme: Theme }) {
       cell: (g) => <IconButton icon={Pencil} label={`Edit ${g.name}`} />,
     },
   ];
-  const total = DEMO_GIGS.reduce((sum, g) => sum + g.price, 0);
+  const total = DEMO_EVENTS.reduce((sum, g) => sum + g.price, 0);
 
   return (
     <div className="sg-showcase">
       <PageHead
         title="Page title"
-        subtitle={`4 gigs · ${formatMoney(total, lang)} · PageHead`}
-        actions={<Button icon={Plus}>New gig</Button>}
+        subtitle={`4 events · ${formatMoney(total, lang)} · PageHead`}
+        actions={<Button icon={Plus}>New event</Button>}
       />
 
       <SectionLabel>Logo</SectionLabel>
@@ -328,7 +328,7 @@ function Showcase({ theme }: { theme: Theme }) {
           </Field>
           <Field label="Date">{(field) => <input {...field} type="date" defaultValue="2030-01-01" />}</Field>
           <Field label="Search">
-            {(field) => <input {...field} type="search" placeholder="Search gig, venue…" />}
+            {(field) => <input {...field} type="search" placeholder="Search event, venue…" />}
           </Field>
         </div>
         <Field label="Textarea">{(field) => <textarea {...field} placeholder="Notes" />}</Field>
@@ -363,25 +363,25 @@ function Showcase({ theme }: { theme: Theme }) {
       <SectionLabel>Notices</SectionLabel>
       <Notice tone="info">Info notice (default).</Notice>
       <Notice tone="ok">Saved.</Notice>
-      <Notice tone="warn">Warning: the gig is not fully staffed.</Notice>
+      <Notice tone="warn">Warning: the event is not fully staffed.</Notice>
       <Notice tone="danger">Error: saving failed.</Notice>
 
       <SectionLabel>Stat tiles + mini bars (StatGrid / StatTile)</SectionLabel>
       <StatGrid>
-        <StatTile label="Gigs created" value="12" secondaryValue={formatMoney(1000000, lang)} secondaryCaption="Total value" bars={MONTH_BARS} barsCaption="Gigs per month, last 6 months" />
+        <StatTile label="Events created" value="12" secondaryValue={formatMoney(1000000, lang)} secondaryCaption="Total value" bars={MONTH_BARS} barsCaption="Events per month, last 6 months" />
         <StatTile label="Average price · 2030" value={formatMoney(250000, lang)} bars={YEAR_BARS} barsCaption="Average per year" />
         <StatTile label="Hours · 2030" value="120 h" caption="Partner A 60 h · Partner B 60 h" />
         <StatTile label="Open tasks" value="3" caption="1 overdue" />
       </StatGrid>
       <Card label="MiniBars alone" title="Card with label, title and actions" actions={<Button size="sm">Action</Button>}>
-        <MiniBars bars={YEAR_BARS} label="Gigs per year" height={64} />
+        <MiniBars bars={YEAR_BARS} label="Events per year" height={64} />
       </Card>
 
       <SectionLabel>Data table (DataTable; phone &lt; 600 px = cards)</SectionLabel>
       <DataTable
-        caption="Demo gigs"
+        caption="Demo events"
         columns={columns}
-        rows={sortedGigs}
+        rows={sortedEvents}
         rowKey={(g) => g.id}
         footer={
           <tr>
@@ -394,7 +394,7 @@ function Showcase({ theme }: { theme: Theme }) {
         }
       />
       <p className="meta sg-note">Empty state:</p>
-      <DataTable caption="Empty" columns={columns} rows={[]} rowKey={(g) => g.id} empty="No gigs this year." />
+      <DataTable caption="Empty" columns={columns} rows={[]} rowKey={(g) => g.id} empty="No events this year." />
 
       <SectionLabel>Excel table (ExcelTable: sort, column filters, column priorities)</SectionLabel>
       <p className="meta sg-note">
@@ -406,8 +406,8 @@ function Showcase({ theme }: { theme: Theme }) {
       <SectionLabel>Dialog (bottom sheet on phone)</SectionLabel>
       <Button onClick={() => setDialogOpen(true)}>Open dialog</Button>
       {dialogOpen && (
-        <Dialog title="Delete gig" onClose={() => setDialogOpen(false)}>
-          <p>Gig 1 at Venue X will be deleted. You can restore it from the deleted list.</p>
+        <Dialog title="Delete event" onClose={() => setDialogOpen(false)}>
+          <p>Event 1 at Venue X will be deleted. You can restore it from the deleted list.</p>
           <div className="form-actions">
             <Button variant="danger" icon={Trash2} onClick={() => setDialogOpen(false)}>
               Delete

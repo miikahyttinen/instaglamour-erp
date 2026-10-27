@@ -1,15 +1,15 @@
 import { Route, Routes } from 'react-router-dom';
-import { GigListPage } from './GigListPage';
-import { GigPage } from './GigPage';
-import { NewGigPage } from './NewGigPage';
+import { EventListPage } from './EventListPage';
+import { EventPage } from './EventPage';
+import { NewEventPage } from './NewEventPage';
 
-/** /gigs, /gigs/new, /gigs/:id */
-export function GigsRoutes() {
+/** /events, /events/new, /events/:id */
+export function EventsRoutes() {
   return (
     <Routes>
-      <Route index element={<GigListPage />} />
-      <Route path="new" element={<NewGigPage />} />
-      <Route path=":id" element={<GigPage />} />
+      <Route index element={<EventListPage />} />
+      <Route path="new" element={<NewEventPage />} />
+      <Route path=":id" element={<EventPage />} />
     </Routes>
   );
 }

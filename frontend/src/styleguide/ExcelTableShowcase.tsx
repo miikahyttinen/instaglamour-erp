@@ -29,7 +29,7 @@ const STATUS_ORDER = ['SOLD', 'PLAYED', 'CANCELLED'];
 
 const ROWS: DemoRow[] = Array.from({ length: 12 }, (_, i) => ({
   id: i + 1,
-  name: `Gig ${i + 1}`,
+  name: `Event ${i + 1}`,
   client: `Client ${String.fromCharCode(65 + (i % 3))}`,
   city: i % 5 === 4 ? null : `City ${(i % 10) + 1}`,
   date: `2030-${String((i % 12) + 1).padStart(2, '0')}-${String(((i * 7) % 27) + 1).padStart(2, '0')}`,
@@ -43,7 +43,7 @@ export function ExcelTableShowcase() {
   const lang = useLang();
   const state = useLocalTableState({ defaultSort: { key: 'date', dir: 'asc' } });
   const columns: ExcelColumn<DemoRow>[] = [
-    { key: 'name', label: 'Gig', primary: true, sortValue: (r) => r.name, cell: (r) => <a href="#gig">{r.name}</a> },
+    { key: 'name', label: 'Event', primary: true, sortValue: (r) => r.name, cell: (r) => <a href="#event">{r.name}</a> },
     { key: 'client', label: 'Client', sortValue: (r) => r.client, filterValue: (r) => r.client, cell: (r) => r.client },
     { key: 'city', label: 'City', sortValue: (r) => r.city, filterValue: (r) => r.city, cell: (r) => r.city ?? '–' },
     { key: 'date', label: 'Date', sortValue: (r) => r.date, cell: (r) => formatDate(r.date, lang) },

@@ -1,18 +1,18 @@
-// Gig cost lines on a purchase order (UC-034 A5, BR-118): PO tag, locked controls, 409 messages.
+// Event cost lines on a purchase order (UC-034 A5, BR-118): PO tag, locked controls, 409 messages.
 import { screen, waitFor, within } from '@testing-library/react';
 import { http } from 'msw';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { server } from '../../mocks/server';
-import { onPurchaseOrder } from '../../mocks/gigHandlers';
-import { mockLine, TEST_YEAR } from '../../test/gigFixtures';
+import { onPurchaseOrder } from '../../mocks/eventHandlers';
+import { mockLine, TEST_YEAR } from '../../test/eventFixtures';
 import { addMockPurchaseOrder, clearPurchaseOrders } from '../../test/purchaseOrderFixtures';
 import { renderApp, signInMock } from '../../test/renderApp';
 
 const costs = () => screen.getByRole('table', { name: 'Kulut ja miehitys' });
 const line = (name: string) => within(costs()).getByRole('rowgroup', { name });
 
-async function openGig(gigId: string) {
-  const app = renderApp(`/gigs/${gigId}`);
+async function openEvent(eventId: string) {
+  const app = renderApp(`/events/${eventId}`);
   await screen.findByRole('table', { name: 'Kulut ja miehitys' });
   await within(line('Laulu')).findByRole('option', { name: 'Person 1' });
   return app;
@@ -25,8 +25,8 @@ describe('cost lines on a purchase order (BR-118)', () => {
   });
 
   it('shows a "PO <number>" tag linking to the PO and locks person, amount, load-in and paid controls', async () => {
-    const { po, gig } = addMockPurchaseOrder();
-    const { user } = await openGig(gig.id);
+    const { po, event } = addMockPurchaseOrder();
+    const { user } = await openEvent(event.id);
     const voc = line('Laulu');
     const tag = within(voc).getByRole('link', { name: `Ostotilaus ${po.number}` });
     expect(tag).toHaveTextContent(`PO ${po.number}`);
@@ -44,7 +44,7 @@ describe('cost lines on a purchase order (BR-118)', () => {
     expect(description).toBeEnabled();
     await user.type(description, 'Extra set');
     await user.tab();
-    await waitFor(() => expect(mockLine(gig, 'VOC').description).toBe('Extra set'));
+    await waitFor(() => expect(mockLine(event, 'VOC').description).toBe('Extra set'));
 
     // Other lines are not locked.
     expect(within(line('Kitara')).getByRole('combobox', { name: 'Henkilö: Kitara' })).toBeEnabled();
@@ -52,29 +52,29 @@ describe('cost lines on a purchase order (BR-118)', () => {
   });
 
   it('a paid PO line shows its paid info without the edit / unpay controls', async () => {
-    const { gig } = addMockPurchaseOrder({ status: 'PAID' });
-    await openGig(gig.id);
+    const { event } = addMockPurchaseOrder({ status: 'PAID' });
+    await openEvent(event.id);
     const voc = line('Laulu');
     expect(within(voc).queryByRole('textbox', { name: /Maksettu summa/ })).not.toBeInTheDocument();
     expect(within(voc).queryByRole('button', { name: 'Poista maksumerkintä' })).not.toBeInTheDocument();
     expect(within(voc).getByText(/Maksettu/)).toBeInTheDocument();
   });
 
-  it('cancelling a gig with a line on an open PO explains which PO blocks it', async () => {
-    const { po, gig } = addMockPurchaseOrder();
-    const { user } = await openGig(gig.id);
-    await user.click(screen.getByRole('button', { name: 'Peru keikka' }));
-    const dialog = screen.getByRole('dialog', { name: 'Peru keikka' });
+  it('cancelling an event with a line on an open PO explains which PO blocks it', async () => {
+    const { po, event } = addMockPurchaseOrder();
+    const { user } = await openEvent(event.id);
+    await user.click(screen.getByRole('button', { name: 'Peru tapahtuma' }));
+    const dialog = screen.getByRole('dialog', { name: 'Peru tapahtuma' });
     await user.type(within(dialog).getByRole('textbox', { name: 'Syy' }), 'Called off.');
-    await user.click(within(dialog).getByRole('button', { name: 'Peru keikka' }));
+    await user.click(within(dialog).getByRole('button', { name: 'Peru tapahtuma' }));
     expect(await within(dialog).findByRole('alert')).toHaveTextContent(
       `Rivi on ostotilauksella ${po.number}. Muuta ensin ostotilausta`,
     );
   });
 
   it('a 409 COST_LINE_ON_PURCHASE_ORDER from a line edit is shown with the PO number', async () => {
-    const { gig } = addMockPurchaseOrder();
-    const { user } = await openGig(gig.id);
+    const { event } = addMockPurchaseOrder();
+    const { user } = await openEvent(event.id);
     // Someone else put the guitar line on a PO meanwhile.
     server.use(http.patch('/api/cost-lines/:id', () => onPurchaseOrder('PERSON-2-0099')));
     await user.selectOptions(within(line('Kitara')).getByRole('combobox', { name: 'Henkilö: Kitara' }), 'Person 2');

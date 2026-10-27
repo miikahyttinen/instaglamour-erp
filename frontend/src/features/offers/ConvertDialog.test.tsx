@@ -1,10 +1,10 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
 import { beforeEach, describe, expect, it } from 'vitest';
-import type { GigCreate } from '../../api/types';
+import type { EventCreate } from '../../api/types';
 import { db } from '../../mocks/data';
 import { server } from '../../mocks/server';
-import { addMockClient, partnerA, partnerB, TEST_YEAR } from '../../test/gigFixtures';
+import { addMockClient, partnerA, partnerB, TEST_YEAR } from '../../test/eventFixtures';
 import { addMockOffer as addAnyOffer } from '../../test/offerFixtures';
 import { renderApp, signInMock } from '../../test/renderApp';
 
@@ -12,26 +12,26 @@ const partnerC = () => db.partners[2]!;
 /** A convertible offer (BR-109): accepted, dated in TEST_YEAR (future). */
 const addMockOffer = (overrides: Parameters<typeof addAnyOffer>[0]) =>
   addAnyOffer({ disposition: 'WON', ...overrides });
-const dialog = () => screen.getByRole('dialog', { name: 'Muuta keikaksi' });
+const dialog = () => screen.getByRole('dialog', { name: 'Muuta tapahtumaksi' });
 const optionNames = (name: string) =>
   within(within(dialog()).getByRole('combobox', { name })).getAllByRole('option').map((o) => o.textContent);
 
 /** Offer page → open the convert modal and wait for the prefilled form. */
 async function openConvert(offerId: string) {
   const app = renderApp(`/offers/${offerId}`);
-  await app.user.click(await screen.findByRole('button', { name: /^Muuta keikaksi:/ }));
+  await app.user.click(await screen.findByRole('button', { name: /^Muuta tapahtumaksi:/ }));
   await within(dialog()).findByRole('textbox', { name: 'Paikka' });
   return app;
 }
 
-describe('convert offer to gig in a modal (UC-031, BR-105)', () => {
+describe('convert offer to event in a modal (UC-031, BR-105)', () => {
   let clientId: string;
   beforeEach(() => {
     signInMock().selectedYear = TEST_YEAR;
     clientId = addMockClient('Client X').id;
   });
 
-  it('prefills the key fields from the gig draft and shows the yellow review tag', async () => {
+  it('prefills the key fields from the event draft and shows the yellow review tag', async () => {
     const offer = addMockOffer({
       clientId,
       eventName: 'Event 1',
@@ -55,15 +55,15 @@ describe('convert offer to gig in a modal (UC-031, BR-105)', () => {
     expect(d.getByLabelText('Alkupäivä')).toHaveFocus();
   });
 
-  it('sends the draft merged with the edits, shows the gig link and guards a double click', async () => {
+  it('sends the draft merged with the edits, shows the event link and guards a double click', async () => {
     const offer = addMockOffer({ clientId, eventName: 'Event 1', priceCents: 100000 });
-    const requests: GigCreate[] = [];
+    const requests: EventCreate[] = [];
     server.events.on('request:start', ({ request }) => {
       if (request.method === 'POST' && request.url.endsWith(`/api/offers/${offer.id}/convert`)) {
         void request
           .clone()
           .json()
-          .then((b) => requests.push(b as GigCreate));
+          .then((b) => requests.push(b as EventCreate));
       }
     });
     const { user } = await openConvert(offer.id);
@@ -79,14 +79,14 @@ describe('convert offer to gig in a modal (UC-031, BR-105)', () => {
     const price = d.getByRole('textbox', { name: 'Hinta (alv 0 %)' });
     await user.clear(price);
     await user.type(price, '2000');
-    await user.dblClick(d.getByRole('button', { name: 'Muuta keikaksi' }));
+    await user.dblClick(d.getByRole('button', { name: 'Muuta tapahtumaksi' }));
 
-    expect(await screen.findByText(/Keikka luotu\./)).toBeInTheDocument();
+    expect(await screen.findByText(/Tapahtuma luotu\./)).toBeInTheDocument();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     server.events.removeAllListeners();
-    const gigs = db.gigs.gigs.filter((g) => g.offerId === offer.id);
-    expect(gigs).toHaveLength(1);
-    expect(gigs[0]).toMatchObject({
+    const events = db.events.events.filter((g) => g.offerId === offer.id);
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({
       venue: 'Venue Q',
       lineupName: 'Lineup Q',
       producerId: partnerB().id,
@@ -94,27 +94,27 @@ describe('convert offer to gig in a modal (UC-031, BR-105)', () => {
       priceCents: 200000,
       clientId: null,
     });
-    expect(screen.getByRole('link', { name: 'Avaa keikka' })).toHaveAttribute('href', `/gigs/${gigs[0]!.id}`);
-    expect(offer).toMatchObject({ gigId: gigs[0]!.id, disposition: 'WON' });
+    expect(screen.getByRole('link', { name: 'Avaa tapahtuma' })).toHaveAttribute('href', `/events/${events[0]!.id}`);
+    expect(offer).toMatchObject({ eventId: events[0]!.id, disposition: 'WON' });
     await waitFor(() => expect(requests).toHaveLength(1));
     expect(requests[0]).toMatchObject({ startDate: offer.eventDate, venue: 'Venue Q', priceCents: 200000 });
   });
 
   it('Cancel and Esc close the modal and create nothing (A1)', async () => {
     const offer = addMockOffer({ clientId, eventName: 'Event 1' });
-    const before = db.gigs.gigs.length;
+    const before = db.events.events.length;
     const { user } = await openConvert(offer.id);
     await user.click(within(dialog()).getByRole('button', { name: 'Peruuta' }));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    const opener = screen.getByRole('button', { name: 'Muuta keikaksi: Event 1' });
+    const opener = screen.getByRole('button', { name: 'Muuta tapahtumaksi: Event 1' });
     expect(opener).toHaveFocus();
 
     await user.click(opener);
     await within(dialog()).findByRole('textbox', { name: 'Paikka' });
     await user.keyboard('{Escape}');
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    expect(db.gigs.gigs.length).toBe(before);
-    expect(offer.gigId).toBeNull();
+    expect(db.events.events.length).toBe(before);
+    expect(offer.eventId).toBeNull();
   });
 
   it('keeps Tab focus inside the modal', async () => {
@@ -134,10 +134,10 @@ describe('convert offer to gig in a modal (UC-031, BR-105)', () => {
     const d = within(dialog());
     await user.clear(d.getByRole('textbox', { name: 'Paikka' }));
     await user.clear(d.getByRole('textbox', { name: 'Kokoonpano' }));
-    await user.click(d.getByRole('button', { name: 'Muuta keikaksi' }));
+    await user.click(d.getByRole('button', { name: 'Muuta tapahtumaksi' }));
     expect(d.getByRole('textbox', { name: 'Paikka' })).toHaveAccessibleDescription('Pakollinen tieto.');
     expect(d.getByRole('textbox', { name: 'Kokoonpano' })).toHaveAccessibleDescription('Pakollinen tieto.');
-    expect(offer.gigId).toBeNull();
+    expect(offer.eventId).toBeNull();
 
     server.use(
       http.post('/api/offers/:id/convert', () =>
@@ -149,70 +149,70 @@ describe('convert offer to gig in a modal (UC-031, BR-105)', () => {
     );
     await user.type(d.getByRole('textbox', { name: 'Paikka' }), 'Venue X');
     await user.type(d.getByRole('textbox', { name: 'Kokoonpano' }), 'Event 1');
-    await user.click(d.getByRole('button', { name: 'Muuta keikaksi' }));
+    await user.click(d.getByRole('button', { name: 'Muuta tapahtumaksi' }));
     await waitFor(() =>
       expect(d.getByRole('textbox', { name: 'Hinta (alv 0 %)' })).toHaveAttribute('aria-invalid', 'true'),
     );
     expect(d.getByRole('textbox', { name: 'Paikka' })).not.toHaveAttribute('aria-invalid');
-    expect(d.getByRole('button', { name: 'Muuta keikaksi' })).toBeEnabled();
+    expect(d.getByRole('button', { name: 'Muuta tapahtumaksi' })).toBeEnabled();
   });
 
-  it('409 ALREADY_CONVERTED on confirm shows the message and a link to the existing gig (E1)', async () => {
+  it('409 ALREADY_CONVERTED on confirm shows the message and a link to the existing event (E1)', async () => {
     const offer = addMockOffer({ clientId, eventName: 'Event 1' });
     const { user } = await openConvert(offer.id);
-    offer.gigId = '00000000-0000-4000-8000-00000000ffff'; // converted elsewhere meanwhile
-    await user.click(within(dialog()).getByRole('button', { name: 'Muuta keikaksi' }));
+    offer.eventId = '00000000-0000-4000-8000-00000000ffff'; // converted elsewhere meanwhile
+    await user.click(within(dialog()).getByRole('button', { name: 'Muuta tapahtumaksi' }));
     const d = within(dialog());
-    expect(await d.findByText(/Tarjouksesta on jo tehty keikka\./)).toBeInTheDocument();
-    expect(await d.findByRole('link', { name: 'Avaa keikka' })).toHaveAttribute(
+    expect(await d.findByText(/Tarjouksesta on jo tehty tapahtuma\./)).toBeInTheDocument();
+    expect(await d.findByRole('link', { name: 'Avaa tapahtuma' })).toHaveAttribute(
       'href',
-      '/gigs/00000000-0000-4000-8000-00000000ffff',
+      '/events/00000000-0000-4000-8000-00000000ffff',
     );
-    expect(d.getByRole('button', { name: 'Muuta keikaksi' })).toBeDisabled();
+    expect(d.getByRole('button', { name: 'Muuta tapahtumaksi' })).toBeDisabled();
   });
 
-  it('a stale page opening the modal for a converted offer shows the gig link instead (E1)', async () => {
+  it('a stale page opening the modal for a converted offer shows the event link instead (E1)', async () => {
     const offer = addMockOffer({ clientId, eventName: 'Event 1' });
     const { user } = renderApp(`/offers/${offer.id}`);
-    const opener = await screen.findByRole('button', { name: 'Muuta keikaksi: Event 1' });
-    offer.gigId = '00000000-0000-4000-8000-00000000ffff';
+    const opener = await screen.findByRole('button', { name: 'Muuta tapahtumaksi: Event 1' });
+    offer.eventId = '00000000-0000-4000-8000-00000000ffff';
     await user.click(opener);
     const d = within(dialog());
-    expect(await d.findByText(/Tarjouksesta on jo tehty keikka\./)).toBeInTheDocument();
-    expect(await d.findByRole('link', { name: 'Avaa keikka' })).toHaveAttribute(
+    expect(await d.findByText(/Tarjouksesta on jo tehty tapahtuma\./)).toBeInTheDocument();
+    expect(await d.findByRole('link', { name: 'Avaa tapahtuma' })).toHaveAttribute(
       'href',
-      '/gigs/00000000-0000-4000-8000-00000000ffff',
+      '/events/00000000-0000-4000-8000-00000000ffff',
     );
-    expect(d.queryByRole('button', { name: 'Muuta keikaksi' })).not.toBeInTheDocument();
+    expect(d.queryByRole('button', { name: 'Muuta tapahtumaksi' })).not.toBeInTheDocument();
   });
 
   it('409 OFFER_NOT_CONVERTIBLE on confirm shows the message and refetches the offer (BR-109)', async () => {
     const offer = addMockOffer({ clientId, eventName: 'Event 1' });
     const { user } = await openConvert(offer.id);
     offer.disposition = 'LOST_PRICE'; // changed elsewhere meanwhile
-    await user.click(within(dialog()).getByRole('button', { name: 'Muuta keikaksi' }));
+    await user.click(within(dialog()).getByRole('button', { name: 'Muuta tapahtumaksi' }));
     const d = within(dialog());
     expect(
-      await d.findByText('Vain hyväksytyn tarjouksen, jonka päivä ei ole mennyt, voi muuttaa keikaksi.'),
+      await d.findByText('Vain hyväksytyn tarjouksen, jonka päivä ei ole mennyt, voi muuttaa tapahtumaksi.'),
     ).toBeInTheDocument();
-    expect(d.getByRole('button', { name: 'Muuta keikaksi' })).toBeDisabled();
-    expect(db.gigs.gigs.filter((g) => g.offerId === offer.id)).toHaveLength(0);
+    expect(d.getByRole('button', { name: 'Muuta tapahtumaksi' })).toBeDisabled();
+    expect(db.events.events.filter((g) => g.offerId === offer.id)).toHaveLength(0);
     await user.click(d.getByRole('button', { name: 'Peruuta' }));
     // The refetched offer is no longer accepted: the page shows no Convert action.
     await waitFor(() =>
-      expect(screen.queryByRole('button', { name: 'Muuta keikaksi: Event 1' })).not.toBeInTheDocument(),
+      expect(screen.queryByRole('button', { name: 'Muuta tapahtumaksi: Event 1' })).not.toBeInTheDocument(),
     );
   });
 
   it('a stale page opening the modal for an offer that is no longer convertible shows the message (BR-109)', async () => {
     const offer = addMockOffer({ clientId, eventName: 'Event 1' });
     const { user } = renderApp(`/offers/${offer.id}`);
-    const opener = await screen.findByRole('button', { name: 'Muuta keikaksi: Event 1' });
+    const opener = await screen.findByRole('button', { name: 'Muuta tapahtumaksi: Event 1' });
     offer.disposition = 'PENDING';
     await user.click(opener);
     const d = within(dialog());
     expect(
-      await d.findByText('Vain hyväksytyn tarjouksen, jonka päivä ei ole mennyt, voi muuttaa keikaksi.'),
+      await d.findByText('Vain hyväksytyn tarjouksen, jonka päivä ei ole mennyt, voi muuttaa tapahtumaksi.'),
     ).toBeInTheDocument();
     expect(d.queryByRole('textbox', { name: 'Paikka' })).not.toBeInTheDocument();
   });
@@ -226,8 +226,8 @@ describe('convert offer to gig in a modal (UC-031, BR-105)', () => {
 
     // A backend draft may carry an inactive partner; it stays selectable as the prefilled value.
     server.use(
-      http.get('/api/offers/:id/gig-draft', () => {
-        const draft: GigCreate = {
+      http.get('/api/offers/:id/event-draft', () => {
+        const draft: EventCreate = {
           startDate: `${TEST_YEAR}-06-01`,
           lineupName: 'Event 1',
           venue: 'Venue X',

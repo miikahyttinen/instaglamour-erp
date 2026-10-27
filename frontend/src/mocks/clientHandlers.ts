@@ -1,5 +1,5 @@
 // Mock handlers for docs/api-contract.md → Clients (UC-027, BR-100, BR-101). Clients live in the
-// gig mock store (db.gigs.clients) so gigs can show the client name and search it; offers are in
+// event mock store (db.events.clients) so events can show the client name and search it; offers are in
 // db.offers (offerStore.ts).
 import { http, HttpResponse } from 'msw';
 import type { FieldCode } from '../api/enums';
@@ -12,18 +12,18 @@ import type {
 } from '../api/types';
 import { todayIso } from '../lib/format';
 import { db } from './data';
-import { mockId, nowTs, toSummary, type MockClient } from './gigStore';
+import { mockId, nowTs, toSummary, type MockClient } from './eventStore';
 import { toOfferSummary } from './offerStore';
 import { currentPartner, errorResponse, unauthenticated, validationError } from './util';
 
 const NAME_MAX = 500;
 const NOTES_MAX = 5000;
 
-const active = () => db.gigs.clients.filter((c) => c.deletedAt === null);
+const active = () => db.events.clients.filter((c) => c.deletedAt === null);
 const findActive = (id: unknown) => active().find((c) => c.id === id);
 const publicClient = (c: MockClient): Client => ({ id: c.id, name: c.name, notes: c.notes });
 
-const linkedGigs = (id: string) => db.gigs.gigs.filter((g) => g.clientId === id && g.deletedAt === null);
+const linkedEvents = (id: string) => db.events.events.filter((g) => g.clientId === id && g.deletedAt === null);
 const linkedOffers = (id: string) => db.offers.offers.filter((o) => o.clientId === id && o.deletedAt === null);
 
 /** Trimmed name or the field code. Unique case-insensitively among active clients (BR-100). */
@@ -66,7 +66,7 @@ export const clientHandlers = [
       .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
       .map((c) => ({
         ...publicClient(c),
-        gigCount: linkedGigs(c.id).length,
+        eventCount: linkedEvents(c.id).length,
         offerCount: linkedOffers(c.id).length,
       }));
     return HttpResponse.json(body);
@@ -82,7 +82,7 @@ export const clientHandlers = [
     if (notes.error) fields.notes = notes.error;
     if (Object.keys(fields).length > 0) return validationError(fields);
     const client: MockClient = { id: mockId(), name: name.name!, notes: notes.notes ?? null, deletedAt: null };
-    db.gigs.clients.push(client);
+    db.events.clients.push(client);
     return HttpResponse.json(publicClient(client), { status: 201 });
   }),
 
@@ -93,11 +93,11 @@ export const clientHandlers = [
     const today = todayIso();
     const body: ClientDetailResponse = {
       client: publicClient(client),
-      gigs: linkedGigs(client.id)
-        .map((g) => toSummary(db.gigs, g, today))
+      events: linkedEvents(client.id)
+        .map((g) => toSummary(db.events, g, today))
         .sort((a, b) => b.startDate.localeCompare(a.startDate)),
       offers: linkedOffers(client.id)
-        .map((o) => toOfferSummary(o, { clients: db.gigs.clients, partners: db.partners }, today))
+        .map((o) => toOfferSummary(o, { clients: db.events.clients, partners: db.partners }, today))
         .sort((a, b) => b.eventDate.localeCompare(a.eventDate)),
     };
     return HttpResponse.json(body);
@@ -123,9 +123,9 @@ export const clientHandlers = [
     if (!currentPartner()) return unauthenticated();
     const client = findActive(params.id);
     if (!client) return notFound();
-    // BR-101: any linking gig (also a deleted one, which could be restored) or offer blocks it.
+    // BR-101: any linking event (also a deleted one, which could be restored) or offer blocks it.
     const inUse =
-      db.gigs.gigs.some((g) => g.clientId === client.id) ||
+      db.events.events.some((g) => g.clientId === client.id) ||
       db.offers.offers.some((o) => o.clientId === client.id);
     if (inUse) return errorResponse(409, 'CLIENT_IN_USE', 'Client in use');
     client.deletedAt = nowTs();

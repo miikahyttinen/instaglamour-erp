@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import type { Language } from '../../api/enums';
-import type { GigSummary, Partner, YearPage as YearPageData } from '../../api/types';
+import type { EventSummary, Partner, YearPage as YearPageData } from '../../api/types';
 import { useSelectedYear } from '../../auth/SignedInContext';
 import { Button } from '../../components/Button';
 import { DataTable, type DataTableColumn } from '../../components/DataTable';
@@ -33,7 +33,7 @@ export function YearPage() {
         title={t('pages.year', { year })}
         subtitle={
           data &&
-          t('year.summary', { gigs: data.gigs.gigCount, hours: formatHours(data.hours.grandTotal, lang) })
+          t('year.summary', { events: data.events.eventCount, hours: formatHours(data.hours.grandTotal, lang) })
         }
         actions={
           data && (
@@ -67,7 +67,7 @@ export function YearPage() {
 function YearContent({ data }: { data: YearPageData }) {
   return (
     <div className="year-layout">
-      <GigsSection data={data} />
+      <EventsSection data={data} />
       <HoursSection data={data} />
       <BudgetSection data={data} />
       <UpcomingSection data={data} />
@@ -130,35 +130,35 @@ function budgetBars(budgetLabel: string, actualLabel: string, budget: number, ac
   ];
 }
 
-function GigsSection({ data }: { data: YearPageData }) {
+function EventsSection({ data }: { data: YearPageData }) {
   const { t } = useTranslation();
   const lang = useLang();
-  const g = data.gigs;
+  const g = data.events;
   const budget = t('year.budget.budget');
   const actual = t('year.budget.actual');
   return (
-    <section className="year-section year-gigs" aria-labelledby="year-gigs">
-      <SectionHead id="year-gigs" title={t('year.gigs.title')} to="/gigs" />
+    <section className="year-section year-events" aria-labelledby="year-events">
+      <SectionHead id="year-events" title={t('year.events.title')} to="/events" />
       <div className="stat-grid year-tiles">
-        <LinkTile to="/gigs" label={t('year.gigs.gigCount')} value={g.gigCount}>
-          <Secondary label={t('year.gigs.cancelledCount')} value={g.cancelledCount} />
+        <LinkTile to="/events" label={t('year.events.eventCount')} value={g.eventCount}>
+          <Secondary label={t('year.events.cancelledCount')} value={g.cancelledCount} />
         </LinkTile>
-        <LinkTile to="/gigs" label={t('year.gigs.soldGigsSum')} value={formatMoney(g.soldGigsSumCents, lang)} />
-        <LinkTile to="/gigs" label={t('year.gigs.budgetedCosts')} value={formatMoney(g.budgetedCostsCents, lang)}>
-          <Secondary label={t('year.gigs.actualCosts')} value={formatMoney(g.actualCostsCents, lang)} />
+        <LinkTile to="/events" label={t('year.events.soldEventsSum')} value={formatMoney(g.soldEventsSumCents, lang)} />
+        <LinkTile to="/events" label={t('year.events.budgetedCosts')} value={formatMoney(g.budgetedCostsCents, lang)}>
+          <Secondary label={t('year.events.actualCosts')} value={formatMoney(g.actualCostsCents, lang)} />
           <div className="stat-tile-bars">
             <MiniBars
-              label={t('year.gigs.costsChart')}
+              label={t('year.events.costsChart')}
               bars={budgetBars(budget, actual, g.budgetedCostsCents, g.actualCostsCents, lang)}
               compact
             />
           </div>
         </LinkTile>
-        <LinkTile to="/gigs" label={t('year.gigs.marginBudget')} value={formatMoney(g.marginBudgetCents, lang)}>
-          <Secondary label={t('year.gigs.marginActual')} value={formatMoney(g.marginActualCents, lang)} />
+        <LinkTile to="/events" label={t('year.events.marginBudget')} value={formatMoney(g.marginBudgetCents, lang)}>
+          <Secondary label={t('year.events.marginActual')} value={formatMoney(g.marginActualCents, lang)} />
           <div className="stat-tile-bars">
             <MiniBars
-              label={t('year.gigs.marginChart')}
+              label={t('year.events.marginChart')}
               bars={budgetBars(budget, actual, g.marginBudgetCents, g.marginActualCents, lang)}
               compact
             />
@@ -257,20 +257,20 @@ function BudgetSection({ data }: { data: YearPageData }) {
 function UpcomingSection({ data }: { data: YearPageData }) {
   const { t } = useTranslation();
   const lang = useLang();
-  const columns: DataTableColumn<GigSummary>[] = [
+  const columns: DataTableColumn<EventSummary>[] = [
     {
       key: 'date',
       label: t('year.upcoming.date'),
       className: 'year-upcoming-date',
-      cell: (gig) => formatDateRange(gig.startDate, gig.endDate, lang),
+      cell: (event) => formatDateRange(event.startDate, event.endDate, lang),
     },
     {
-      key: 'gig',
-      label: t('year.upcoming.gig'),
+      key: 'event',
+      label: t('year.upcoming.event'),
       primary: true,
-      cell: (gig) => (
-        <Link to={`/gigs/${gig.id}`} className="year-upcoming-link">
-          {gig.lineupName} · {gig.venue}
+      cell: (event) => (
+        <Link to={`/events/${event.id}`} className="year-upcoming-link">
+          {event.lineupName} · {event.venue}
         </Link>
       ),
     },
@@ -278,16 +278,16 @@ function UpcomingSection({ data }: { data: YearPageData }) {
       key: 'staffing',
       label: t('year.upcoming.staffing'),
       className: 'year-upcoming-staffing',
-      cell: (gig) => gig.notFullyStaffed && <StatusTag tone="warn">{t('year.upcoming.notFullyStaffed')}</StatusTag>,
+      cell: (event) => event.notFullyStaffed && <StatusTag tone="warn">{t('year.upcoming.notFullyStaffed')}</StatusTag>,
     },
   ];
   return (
     <section className="year-section year-upcoming" aria-labelledby="year-upcoming">
-      <SectionHead id="year-upcoming" title={t('year.upcoming.title')} to="/gigs" />
+      <SectionHead id="year-upcoming" title={t('year.upcoming.title')} to="/events" />
       <DataTable
         columns={columns}
-        rows={data.upcomingGigs}
-        rowKey={(gig) => gig.id}
+        rows={data.upcomingEvents}
+        rowKey={(event) => event.id}
         caption={t('year.upcoming.title')}
         empty={t('year.upcoming.none')}
         className="year-upcoming-table"

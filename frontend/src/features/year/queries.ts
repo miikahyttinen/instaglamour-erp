@@ -5,7 +5,7 @@ import { yearsApi } from '../../api/endpoints';
 export const yearPageKey = (year: number) => [...rootKeys.years, year] as const;
 
 /**
- * GET /api/years/{year} (UC-022). Gig, cost line, hours and budget mutations invalidate it
+ * GET /api/years/{year} (UC-022). Event, cost line, hours and budget mutations invalidate it
  * (api/cache.ts); it is also refetched whenever the page opens (staleTime 0), so changes made
  * by other partners show too.
  */

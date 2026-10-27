@@ -3,9 +3,9 @@ import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } f
 import { useTranslation } from 'react-i18next';
 import { Plus, RotateCcw, Search } from 'lucide-react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
-import type { GigDisplayStatus } from '../../api/enums';
-import { gigsApi } from '../../api/endpoints';
-import type { GigListQuery, GigSummary, Partner, YearGigTotals } from '../../api/types';
+import type { EventDisplayStatus } from '../../api/enums';
+import { eventsApi } from '../../api/endpoints';
+import type { EventListQuery, EventSummary, Partner, YearEventTotals } from '../../api/types';
 import { useSelectedYear } from '../../auth/SignedInContext';
 import { Button } from '../../components/Button';
 import { buttonClass } from '../../components/buttonClass';
@@ -22,18 +22,18 @@ import { PageHead } from '../../components/PageHead';
 import { SectionLabel } from '../../components/SectionLabel';
 import { StatGrid, StatTile } from '../../components/StatTile';
 import { StatusTag } from '../../components/StatusTag';
-import { apiErrorMessage, gigDisplayStatus } from '../../i18n/labels';
+import { apiErrorMessage, eventDisplayStatus } from '../../i18n/labels';
 import { useLang } from '../../i18n/useLang';
 import { formatDate, formatDateRange, formatMoney, formatPercent, todayIso } from '../../lib/format';
 import { useReference } from '../../reference/useReference';
-import { GigStatusTag } from './GigStatusTag';
-import { useApplyGig, useGigList } from './queries';
-import './gigList.css';
+import { EventStatusTag } from './EventStatusTag';
+import { useApplyEvent, useEventList } from './queries';
+import './eventList.css';
 
 /** Order of the status filter values and of the status sort. */
-const GIG_DISPLAY_STATUSES: GigDisplayStatus[] = ['SOLD', 'PLAYED', 'CANCELLED'];
-/** UC-003 AC-1: the list opens with the SOLD gigs (sold + played); cancelled via the Tila filter. */
-const DEFAULT_STATUS_FILTER: GigDisplayStatus[] = ['SOLD', 'PLAYED'];
+const EVENT_DISPLAY_STATUSES: EventDisplayStatus[] = ['SOLD', 'PLAYED', 'CANCELLED'];
+/** UC-003 AC-1: the list opens with the SOLD events (sold + played); cancelled via the Tila filter. */
+const DEFAULT_STATUS_FILTER: EventDisplayStatus[] = ['SOLD', 'PLAYED'];
 /** Default order (UC-003 step 1): by date. */
 const DEFAULT_SORT = { key: 'date', dir: 'asc' } as const;
 
@@ -51,11 +51,11 @@ function partnerName(partners: Partner[] | undefined, id: string): string {
 }
 
 /**
- * Gigs of the selected year (UC-003, UC-025): year summary (unfiltered), search, Excel-style table
+ * Events of the selected year (UC-003, UC-025): year summary (unfiltered), search, Excel-style table
  * with column filters (ExcelTable; filters and sort in the URL, client-side over the year's
- * gigs), Deleted view.
+ * events), Deleted view.
  */
-export function GigListPage() {
+export function EventListPage() {
   const { t } = useTranslation();
   const lang = useLang();
   const year = useSelectedYear();
@@ -96,58 +96,58 @@ export function GigListPage() {
     );
   }, [q, params, setParams]);
 
-  // The column filters are client-side over all of the year's gigs (design.md); only the search
+  // The column filters are client-side over all of the year's events (design.md); only the search
   // goes to the API.
-  const query: GigListQuery = deletedView
+  const query: EventListQuery = deletedView
     ? { year, status: 'ALL', deleted: true, q: q || undefined }
     : { year, status: 'ALL', q: q || undefined };
-  const list = useGigList(query);
-  const applyGig = useApplyGig();
+  const list = useEventList(query);
+  const applyEvent = useApplyEvent();
   const restore = useMutation({
-    mutationFn: (id: string) => gigsApi.restore(id),
-    onSuccess: (gig) => applyGig(gig, gig.id),
+    mutationFn: (id: string) => eventsApi.restore(id),
+    onSuccess: (event) => applyEvent(event, event.id),
   });
   const filtered = Boolean(q);
 
-  const newGigLink = (
-    <Link to="/gigs/new" className={buttonClass({ className: 'gig-new-link' })}>
+  const newEventLink = (
+    <Link to="/events/new" className={buttonClass({ className: 'event-new-link' })}>
       <Plus className="btn-icon" />
-      {t('gigs.newGig')}
+      {t('events.newEvent')}
     </Link>
   );
 
   return (
-    <section className="page gig-list-page">
+    <section className="page event-list-page">
       <PageHead
-        title={t('pages.gigs', { year })}
+        title={t('pages.events', { year })}
         subtitle={list.data ? <YearSubtitle totals={list.data.yearSummary} /> : undefined}
-        actions={newGigLink}
+        actions={newEventLink}
       />
 
-      {deletedNotice && <Notice role="status">{t('gig.notice.deleted')}</Notice>}
+      {deletedNotice && <Notice role="status">{t('event.notice.deleted')}</Notice>}
 
       {list.data && <YearSummary totals={list.data.yearSummary} />}
 
-      <div className="gig-toolbar">
-        <div className="segmented gig-view-switch" role="group" aria-label={t('gigs.viewLabel')}>
+      <div className="event-toolbar">
+        <div className="segmented event-view-switch" role="group" aria-label={t('events.viewLabel')}>
           <button type="button" aria-pressed={!deletedView} onClick={() => setParam('view', null)}>
-            {t('gigs.views.active')}
+            {t('events.views.active')}
           </button>
           <button type="button" aria-pressed={deletedView} onClick={() => setParam('view', 'deleted')}>
-            {t('gigs.views.deleted')}
+            {t('events.views.deleted')}
           </button>
         </div>
 
         {/* The column filters live in the table headers (ExcelTable); the search stays here. */}
-        <div className="gig-search">
-          <label htmlFor="gig-search">{t('gigs.search')}</label>
-          <div className="gig-search-input">
-            <Search className="gig-search-icon" />
+        <div className="event-search">
+          <label htmlFor="event-search">{t('events.search')}</label>
+          <div className="event-search-input">
+            <Search className="event-search-icon" />
             <input
-              id="gig-search"
+              id="event-search"
               type="search"
               value={search}
-              placeholder={t('gigs.searchPlaceholder')}
+              placeholder={t('events.searchPlaceholder')}
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
@@ -161,8 +161,8 @@ export function GigListPage() {
       )}
       {deletedView && restore.isSuccess && (
         <Notice tone="ok" role="status">
-          {t('gigs.restored')}{' '}
-          <Link to={`/gigs/${restore.data.id}`}>
+          {t('events.restored')}{' '}
+          <Link to={`/events/${restore.data.id}`}>
             {restore.data.lineupName} · {restore.data.venue}
           </Link>
         </Notice>
@@ -174,7 +174,7 @@ export function GigListPage() {
         </p>
       )}
       {list.isError && (
-        <Notice tone="danger" role="alert" className="gig-list-error">
+        <Notice tone="danger" role="alert" className="event-list-error">
           {apiErrorMessage(t, list.error)}{' '}
           <Button size="sm" onClick={() => void list.refetch()}>
             {t('app.retry')}
@@ -182,21 +182,21 @@ export function GigListPage() {
         </Notice>
       )}
       {list.data &&
-        (list.data.gigs.length === 0 ? (
-          <div className="gig-empty">
+        (list.data.events.length === 0 ? (
+          <div className="event-empty">
             <p>
               {deletedView
-                ? t('gigs.emptyDeleted', { year })
+                ? t('events.emptyDeleted', { year })
                 : filtered
-                  ? t('gigs.emptyFiltered')
-                  : t('gigs.empty', { year })}
+                  ? t('events.emptyFiltered')
+                  : t('events.empty', { year })}
             </p>
-            {!deletedView && !filtered && newGigLink}
+            {!deletedView && !filtered && newEventLink}
           </div>
         ) : deletedView ? (
-          <DeletedList gigs={list.data.gigs} onRestore={(id) => restore.mutate(id)} pending={restore.isPending} />
+          <DeletedList events={list.data.events} onRestore={(id) => restore.mutate(id)} pending={restore.isPending} />
         ) : (
-          <GigTable gigs={list.data.gigs} partners={reference?.partners} lang={lang} tableState={tableState} />
+          <EventTable events={list.data.events} partners={reference?.partners} lang={lang} tableState={tableState} />
         ))}
     </section>
   );
@@ -209,8 +209,8 @@ export function GigListPage() {
 const ALL_STATUSES_KEY = 'allStatuses';
 
 /**
- * UC-003 AC-1: the list opens with the SOLD gigs (Myyty + Soitettu); "Näytä myös perutut" is now
- * the Tila filter. A URL without a status filter (a plain /gigs link) shows the default status
+ * UC-003 AC-1: the list opens with the SOLD events (Myyty + Soitettu); "Näytä myös perutut" is now
+ * the Tila filter. A URL without a status filter (a plain /events link) shows the default status
  * filter, which is not written to the URL. An explicit choice is always in the URL, so it survives
  * a reload and a shared link (F-008): narrowed values as `f.status=…` as usual, and "every status"
  * ("Valitse kaikki", ticking the rest, "Tyhjennä suodattimet") as the marker `f.allStatuses=1`.
@@ -234,38 +234,38 @@ function useDefaultStatusFilter(state: ExcelTableState): ExcelTableState {
   return { ...state, filters: effective, onFiltersChange: change };
 }
 
-/** Mono line under the page title: gig count and sold gigs sum. */
-function YearSubtitle({ totals }: { totals: YearGigTotals }) {
+/** Mono line under the page title: event count and sold events sum. */
+function YearSubtitle({ totals }: { totals: YearEventTotals }) {
   const { t } = useTranslation();
   const lang = useLang();
   return (
     <>
-      {`${t('gigs.gigCount')} ${totals.gigCount} · ${t('gigs.soldGigsSum')} ${formatMoney(totals.soldGigsSumCents, lang)}`}
+      {`${t('events.eventCount')} ${totals.eventCount} · ${t('events.soldEventsSum')} ${formatMoney(totals.soldEventsSumCents, lang)}`}
     </>
   );
 }
 
-function YearSummary({ totals }: { totals: YearGigTotals }) {
+function YearSummary({ totals }: { totals: YearEventTotals }) {
   const { t } = useTranslation();
   const lang = useLang();
   const items: [string, string][] = [
-    [t('gigs.gigCount'), String(totals.gigCount)],
-    [t('gigs.soldGigsSum'), formatMoney(totals.soldGigsSumCents, lang)],
-    [t('gigs.budgetedCosts'), formatMoney(totals.budgetedCostsCents, lang)],
-    [t('gigs.actualCosts'), formatMoney(totals.actualCostsCents, lang)],
-    [t('gigs.marginBudget'), formatMoney(totals.marginBudgetCents, lang)],
-    [t('gigs.marginActual'), formatMoney(totals.marginActualCents, lang)],
+    [t('events.eventCount'), String(totals.eventCount)],
+    [t('events.soldEventsSum'), formatMoney(totals.soldEventsSumCents, lang)],
+    [t('events.budgetedCosts'), formatMoney(totals.budgetedCostsCents, lang)],
+    [t('events.actualCosts'), formatMoney(totals.actualCostsCents, lang)],
+    [t('events.marginBudget'), formatMoney(totals.marginBudgetCents, lang)],
+    [t('events.marginActual'), formatMoney(totals.marginActualCents, lang)],
   ];
   return (
-    <section className="gig-year-summary" aria-labelledby="gig-year-summary-title">
-      <SectionLabel id="gig-year-summary-title">{t('gigs.summaryTitle')}</SectionLabel>
-      <StatGrid className="gig-stat-grid">
+    <section className="event-year-summary" aria-labelledby="event-year-summary-title">
+      <SectionLabel id="event-year-summary-title">{t('events.summaryTitle')}</SectionLabel>
+      <StatGrid className="event-stat-grid">
         {items.map(([label, value]) => (
           <StatTile key={label} label={label} value={value} />
         ))}
       </StatGrid>
       {totals.cancelledCount > 0 && (
-        <p className="meta gig-cancelled-count">{t('gigs.cancelledCount', { count: totals.cancelledCount })}</p>
+        <p className="meta event-cancelled-count">{t('events.cancelledCount', { count: totals.cancelledCount })}</p>
       )}
     </section>
   );
@@ -273,7 +273,7 @@ function YearSummary({ totals }: { totals: YearGigTotals }) {
 
 const FIRST_UPCOMING = 'is-first-upcoming';
 
-/** Scrolls the first upcoming gig into view once (UC-003 step 1). */
+/** Scrolls the first upcoming event into view once (UC-003 step 1). */
 function useScrollToFirstUpcoming(firstUpcomingId: string | undefined) {
   const containerRef = useRef<HTMLDivElement>(null);
   const scrolled = useRef(false);
@@ -288,8 +288,8 @@ function useScrollToFirstUpcoming(firstUpcomingId: string | undefined) {
   return containerRef;
 }
 
-/** Ties in the gig table (and the order without a sort): start date, then lineup, then venue. */
-function gigTieBreak(a: GigSummary, b: GigSummary): number {
+/** Ties in the event table (and the order without a sort): start date, then lineup, then venue. */
+function eventTieBreak(a: EventSummary, b: EventSummary): number {
   return (
     a.startDate.localeCompare(b.startDate) ||
     a.lineupName.localeCompare(b.lineupName) ||
@@ -297,8 +297,8 @@ function gigTieBreak(a: GigSummary, b: GigSummary): number {
   );
 }
 
-interface GigTableProps {
-  gigs: GigSummary[];
+interface EventTableProps {
+  events: EventSummary[];
   partners: Partner[] | undefined;
   lang: 'fi' | 'en';
   tableState: ExcelTableState;
@@ -309,12 +309,12 @@ interface GigTableProps {
  * `formatDateRange`.
  */
 function TableDateRange({ start, end, lang }: { start: string; end: string | null; lang: 'fi' | 'en' }) {
-  if (!end || end === start) return <span className="gig-date-part">{formatDate(start, lang)}</span>;
+  if (!end || end === start) return <span className="event-date-part">{formatDate(start, lang)}</span>;
   // One wrapper, so a phone card (flex row: label | value) keeps the range together.
   return (
-    <span className="gig-date-range">
-      <span className="gig-date-part">{formatDate(start, lang)}–</span>
-      <span className="gig-date-part">{formatDate(end, lang)}</span>
+    <span className="event-date-range">
+      <span className="event-date-part">{formatDate(start, lang)}–</span>
+      <span className="event-date-part">{formatDate(end, lang)}</span>
     </span>
   );
 }
@@ -325,56 +325,56 @@ function TableDateRange({ start, end, lang }: { start: string; end: string | nul
  * 600 px it fills the width without scrolling sideways; columns with priority 2 / 3 are hidden on
  * narrower tables (TASK-147: 1 lineup, date, venue, status, total, margin · 2 client, seller,
  * staffing · 3 producer, budgeted, actual costs). Phones (< 600 px):
- * one card per gig + the "Suodattimet" sheet. Scrolls the first upcoming visible gig into view.
+ * one card per event + the "Suodattimet" sheet. Scrolls the first upcoming visible event into view.
  */
-function GigTable({ gigs, partners, lang, tableState }: GigTableProps) {
+function EventTable({ events, partners, lang, tableState }: EventTableProps) {
   const { t } = useTranslation();
   const clientNames = useMemo(
-    () => new Map(gigs.filter((g) => g.clientId).map((g) => [g.clientId!, g.clientName ?? '–'])),
-    [gigs],
+    () => new Map(events.filter((g) => g.clientId).map((g) => [g.clientId!, g.clientName ?? '–'])),
+    [events],
   );
-  const statusLabel = (s: GigDisplayStatus) => t(`gigStatus.${s}`);
+  const statusLabel = (s: EventDisplayStatus) => t(`eventStatus.${s}`);
 
-  const columns: ExcelColumn<GigSummary>[] = [
+  const columns: ExcelColumn<EventSummary>[] = [
     {
       key: 'lineup',
-      label: t('gigs.columns.lineup'),
+      label: t('events.columns.lineup'),
       primary: true,
-      className: 'gig-col-lineup',
+      className: 'event-col-lineup',
       sortValue: (g) => g.lineupName,
       filterValue: (g) => g.lineupName,
       cell: (g) => (
-        <Link to={`/gigs/${g.id}`} className="gig-link">
+        <Link to={`/events/${g.id}`} className="event-link">
           {g.lineupName}{' '}
-          {/* The venue has its own column; the link name stays "Lineup · Venue" (unique per gig). */}
+          {/* The venue has its own column; the link name stays "Lineup · Venue" (unique per event). */}
           <span className="visually-hidden">· {g.venue}</span>
         </Link>
       ),
     },
     {
       key: 'date',
-      label: t('gigs.columns.date'),
-      className: 'gig-col-date excel-col-fit',
+      label: t('events.columns.date'),
+      className: 'event-col-date excel-col-fit',
       sortValue: (g) => g.startDate,
       cell: (g) => <TableDateRange start={g.startDate} end={g.endDate} lang={lang} />,
     },
     {
       key: 'venue',
-      label: t('gigs.columns.venue'),
+      label: t('events.columns.venue'),
       sortValue: (g) => g.venue,
       filterValue: (g) => g.venue,
       cell: (g) => g.venue,
     },
     {
       key: 'client',
-      label: t('clients.gigColumn'),
+      label: t('clients.eventColumn'),
       priority: 2,
       sortValue: (g) => g.clientName,
       filterValue: (g) => g.clientId,
       filterLabel: (id) => clientNames.get(id) ?? '–',
       cell: (g) =>
         g.clientId ? (
-          <Link to={`/clients/${g.clientId}`} className="gig-client-link">
+          <Link to={`/clients/${g.clientId}`} className="event-client-link">
             {g.clientName ?? '–'}
           </Link>
         ) : (
@@ -383,29 +383,29 @@ function GigTable({ gigs, partners, lang, tableState }: GigTableProps) {
     },
     {
       key: 'status',
-      label: t('gigs.columns.status'),
+      label: t('events.columns.status'),
       className: 'excel-col-fit',
-      sortValue: (g) => GIG_DISPLAY_STATUSES.indexOf(gigDisplayStatus(g)),
-      filterValue: (g) => gigDisplayStatus(g),
-      filterLabel: (v) => statusLabel(v as GigDisplayStatus),
-      filterCompare: byCodeOrder(GIG_DISPLAY_STATUSES),
-      cell: (g) => <GigStatusTag status={gigDisplayStatus(g)} />,
+      sortValue: (g) => EVENT_DISPLAY_STATUSES.indexOf(eventDisplayStatus(g)),
+      filterValue: (g) => eventDisplayStatus(g),
+      filterLabel: (v) => statusLabel(v as EventDisplayStatus),
+      filterCompare: byCodeOrder(EVENT_DISPLAY_STATUSES),
+      cell: (g) => <EventStatusTag status={eventDisplayStatus(g)} />,
     },
     {
       key: 'staffing',
-      label: t('gigs.notFullyStaffed'),
+      label: t('events.notFullyStaffed'),
       priority: 2,
-      className: 'gig-col-staffing excel-col-fit',
+      className: 'event-col-staffing excel-col-fit',
       sortValue: (g) => (g.notFullyStaffed ? 0 : 1),
       filterValue: (g) => (g.notFullyStaffed ? 'yes' : 'no'),
-      filterLabel: (v) => t(v === 'yes' ? 'gigs.staffingFilter.yes' : 'gigs.staffingFilter.no'),
+      filterLabel: (v) => t(v === 'yes' ? 'events.staffingFilter.yes' : 'events.staffingFilter.no'),
       filterCompare: byCodeOrder(['yes', 'no']),
       cell: (g) =>
-        g.notFullyStaffed ? <StatusTag tone="warn">{t('gigs.notFullyStaffed')}</StatusTag> : <span aria-hidden="true">–</span>,
+        g.notFullyStaffed ? <StatusTag tone="warn">{t('events.notFullyStaffed')}</StatusTag> : <span aria-hidden="true">–</span>,
     },
     {
       key: 'seller',
-      label: t('gigs.seller'),
+      label: t('events.seller'),
       priority: 2,
       sortValue: (g) => partnerName(partners, g.sellerId),
       filterValue: (g) => g.sellerId,
@@ -414,7 +414,7 @@ function GigTable({ gigs, partners, lang, tableState }: GigTableProps) {
     },
     {
       key: 'producer',
-      label: t('gigs.producer'),
+      label: t('events.producer'),
       priority: 3,
       sortValue: (g) => partnerName(partners, g.producerId),
       filterValue: (g) => g.producerId,
@@ -423,15 +423,15 @@ function GigTable({ gigs, partners, lang, tableState }: GigTableProps) {
     },
     {
       key: 'total',
-      label: t('gigs.totalPrice'),
+      label: t('events.totalPrice'),
       numeric: true,
-      className: 'gig-col-total excel-col-fit',
+      className: 'event-col-total excel-col-fit',
       sortValue: (g) => g.totalPriceCents,
       cell: (g) => formatMoney(g.totalPriceCents, lang),
     },
     {
       key: 'budgeted',
-      label: t('gigs.budgetedCosts'),
+      label: t('events.budgetedCosts'),
       className: 'excel-col-fit',
       priority: 3,
       numeric: true,
@@ -440,7 +440,7 @@ function GigTable({ gigs, partners, lang, tableState }: GigTableProps) {
     },
     {
       key: 'actual',
-      label: t('gigs.actualCosts'),
+      label: t('events.actualCosts'),
       className: 'excel-col-fit',
       priority: 3,
       numeric: true,
@@ -449,47 +449,47 @@ function GigTable({ gigs, partners, lang, tableState }: GigTableProps) {
     },
     {
       key: 'margin',
-      label: t('gigs.marginPct'),
+      label: t('events.marginPct'),
       numeric: true,
-      className: 'gig-col-margin',
+      className: 'event-col-margin',
       sortValue: (g) => g.marginBudgetPct,
       // Each percentage stays on one line; on a narrow table the actual one goes under the budget.
       cell: (g) => (
         <span>
-          <span className="gig-margin-budget">{formatPercent(g.marginBudgetPct, lang)}</span>
-          <span className="gig-margin-actual">
+          <span className="event-margin-budget">{formatPercent(g.marginBudgetPct, lang)}</span>
+          <span className="event-margin-actual">
             {' '}
-            {t('gigs.actualShort')} {formatPercent(g.marginActualPct, lang)}
+            {t('events.actualShort')} {formatPercent(g.marginActualPct, lang)}
           </span>
         </span>
       ),
     },
   ];
 
-  // UC-003 step 1: scroll to the first upcoming gig among the rows shown.
+  // UC-003 step 1: scroll to the first upcoming event among the rows shown.
   const today = todayIso();
   const visible = useMemo(
-    () => applyTableState(gigs, columns, tableState, gigTieBreak),
+    () => applyTableState(events, columns, tableState, eventTieBreak),
     // `columns` is rebuilt each render; the rows only depend on the data and the state.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [gigs, tableState.sort, tableState.filters],
+    [events, tableState.sort, tableState.filters],
   );
   const firstUpcomingId = visible.find((g) => g.startDate >= today)?.id;
   const containerRef = useScrollToFirstUpcoming(firstUpcomingId);
 
   return (
-    <div ref={containerRef} className="gig-rows-wrap">
+    <div ref={containerRef} className="event-rows-wrap">
       <ExcelTable
         {...tableState}
-        className="gig-table"
-        caption={t('gigs.listLabel')}
+        className="event-table"
+        caption={t('events.listLabel')}
         columns={columns}
-        rows={gigs}
+        rows={events}
         rowKey={(g) => g.id}
-        tieBreak={gigTieBreak}
-        emptyFiltered={t('gigs.emptyColumnFiltered')}
+        tieBreak={eventTieBreak}
+        emptyFiltered={t('events.emptyColumnFiltered')}
         rowClassName={(g) =>
-          [`status-${gigDisplayStatus(g).toLowerCase()}`, g.id === firstUpcomingId && FIRST_UPCOMING]
+          [`status-${eventDisplayStatus(g).toLowerCase()}`, g.id === firstUpcomingId && FIRST_UPCOMING]
             .filter(Boolean)
             .join(' ')
         }
@@ -499,39 +499,39 @@ function GigTable({ gigs, partners, lang, tableState }: GigTableProps) {
 }
 
 function DeletedList({
-  gigs,
+  events,
   onRestore,
   pending,
 }: {
-  gigs: GigSummary[];
+  events: EventSummary[];
   onRestore: (id: string) => void;
   pending: boolean;
 }) {
   const { t } = useTranslation();
   const lang = useLang();
   return (
-    <ul className="gig-deleted-list" aria-label={t('gigs.views.deleted')}>
-      {gigs.map((gig) => (
-        <li key={gig.id} className="gig-deleted-row">
-          <span className="gig-date">{formatDateRange(gig.startDate, gig.endDate, lang)}</span>
-          <span className="gig-main">
-            <Link to={`/gigs/${gig.id}`} className="gig-link">
-              {gig.lineupName} · {gig.venue}
+    <ul className="event-deleted-list" aria-label={t('events.views.deleted')}>
+      {events.map((event) => (
+        <li key={event.id} className="event-deleted-row">
+          <span className="event-date">{formatDateRange(event.startDate, event.endDate, lang)}</span>
+          <span className="event-main">
+            <Link to={`/events/${event.id}`} className="event-link">
+              {event.lineupName} · {event.venue}
             </Link>
-            <span className="gig-deleted-meta">
-              <GigStatusTag status={gigDisplayStatus(gig)} />
-              <span className="meta">{t('gigs.deletedAt', { date: formatDate(gig.deletedAt, lang) })}</span>
+            <span className="event-deleted-meta">
+              <EventStatusTag status={eventDisplayStatus(event)} />
+              <span className="meta">{t('events.deletedAt', { date: formatDate(event.deletedAt, lang) })}</span>
             </span>
           </span>
           <Button
             size="sm"
             icon={RotateCcw}
-            className="gig-restore"
+            className="event-restore"
             disabled={pending}
-            onClick={() => onRestore(gig.id)}
-            aria-label={`${t('gigs.restore')}: ${gig.lineupName} · ${gig.venue}`}
+            onClick={() => onRestore(event.id)}
+            aria-label={`${t('events.restore')}: ${event.lineupName} · ${event.venue}`}
           >
-            {t('gigs.restore')}
+            {t('events.restore')}
           </Button>
         </li>
       ))}

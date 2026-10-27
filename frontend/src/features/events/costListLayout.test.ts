@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 // jsdom has no layout, so the cost table's responsive rules (design.md → "Full-width, responsive
 // tables everywhere", TASK-149) are guarded on the stylesheet; e2e checks the real widths.
-const css = readFileSync(resolve(process.cwd(), 'src/features/gigs/gigPage.css'), 'utf8').replace(
+const css = readFileSync(resolve(process.cwd(), 'src/features/events/eventPage.css'), 'utf8').replace(
   /\/\*[\s\S]*?\*\//g,
   '',
 );
@@ -24,7 +24,7 @@ function containerBlock(condition: string): string {
 
 describe('cost table layout (TASK-149)', () => {
   it('the list is a size container, so the layout follows its real width (sidebar, full page)', () => {
-    expect(css).toMatch(/\.gig-page \.cost-list \{\s*container: cost-list \/ inline-size;/);
+    expect(css).toMatch(/\.event-page \.cost-list \{\s*container: cost-list \/ inline-size;/);
   });
 
   it('switches to compact rows while the list is narrower than the full table', () => {

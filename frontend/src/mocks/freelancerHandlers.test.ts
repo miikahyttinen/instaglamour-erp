@@ -35,7 +35,7 @@ describe('public freelancer mock', () => {
     fx = seedFreelancerFees();
   });
 
-  it('lists only own fees > 0 on non-deleted SOLD gigs, newest first, with states', async () => {
+  it('lists only own fees > 0 on non-deleted SOLD events, newest first, with states', async () => {
     const res = await getView(fx.token);
     expect(res.status).toBe(200);
     expect(res.headers.get('X-Robots-Tag')).toBe('noindex');
@@ -47,11 +47,11 @@ describe('public freelancer mock', () => {
     expect(view.lines.map((l) => l.state)).toEqual(['UPCOMING', 'SELECTABLE', 'SELECTABLE', 'SELECTABLE', 'PAID']);
     expect(view.lines[4]!.amountCents).toBe(12000);
     expect(Object.keys(view.lines[0]!).sort()).toEqual(
-      ['amountCents', 'costLineId', 'description', 'gigEndDate', 'gigStartDate', 'purchaseOrderNumber', 'state', 'type', 'venue'].sort(),
+      ['amountCents', 'costLineId', 'description', 'eventEndDate', 'eventStartDate', 'purchaseOrderNumber', 'state', 'type', 'venue'].sort(),
     );
   });
 
-  it('creates one PO from several gigs and puts the lines ON_PO; numbers are global', async () => {
+  it('creates one PO from several events and puts the lines ON_PO; numbers are global', async () => {
     const res = await create(fx.token, [fx.lines.played1.id, fx.lines.played2.id]);
     expect(res.status).toBe(201);
     const po = (await res.json()) as PublicPurchaseOrder;

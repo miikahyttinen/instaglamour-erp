@@ -1,5 +1,5 @@
-/* Gig page (UC-004 … UC-013): header, sections, economics, cost table, attachments, history.
-   Tokens only (docs/design.md, Layout v2). Scoped under .gig-page. Phone first.
+/* Event page (UC-004 … UC-013): header, sections, economics, cost table, attachments, history.
+   Tokens only (docs/design.md, Layout v2). Scoped under .event-page. Phone first.
    - Sections: 1 column; 2 columns from 1200 px (the 232 px sidebar leaves ~590 px at 900 px).
    - Basic info / price: Card + FieldList (one label column).
    - Economics: 2 tiles per row, 4 from 1200 px.
@@ -8,10 +8,10 @@
 
 /* ---------- Header ---------- */
 
-.gig-page .gig-back {
+.event-page .event-back {
   margin: 0 0 var(--space-2);
 }
-.gig-page .gig-back a {
+.event-page .event-back a {
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
@@ -23,57 +23,57 @@
   color: var(--label);
   text-decoration: none;
 }
-.gig-page .gig-back a:hover {
+.event-page .event-back a:hover {
   color: var(--text);
 }
-.gig-page .page-title {
+.event-page .page-title {
   overflow-wrap: anywhere;
 }
-.gig-page .page-subtitle {
+.event-page .page-subtitle {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2) var(--space-3);
 }
-.gig-page .gig-header-date {
+.event-page .event-header-date {
   margin: 0;
   font-family: var(--font-mono);
   font-size: var(--fs-small);
   color: var(--text-muted);
 }
-.gig-page .gig-header-tags {
+.event-page .event-header-tags {
   display: inline-flex;
   flex-wrap: wrap;
   gap: var(--space-2);
 }
-.gig-page .gig-actions {
+.event-page .event-actions {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
   margin: 0;
 }
-.gig-page .gig-actions .notice {
+.event-page .event-actions .notice {
   flex: 1 1 100%;
   margin: 0;
 }
 
 /* ---------- Notices (saved / moved / warnings) ---------- */
 
-.gig-page .gig-notice {
+.event-page .event-notice {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-2) var(--space-4);
 }
-.gig-page .gig-notice-text {
+.event-page .event-notice-text {
   flex: 1 1 calc(var(--label-w) * 1.5);
   min-width: 0;
 }
-.gig-page .gig-notice-text > :last-child {
+.event-page .event-notice-text > :last-child {
   margin-bottom: 0;
 }
-.gig-page .gig-notice-actions {
+.event-page .event-notice-actions {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
@@ -81,21 +81,21 @@
 
 /* ---------- Collapsible sections ---------- */
 
-.gig-page .gig-sections {
+.event-page .event-sections {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 0 var(--section-gap);
 }
-.gig-page .gig-section {
+.event-page .event-section {
   min-width: 0;
   padding: 0;
   border-top: var(--hairline) solid var(--border);
 }
 /* The page head already draws the divider above the first section(s). */
-.gig-page .gig-section:first-child {
+.event-page .event-section:first-child {
   border-top: 0;
 }
-.gig-page .gig-section summary {
+.event-page .event-section summary {
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -104,21 +104,21 @@
   cursor: pointer;
   list-style: none;
 }
-.gig-page .gig-section summary::-webkit-details-marker {
+.event-page .event-section summary::-webkit-details-marker {
   display: none;
 }
-.gig-page .gig-section summary::before,
-.gig-page .gig-section[open] summary::before {
+.event-page .event-section summary::before,
+.event-page .event-section[open] summary::before {
   content: none;
 }
-.gig-page .gig-section summary:hover {
+.event-page .event-section summary:hover {
   color: var(--text);
 }
-.gig-page .gig-section summary:focus-visible {
+.event-page .event-section summary:focus-visible {
   outline: var(--hairline) solid var(--accent);
   outline-offset: var(--space-1);
 }
-.gig-page .gig-section summary h2 {
+.event-page .event-section summary h2 {
   margin: 0;
   font-family: var(--font-mono);
   font-size: var(--fs-label);
@@ -128,35 +128,35 @@
   line-height: var(--lh-body);
   color: inherit;
 }
-.gig-page .gig-section-chevron {
+.event-page .event-section-chevron {
   transform: rotate(-90deg);
   transition: transform var(--dur) var(--ease);
 }
 @media (prefers-reduced-motion: reduce) {
-  .gig-page .gig-section-chevron {
+  .event-page .event-section-chevron {
     transition: none;
   }
 }
-.gig-page .gig-section[open] .gig-section-chevron {
+.event-page .event-section[open] .event-section-chevron {
   transform: none;
 }
-.gig-page .gig-section-body {
+.event-page .event-section-body {
   padding: var(--space-2) 0 var(--section-gap);
 }
 
 /* ---------- Basic info / price (Card + FieldList, inline fields, NFR-8) ---------- */
 
 /* Phones: FieldList stacks label above control; the first label starts at the card padding. */
-.gig-page .gig-fields .field-list > :first-child > label {
+.event-page .event-fields .field-list > :first-child > label {
   margin-top: 0;
 }
 /* Seller change hint: under the seller / producer controls (control column from 600 px). */
-.gig-page .gig-fields-note {
+.event-page .event-fields-note {
   margin: 0;
 }
 /* Total price: a FieldList row (label column + value), the value right-aligned like the
    money inputs above it. */
-.gig-page .gig-fields-total {
+.event-page .event-fields-total {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
@@ -167,23 +167,23 @@
   border-top: var(--hairline) solid var(--border);
 }
 @media (min-width: 600px) {
-  .gig-page .gig-fields-note {
+  .event-page .event-fields-note {
     padding-left: calc(var(--field-label-w) + var(--space-4));
   }
-  .gig-page .gig-fields-total {
+  .event-page .event-fields-total {
     display: grid;
     grid-template-columns: var(--field-label-w) minmax(0, 1fr);
     column-gap: var(--space-4);
   }
 }
-.gig-page .gig-fields-total-label {
+.event-page .event-fields-total-label {
   font-family: var(--font-mono);
   font-size: var(--fs-label);
   letter-spacing: var(--ls-label);
   text-transform: uppercase;
   color: var(--label);
 }
-.gig-page .gig-fields-total-value {
+.event-page .event-fields-total-value {
   text-align: right;
   font-size: var(--fs-lg);
   font-weight: var(--fw-bold);
@@ -191,7 +191,7 @@
 }
 
 /* Action dialogs */
-.gig-page .gig-dialog-intro {
+.event-page .event-dialog-intro {
   color: var(--text-muted);
 }
 
@@ -199,70 +199,70 @@
 
 /* 12-column StatGrid: 2 tiles per row (phone too), 4 from 1200 px. The section body already
    ends with --section-gap. */
-.gig-page .gig-econ-grid {
+.event-page .event-econ-grid {
   margin-bottom: 0;
 }
-.gig-page .gig-econ-grid > * {
+.event-page .event-econ-grid > * {
   --span: 6;
   --span-lg: 3;
 }
-.gig-page .gig-econ-grid .stat-tile-secondary {
+.event-page .event-econ-grid .stat-tile-secondary {
   flex-wrap: wrap;
 }
 
 /* ---------- Cost table ---------- */
 
 /* The table's layout follows the width it actually gets (sidebar expanded or collapsed). */
-.gig-page .cost-list {
+.event-page .cost-list {
   container: cost-list / inline-size;
 }
 
-.gig-page .cost-staffing {
+.event-page .cost-staffing {
   margin: 0 0 var(--space-3);
 }
-.gig-page .cost-table .cost-type-name {
+.event-page .cost-table .cost-type-name {
   font-weight: var(--fw-bold);
 }
-.gig-page .cost-table .cost-type-description {
+.event-page .cost-table .cost-type-description {
   font-weight: var(--fw-regular);
   color: var(--text-muted);
 }
 /* Inline description under the type name (NFR-8). */
-.gig-page .cost-table .cost-description {
+.event-page .cost-table .cost-description {
   margin-top: var(--space-1);
   min-width: var(--label-w);
   font-weight: var(--fw-regular);
 }
-.gig-page .cost-table td.cost-budget .inline-field {
+.event-page .cost-table td.cost-budget .inline-field {
   min-width: calc(var(--label-w) - var(--space-6));
 }
 /* Paid line: inline actual amount + who / when. */
-.gig-page .cost-table .cost-paid-edit {
+.event-page .cost-table .cost-paid-edit {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
   min-width: calc(var(--label-w) - var(--space-5));
 }
-.gig-page .cost-table .cost-paid-edit .inline-numeric input {
+.event-page .cost-table .cost-paid-edit .inline-numeric input {
   color: var(--ok-fg);
 }
-.gig-page .cost-table td.cost-person .inline-field {
+.event-page .cost-table td.cost-person .inline-field {
   min-width: var(--label-w);
 }
 /* PersonSelect "new person" mode: name input + its actions. */
-.gig-page .person-create {
+.event-page .person-create {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
 }
-.gig-page .cost-table td.cost-person .person-create {
+.event-page .cost-table td.cost-person .person-create {
   min-width: calc(var(--label-w) + var(--space-6));
   margin-top: var(--space-1);
 }
-.gig-page .cost-table td.cost-person .inline-actions {
+.event-page .cost-table td.cost-person .inline-actions {
   margin-top: 0;
 }
-.gig-page .cost-table .paid-info {
+.event-page .cost-table .paid-info {
   display: inline-flex;
   align-items: flex-start;
   gap: var(--space-1);
@@ -271,80 +271,80 @@
   text-align: left;
 }
 /* Icon centred on the first text line. */
-.gig-page .cost-table .paid-icon {
+.event-page .cost-table .paid-icon {
   flex: 0 0 auto;
   margin-top: calc((1lh - var(--icon)) / 2);
 }
-.gig-page .cost-hint {
+.event-page .cost-hint {
   font-size: var(--fs-small);
   color: var(--text-muted);
 }
 /* BR-118: "PO <number>" tag next to the type, linking to the purchase order. */
-.gig-page .cost-table .cost-po-tag {
+.event-page .cost-table .cost-po-tag {
   margin-left: var(--space-2);
   white-space: nowrap;
   text-decoration: none;
   vertical-align: middle;
 }
-.gig-page .cost-table .cost-po-tag:hover {
+.event-page .cost-table .cost-po-tag:hover {
   text-decoration: underline;
 }
-.gig-page .cost-table .cost-po-hint {
+.event-page .cost-table .cost-po-hint {
   display: inline-block;
   white-space: nowrap;
   hyphens: none;
 }
-.gig-page .cost-actions-inner {
+.event-page .cost-actions-inner {
   display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: var(--space-2);
 }
-.gig-page .cost-remove:hover:not(:disabled) {
+.event-page .cost-remove:hover:not(:disabled) {
   color: var(--danger-fg);
   border-color: var(--danger-border);
 }
-.gig-page .cost-table tr.cost-extra-row td,
-.gig-page .cost-table tbody tr.cost-extra-row:hover td {
+.event-page .cost-table tr.cost-extra-row td,
+.event-page .cost-table tbody tr.cost-extra-row:hover td {
   height: auto;
   background: var(--surface-2);
 }
 
 /* Pay form in the row under a line */
-.gig-page .cost-inline-form {
+.event-page .cost-inline-form {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
   gap: var(--space-2) var(--space-4);
 }
-.gig-page .cost-inline-form .field {
+.event-page .cost-inline-form .field {
   flex: 0 1 calc(var(--label-w) + var(--space-7));
   min-width: 0;
 }
-.gig-page .cost-inline-form .form-row {
+.event-page .cost-inline-form .form-row {
   flex: 1 1 calc(var(--label-w) * 2 + var(--space-7));
 }
-.gig-page .cost-inline-form label {
+.event-page .cost-inline-form label {
   margin-top: 0;
 }
-.gig-page .cost-inline-form .inline-actions {
+.event-page .cost-inline-form .inline-actions {
   margin-top: 0;
 }
 
-.gig-page .cost-totals {
+.event-page .cost-totals {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: var(--space-3) var(--space-6);
   margin: var(--space-4) 0;
 }
-.gig-page .cost-totals > div {
+.event-page .cost-totals > div {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
   gap: var(--space-1);
 }
-.gig-page .cost-totals dt {
+.event-page .cost-totals dt {
   font-family: var(--font-mono);
   font-weight: var(--fw-medium);
   font-size: var(--fs-meta);
@@ -352,16 +352,16 @@
   text-transform: uppercase;
   color: var(--label);
 }
-.gig-page .cost-totals dd {
+.event-page .cost-totals dd {
   margin: 0;
   font-size: var(--fs-lg);
   font-weight: var(--fw-bold);
   font-variant-numeric: tabular-nums;
 }
-.gig-page .cost-add-form {
+.event-page .cost-add-form {
   margin-top: var(--space-3);
 }
-.gig-page .cost-add-title {
+.event-page .cost-add-title {
   margin: 0;
   font-family: var(--font-mono);
   font-size: var(--fs-label);
@@ -373,74 +373,74 @@
 
 /* Phone: each line is a card (shared .data-table-cards); load-in and actions get full rows. */
 @media (max-width: 599px) {
-  .gig-page .cost-table td.cost-loadin.is-empty {
+  .event-page .cost-table td.cost-loadin.is-empty {
     display: none;
   }
-  .gig-page .cost-table td.cost-person {
+  .event-page .cost-table td.cost-person {
     align-items: center;
   }
-  .gig-page .cost-table td.cost-person {
+  .event-page .cost-table td.cost-person {
     flex-wrap: wrap;
   }
-  .gig-page .cost-table td.cost-person > .inline-field,
-  .gig-page .cost-table td.cost-budget > .inline-field {
+  .event-page .cost-table td.cost-person > .inline-field,
+  .event-page .cost-table td.cost-budget > .inline-field {
     flex: 1 1 auto;
     min-width: 0;
     max-width: 70%;
   }
-  .gig-page .cost-table td.cost-person > .person-create {
+  .event-page .cost-table td.cost-person > .person-create {
     flex: 1 1 100%;
     min-width: 0;
   }
-  .gig-page .cost-table td.cost-budget {
+  .event-page .cost-table td.cost-budget {
     align-items: center;
   }
-  .gig-page .cost-table td.cost-paid {
+  .event-page .cost-table td.cost-paid {
     align-items: center;
   }
-  .gig-page .cost-table .cost-paid-edit {
+  .event-page .cost-table .cost-paid-edit {
     align-items: flex-end;
     min-width: 0;
     max-width: 70%;
   }
-  .gig-page .cost-table td.cost-loadin,
-  .gig-page .cost-table td.cost-actions {
+  .event-page .cost-table td.cost-loadin,
+  .event-page .cost-table td.cost-actions {
     display: block;
     text-align: left;
   }
-  .gig-page .cost-actions-inner {
+  .event-page .cost-actions-inner {
     justify-content: flex-start;
     flex-wrap: wrap;
     padding: var(--space-2) 0 var(--space-1);
     border-top: var(--hairline) solid var(--border);
   }
-  .gig-page .cost-table td.cost-actions:empty {
+  .event-page .cost-table td.cost-actions:empty {
     display: none;
   }
-  .gig-page .cost-table tbody tr:has(+ .cost-extra-row) {
+  .event-page .cost-table tbody tr:has(+ .cost-extra-row) {
     margin-bottom: 0;
     border-bottom-left-radius: 0;
     border-bottom-right-radius: 0;
   }
-  .gig-page .cost-table tr.cost-extra-row {
+  .event-page .cost-table tr.cost-extra-row {
     border-top: 0;
     border-top-left-radius: 0;
     border-top-right-radius: 0;
     background: var(--surface-2);
   }
-  .gig-page .cost-table tr.cost-extra-row td {
+  .event-page .cost-table tr.cost-extra-row td {
     display: block;
     text-align: left;
   }
-  .gig-page .cost-inline-form .field,
-  .gig-page .cost-inline-form .form-row {
+  .event-page .cost-inline-form .field,
+  .event-page .cost-inline-form .form-row {
     flex: 1 1 100%;
   }
-  .gig-page .cost-totals {
+  .event-page .cost-totals {
     flex-direction: column;
     gap: var(--space-2);
   }
-  .gig-page .cost-totals > div {
+  .event-page .cost-totals > div {
     flex-direction: row;
     align-items: baseline;
     justify-content: space-between;
@@ -450,18 +450,18 @@
 /* ≥ 600 px: real table; the switch's text label is the column header (kept for screen readers). */
 @media (min-width: 600px) {
   /* One <tbody> per line: keep the hairline between lines. */
-  .gig-page .cost-table tbody:not(:last-of-type) tr:last-child td {
+  .event-page .cost-table tbody:not(:last-of-type) tr:last-child td {
     border-bottom: var(--hairline) solid var(--border);
   }
-  .gig-page .cost-table thead th.cost-col-loadin {
+  .event-page .cost-table thead th.cost-col-loadin {
     white-space: normal;
     width: calc(var(--space-7) * 2);
   }
-  .gig-page .cost-table td.cost-actions {
+  .event-page .cost-table td.cost-actions {
     width: 1%;
     white-space: nowrap;
   }
-  .gig-page .cost-table .cost-loadin-switch .inline-switch > span {
+  .event-page .cost-table .cost-loadin-switch .inline-switch > span {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -476,18 +476,18 @@
    a 1920 px screen; the actual amount stays next to its paid-by line under the "Actual" header. */
 @media (min-width: 600px) {
   @container cost-list (min-width: 1120px) {
-    .gig-page .cost-table .cost-description {
+    .event-page .cost-table .cost-description {
       max-width: calc(var(--label-w) * 2);
     }
-    .gig-page .cost-table td.cost-person .inline-field,
-    .gig-page .cost-table td.cost-person .person-create {
+    .event-page .cost-table td.cost-person .inline-field,
+    .event-page .cost-table td.cost-person .person-create {
       max-width: calc(var(--label-w) * 1.5);
     }
-    .gig-page .cost-table td.cost-budget .inline-field {
+    .event-page .cost-table td.cost-budget .inline-field {
       max-width: var(--label-w);
       margin-left: auto;
     }
-    .gig-page .cost-table .cost-paid-edit {
+    .event-page .cost-table .cost-paid-edit {
       max-width: calc(var(--label-w) * 1.25);
     }
   }
@@ -499,21 +499,21 @@
    labels, then the load-in switch (musician lines). */
 @media (min-width: 600px) {
   @container cost-list (max-width: 1119px) {
-    .gig-page .cost-table,
-    .gig-page .cost-table tbody {
+    .event-page .cost-table,
+    .event-page .cost-table tbody {
       display: block;
     }
-    .gig-page .cost-table thead {
+    .event-page .cost-table thead {
       position: absolute;
       width: 1px;
       height: 1px;
       overflow: hidden;
       clip: rect(0 0 0 0);
     }
-    .gig-page .cost-table tbody:not(:last-of-type) {
+    .event-page .cost-table tbody:not(:last-of-type) {
       border-bottom: var(--hairline) solid var(--border);
     }
-    .gig-page .cost-table tbody tr:not(.cost-extra-row) {
+    .event-page .cost-table tbody tr:not(.cost-extra-row) {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
       grid-template-areas:
@@ -523,43 +523,43 @@
       gap: var(--space-2) var(--space-4);
       padding: var(--cell-pad-y) var(--cell-pad-x);
     }
-    .gig-page .cost-table tbody tr:hover td {
+    .event-page .cost-table tbody tr:hover td {
       background: transparent;
     }
-    .gig-page .cost-table td,
-    .gig-page .cost-table tbody:not(:last-of-type) tr:last-child td {
+    .event-page .cost-table td,
+    .event-page .cost-table tbody:not(:last-of-type) tr:last-child td {
       height: auto;
       padding: 0;
       border: 0;
     }
-    .gig-page .cost-table td.cost-type {
+    .event-page .cost-table td.cost-type {
       grid-area: type;
       align-self: center;
     }
-    .gig-page .cost-table td.cost-person {
+    .event-page .cost-table td.cost-person {
       grid-area: person;
     }
     /* Musician lines only: a third row under the person. */
-    .gig-page .cost-table td.cost-loadin {
+    .event-page .cost-table td.cost-loadin {
       grid-row: 3;
       grid-column: 1;
     }
-    .gig-page .cost-table td.cost-loadin.is-empty {
+    .event-page .cost-table td.cost-loadin.is-empty {
       display: none;
     }
-    .gig-page .cost-table td.cost-budget {
+    .event-page .cost-table td.cost-budget {
       grid-area: budget;
     }
-    .gig-page .cost-table td.cost-paid {
+    .event-page .cost-table td.cost-paid {
       grid-area: paid;
     }
-    .gig-page .cost-table td.cost-actions {
+    .event-page .cost-table td.cost-actions {
       grid-area: actions;
       width: auto;
       align-self: center;
     }
     /* Column header text moves into each cell (same label style as the table head). */
-    .gig-page .cost-table td[data-label]::before {
+    .event-page .cost-table td[data-label]::before {
       content: attr(data-label);
       display: block;
       margin-bottom: var(--space-1);
@@ -571,25 +571,25 @@
       white-space: nowrap;
     }
     /* Inline values need room for their hover / focus outline on the left. */
-    .gig-page .cost-table .cost-description,
-    .gig-page .cost-table td.cost-person .inline-field,
-    .gig-page .cost-table td.cost-budget .inline-field,
-    .gig-page .cost-table .cost-paid-edit,
-    .gig-page .cost-table td.cost-person .person-create {
+    .event-page .cost-table .cost-description,
+    .event-page .cost-table td.cost-person .inline-field,
+    .event-page .cost-table td.cost-budget .inline-field,
+    .event-page .cost-table .cost-paid-edit,
+    .event-page .cost-table td.cost-person .person-create {
       min-width: 0;
     }
-    .gig-page .cost-table .cost-description {
+    .event-page .cost-table .cost-description {
       max-width: calc(var(--label-w) * 2);
     }
     /* Label row + control row, so tags and switches centre on the inputs' row. */
-    .gig-page .cost-table td.cost-paid {
+    .event-page .cost-table td.cost-paid {
       display: grid;
       grid-template-rows: auto minmax(var(--control-h), auto);
       align-items: center;
       justify-items: start;
     }
     /* Load-in: the switch's own text becomes the small label above the switch. */
-    .gig-page .cost-table .cost-loadin-switch .inline-switch {
+    .event-page .cost-table .cost-loadin-switch .inline-switch {
       display: grid;
       grid-template-rows: auto var(--control-h);
       align-items: center;
@@ -597,10 +597,10 @@
       gap: 0;
       min-height: 0;
     }
-    .gig-page .cost-table .cost-loadin-switch .inline-switch input {
+    .event-page .cost-table .cost-loadin-switch .inline-switch input {
       grid-row: 2;
     }
-    .gig-page .cost-table .cost-loadin-switch .inline-switch > span {
+    .event-page .cost-table .cost-loadin-switch .inline-switch > span {
       position: static;
       width: auto;
       height: auto;
@@ -615,10 +615,10 @@
       color: var(--label);
       white-space: nowrap;
     }
-    .gig-page .cost-table tr.cost-extra-row {
+    .event-page .cost-table tr.cost-extra-row {
       display: block;
     }
-    .gig-page .cost-table tr.cost-extra-row td {
+    .event-page .cost-table tr.cost-extra-row td {
       display: block;
       padding: var(--cell-pad-y) var(--cell-pad-x);
       border-top: var(--hairline) solid var(--border);
@@ -628,7 +628,7 @@
 
 /* ---------- Attachments ---------- */
 
-.gig-page .attachment-list {
+.event-page .attachment-list {
   display: block;
   list-style: none;
   margin: 0 0 var(--space-4);
@@ -637,7 +637,7 @@
   border: var(--hairline) solid var(--border);
   border-radius: var(--radius);
 }
-.gig-page .attachment {
+.event-page .attachment {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
@@ -646,69 +646,69 @@
   min-height: var(--row-h);
   border-bottom: var(--hairline) solid var(--border);
 }
-.gig-page .attachment:last-child {
+.event-page .attachment:last-child {
   border-bottom: 0;
 }
-.gig-page .attachment-icon {
+.event-page .attachment-icon {
   color: var(--label);
 }
-.gig-page .attachment-text {
+.event-page .attachment-text {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
   min-width: 0;
 }
-.gig-page .attachment-name {
+.event-page .attachment-name {
   font-weight: var(--fw-medium);
   overflow-wrap: anywhere;
   text-decoration-color: transparent;
 }
-.gig-page .attachment-name:hover {
+.event-page .attachment-name:hover {
   text-decoration-color: var(--accent);
 }
-.gig-page .attachment-remove:hover:not(:disabled) {
+.event-page .attachment-remove:hover:not(:disabled) {
   color: var(--danger-fg);
   border-color: var(--danger-border);
 }
-.gig-page .attachment-upload-actions {
+.event-page .attachment-upload-actions {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
 }
-.gig-page .attachment-allowed {
+.event-page .attachment-allowed {
   margin-top: var(--space-2);
 }
 
 /* ---------- History ---------- */
 
-.gig-page .history-filter {
+.event-page .history-filter {
   max-width: calc(var(--label-w) * 2);
   margin-bottom: var(--space-3);
 }
-.gig-page .history-filter label {
+.event-page .history-filter label {
   margin-top: 0;
 }
-.gig-page .history-list {
+.event-page .history-list {
   list-style: none;
   margin: 0;
   padding: 0;
   border-top: var(--hairline) solid var(--border);
 }
-.gig-page .history-item {
+.event-page .history-item {
   padding: var(--space-3) 0;
   border-bottom: var(--hairline) solid var(--border);
 }
-.gig-page .history-title {
+.event-page .history-title {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
   justify-content: space-between;
   gap: var(--space-1) var(--space-3);
 }
-.gig-page .history-event {
+.event-page .history-event {
   font-weight: var(--fw-bold);
 }
-.gig-page .history-line {
+.event-page .history-line {
   margin: var(--space-1) 0 0;
   font-size: var(--fs-small);
   color: var(--text-muted);
@@ -719,26 +719,26 @@
 
 /* From 1200 px only: at 900–1199 px the expanded sidebar leaves too little room for two columns. */
 @media (min-width: 1200px) {
-  .gig-page .gig-sections {
+  .event-page .event-sections {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     align-items: start;
   }
-  .gig-page .gig-section-wide {
+  .event-page .event-section-wide {
     grid-column: 1 / -1;
   }
-  .gig-page .gig-section:nth-child(2) {
+  .event-page .event-section:nth-child(2) {
     border-top: 0;
   }
 }
 
 /* "From offer: <event>" (UC-031): one quiet line under the page head. */
-.gig-page .gig-offer-link {
+.event-page .event-offer-link {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
   margin: 0 0 var(--space-5);
 }
-.gig-page .gig-offer-link svg {
+.event-page .event-offer-link svg {
   color: var(--label);
 }

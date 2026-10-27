@@ -17,13 +17,13 @@ export function offerTieBreak(a: OfferSummary, b: OfferSummary): number {
 }
 
 /**
- * BR-109: an offer can be converted to a gig only when it is accepted (disposition WON), its
- * event date is today or later (local date) and it has no gig yet. The server checks the same
+ * BR-109: an offer can be converted to an event only when it is accepted (disposition WON), its
+ * event date is today or later (local date) and it has no event yet. The server checks the same
  * (409 OFFER_NOT_CONVERTIBLE / ALREADY_CONVERTED).
  */
 export function canConvertOffer(
-  offer: Pick<OfferSummary, 'status' | 'eventDate' | 'gigId'>,
+  offer: Pick<OfferSummary, 'status' | 'eventDate' | 'eventId'>,
   today: string = todayIso(),
 ): boolean {
-  return offer.status === 'ACCEPTED' && offer.gigId === null && offer.eventDate >= today;
+  return offer.status === 'ACCEPTED' && offer.eventId === null && offer.eventDate >= today;
 }

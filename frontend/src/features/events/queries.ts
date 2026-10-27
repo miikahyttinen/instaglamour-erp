@@ -1,33 +1,33 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback } from 'react';
 import { invalidateYearData, rootKeys } from '../../api/cache';
-import { gigsApi, peopleApi } from '../../api/endpoints';
-import type { GigDetail, GigListQuery, Id, Person } from '../../api/types';
+import { eventsApi, peopleApi } from '../../api/endpoints';
+import type { EventDetail, EventListQuery, Id, Person } from '../../api/types';
 
-export const gigKeys = {
-  all: ['gigs'] as const,
-  lists: rootKeys.gigLists,
-  list: (query: GigListQuery) => [...rootKeys.gigLists, query] as const,
-  detail: (id: Id) => ['gigs', 'detail', id] as const,
-  history: (id: Id) => ['gigs', 'history', id] as const,
+export const eventKeys = {
+  all: ['events'] as const,
+  lists: rootKeys.eventLists,
+  list: (query: EventListQuery) => [...rootKeys.eventLists, query] as const,
+  detail: (id: Id) => ['events', 'detail', id] as const,
+  history: (id: Id) => ['events', 'history', id] as const,
 };
 
 export const peopleKey = ['people', 'all'] as const;
 
-export function useGigList(query: GigListQuery) {
+export function useEventList(query: EventListQuery) {
   return useQuery({
-    queryKey: gigKeys.list(query),
-    queryFn: () => gigsApi.list(query),
+    queryKey: eventKeys.list(query),
+    queryFn: () => eventsApi.list(query),
     placeholderData: (previous) => previous,
   });
 }
 
-export function useGig(id: Id) {
-  return useQuery({ queryKey: gigKeys.detail(id), queryFn: () => gigsApi.get(id) });
+export function useEvent(id: Id) {
+  return useQuery({ queryKey: eventKeys.detail(id), queryFn: () => eventsApi.get(id) });
 }
 
-export function useGigHistory(id: Id) {
-  return useQuery({ queryKey: gigKeys.history(id), queryFn: () => gigsApi.history(id) });
+export function useEventHistory(id: Id) {
+  return useQuery({ queryKey: eventKeys.history(id), queryFn: () => eventsApi.history(id) });
 }
 
 /** All people (active and inactive), so names on old lines resolve; pickers offer active ones. */
@@ -41,17 +41,17 @@ export function personName(people: Person[] | undefined, id: Id | null): string 
 }
 
 /**
- * After any gig mutation: put the returned gig in the cache (or refetch it when the response
- * has no gig) and refresh its history, the gig lists, person cost lines and the year page.
+ * After any event mutation: put the returned event in the cache (or refetch it when the response
+ * has no event) and refresh its history, the event lists, person cost lines and the year page.
  */
-export function useApplyGig() {
+export function useApplyEvent() {
   const queryClient = useQueryClient();
   return useCallback(
-    (gig: GigDetail | null, gigId: Id) => {
-      if (gig) queryClient.setQueryData(gigKeys.detail(gig.id), gig);
-      else void queryClient.invalidateQueries({ queryKey: gigKeys.detail(gigId) });
-      void queryClient.invalidateQueries({ queryKey: gigKeys.history(gigId) });
-      void invalidateYearData(queryClient, 'gigs');
+    (event: EventDetail | null, eventId: Id) => {
+      if (event) queryClient.setQueryData(eventKeys.detail(event.id), event);
+      else void queryClient.invalidateQueries({ queryKey: eventKeys.detail(eventId) });
+      void queryClient.invalidateQueries({ queryKey: eventKeys.history(eventId) });
+      void invalidateYearData(queryClient, 'events');
     },
     [queryClient],
   );

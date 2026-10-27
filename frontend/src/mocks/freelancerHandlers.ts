@@ -1,7 +1,7 @@
 // Mock handlers for docs/api-contract.md → Purchase orders: the public freelancer page
 // (`/api/public/freelancers/{token}`, no session, UC-033) and the person page link
 // (`/api/people/{id}/freelancer-link`, signed in, UC-034 A4). State: db.freelancer
-// (freelancerStore.ts) over the gig store's cost lines. Rate limiting (429) is not simulated;
+// (freelancerStore.ts) over the event store's cost lines. Rate limiting (429) is not simulated;
 // tests override a handler for it. Synthetic data only (BR-090).
 import { http, HttpResponse } from 'msw';
 import type { ApiErrorBody, FreelancerLink, Id } from '../api/types';
@@ -30,7 +30,7 @@ const isActivePartner = (personId: Id) => db.partners.some((p) => p.personId ===
 
 /** The person behind a public token; unknown, inactive or active partner → undefined (404). */
 function publicPerson(token: string) {
-  const person = personByToken(db.freelancer, db.gigs, token);
+  const person = personByToken(db.freelancer, db.events, token);
   return person && !isActivePartner(person.id) ? person : undefined;
 }
 
@@ -48,7 +48,7 @@ export const freelancerHandlers = [
   http.get('/api/public/freelancers/:token', ({ params }) => {
     const person = publicPerson(String(params.token));
     if (!person) return notFound();
-    return HttpResponse.json(freelancerView(db.freelancer, db.gigs, person), { headers: NOINDEX });
+    return HttpResponse.json(freelancerView(db.freelancer, db.events, person), { headers: NOINDEX });
   }),
 
   http.post('/api/public/freelancers/:token/purchase-orders', async ({ params, request }) => {
@@ -57,7 +57,7 @@ export const freelancerHandlers = [
     if (!ids) return validationError({ costLineIds: 'INVALID_VALUE' });
     const person = publicPerson(String(params.token));
     if (!person) return notFound();
-    const result = createPurchaseOrder(db.freelancer, db.gigs, person, ids);
+    const result = createPurchaseOrder(db.freelancer, db.events, person, ids);
     if (!result.ok) {
       const error: ApiErrorBody = {
         error: {
@@ -73,7 +73,7 @@ export const freelancerHandlers = [
 
   http.get('/api/people/:id/freelancer-link', ({ params }) => {
     if (!currentPartner()) return unauthenticated();
-    const person = db.gigs.people.find((p) => p.id === params.id);
+    const person = db.events.people.find((p) => p.id === params.id);
     if (!person) return notFound();
     if (isActivePartner(person.id)) return personIsPartner();
     return HttpResponse.json(linkBody(freelancerToken(db.freelancer, person.id)));
@@ -81,7 +81,7 @@ export const freelancerHandlers = [
 
   http.post('/api/people/:id/freelancer-link/regenerate', ({ params }) => {
     if (!currentPartner()) return unauthenticated();
-    const person = db.gigs.people.find((p) => p.id === params.id);
+    const person = db.events.people.find((p) => p.id === params.id);
     if (!person) return notFound();
     if (isActivePartner(person.id)) return personIsPartner();
     return HttpResponse.json(linkBody(regenerateFreelancerToken(db.freelancer, person.id)));

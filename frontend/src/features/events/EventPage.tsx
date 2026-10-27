@@ -2,24 +2,24 @@ import { ChevronDown, ChevronLeft } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
-import type { GigDetail, GigUpdateResponse, Person, Warning } from '../../api/types';
+import type { EventDetail, EventUpdateResponse, Person, Warning } from '../../api/types';
 import { Button } from '../../components/Button';
 import { Notice as NoticeBox } from '../../components/Notice';
 import { PageHead } from '../../components/PageHead';
 import { StatGrid, StatTile } from '../../components/StatTile';
 import { StatusTag } from '../../components/StatusTag';
-import { apiErrorMessage, costTypeLabel, gigDisplayStatus } from '../../i18n/labels';
+import { apiErrorMessage, costTypeLabel, eventDisplayStatus } from '../../i18n/labels';
 import { useLang } from '../../i18n/useLang';
 import { formatDate, formatDateRange, formatMoney, formatPercent } from '../../lib/format';
 import { Attachments } from './Attachments';
 import { CostList } from './CostList';
-import { GigActions } from './GigActions';
-import { GigBasicFields, GigPriceFields } from './GigInfoFields';
-import { GigDeletedTag, GigStatusTag } from './GigStatusTag';
-import { GigOfferLink } from './GigOfferLink';
+import { EventActions } from './EventActions';
+import { EventBasicFields, EventPriceFields } from './EventInfoFields';
+import { EventDeletedTag, EventStatusTag } from './EventStatusTag';
+import { EventOfferLink } from './EventOfferLink';
 import { History } from './History';
-import { personName, useGig, usePeople } from './queries';
-import './gigPage.css';
+import { personName, useEvent, usePeople } from './queries';
+import './eventPage.css';
 
 type Notice =
   | { kind: 'saved'; movedLines: string[] }
@@ -28,12 +28,12 @@ type Notice =
 
 function Section({ title, wide, children }: { title: string; wide?: boolean; children: ReactNode }) {
   return (
-    <details className={`gig-section${wide ? ' gig-section-wide' : ''}`} open>
+    <details className={`event-section${wide ? ' event-section-wide' : ''}`} open>
       <summary>
-        <ChevronDown className="gig-section-chevron" />
+        <ChevronDown className="event-section-chevron" />
         <h2>{title}</h2>
       </summary>
-      <div className="gig-section-body">{children}</div>
+      <div className="event-section-body">{children}</div>
     </details>
   );
 }
@@ -41,14 +41,14 @@ function Section({ title, wide, children }: { title: string; wide?: boolean; chi
 /** Which Sales / Production lines moved to another person after a seller/producer change. */
 function movedLineTexts(
   t: ReturnType<typeof useTranslation>['t'],
-  result: GigUpdateResponse,
-  before: GigDetail,
+  result: EventUpdateResponse,
+  before: EventDetail,
   people: Person[] | undefined,
 ): string[] {
   return result.movedCostLineIds.map((id) => {
-    const after = result.gig.costLines.find((l) => l.id === id);
+    const after = result.event.costLines.find((l) => l.id === id);
     const old = before.costLines.find((l) => l.id === id);
-    return t('gig.movedLine', {
+    return t('event.movedLine', {
       type: after ? costTypeLabel(t, after.type) : '–',
       from: personName(people, old?.personId ?? null) ?? '–',
       to: personName(people, after?.personId ?? null) ?? '–',
@@ -56,48 +56,48 @@ function movedLineTexts(
   });
 }
 
-/** Everything about one gig on one page (UC-004). */
-export function GigPage() {
+/** Everything about one event on one page (UC-004). */
+export function EventPage() {
   const { id = '' } = useParams();
   const { t } = useTranslation();
-  const gigQuery = useGig(id);
+  const eventQuery = useEvent(id);
   const { data: people } = usePeople();
   const [notice, setNotice] = useState<Notice | null>(null);
   const [warnings, setWarnings] = useState<Warning[]>([]);
 
-  if (gigQuery.isPending) {
+  if (eventQuery.isPending) {
     return (
       <section className="page">
         <p role="status">{t('app.loading')}</p>
       </section>
     );
   }
-  if (gigQuery.isError) {
+  if (eventQuery.isError) {
     return (
-      <section className="page gig-page">
+      <section className="page event-page">
         <BackLink />
         <NoticeBox tone="danger" role="alert">
-          <p>{apiErrorMessage(t, gigQuery.error)}</p>
+          <p>{apiErrorMessage(t, eventQuery.error)}</p>
         </NoticeBox>
       </section>
     );
   }
-  const gig = gigQuery.data;
-  const readOnly = gig.deletedAt !== null;
+  const event = eventQuery.data;
+  const readOnly = event.deletedAt !== null;
 
   // Each field shows its own saved state; the page notice only names moved lines (BR-027).
-  const onPartnerSaved = (result: GigUpdateResponse, before: GigDetail) => {
+  const onPartnerSaved = (result: EventUpdateResponse, before: EventDetail) => {
     const movedLines = movedLineTexts(t, result, before, people);
     if (movedLines.length > 0) setNotice({ kind: 'saved', movedLines });
   };
 
   return (
-    <section className="page gig-page">
-      <GigHeader
-        gig={gig}
+    <section className="page event-page">
+      <EventHeader
+        event={event}
         actions={
-          <GigActions
-            gig={gig}
+          <EventActions
+            event={event}
             onMoved={(w) => {
               setWarnings(w);
               setNotice({ kind: 'moved' });
@@ -109,25 +109,25 @@ export function GigPage() {
         }
       />
 
-      {gig.offerId && <GigOfferLink offerId={gig.offerId} />}
+      {event.offerId && <EventOfferLink offerId={event.offerId} />}
 
       {readOnly && (
         <NoticeBox tone="danger" role="note">
-          <p>{t('gig.deletedBanner')}</p>
+          <p>{t('event.deletedBanner')}</p>
         </NoticeBox>
       )}
 
       {notice && (
-        <NoticeBox tone={notice.kind === 'cancelled' ? 'warn' : 'ok'} role="status" className="gig-notice">
-          <div className="gig-notice-text">
+        <NoticeBox tone={notice.kind === 'cancelled' ? 'warn' : 'ok'} role="status" className="event-notice">
+          <div className="event-notice-text">
             {notice.kind === 'cancelled' ? (
-              <p>{t('gig.cancelledReminder')}</p>
+              <p>{t('event.cancelledReminder')}</p>
             ) : notice.kind === 'saved' ? (
               <>
-                <p>{t('gig.saved')}</p>
+                <p>{t('event.saved')}</p>
                 {notice.movedLines.length > 0 && (
                   <>
-                    <p>{t('gig.movedLines')}</p>
+                    <p>{t('event.movedLines')}</p>
                     <ul>
                       {notice.movedLines.map((text) => (
                         <li key={text}>{text}</li>
@@ -137,10 +137,10 @@ export function GigPage() {
                 )}
               </>
             ) : (
-              <p>{t(`gig.notice.${notice.kind}`)}</p>
+              <p>{t(`event.notice.${notice.kind}`)}</p>
             )}
           </div>
-          <div className="gig-notice-actions">
+          <div className="event-notice-actions">
             <Button size="sm" onClick={() => setNotice(null)}>
               {t('common.dismiss')}
             </Button>
@@ -150,29 +150,29 @@ export function GigPage() {
 
       <WarningList warnings={warnings} people={people} onDismiss={() => setWarnings([])} />
 
-      <div className="gig-sections">
-        <Section title={t('gig.sections.basic')}>
-          <GigBasicFields gig={gig} readOnly={readOnly} onPartnerSaved={onPartnerSaved} />
+      <div className="event-sections">
+        <Section title={t('event.sections.basic')}>
+          <EventBasicFields event={event} readOnly={readOnly} onPartnerSaved={onPartnerSaved} />
         </Section>
 
-        <Section title={t('gig.sections.price')}>
-          <GigPriceFields gig={gig} readOnly={readOnly} />
+        <Section title={t('event.sections.price')}>
+          <EventPriceFields event={event} readOnly={readOnly} />
         </Section>
 
-        <Section title={t('gig.sections.economics')} wide>
-          <Economics gig={gig} />
+        <Section title={t('event.sections.economics')} wide>
+          <Economics event={event} />
         </Section>
 
-        <Section title={t('gig.sections.costs')} wide>
-          <CostList gig={gig} people={people} readOnly={readOnly} onWarnings={setWarnings} />
+        <Section title={t('event.sections.costs')} wide>
+          <CostList event={event} people={people} readOnly={readOnly} onWarnings={setWarnings} />
         </Section>
 
-        <Section title={t('gig.sections.attachments')}>
-          <Attachments gig={gig} readOnly={readOnly} />
+        <Section title={t('event.sections.attachments')}>
+          <Attachments event={event} readOnly={readOnly} />
         </Section>
 
-        <Section title={t('gig.sections.history')}>
-          <History gigId={gig.id} people={people} />
+        <Section title={t('event.sections.history')}>
+          <History eventId={event.id} people={people} />
         </Section>
       </div>
     </section>
@@ -182,30 +182,30 @@ export function GigPage() {
 function BackLink() {
   const { t } = useTranslation();
   return (
-    <p className="gig-back">
-      <Link to="/gigs">
+    <p className="event-back">
+      <Link to="/events">
         <ChevronLeft />
-        {t('gig.back')}
+        {t('event.back')}
       </Link>
     </p>
   );
 }
 
-function GigHeader({ gig, actions }: { gig: GigDetail; actions: ReactNode }) {
+function EventHeader({ event, actions }: { event: EventDetail; actions: ReactNode }) {
   const { t } = useTranslation();
   const lang = useLang();
-  const status = gigDisplayStatus(gig);
+  const status = eventDisplayStatus(event);
   return (
     <PageHead
-      title={`${gig.lineupName} · ${gig.venue}`}
+      title={`${event.lineupName} · ${event.venue}`}
       subtitle={
         <>
-          <span className="gig-header-date">{formatDateRange(gig.startDate, gig.endDate, lang)}</span>
-          <span className="gig-header-tags">
-            <GigStatusTag status={status} />
-            {gig.deletedAt !== null && <GigDeletedTag />}
-            {gig.notFullyStaffed && gig.deletedAt === null && (
-              <StatusTag tone="warn">{t('gigs.notFullyStaffed')}</StatusTag>
+          <span className="event-header-date">{formatDateRange(event.startDate, event.endDate, lang)}</span>
+          <span className="event-header-tags">
+            <EventStatusTag status={status} />
+            {event.deletedAt !== null && <EventDeletedTag />}
+            {event.notFullyStaffed && event.deletedAt === null && (
+              <StatusTag tone="warn">{t('events.notFullyStaffed')}</StatusTag>
             )}
           </span>
         </>
@@ -230,20 +230,20 @@ function WarningList({
   const lang = useLang();
   if (warnings.length === 0) return null;
   return (
-    <NoticeBox tone="warn" role="alert" className="gig-notice">
-      <div className="gig-notice-text">
+    <NoticeBox tone="warn" role="alert" className="event-notice">
+      <div className="event-notice-text">
       <p>
-        <strong>{t('gig.warningsTitle')}</strong>
+        <strong>{t('event.warningsTitle')}</strong>
       </p>
       <ul>
         {warnings.map((w, i) =>
           w.code === 'PERSON_DOUBLE_BOOKED' ? (
-            <li key={`${w.personId}-${w.otherGigId}`}>
-              {t('gig.doubleBooked', {
+            <li key={`${w.personId}-${w.otherEventId}`}>
+              {t('event.doubleBooked', {
                 person: personName(people, w.personId) ?? '–',
-                date: formatDate(w.otherGigStartDate, lang),
+                date: formatDate(w.otherEventStartDate, lang),
               })}{' '}
-              <Link to={`/gigs/${w.otherGigId}`}>{w.otherGigLineupName}</Link>
+              <Link to={`/events/${w.otherEventId}`}>{w.otherEventLineupName}</Link>
             </li>
           ) : (
             <li key={i}>{t(`warnings.${w.code}`)}</li>
@@ -251,7 +251,7 @@ function WarningList({
         )}
       </ul>
       </div>
-      <div className="gig-notice-actions">
+      <div className="event-notice-actions">
         <Button size="sm" onClick={onDismiss}>
           {t('common.dismiss')}
         </Button>
@@ -260,27 +260,27 @@ function WarningList({
   );
 }
 
-function Economics({ gig }: { gig: GigDetail }) {
+function Economics({ event }: { event: EventDetail }) {
   const { t } = useTranslation();
   const lang = useLang();
   const pair = (label: string, budget: string, actual: string) => (
     <StatTile
       label={label}
       value={budget}
-      caption={t('gig.budget')}
+      caption={t('event.budget')}
       secondaryValue={actual}
-      secondaryCaption={t('gig.actual')}
+      secondaryCaption={t('event.actual')}
     />
   );
   return (
-    <StatGrid className="gig-econ-grid">
-      <StatTile label={t('gigs.totalPrice')} value={formatMoney(gig.totalPriceCents, lang)} />
-      {pair(t('gig.costs'), formatMoney(gig.budgetedCostsCents, lang), formatMoney(gig.actualCostsCents, lang))}
-      {pair(t('gig.margin'), formatMoney(gig.marginBudgetCents, lang), formatMoney(gig.marginActualCents, lang))}
+    <StatGrid className="event-econ-grid">
+      <StatTile label={t('events.totalPrice')} value={formatMoney(event.totalPriceCents, lang)} />
+      {pair(t('event.costs'), formatMoney(event.budgetedCostsCents, lang), formatMoney(event.actualCostsCents, lang))}
+      {pair(t('event.margin'), formatMoney(event.marginBudgetCents, lang), formatMoney(event.marginActualCents, lang))}
       {pair(
-        t('gigs.marginPct'),
-        formatPercent(gig.marginBudgetPct, lang),
-        formatPercent(gig.marginActualPct, lang),
+        t('events.marginPct'),
+        formatPercent(event.marginBudgetPct, lang),
+        formatPercent(event.marginActualPct, lang),
       )}
     </StatGrid>
   );

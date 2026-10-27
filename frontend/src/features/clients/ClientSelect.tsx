@@ -104,7 +104,7 @@ interface Props {
   'aria-describedby'?: string;
 }
 
-/** Client picker for forms (new gig): "–", clients, "New client…" (creates and selects it). */
+/** Client picker for forms (new event): "–", clients, "New client…" (creates and selects it). */
 export function ClientSelect({ value, onChange, ...rest }: Props) {
   const { t } = useTranslation();
   const clients = useClientList();
@@ -145,7 +145,7 @@ export function ClientSelect({ value, onChange, ...rest }: Props) {
 
 interface InlineProps {
   label: string;
-  /** Saved client of the gig. */
+  /** Saved client of the event. */
   value: Id | null;
   /** Name of the saved client (shown even if the client is no longer listed). */
   currentName: string | null;
@@ -155,7 +155,7 @@ interface InlineProps {
 }
 
 /**
- * Inline client picker for the gig page (NFR-8): saves on change. Built on `useInlineSave` +
+ * Inline client picker for the event page (NFR-8): saves on change. Built on `useInlineSave` +
  * `InlineFieldFrame` because "New client…" opens a name input; the new client is then saved.
  * Inside a `FieldList` the name input lines up with the control column.
  */

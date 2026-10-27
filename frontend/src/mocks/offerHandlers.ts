@@ -1,10 +1,10 @@
 // Mock handlers for docs/api-contract.md → Offers (UC-028, UC-029, UC-031; BR-102…BR-106).
-// Business logic lives in offerStore.ts; converting creates the gig in the gig store.
+// Business logic lives in offerStore.ts; converting creates the event in the event store.
 import { http, HttpResponse } from 'msw';
 import type { FieldCode } from '../api/enums';
 import { OFFER_DISPOSITIONS, OFFER_EVENT_TYPES, OFFER_SOURCES, OFFER_STATUS_FILTERS } from '../api/enums';
 import type {
-  GigCreate,
+  EventCreate,
   OfferConvertResponse,
   OfferCreate,
   OfferListResponse,
@@ -12,11 +12,11 @@ import type {
 } from '../api/types';
 import { todayIso } from '../lib/format';
 import { db } from './data';
-import { parseGigCreate } from './gigHandlers';
-import { createGig, nowTs, toDetail, type NewGigInput } from './gigStore';
+import { parseEventCreate } from './eventHandlers';
+import { createEvent, nowTs, toDetail, type NewEventInput } from './eventStore';
 import {
   createOffer,
-  gigInputFromOffer,
+  eventInputFromOffer,
   logOfferEvent,
   markConverted,
   offerStats,
@@ -35,12 +35,12 @@ const STRING_MAX = 500;
 const TEXT_MAX = 5000;
 type Fields = Record<string, FieldCode>;
 
-const ctx = () => ({ clients: db.gigs.clients, partners: db.partners, references: db.references });
+const ctx = () => ({ clients: db.events.clients, partners: db.partners, references: db.references });
 const findOffer = (id: unknown): MockOffer | undefined => db.offers.offers.find((o) => o.id === id);
 const notFound = () => errorResponse(404, 'NOT_FOUND', 'Offer not found');
 /** Deleted offers are read-only: only GET, history and restore work. */
 const isDeleted = () => errorResponse(409, 'INVALID_STATUS_TRANSITION', 'Offer is deleted');
-const alreadyConverted = () => errorResponse(409, 'ALREADY_CONVERTED', 'Offer already has a gig');
+const alreadyConverted = () => errorResponse(409, 'ALREADY_CONVERTED', 'Offer already has an event');
 /** BR-109: only ACCEPTED offers with event date today or later (checked after ALREADY_CONVERTED). */
 const notConvertible = (offer: MockOffer) =>
   statusOf(offer.disposition) !== 'ACCEPTED' || offer.eventDate < todayIso()
@@ -95,7 +95,7 @@ function parseOfferBody(body: Partial<OfferUpdate>, create: boolean): { patch: O
   if (body.clientId !== undefined || create) {
     const id = body.clientId;
     if (id === undefined || id === null || id === '') fields.clientId = 'REQUIRED';
-    else if (!db.gigs.clients.some((c) => c.id === id && c.deletedAt === null)) fields.clientId = 'UNKNOWN_REFERENCE';
+    else if (!db.events.clients.some((c) => c.id === id && c.deletedAt === null)) fields.clientId = 'UNKNOWN_REFERENCE';
     else patch.clientId = id;
   }
   requiredString('eventName');
@@ -247,33 +247,33 @@ export const offerHandlers = [
     return detail(offer);
   }),
 
-  http.get('/api/offers/:id/gig-draft', ({ params }) => {
+  http.get('/api/offers/:id/event-draft', ({ params }) => {
     const me = currentPartner();
     if (!me) return unauthenticated();
     const offer = findOffer(params.id);
     if (!offer) return notFound();
     if (offer.deletedAt) return isDeleted();
-    if (offer.gigId) return alreadyConverted();
+    if (offer.eventId) return alreadyConverted();
     const blocked = notConvertible(offer);
     if (blocked) return blocked;
-    const draft: GigCreate = gigInputFromOffer(offer, { isActive: isActivePartner, callerId: me.id });
+    const draft: EventCreate = eventInputFromOffer(offer, { isActive: isActivePartner, callerId: me.id });
     // A deleted client can't be linked (UC-027): the draft leaves it empty.
-    if (!db.gigs.clients.some((c) => c.id === draft.clientId && c.deletedAt === null)) draft.clientId = null;
+    if (!db.events.clients.some((c) => c.id === draft.clientId && c.deletedAt === null)) draft.clientId = null;
     return HttpResponse.json(draft);
   }),
 
-  // Optional GigCreate body (2026-10-20): validated like POST /api/gigs; no body → BR-105 defaults.
+  // Optional EventCreate body (2026-10-20): validated like POST /api/events; no body → BR-105 defaults.
   http.post('/api/offers/:id/convert', async ({ params, request }) => {
     const me = currentPartner();
     if (!me) return unauthenticated();
     const offer = findOffer(params.id);
     if (!offer) return notFound();
     if (offer.deletedAt) return isDeleted();
-    if (offer.gigId) return alreadyConverted();
+    if (offer.eventId) return alreadyConverted();
     const blocked = notConvertible(offer);
     if (blocked) return blocked;
     const text = await request.text();
-    let input: NewGigInput = gigInputFromOffer(offer);
+    let input: NewEventInput = eventInputFromOffer(offer);
     if (text.trim() !== '') {
       let body: unknown;
       try {
@@ -281,22 +281,22 @@ export const offerHandlers = [
       } catch {
         body = null;
       }
-      const parsed = parseGigCreate(
-        typeof body === 'object' && body !== null ? (body as Partial<GigCreate>) : {},
+      const parsed = parseEventCreate(
+        typeof body === 'object' && body !== null ? (body as Partial<EventCreate>) : {},
       );
       if (parsed.fields) return validationError(parsed.fields);
       input = parsed.input;
     }
-    const gig = createGig(db.gigs, input, me.id, {
+    const event = createEvent(db.events, input, me.id, {
       templates: db.reference.lineupTemplates,
       settings: db.reference.settings,
       partners: db.partners,
     });
-    gig.offerId = offer.id;
-    markConverted(db.offers, offer, gig.id, me.id);
+    event.offerId = offer.id;
+    markConverted(db.offers, offer, event.id, me.id);
     const body: OfferConvertResponse = {
       offer: toOfferDetail(db.offers, offer, ctx()),
-      gig: toDetail(db.gigs, gig),
+      event: toDetail(db.events, event),
     };
     return HttpResponse.json(body, { status: 201 });
   }),

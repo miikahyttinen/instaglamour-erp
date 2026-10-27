@@ -1,7 +1,7 @@
 import type { TFunction } from 'i18next';
-import type { CostType, GigEventType, Language } from '../../api/enums';
-import type { ClientListItem, DateRange, FieldChange, GigEvent, Partner, Person } from '../../api/types';
-import { costTypeLabel, gigEventTypeLabel } from '../../i18n/labels';
+import type { CostType, EventHistoryType, Language } from '../../api/enums';
+import type { ClientListItem, DateRange, FieldChange, EventHistoryEntry, Partner, Person } from '../../api/types';
+import { costTypeLabel, eventHistoryTypeLabel } from '../../i18n/labels';
 import { formatDateRange, formatMoney } from '../../lib/format';
 
 export interface HistoryContext {
@@ -14,15 +14,15 @@ export interface HistoryContext {
 export type HistoryFilter = 'all' | 'status' | 'details' | 'costs' | 'attachments';
 export const HISTORY_FILTERS: HistoryFilter[] = ['all', 'status', 'details', 'costs', 'attachments'];
 
-const FILTER_TYPES: Record<Exclude<HistoryFilter, 'all'>, GigEventType[]> = {
+const FILTER_TYPES: Record<Exclude<HistoryFilter, 'all'>, EventHistoryType[]> = {
   status: ['CREATED', 'MOVED', 'CANCELLED', 'UNCANCELLED', 'DELETED', 'RESTORED'],
   details: ['UPDATED'],
   costs: ['COST_ADDED', 'COST_UPDATED', 'COST_REMOVED', 'COST_PAID', 'COST_UNPAID'],
   attachments: ['ATTACHMENT_ADDED', 'ATTACHMENT_REMOVED'],
 };
 
-export function matchesFilter(event: GigEvent, filter: HistoryFilter): boolean {
-  return filter === 'all' || FILTER_TYPES[filter].includes(event.type);
+export function matchesFilter(entry: EventHistoryEntry, filter: HistoryFilter): boolean {
+  return filter === 'all' || FILTER_TYPES[filter].includes(entry.type);
 }
 
 const MONEY_FIELDS = new Set([
@@ -59,7 +59,7 @@ export function formatValue(
     return ctx.people?.find((p) => p.id === value)?.name ?? '–';
   }
   if (field === 'technicalSetup' || field === 'logistics') {
-    // Older events may hold a list of codes (multi-choice technicalSetup before 2026-10-05).
+    // Older entries may hold a list of codes (multi-choice technicalSetup before 2026-10-05).
     const codes = (Array.isArray(value) ? value : [value]).map(String);
     if (codes.length === 0) return '–';
     const label = (code: string) =>
@@ -91,72 +91,72 @@ function changeLines(
 
 const range = (r: DateRange, lang: Language) => formatDateRange(r.startDate, r.endDate, lang);
 
-/** Title + detail lines for one history event, in the user's language (UC-013). */
-export function describeEvent(
+/** Title + detail lines for one history entry, in the user's language (UC-013). */
+export function describeEntry(
   t: TFunction,
   lang: Language,
-  event: GigEvent,
+  entry: EventHistoryEntry,
   ctx: HistoryContext,
 ): { title: string; lines: string[] } {
-  const title = gigEventTypeLabel(t, event.type);
+  const title = eventHistoryTypeLabel(t, entry.type);
   const lines: string[] = [];
   const type = (code: CostType) => costTypeLabel(t, code);
-  switch (event.type) {
+  switch (entry.type) {
     case 'UPDATED':
-      lines.push(...changeLines(t, lang, event.details.changes, ctx));
-      if (event.details.movedCostLineIds.length > 0) {
-        lines.push(t('history.movedLines', { count: event.details.movedCostLineIds.length }));
+      lines.push(...changeLines(t, lang, entry.details.changes, ctx));
+      if (entry.details.movedCostLineIds.length > 0) {
+        lines.push(t('history.movedLines', { count: entry.details.movedCostLineIds.length }));
       }
       break;
     case 'MOVED':
       lines.push(
-        t('history.moved', { from: range(event.details.from, lang), to: range(event.details.to, lang) }),
+        t('history.moved', { from: range(entry.details.from, lang), to: range(entry.details.to, lang) }),
       );
       break;
     case 'COST_ADDED':
     case 'COST_REMOVED':
       lines.push(
         t('history.costLine', {
-          type: type(event.details.type),
-          person: formatValue(t, lang, 'personId', event.details.personId, ctx),
-          amount: formatMoney(event.details.budgetedCents, lang),
+          type: type(entry.details.type),
+          person: formatValue(t, lang, 'personId', entry.details.personId, ctx),
+          amount: formatMoney(entry.details.budgetedCents, lang),
         }),
       );
       break;
     case 'COST_UPDATED':
       lines.push(
-        `${type(event.details.type)}: ${changeLines(t, lang, event.details.changes, ctx).join('; ')}`,
+        `${type(entry.details.type)}: ${changeLines(t, lang, entry.details.changes, ctx).join('; ')}`,
       );
       break;
     case 'COST_PAID':
       lines.push(
         t('history.paid', {
-          type: type(event.details.type),
-          amount: formatMoney(event.details.actualCents, lang),
+          type: type(entry.details.type),
+          amount: formatMoney(entry.details.actualCents, lang),
         }),
       );
-      if (event.details.purchaseOrderNumber) {
-        lines.push(t('purchaseOrders.historyNumber', { number: event.details.purchaseOrderNumber }));
+      if (entry.details.purchaseOrderNumber) {
+        lines.push(t('purchaseOrders.historyNumber', { number: entry.details.purchaseOrderNumber }));
       }
       break;
     case 'COST_UNPAID':
       lines.push(
         t('history.unpaid', {
-          type: type(event.details.type),
-          amount: formatMoney(event.details.previousActualCents, lang),
+          type: type(entry.details.type),
+          amount: formatMoney(entry.details.previousActualCents, lang),
         }),
       );
-      if (event.details.purchaseOrderNumber) {
-        lines.push(t('purchaseOrders.historyNumber', { number: event.details.purchaseOrderNumber }));
+      if (entry.details.purchaseOrderNumber) {
+        lines.push(t('purchaseOrders.historyNumber', { number: entry.details.purchaseOrderNumber }));
       }
       break;
     case 'ATTACHMENT_ADDED':
     case 'ATTACHMENT_REMOVED':
-      lines.push(event.details.filename);
+      lines.push(entry.details.filename);
       break;
     default:
       break;
   }
-  if (event.reason) lines.push(t('history.reason', { reason: event.reason }));
+  if (entry.reason) lines.push(t('history.reason', { reason: entry.reason }));
   return { title, lines };
 }

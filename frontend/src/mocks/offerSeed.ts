@@ -2,8 +2,8 @@
 // Most dates are in the current year so the default offer list shows something; the two demo
 // public links keep fixed dates (their tests check the weekday).
 import type { Partner } from '../api/types';
-import { CLIENT_IDS } from './gigSeed';
-import { nowTs, type GigState } from './gigStore';
+import { CLIENT_IDS } from './eventSeed';
+import { nowTs, type EventState } from './eventStore';
 import { createOffer, logOfferEvent, markConverted, type OfferState } from './offerStore';
 
 /** Full demo offer: references, seller phone. Open `/o/<this>` with `npm run dev:mock`. */
@@ -30,7 +30,7 @@ export function emptyOfferState(partners: Partner[]): OfferState {
   };
 }
 
-export function seedOffers(gigs: GigState, partners: Partner[], year = new Date().getFullYear()): OfferState {
+export function seedOffers(events: EventState, partners: Partner[], year = new Date().getFullYear()): OfferState {
   const state = emptyOfferState(partners);
   const [a, b, c] = partners;
   if (!a || !b || !c) return state;
@@ -147,14 +147,14 @@ export function seedOffers(gigs: GigState, partners: Partner[], year = new Date(
       priceCents: 200000,
       source: 'EMAIL',
       eventType: 'PRIVATE',
-      // Won, not converted yet: shows "Muuta keikaksi" in dev:mock (BR-109).
+      // Won, not converted yet: shows "Muuta tapahtumaksi" in dev:mock (BR-109).
       disposition: 'WON',
     },
     a.id,
   );
 
-  // Won and converted: linked to the seeded Client A gig at Venue Z (gigSeed.ts).
-  const gig = gigs.gigs.find((g) => g.clientId === CLIENT_IDS.a && g.venue === 'Venue Z');
+  // Won and converted: linked to the seeded Client An event at Venue Z (eventSeed.ts).
+  const event = events.events.find((g) => g.clientId === CLIENT_IDS.a && g.venue === 'Venue Z');
   const won = createOffer(
     state,
     {
@@ -162,17 +162,17 @@ export function seedOffers(gigs: GigState, partners: Partner[], year = new Date(
       id: seedId(7),
       clientId: CLIENT_IDS.a,
       eventName: 'Autumn Event U',
-      eventDate: gig?.startDate ?? `${year}-11-20`,
+      eventDate: event?.startDate ?? `${year}-11-20`,
       venue: 'Venue Z',
-      priceCents: gig?.priceCents ?? 300000,
+      priceCents: event?.priceCents ?? 300000,
       source: 'WEBSITE',
       eventType: 'CORPORATE',
     },
     a.id,
   );
-  if (gig) {
-    markConverted(state, won, gig.id, a.id);
-    gig.offerId = won.id;
+  if (event) {
+    markConverted(state, won, event.id, a.id);
+    event.offerId = won.id;
   }
 
   // In the Deleted view.

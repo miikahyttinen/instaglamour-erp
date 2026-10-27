@@ -31,10 +31,10 @@ export interface CostLinePurchaseOrder {
 
 export interface PurchaseOrderLine {
   costLineId: Id;
-  gigId: Id;
-  gigStartDate: IsoDate;
-  gigVenue: string;
-  gigLineupName: string;
+  eventId: Id;
+  eventStartDate: IsoDate;
+  eventVenue: string;
+  eventLineupName: string;
   type: CostType;
   description: string | null;
   /** Snapshot taken when the PO was created. */
@@ -103,8 +103,8 @@ export interface FreelancerLink {
 
 export interface FreelancerLine {
   costLineId: Id;
-  gigStartDate: IsoDate;
-  gigEndDate: IsoDate | null;
+  eventStartDate: IsoDate;
+  eventEndDate: IsoDate | null;
   venue: string;
   type: CostType;
   description: string | null;
@@ -115,7 +115,7 @@ export interface FreelancerLine {
 }
 
 export interface PublicPurchaseOrderLine {
-  gigStartDate: IsoDate;
+  eventStartDate: IsoDate;
   venue: string;
   type: CostType;
   description: string | null;
@@ -132,7 +132,7 @@ export interface PublicPurchaseOrder {
   lines: PublicPurchaseOrderLine[];
 }
 
-/** `GET /api/public/freelancers/{token}`: lines newest gig first, POs newest first (incl. cancelled). */
+/** `GET /api/public/freelancers/{token}`: lines newest event first, POs newest first (incl. cancelled). */
 export interface FreelancerView {
   name: string;
   lines: FreelancerLine[];

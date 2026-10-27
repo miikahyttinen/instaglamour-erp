@@ -8,11 +8,11 @@ import { useCallback } from 'react';
 export const rootKeys = {
   /** Year page: ['years', year] (UC-022). */
   years: ['years'],
-  /** Gig lists: ['gigs', 'list', query]. */
-  gigLists: ['gigs', 'list'],
+  /** Event lists: ['events', 'list', query]. */
+  eventLists: ['events', 'list'],
   /** Cost lines on the person page: ['people', 'cost-lines', id, year]. */
   personCostLines: ['people', 'cost-lines'],
-  /** Client list and client pages: ['clients', …] (gig counts and linked gigs, UC-027). */
+  /** Client list and client pages: ['clients', …] (event counts and linked events, UC-027). */
   clients: ['clients'],
   /** Offer lists, offer pages and offer history: ['offers', …] (UC-028). */
   offers: ['offers'],
@@ -25,12 +25,12 @@ export const rootKeys = {
 } as const satisfies Record<string, QueryKey>;
 
 /** What a mutation changed; decides which lists are refetched besides the year page. */
-export type YearDataChange = 'gigs' | 'hours' | 'budget';
+export type YearDataChange = 'events' | 'hours' | 'budget';
 
 const affectedLists: Record<YearDataChange, readonly QueryKey[]> = {
-  // Gig and cost line changes: gig lists, person cost lines, clients (their gig lists) and
-  // offers (a deleted converted gig still links from its offer).
-  gigs: [rootKeys.gigLists, rootKeys.personCostLines, rootKeys.clients, rootKeys.offers],
+  // Event and cost line changes: event lists, person cost lines, clients (their event lists) and
+  // offers (a deleted converted event still links from its offer).
+  events: [rootKeys.eventLists, rootKeys.personCostLines, rootKeys.clients, rootKeys.offers],
   hours: [rootKeys.hours],
   budget: [rootKeys.budget],
 };
@@ -42,7 +42,7 @@ export function invalidateYearData(queryClient: QueryClient, change: YearDataCha
   ).then(() => undefined);
 }
 
-/** Hook form of `invalidateYearData`: use after every gig, cost line, hours or budget mutation. */
+/** Hook form of `invalidateYearData`: use after every event, cost line, hours or budget mutation. */
 export function useInvalidateYearData() {
   const queryClient = useQueryClient();
   return useCallback((change: YearDataChange) => invalidateYearData(queryClient, change), [queryClient]);

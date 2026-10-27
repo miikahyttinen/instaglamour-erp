@@ -33,7 +33,7 @@ describe('/styleguide (dev only)', () => {
       ]) {
         expect(p.getByRole('heading', { level: 2, name: section })).toBeInTheDocument();
       }
-      expect(p.getByRole('table', { name: 'Demo gigs' })).toBeInTheDocument();
+      expect(p.getByRole('table', { name: 'Demo events' })).toBeInTheDocument();
       expect(p.getByRole('table', { name: 'Demo Excel table' })).toBeInTheDocument();
       // Every inline component.
       expect(p.getByRole('textbox', { name: 'InlineText · venue' })).toBeInTheDocument();
@@ -63,14 +63,14 @@ describe('/styleguide (dev only)', () => {
     ]);
 
     // Sorting and the dialog work.
-    const table = screen.getByRole('table', { name: 'Demo gigs' });
+    const table = screen.getByRole('table', { name: 'Demo events' });
     await user.click(within(table).getByRole('button', { name: 'Price' }));
     expect(within(table).getByRole('columnheader', { name: 'Price' })).toHaveAttribute(
       'aria-sort',
       'ascending',
     );
     await user.click(screen.getByRole('button', { name: 'Open dialog' }));
-    expect(screen.getByRole('dialog', { name: 'Delete gig' })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: 'Delete event' })).toBeInTheDocument();
   });
 
   it('interactive rail collapses, and the drawer demo opens and closes', async () => {
@@ -79,7 +79,7 @@ describe('/styleguide (dev only)', () => {
     const single = container.querySelector<HTMLElement>('.sg-shell-single')!;
     await user.click(within(single).getByRole('button', { name: 'Pienennä valikko' }));
     expect(single).toHaveClass('is-collapsed');
-    expect(within(single).getByRole('link', { name: 'Keikat' })).toHaveAttribute('data-tooltip', 'Keikat');
+    expect(within(single).getByRole('link', { name: 'Tapahtumat' })).toHaveAttribute('data-tooltip', 'Tapahtumat');
 
     await user.click(screen.getByRole('button', { name: 'Open drawer (phone)' }));
     const drawer = screen.getByRole('dialog', { name: 'Päävalikko' });

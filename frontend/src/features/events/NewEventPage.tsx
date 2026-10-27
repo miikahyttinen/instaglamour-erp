@@ -4,8 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { ArrowLeft } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import type { FieldCode, Logistics, TechnicalSetup } from '../../api/enums';
-import { gigsApi } from '../../api/endpoints';
-import type { GigCreate } from '../../api/types';
+import { eventsApi } from '../../api/endpoints';
+import type { EventCreate } from '../../api/types';
 import { useSignedInPartner } from '../../auth/SignedInContext';
 import { Button } from '../../components/Button';
 import { buttonClass } from '../../components/buttonClass';
@@ -20,9 +20,9 @@ import { parseMoneyField } from '../../lib/moneyField';
 import { partnerOptions } from '../../reference/partners';
 import { useReference } from '../../reference/useReference';
 import { ClientSelect } from '../clients/ClientSelect';
-import { NONE_LABEL, useLogisticsOptions, useTechnicalSetupOptions } from './gigOptions';
-import { useApplyGig } from './queries';
-import './newGig.css';
+import { NONE_LABEL, useLogisticsOptions, useTechnicalSetupOptions } from './eventOptions';
+import { useApplyEvent } from './queries';
+import './newEvent.css';
 
 const CUSTOM = 'custom';
 
@@ -64,15 +64,15 @@ const FIELD_TO_CONTROL: Record<string, keyof FormState> = {
 };
 
 /**
- * New gig (UC-002). Seller and producer default to the signed-in partner; only active partners
+ * New event (UC-002). Seller and producer default to the signed-in partner; only active partners
  * are offered (BR-111).
  */
-export function NewGigPage() {
+export function NewEventPage() {
   const { t } = useTranslation();
   const lang = useLang();
   const me = useSignedInPartner();
   const navigate = useNavigate();
-  const applyGig = useApplyGig();
+  const applyEvent = useApplyEvent();
   const { data: reference } = useReference();
   const [form, setForm] = useState<FormState>(() => ({
     startDate: '',
@@ -104,10 +104,10 @@ export function NewGigPage() {
   // Double-submit guard: `isPending` only disables the button after a re-render.
   const submitting = useRef(false);
   const create = useMutation({
-    mutationFn: (body: GigCreate) => gigsApi.create(body),
-    onSuccess: (gig) => {
-      applyGig(gig, gig.id);
-      void navigate(`/gigs/${gig.id}`);
+    mutationFn: (body: EventCreate) => eventsApi.create(body),
+    onSuccess: (event) => {
+      applyEvent(event, event.id);
+      void navigate(`/events/${event.id}`);
     },
     onError: (error) => {
       submitting.current = false;
@@ -168,20 +168,20 @@ export function NewGigPage() {
   };
 
   return (
-    <section className="page new-gig-page">
-      <PageHead title={t('gigForm.title')}>
-        <p className="new-gig-back">
-          <Link to="/gigs">
+    <section className="page new-event-page">
+      <PageHead title={t('eventForm.title')}>
+        <p className="new-event-back">
+          <Link to="/events">
             <ArrowLeft />
-            {t('gig.back')}
+            {t('event.back')}
           </Link>
         </p>
       </PageHead>
-      <form className="form new-gig-form" onSubmit={onSubmit} noValidate>
-        <section className="new-gig-section" aria-labelledby="new-gig-basic">
-          <SectionLabel id="new-gig-basic">{t('gig.sections.basic')}</SectionLabel>
+      <form className="form new-event-form" onSubmit={onSubmit} noValidate>
+        <section className="new-event-section" aria-labelledby="new-event-basic">
+          <SectionLabel id="new-event-basic">{t('event.sections.basic')}</SectionLabel>
           <div className="form-row">
-            <Field label={t('gigForm.startDate')} error={errors.startDate}>
+            <Field label={t('eventForm.startDate')} error={errors.startDate}>
               {(p) => (
                 <input
                   {...p}
@@ -191,7 +191,7 @@ export function NewGigPage() {
                 />
               )}
             </Field>
-            <Field label={t('gigForm.endDate')} error={errors.endDate} hint={t('gigForm.endDateHint')}>
+            <Field label={t('eventForm.endDate')} error={errors.endDate} hint={t('eventForm.endDateHint')}>
               {(p) => (
                 <input
                   {...p}
@@ -205,11 +205,11 @@ export function NewGigPage() {
           </div>
 
           <Field
-            label={t('gigForm.lineup')}
+            label={t('eventForm.lineup')}
             error={errors.lineup}
             hint={
               template
-                ? t('gigForm.templateRoles', {
+                ? t('eventForm.templateRoles', {
                     roles: template.roles.map((r) => costTypeLabel(t, r.role)).join(', '),
                   })
                 : undefined
@@ -217,18 +217,18 @@ export function NewGigPage() {
           >
             {(p) => (
               <select {...p} value={form.lineup} onChange={(e) => set('lineup', e.target.value)}>
-                <option value="">{t('gigForm.chooseLineup')}</option>
+                <option value="">{t('eventForm.chooseLineup')}</option>
                 {reference?.lineupTemplates.map((tpl) => (
                   <option key={tpl.id} value={tpl.id}>
                     {tpl.name}
                   </option>
                 ))}
-                <option value={CUSTOM}>{t('gigForm.customLineup')}</option>
+                <option value={CUSTOM}>{t('eventForm.customLineup')}</option>
               </select>
             )}
           </Field>
           {form.lineup === CUSTOM && (
-            <Field label={t('gigForm.lineupName')} error={errors.lineupName}>
+            <Field label={t('eventForm.lineupName')} error={errors.lineupName}>
               {(p) => (
                 <input
                   {...p}
@@ -240,7 +240,7 @@ export function NewGigPage() {
             </Field>
           )}
 
-          <Field label={t('gigForm.venue')} error={errors.venue}>
+          <Field label={t('eventForm.venue')} error={errors.venue}>
             {(p) => (
               <input {...p} type="text" value={form.venue} onChange={(e) => set('venue', e.target.value)} />
             )}
@@ -251,7 +251,7 @@ export function NewGigPage() {
           </Field>
 
           <div className="form-row">
-            <Field label={t('gigForm.technicalSetup')} error={errors.technicalSetup}>
+            <Field label={t('eventForm.technicalSetup')} error={errors.technicalSetup}>
               {(p) => (
                 <select
                   {...p}
@@ -267,7 +267,7 @@ export function NewGigPage() {
                 </select>
               )}
             </Field>
-            <Field label={t('gigForm.logistics')} error={errors.logistics}>
+            <Field label={t('eventForm.logistics')} error={errors.logistics}>
               {(p) => (
                 <select
                   {...p}
@@ -285,7 +285,7 @@ export function NewGigPage() {
             </Field>
           </div>
 
-          <div className="field new-gig-switch">
+          <div className="field new-event-switch">
             {/* Same look as InlineSwitch (`inline-switch` draws the switch). */}
             <label className="switch inline-switch">
               <input
@@ -293,27 +293,27 @@ export function NewGigPage() {
                 role="switch"
                 checked={form.houseTechnician}
                 aria-invalid={errors.houseTechnician ? true : undefined}
-                aria-describedby={errors.houseTechnician ? 'new-gig-house-tech-error' : undefined}
+                aria-describedby={errors.houseTechnician ? 'new-event-house-tech-error' : undefined}
                 onChange={(e) => set('houseTechnician', e.target.checked)}
               />
-              <span>{t('gigForm.houseTechnician')}</span>
+              <span>{t('eventForm.houseTechnician')}</span>
             </label>
             {errors.houseTechnician && (
-              <p id="new-gig-house-tech-error" className="field-error">
+              <p id="new-event-house-tech-error" className="field-error">
                 {errors.houseTechnician}
               </p>
             )}
           </div>
 
           <div className="form-row">
-            <Field label={t('gigForm.seller')} error={errors.sellerId}>
+            <Field label={t('eventForm.seller')} error={errors.sellerId}>
               {(p) => (
                 <select {...p} value={form.sellerId} onChange={(e) => set('sellerId', e.target.value)}>
                   <Options options={sellerOptions} />
                 </select>
               )}
             </Field>
-            <Field label={t('gigForm.producer')} error={errors.producerId}>
+            <Field label={t('eventForm.producer')} error={errors.producerId}>
               {(p) => (
                 <select {...p} value={form.producerId} onChange={(e) => set('producerId', e.target.value)}>
                   <Options options={producerOptions} />
@@ -322,26 +322,26 @@ export function NewGigPage() {
             </Field>
           </div>
 
-          <Field label={t('gigForm.notes')} error={errors.notes} hint={t('gigForm.noCustomerData')}>
+          <Field label={t('eventForm.notes')} error={errors.notes} hint={t('eventForm.noCustomerData')}>
             {(p) => (
               <textarea {...p} rows={4} value={form.notes} onChange={(e) => set('notes', e.target.value)} />
             )}
           </Field>
         </section>
 
-        <section className="new-gig-section" aria-labelledby="new-gig-price">
-          <SectionLabel id="new-gig-price">{t('gig.sections.price')}</SectionLabel>
+        <section className="new-event-section" aria-labelledby="new-event-price">
+          <SectionLabel id="new-event-price">{t('event.sections.price')}</SectionLabel>
           <div className="form-row">
-            <Field label={t('gigForm.price')} error={errors.price}>
+            <Field label={t('eventForm.price')} error={errors.price}>
               {(p) => <MoneyInput {...p} value={form.price} onChange={(v) => set('price', v)} />}
             </Field>
-            <Field label={t('gigForm.additionalSales')} error={errors.additionalSales}>
+            <Field label={t('eventForm.additionalSales')} error={errors.additionalSales}>
               {(p) => (
                 <MoneyInput {...p} value={form.additionalSales} onChange={(v) => set('additionalSales', v)} />
               )}
             </Field>
           </div>
-          <Field label={t('gigForm.additionalSalesDescription')} error={errors.additionalSalesDescription}>
+          <Field label={t('eventForm.additionalSalesDescription')} error={errors.additionalSalesDescription}>
             {(p) => (
               <input
                 {...p}
@@ -351,21 +351,21 @@ export function NewGigPage() {
               />
             )}
           </Field>
-          <p className="new-gig-total">
-            {t('gigForm.totalPrice')}: <strong>{formatMoney(total, lang)}</strong>
+          <p className="new-event-total">
+            {t('eventForm.totalPrice')}: <strong>{formatMoney(total, lang)}</strong>
           </p>
         </section>
 
         {create.isError && (
-          <Notice tone="danger" role="alert" className="new-gig-error">
+          <Notice tone="danger" role="alert" className="new-event-error">
             {apiErrorMessage(t, create.error)}
           </Notice>
         )}
-        <div className="form-actions new-gig-actions">
+        <div className="form-actions new-event-actions">
           <Button type="submit" variant="primary" disabled={create.isPending}>
-            {create.isPending ? t('gigForm.creating') : t('gigForm.create')}
+            {create.isPending ? t('eventForm.creating') : t('eventForm.create')}
           </Button>
-          <Link to="/gigs" className={buttonClass()}>
+          <Link to="/events" className={buttonClass()}>
             {t('common.cancel')}
           </Link>
         </div>

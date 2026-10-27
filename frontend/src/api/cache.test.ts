@@ -1,7 +1,7 @@
 import { QueryClient, type QueryKey } from '@tanstack/react-query';
 import { describe, expect, it } from 'vitest';
 import { budgetKey } from '../features/budget/queries';
-import { gigKeys } from '../features/gigs/queries';
+import { eventKeys } from '../features/events/queries';
 import { hoursKey } from '../features/hours/queries';
 import { peopleKeys } from '../features/people/queries';
 import { yearPageKey } from '../features/year/queries';
@@ -10,8 +10,8 @@ import { invalidateYearData, type YearDataChange } from './cache';
 const YEAR = 2030;
 const keys = {
   year: yearPageKey(YEAR),
-  gigList: gigKeys.list({ year: YEAR }),
-  gigDetail: gigKeys.detail('g1'),
+  eventList: eventKeys.list({ year: YEAR }),
+  eventDetail: eventKeys.detail('g1'),
   costLines: peopleKeys.costLines('p1', YEAR),
   peopleList: peopleKeys.list('all'),
   clientPage: ['clients', 'detail', 'c1'],
@@ -31,8 +31,8 @@ function invalidatedAfter(change: YearDataChange): Name[] {
 }
 
 describe('invalidateYearData', () => {
-  it('gig and cost line changes refresh the year page, gig lists, person cost lines, clients and offers', () => {
-    expect(invalidatedAfter('gigs')).toEqual(['year', 'gigList', 'costLines', 'clientPage', 'offerList']);
+  it('event and cost line changes refresh the year page, event lists, person cost lines, clients and offers', () => {
+    expect(invalidatedAfter('events')).toEqual(['year', 'eventList', 'costLines', 'clientPage', 'offerList']);
   });
 
   it('hours changes refresh the year page and every hours query', () => {

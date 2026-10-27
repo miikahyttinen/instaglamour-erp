@@ -2,7 +2,7 @@
 // over `ReferencesState`; handlers in referencesHandlers.ts and publicOfferHandlers.ts.
 // Synthetic quotes only (BR-090) and no seeded photos, so the UI shows its placeholders.
 import type { Id, PublicOfferReference, Reference } from '../api/types';
-import { mockId } from './gigStore';
+import { mockId } from './eventStore';
 
 export interface MockReferenceImage {
   contentType: string;

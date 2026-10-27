@@ -183,10 +183,10 @@ function LinesTable({ po }: { po: PurchaseOrder }) {
       label: t('purchaseOrders.lines.date'),
       primary: true,
       className: 'po-col-date',
-      cell: (l) => formatDate(l.gigStartDate, lang),
+      cell: (l) => formatDate(l.eventStartDate, lang),
     },
-    { key: 'venue', label: t('purchaseOrders.lines.venue'), cell: (l) => l.gigVenue },
-    { key: 'lineup', label: t('purchaseOrders.lines.lineup'), cell: (l) => l.gigLineupName },
+    { key: 'venue', label: t('purchaseOrders.lines.venue'), cell: (l) => l.eventVenue },
+    { key: 'lineup', label: t('purchaseOrders.lines.lineup'), cell: (l) => l.eventLineupName },
     { key: 'role', label: t('purchaseOrders.lines.role'), cell: role },
     {
       key: 'amount',
@@ -195,11 +195,11 @@ function LinesTable({ po }: { po: PurchaseOrder }) {
       cell: (l) => formatMoney(l.amountCents, lang),
     },
     {
-      key: 'gig',
-      label: t('purchaseOrders.lines.gig'),
+      key: 'event',
+      label: t('purchaseOrders.lines.event'),
       cell: (l) => (
-        <Link to={`/gigs/${l.gigId}`} aria-label={`${t('purchaseOrders.lines.openGig')}: ${l.gigVenue}`}>
-          {t('purchaseOrders.lines.openGig')}
+        <Link to={`/events/${l.eventId}`} aria-label={`${t('purchaseOrders.lines.openEvent')}: ${l.eventVenue}`}>
+          {t('purchaseOrders.lines.openEvent')}
         </Link>
       ),
     },

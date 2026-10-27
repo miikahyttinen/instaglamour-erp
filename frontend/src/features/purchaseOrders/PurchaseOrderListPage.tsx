@@ -24,9 +24,9 @@ const DEFAULT_SORT = { key: 'created', dir: 'desc' } as const;
 
 const byNumber = (a: PurchaseOrder, b: PurchaseOrder) => b.number.localeCompare(a.number);
 
-/** Distinct gig dates of a PO, in date order. */
-function gigDates(po: PurchaseOrder): string[] {
-  return [...new Set(po.lines.map((l) => l.gigStartDate))].sort();
+/** Distinct event dates of a PO, in date order. */
+function eventDates(po: PurchaseOrder): string[] {
+  return [...new Set(po.lines.map((l) => l.eventStartDate))].sort();
 }
 
 /**
@@ -117,8 +117,8 @@ export function PurchaseOrderListPage() {
 
 /**
  * Excel-style table (design.md): Numero (link, card title, always shown), Freelancer, Luotu,
- * Keikat, Summa, Tila. Filters on Freelancer and Tila (client-side, in the URL). From 600 px no
- * sideways scrolling: Luotu and Keikat (priority 2) hide below 1100 px of table width.
+ * Tapahtumat, Summa, Tila. Filters on Freelancer and Tila (client-side, in the URL). From 600 px no
+ * sideways scrolling: Luotu and Tapahtumat (priority 2) hide below 1100 px of table width.
  */
 function PurchaseOrderTable({
   orders,
@@ -161,12 +161,12 @@ function PurchaseOrderTable({
       cell: (po) => poDateTime(t, po.createdAt, lang),
     },
     {
-      key: 'gigs',
-      label: t('purchaseOrders.columns.gigs'),
+      key: 'events',
+      label: t('purchaseOrders.columns.events'),
       priority: 2,
-      className: 'po-col-gigs',
-      sortValue: (po) => gigDates(po)[0],
-      cell: (po) => gigDates(po).map((d) => formatDate(d, lang)).join(', '),
+      className: 'po-col-events',
+      sortValue: (po) => eventDates(po)[0],
+      cell: (po) => eventDates(po).map((d) => formatDate(d, lang)).join(', '),
     },
     {
       key: 'total',

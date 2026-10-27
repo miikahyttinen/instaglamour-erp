@@ -1,17 +1,17 @@
-// Synthetic demo gigs for `npm run dev:mock` and tests (BR-090: no real names or numbers).
-// Dates are in the current year so the default gig list shows something.
+// Synthetic demo events for `npm run dev:mock` and tests (BR-090: no real names or numbers).
+// Dates are in the current year so the default event list shows something.
 import type { MusicianRole } from '../api/enums';
 import type { LineupTemplate, Partner, Settings } from '../api/types';
-import type { GigState, MockClient, MockPerson, NewGigInput } from './gigStore';
+import type { EventState, MockClient, MockPerson, NewEventInput } from './eventStore';
 import {
   addAttachment,
   addCostLine,
-  createGig,
+  createEvent,
   linesOf,
   logEvent,
   nowTs,
   payCostLine,
-} from './gigStore';
+} from './eventStore';
 
 /** Fixed ids of the synthetic people (Person 1…9). */
 export const PERSON_IDS = Array.from(
@@ -46,7 +46,7 @@ export function seedPeople(partners: Partner[]): MockPerson[] {
   ];
 }
 
-/** Synthetic demo clients (BR-090). Fixed ids so the seed can link gigs to them. */
+/** Synthetic demo clients (BR-090). Fixed ids so the seed can link events to them. */
 export const CLIENT_IDS = {
   a: '00000000-0000-4000-8000-000000000501',
   b: '00000000-0000-4000-8000-000000000502',
@@ -61,8 +61,8 @@ export function seedClients(): MockClient[] {
   ];
 }
 
-export function seedGigState(
-  state: GigState,
+export function seedEventState(
+  state: EventState,
   partners: Partner[],
   reference: { lineupTemplates: LineupTemplate[]; settings: Settings },
   year = new Date().getFullYear(),
@@ -73,7 +73,7 @@ export function seedGigState(
   if (!a || !b) return;
   const ctx = { templates: reference.lineupTemplates, settings: reference.settings, partners };
   const [templateA, templateB] = reference.lineupTemplates;
-  const base: NewGigInput = {
+  const base: NewEventInput = {
     startDate: `${year}-01-01`,
     endDate: null,
     lineupTemplateId: templateA?.id ?? null,
@@ -89,15 +89,15 @@ export function seedGigState(
     additionalSalesDescription: null,
     notes: null,
   };
-  const staff = (gigId: string, people: string[]) => {
-    const musicianLines = linesOf(state, gigId).filter((l) => l.joinsLoadIn !== null);
+  const staff = (eventId: string, people: string[]) => {
+    const musicianLines = linesOf(state, eventId).filter((l) => l.joinsLoadIn !== null);
     musicianLines.forEach((line, i) => {
       line.personId = people[i] ?? null;
     });
   };
 
   // 1. Fully staffed, everything paid.
-  const g1 = createGig(
+  const g1 = createEvent(
     state,
     { ...base, startDate: `${year}-02-14`, clientId: CLIENT_IDS.a, priceCents: 200000, technicalSetup: 'HOUSE_TECH', houseTechnician: true },
     a.id,
@@ -106,8 +106,8 @@ export function seedGigState(
   staff(g1.id, PERSON_IDS.slice(0, 4));
   linesOf(state, g1.id).forEach((line) => payCostLine(state, line, line.budgetedCents, a.id));
 
-  // 2. Two-day gig with additional sales; keys not staffed.
-  const g2 = createGig(
+  // 2. Two-day event with additional sales; keys not staffed.
+  const g2 = createEvent(
     state,
     {
       ...base,
@@ -129,7 +129,7 @@ export function seedGigState(
   addCostLine(state, g2, { type: 'FUEL', personId: null, description: null, budgetedCents: 10000 }, a.id);
 
   // 3. Cancelled; price adjusted to what is still billed.
-  const g3 = createGig(
+  const g3 = createEvent(
     state,
     { ...base, startDate: `${year}-08-15`, venue: 'Venue V', priceCents: 10000, notes: 'Partial fee billed.' },
     b.id,
@@ -138,8 +138,8 @@ export function seedGigState(
   g3.status = 'CANCELLED';
   logEvent(state, g3.id, 'CANCELLED', b.id, {}, 'Event called off by the client.');
 
-  // 4. Deleted by mistake (shows in Gigs → Deleted).
-  const g4 = createGig(
+  // 4. Deleted by mistake (shows in Events → Deleted).
+  const g4 = createEvent(
     state,
     { ...base, startDate: `${year}-09-05`, lineupTemplateId: null, lineupName: 'Custom lineup', venue: 'Venue U' },
     a.id,
@@ -148,8 +148,8 @@ export function seedGigState(
   g4.deletedAt = nowTs();
   logEvent(state, g4.id, 'DELETED', a.id, {}, 'Duplicate entry.');
 
-  // 5. and 6. Same date: assigning Person 1 to a musician line of gig 6 warns about gig 5 (BR-022).
-  const g5 = createGig(
+  // 5. and 6. Same date: assigning Person 1 to a musician line of event 6 warns about event 5 (BR-022).
+  const g5 = createEvent(
     state,
     { ...base, startDate: `${year}-11-20`, venue: 'Venue Z', clientId: CLIENT_IDS.a, producerId: b.id, priceCents: 300000 },
     a.id,
@@ -167,7 +167,7 @@ export function seedGigState(
     },
     a.id,
   );
-  createGig(
+  createEvent(
     state,
     { ...base, startDate: `${year}-11-20`, lineupTemplateId: templateB?.id ?? null, venue: 'Venue W', sellerId: b.id, producerId: b.id },
     b.id,

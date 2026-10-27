@@ -3,7 +3,7 @@ import { Camera, FileText, Trash2, Upload } from 'lucide-react';
 import { useRef, useState, type ChangeEvent, type MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { attachmentsApi } from '../../api/endpoints';
-import type { Attachment, GigDetail } from '../../api/types';
+import type { Attachment, EventDetail } from '../../api/types';
 import { Button, IconButton } from '../../components/Button';
 import { Dialog } from '../../components/Dialog';
 import { Notice } from '../../components/Notice';
@@ -13,7 +13,7 @@ import { useLang } from '../../i18n/useLang';
 import { formatDateTime } from '../../lib/format';
 import { usePartner } from '../../reference/useReference';
 import { ATTACHMENT_ACCEPT, attachmentProblem } from './attachmentRules';
-import { useApplyGig } from './queries';
+import { useApplyEvent } from './queries';
 
 function formatSize(bytes: number, lang: 'fi' | 'en'): string {
   const locale = lang === 'fi' ? 'fi-FI' : 'en-GB';
@@ -34,22 +34,22 @@ async function openViaFetch(url: string): Promise<void> {
 }
 
 interface Props {
-  gig: GigDetail;
+  event: EventDetail;
   readOnly: boolean;
 }
 
 /** Upload (files or phone camera), open/download and remove attachments (UC-008). */
-export function Attachments({ gig, readOnly }: Props) {
+export function Attachments({ event, readOnly }: Props) {
   const { t } = useTranslation();
-  const applyGig = useApplyGig();
+  const applyEvent = useApplyEvent();
   const fileRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [removing, setRemoving] = useState<Attachment | null>(null);
 
-  const refresh = () => applyGig(null, gig.id);
+  const refresh = () => applyEvent(null, event.id);
   const upload = useMutation({
-    mutationFn: (file: File) => attachmentsApi.upload(gig.id, file),
+    mutationFn: (file: File) => attachmentsApi.upload(event.id, file),
     onSuccess: refresh,
   });
   const remove = useMutation({
@@ -76,11 +76,11 @@ export function Attachments({ gig, readOnly }: Props) {
 
   return (
     <div className="attachments">
-      {gig.attachments.length === 0 ? (
+      {event.attachments.length === 0 ? (
         <p className="muted">{t('attachments.empty')}</p>
       ) : (
-        <ul className="attachment-list" aria-label={t('gig.sections.attachments')}>
-          {gig.attachments.map((a) => (
+        <ul className="attachment-list" aria-label={t('event.sections.attachments')}>
+          {event.attachments.map((a) => (
             <AttachmentRow
               key={a.id}
               attachment={a}
@@ -98,7 +98,7 @@ export function Attachments({ gig, readOnly }: Props) {
         <div className="upload">
           <input
             ref={fileRef}
-            id={`upload-${gig.id}`}
+            id={`upload-${event.id}`}
             type="file"
             accept={ATTACHMENT_ACCEPT}
             className="visually-hidden"

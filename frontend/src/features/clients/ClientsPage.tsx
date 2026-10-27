@@ -13,7 +13,7 @@ import { ClientForm } from './ClientForm';
 import { useClientList } from './queries';
 import './clients.css';
 
-/** Client register (UC-027): searchable list (name · gigs · offers) and the add form. */
+/** Client register (UC-027): searchable list (name · events · offers) and the add form. */
 export function ClientsPage() {
   const { t } = useTranslation();
   const location = useLocation();
@@ -35,11 +35,11 @@ export function ClientsPage() {
       ),
     },
     {
-      key: 'gigs',
-      label: t('clients.columns.gigs'),
+      key: 'events',
+      label: t('clients.columns.events'),
       numeric: true,
       className: 'client-count',
-      cell: (client) => client.gigCount,
+      cell: (client) => client.eventCount,
     },
     {
       key: 'offers',
