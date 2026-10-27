@@ -1,5 +1,5 @@
 # TASK-161: Rename Gig → Event (frontend + e2e)
-- **owner:** ui · **status:** todo · **spec:** docs/saas-roadmap.md, api-contract "Rename Gig → Event" · **depends on:** none · **parallel:** TASK-032 (backend)
+- **owner:** ui · **status:** done · **spec:** docs/saas-roadmap.md, api-contract "Rename Gig → Event" · **depends on:** none · **parallel:** TASK-032 (backend)
 ## Acceptance criteria
 - [ ] API client, types, query keys, MSW mocks and fixtures use the new paths/shapes/fields exactly per the mapping.
 - [ ] Code: `features/gigs` → `features/events`, components/hooks/CSS classes/i18n keys renamed (`Gig*` → `Event*`).
