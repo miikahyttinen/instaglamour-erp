@@ -1,11 +1,11 @@
-/** Gig data access shared by the gig, cost line and attachment routes (and the year page). */
+/** Event data access shared by the event, cost line and attachment routes (and the year page). */
 import type { Db } from '../db.js';
 import { dateFromIso, isoFromDate } from '../domain/dates.js';
 import { isMusicianRole, MUSICIAN_ROLES } from '../domain/enums.js';
-import { yearGigSummary, type YearGigSummary } from '../domain/gigEconomics.js';
-import type { GigEventType, Prisma } from '../generated/prisma/client.js';
+import { yearEventSummary, type YearEventSummary } from '../domain/eventEconomics.js';
+import type { EventHistoryType, Prisma } from '../generated/prisma/client.js';
 import { AppError, notFound } from '../http/errors.js';
-import { costLinePurchaseOrderInclude, type GigWithDetail, type GigWithLines } from './serialize.js';
+import { costLinePurchaseOrderInclude, type EventWithDetail, type EventWithLines } from './serialize.js';
 
 export type Tx = Prisma.TransactionClient | Db;
 
@@ -15,56 +15,56 @@ export function isUuid(value: unknown): value is string {
   return typeof value === 'string' && UUID.test(value);
 }
 
-/** What GigSummary needs: cost lines (economics) and the client name. */
-export const gigSummaryInclude = {
+/** What EventSummary needs: cost lines (economics) and the client name. */
+export const eventSummaryInclude = {
   costLines: true,
   client: { select: { name: true } },
-} as const satisfies Prisma.GigInclude;
+} as const satisfies Prisma.EventInclude;
 
-export const gigDetailInclude = {
-  ...gigSummaryInclude,
+export const eventDetailInclude = {
+  ...eventSummaryInclude,
   costLines: { include: costLinePurchaseOrderInclude },
   attachments: { where: { deletedAt: null } },
-} as const satisfies Prisma.GigInclude;
+} as const satisfies Prisma.EventInclude;
 
-export async function loadGigDetail(db: Tx, id: string): Promise<GigWithDetail | null> {
+export async function loadEventDetail(db: Tx, id: string): Promise<EventWithDetail | null> {
   if (!isUuid(id)) return null;
-  return db.gig.findUnique({ where: { id }, include: gigDetailInclude });
+  return db.event.findUnique({ where: { id }, include: eventDetailInclude });
 }
 
-export async function requireGigDetail(db: Tx, id: string): Promise<GigWithDetail> {
-  const gig = await loadGigDetail(db, id);
-  if (!gig) throw notFound('Gig not found');
-  return gig;
+export async function requireEventDetail(db: Tx, id: string): Promise<EventWithDetail> {
+  const event = await loadEventDetail(db, id);
+  if (!event) throw notFound('Event not found');
+  return event;
 }
 
-/** Changing a deleted gig is not allowed (except restore). */
-export function assertNotDeleted(gig: { deletedAt: Date | null }): void {
-  if (gig.deletedAt) throw new AppError('GIG_DELETED', 'The gig is deleted');
+/** Changing a deleted event is not allowed (except restore). */
+export function assertNotDeleted(event: { deletedAt: Date | null }): void {
+  if (event.deletedAt) throw new AppError('EVENT_DELETED', 'The event is deleted');
 }
 
-export interface NewEvent {
-  gigId: string;
-  type: GigEventType;
+export interface NewHistoryEntry {
+  eventId: string;
+  type: EventHistoryType;
   partnerId: string;
   reason?: string | null;
   details?: Prisma.InputJsonObject;
 }
 
-/** Append one history event (BR-015). History is never edited or deleted. */
-export async function logEvent(tx: Tx, event: NewEvent): Promise<void> {
-  await tx.gigEvent.create({
+/** Append one history entry (BR-015). History is never edited or deleted. */
+export async function logHistory(tx: Tx, entry: NewHistoryEntry): Promise<void> {
+  await tx.eventHistory.create({
     data: {
-      gigId: event.gigId,
-      type: event.type,
-      partnerId: event.partnerId,
-      reason: event.reason ?? null,
-      details: event.details ?? {},
+      eventId: entry.eventId,
+      type: entry.type,
+      partnerId: entry.partnerId,
+      reason: entry.reason ?? null,
+      details: entry.details ?? {},
     },
   });
 }
 
-/** Run a mutation and its event in one transaction. */
+/** Run a mutation and its history entry in one transaction. */
 export function inTransaction<T>(db: Db, fn: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
   return db.$transaction(fn);
 }
@@ -72,21 +72,21 @@ export function inTransaction<T>(db: Db, fn: (tx: Prisma.TransactionClient) => P
 export interface Warning {
   code: 'PERSON_DOUBLE_BOOKED';
   personId: string;
-  otherGigId: string;
-  otherGigStartDate: string;
-  otherGigLineupName: string;
+  otherEventId: string;
+  otherEventStartDate: string;
+  otherEventLineupName: string;
 }
 
 /**
  * BR-022: double booking applies to performers only. For each person on one of the given
- * musician-role lines, other non-cancelled, non-deleted gigs whose date range overlaps
+ * musician-role lines, other non-cancelled, non-deleted events whose date range overlaps
  * `[startDate, endDate ?? startDate]` and where that person has a musician-role line.
  * Internal roles and expenses never trigger or count.
  */
 export async function doubleBookingWarnings(
   db: Tx,
   input: {
-    gigId: string;
+    eventId: string;
     startDate: Date;
     endDate: Date | null;
     lines: readonly { type: string; personId: string | null }[];
@@ -104,36 +104,36 @@ export async function doubleBookingWarnings(
     where: {
       personId: { in: personIds },
       type: { in: [...MUSICIAN_ROLES] },
-      gigId: { not: input.gigId },
-      gig: {
+      eventId: { not: input.eventId },
+      event: {
         status: 'SOLD',
         deletedAt: null,
         startDate: { lte: end },
         OR: [{ endDate: null, startDate: { gte: start } }, { endDate: { gte: start } }],
       },
     },
-    select: { personId: true, gig: { select: { id: true, startDate: true, lineupName: true } } },
+    select: { personId: true, event: { select: { id: true, startDate: true, lineupName: true } } },
   });
   const seen = new Set<string>();
   const warnings: Warning[] = [];
   for (const line of lines) {
-    const key = `${line.personId}:${line.gig.id}`;
+    const key = `${line.personId}:${line.event.id}`;
     if (seen.has(key)) continue;
     seen.add(key);
     warnings.push({
       code: 'PERSON_DOUBLE_BOOKED',
       personId: line.personId!,
-      otherGigId: line.gig.id,
-      otherGigStartDate: isoFromDate(line.gig.startDate),
-      otherGigLineupName: line.gig.lineupName,
+      otherEventId: line.event.id,
+      otherEventStartDate: isoFromDate(line.event.startDate),
+      otherEventLineupName: line.event.lineupName,
     });
   }
   const order = new Map(personIds.map((p, i) => [p, i]));
   return warnings.sort(
     (a, b) =>
       order.get(a.personId)! - order.get(b.personId)! ||
-      a.otherGigStartDate.localeCompare(b.otherGigStartDate) ||
-      a.otherGigId.localeCompare(b.otherGigId),
+      a.otherEventStartDate.localeCompare(b.otherEventStartDate) ||
+      a.otherEventId.localeCompare(b.otherEventId),
   );
 }
 
@@ -143,16 +143,16 @@ export function yearDateRange(year: number): { gte: Date; lte: Date } {
   return { gte: dateFromIso(`${pad}-01-01`), lte: dateFromIso(`${pad}-12-31`) };
 }
 
-/** All gigs of a year with their cost lines (deleted included unless excluded). */
-export function loadYearGigs(db: Tx, year: number, options: { includeDeleted: boolean }): Promise<GigWithLines[]> {
-  return db.gig.findMany({
+/** All events of a year with their cost lines (deleted included unless excluded). */
+export function loadYearEvents(db: Tx, year: number, options: { includeDeleted: boolean }): Promise<EventWithLines[]> {
+  return db.event.findMany({
     where: { startDate: yearDateRange(year), ...(options.includeDeleted ? {} : { deletedAt: null }) },
-    include: gigSummaryInclude,
+    include: eventSummaryInclude,
     orderBy: [{ startDate: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
   });
 }
 
-/** `yearSummary` of `GET /api/gigs` = `gigs` of `GET /api/years/{year}` (BR-082). */
-export async function loadYearGigSummary(db: Tx, year: number): Promise<YearGigSummary> {
-  return yearGigSummary(await loadYearGigs(db, year, { includeDeleted: false }));
+/** `yearSummary` of `GET /api/events` = `events` of `GET /api/years/{year}` (BR-082). */
+export async function loadYearEventSummary(db: Tx, year: number): Promise<YearEventSummary> {
+  return yearEventSummary(await loadYearEvents(db, year, { includeDeleted: false }));
 }

@@ -1,6 +1,6 @@
 /**
- * The gig create path (docs/api-contract.md "GigCreate"; BR-020, BR-021, BR-111), shared by
- * `POST /api/gigs` and `POST /api/offers/{id}/convert` (BR-105) so both validate and create alike.
+ * The event create path (docs/api-contract.md "EventCreate"; BR-020, BR-021, BR-111), shared by
+ * `POST /api/events` and `POST /api/offers/{id}/convert` (BR-105) so both validate and create alike.
  */
 import { z } from 'zod';
 import { findActiveClient } from '../clients/store.js';
@@ -10,9 +10,9 @@ import type { CostType, Prisma } from '../generated/prisma/client.js';
 import { parseInput, validationError, type FieldCode } from '../http/errors.js';
 import type { FeeSettings } from '../routes/reference.js';
 import { flag, isoDate, logistics, LONG_TEXT_MAX, money, optionalText, requiredText, technicalSetup } from './schemas.js';
-import { isUuid, logEvent, type Tx } from './store.js';
+import { isUuid, logHistory, type Tx } from './store.js';
 
-export const gigCreateBody = z.object({
+export const eventCreateBody = z.object({
   startDate: isoDate,
   endDate: isoDate.nullable().optional(),
   lineupTemplateId: z.string().nullable().optional(),
@@ -30,26 +30,26 @@ export const gigCreateBody = z.object({
   clientId: z.string().nullable().optional(),
 });
 
-export type GigCreateInput = z.infer<typeof gigCreateBody>;
+export type EventCreateInput = z.infer<typeof eventCreateBody>;
 
-/** A validated GigCreate with what the insert needs (template roles, seller/producer persons). */
-export interface PreparedGig {
-  input: GigCreateInput;
+/** A validated EventCreate with what the insert needs (template roles, seller/producer persons). */
+export interface PreparedEvent {
+  input: EventCreateInput;
   template: { id: string; name: string; roles: { role: CostType; defaultFeeCents: number }[] } | null;
   sellerPersonId: string;
   producerPersonId: string;
 }
 
-export type GigFees = Pick<FeeSettings, 'officeDefaultCents' | 'salesDefaultCents' | 'productionDefaultCents'>;
+export type EventFees = Pick<FeeSettings, 'officeDefaultCents' | 'salesDefaultCents' | 'productionDefaultCents'>;
 
-/** Parse and validate a GigCreate body; 400 VALIDATION_ERROR exactly as `POST /api/gigs`. */
-export async function prepareGigCreate(db: Tx, rawBody: unknown): Promise<PreparedGig> {
-  const input = parseInput(gigCreateBody, rawBody);
+/** Parse and validate a EventCreate body; 400 VALIDATION_ERROR exactly as `POST /api/events`. */
+export async function prepareEventCreate(db: Tx, rawBody: unknown): Promise<PreparedEvent> {
+  const input = parseInput(eventCreateBody, rawBody);
 
   const fields: Record<string, FieldCode> = {};
   if (input.endDate && input.endDate < input.startDate) fields.endDate = 'END_BEFORE_START';
 
-  let template: PreparedGig['template'] = null;
+  let template: PreparedEvent['template'] = null;
   if (input.lineupTemplateId) {
     template = isUuid(input.lineupTemplateId)
       ? await db.lineupTemplate.findUnique({
@@ -76,21 +76,21 @@ export async function prepareGigCreate(db: Tx, rawBody: unknown): Promise<Prepar
   return { input, template, sellerPersonId: seller!.personId, producerPersonId: producer!.personId };
 }
 
-/** Insert the gig with its default cost lines (BR-020, BR-021) and log CREATED; returns the gig id. */
-export async function insertGig(
+/** Insert the event with its default cost lines (BR-020, BR-021) and log CREATED; returns the event id. */
+export async function insertEvent(
   tx: Prisma.TransactionClient,
-  gig: PreparedGig,
-  options: { partnerId: string; fees: GigFees; offerId?: string },
+  event: PreparedEvent,
+  options: { partnerId: string; fees: EventFees; offerId?: string },
 ): Promise<string> {
-  const { input, template } = gig;
+  const { input, template } = event;
   const lines = defaultCostLines({
     templateRoles: template?.roles ?? [],
-    sellerPersonId: gig.sellerPersonId,
-    producerPersonId: gig.producerPersonId,
+    sellerPersonId: event.sellerPersonId,
+    producerPersonId: event.producerPersonId,
     fees: options.fees,
   });
   const createdBase = Date.now();
-  const created = await tx.gig.create({
+  const created = await tx.event.create({
     data: {
       startDate: dateFromIso(input.startDate),
       endDate: input.endDate ? dateFromIso(input.endDate) : null,
@@ -112,6 +112,6 @@ export async function insertGig(
       costLines: { createMany: { data: lines.map((l, i) => ({ ...l, createdAt: new Date(createdBase + i) })) } },
     },
   });
-  await logEvent(tx, { gigId: created.id, type: 'CREATED', partnerId: options.partnerId });
+  await logHistory(tx, { eventId: created.id, type: 'CREATED', partnerId: options.partnerId });
   return created.id;
 }

@@ -1,6 +1,6 @@
 /** Client data access (UC-027, BR-100, BR-101). */
 import type { Client } from '../generated/prisma/client.js';
-import { isUuid, type Tx } from '../gigs/store.js';
+import { isUuid, type Tx } from '../events/store.js';
 
 /** Contract `Client`. */
 export interface ClientDto {

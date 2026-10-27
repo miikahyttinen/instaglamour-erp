@@ -9,7 +9,7 @@ import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { MAX_REFERENCE_IMAGE_BYTES } from '../src/references/store.js';
 import { detectImageType } from '../src/fileStore/uploadDir.js';
 import { closeTestDb, resetDb, testDb } from './helpers.js';
-import { call, startSession, UNKNOWN_ID, type Json, type Session } from './gigFixtures.js';
+import { call, startSession, UNKNOWN_ID, type Json, type Session } from './eventFixtures.js';
 import { createReference, JPG, PDF, PNG, SVG, uploadImage, WEBP } from './referenceFixtures.js';
 
 let s: Session;

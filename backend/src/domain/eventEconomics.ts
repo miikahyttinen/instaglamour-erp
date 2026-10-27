@@ -1,6 +1,6 @@
 /**
- * Gig economics (BR-001…BR-006), "played" (BR-010), "not fully staffed" (BR-023)
- * and the year's gig sums (BR-082). Pure functions — no database access.
+ * Event economics (BR-001…BR-006), "played" (BR-010), "not fully staffed" (BR-023)
+ * and the year's event sums (BR-082). Pure functions — no database access.
  */
 import { isMusicianRole } from './enums.js';
 
@@ -12,13 +12,13 @@ export interface EconomicsLine {
   paidAt: Date | null;
 }
 
-export interface EconomicsGig {
+export interface EconomicsEvent {
   priceCents: number;
   additionalSalesCents: number;
   costLines: readonly EconomicsLine[];
 }
 
-export interface GigEconomics {
+export interface EventEconomics {
   totalPriceCents: number;
   budgetedCostsCents: number;
   actualCostsCents: number;
@@ -35,11 +35,11 @@ export function marginPct(marginCents: number, totalPriceCents: number): number 
   return pct === 0 ? 0 : pct; // never -0
 }
 
-export function gigEconomics(gig: EconomicsGig): GigEconomics {
-  const totalPriceCents = gig.priceCents + gig.additionalSalesCents; // BR-006
+export function eventEconomics(event: EconomicsEvent): EventEconomics {
+  const totalPriceCents = event.priceCents + event.additionalSalesCents; // BR-006
   let budgetedCostsCents = 0;
   let actualCostsCents = 0;
-  for (const line of gig.costLines) {
+  for (const line of event.costLines) {
     budgetedCostsCents += line.budgetedCents; // BR-001
     if (line.paidAt !== null) actualCostsCents += line.actualCents ?? 0; // BR-002
   }
@@ -61,15 +61,15 @@ export function isNotFullyStaffed(lines: readonly { type: string; personId: stri
   return lines.some((l) => isMusicianRole(l.type) && l.personId === null);
 }
 
-/** BR-010: a SOLD gig whose start date (YYYY-MM-DD) is before today (YYYY-MM-DD). */
+/** BR-010: a SOLD event whose start date (YYYY-MM-DD) is before today (YYYY-MM-DD). */
 export function isPlayed(status: string, startDateIso: string, todayIsoDate: string): boolean {
   return status === 'SOLD' && startDateIso < todayIsoDate;
 }
 
-export interface YearGigSummary {
-  gigCount: number;
+export interface YearEventSummary {
+  eventCount: number;
   cancelledCount: number;
-  soldGigsSumCents: number;
+  soldEventsSumCents: number;
   budgetedCostsCents: number;
   actualCostsCents: number;
   marginBudgetCents: number;
@@ -77,29 +77,29 @@ export interface YearGigSummary {
 }
 
 /**
- * The `gigs` object of the year page and `yearSummary` of the gig list.
- * Pass the non-deleted gigs of the year (all statuses): cancelled gigs count in the sums with their
- * adjusted price (BR-013, BR-082) but not in `gigCount`.
+ * The `events` object of the year page and `yearSummary` of the event list.
+ * Pass the non-deleted events of the year (all statuses): cancelled events count in the sums with their
+ * adjusted price (BR-013, BR-082) but not in `eventCount`.
  */
-export function yearGigSummary(gigs: readonly (EconomicsGig & { status: string })[]): YearGigSummary {
-  const summary: YearGigSummary = {
-    gigCount: 0,
+export function yearEventSummary(events: readonly (EconomicsEvent & { status: string })[]): YearEventSummary {
+  const summary: YearEventSummary = {
+    eventCount: 0,
     cancelledCount: 0,
-    soldGigsSumCents: 0,
+    soldEventsSumCents: 0,
     budgetedCostsCents: 0,
     actualCostsCents: 0,
     marginBudgetCents: 0,
     marginActualCents: 0,
   };
-  for (const gig of gigs) {
-    if (gig.status === 'CANCELLED') summary.cancelledCount += 1;
-    else summary.gigCount += 1;
-    const e = gigEconomics(gig);
-    summary.soldGigsSumCents += e.totalPriceCents;
+  for (const event of events) {
+    if (event.status === 'CANCELLED') summary.cancelledCount += 1;
+    else summary.eventCount += 1;
+    const e = eventEconomics(event);
+    summary.soldEventsSumCents += e.totalPriceCents;
     summary.budgetedCostsCents += e.budgetedCostsCents;
     summary.actualCostsCents += e.actualCostsCents;
   }
-  summary.marginBudgetCents = summary.soldGigsSumCents - summary.budgetedCostsCents;
-  summary.marginActualCents = summary.soldGigsSumCents - summary.actualCostsCents;
+  summary.marginBudgetCents = summary.soldEventsSumCents - summary.budgetedCostsCents;
+  summary.marginActualCents = summary.soldEventsSumCents - summary.actualCostsCents;
   return summary;
 }

@@ -1,4 +1,4 @@
-/** Cost lines a new gig starts with (BR-020, BR-021). */
+/** Cost lines a new event starts with (BR-020, BR-021). */
 import type { CostType } from '../generated/prisma/enums.js';
 import { isMusicianRole } from './enums.js';
 

@@ -11,7 +11,7 @@ import { FixedWindowRateLimiter } from '../src/http/rateLimit.js';
 import { SPOTIFY_URL } from '../src/offers/constants.js';
 import { PUBLIC_OFFER_RATE_LIMIT } from '../src/routes/publicOffers.js';
 import { closeTestDb, resetDb, testDb } from './helpers.js';
-import { call, startSession, UNKNOWN_ID, type Json, type Session } from './gigFixtures.js';
+import { call, startSession, UNKNOWN_ID, type Json, type Session } from './eventFixtures.js';
 import { createReference, JPG, PNG, uploadImage } from './referenceFixtures.js';
 
 let s: Session;
@@ -115,8 +115,8 @@ describe('GET /api/public/offers/{token}', () => {
     expect(res.headers['set-cookie']).toBeUndefined();
   });
 
-  it('never exposes price, disposition, source, event type, gig, notes, ids or the token', async () => {
-    // Convert so the offer also has a gig, then look again (BR-109: accepted and upcoming first).
+  it('never exposes price, disposition, source, event type, event, notes, ids or the token', async () => {
+    // Convert so the offer also has an event, then look again (BR-109: accepted and upcoming first).
     const upcoming = new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10);
     await call(s, 'PATCH', `/api/offers/${offer.id}`, { disposition: 'WON', eventDate: upcoming });
     expect((await call(s, 'POST', `/api/offers/${offer.id}/convert`)).statusCode).toBe(201);
@@ -139,8 +139,9 @@ describe('GET /api/public/offers/{token}', () => {
       'WEDDING',
       'source',
       'eventType',
-      'gigId',
-      'gig',
+      'eventId',
+      '"event"', // the converted event (the key; eventName / eventDate are public)
+      'eventStatus',
       'notes',
       'Internal client notes',
       'sharePath',

@@ -1,10 +1,10 @@
 /**
- * Clients (UC-027, BR-100, BR-101): /api/clients and the gig client link. Synthetic data only;
+ * Clients (UC-027, BR-100, BR-101): /api/clients and the event client link. Synthetic data only;
  * money is 1000 or multiples of 10000 cents.
  */
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { closeTestDb, resetDb, testApp, testDb } from './helpers.js';
-import { call, createGig, gigBody, history, startSession, UNKNOWN_ID, type Json, type Session } from './gigFixtures.js';
+import { call, createEvent, eventBody, history, startSession, UNKNOWN_ID, type Json, type Session } from './eventFixtures.js';
 
 let s: Session;
 
@@ -117,22 +117,22 @@ describe('POST /api/clients', () => {
 });
 
 describe('GET /api/clients', () => {
-  it('lists active clients sorted by name with gigCount (non-deleted gigs) and offerCount 0', async () => {
+  it('lists active clients sorted by name with eventCount (non-deleted events) and offerCount 0', async () => {
     const b = await createClient('Client B ry', 'Notes B');
     const a = await createClient('Client A Oy');
     const gone = await createClient('Client Z Oy');
     await del(gone.id);
-    await createGig(s, { clientId: a.id });
-    await createGig(s, { clientId: a.id, startDate: '2025-03-01' });
-    const deletedGig = await createGig(s, { clientId: a.id, startDate: '2026-07-01' });
-    await call(s, 'POST', `/api/gigs/${deletedGig.id}/delete`, { reason: 'Test' });
-    await createGig(s); // no client
+    await createEvent(s, { clientId: a.id });
+    await createEvent(s, { clientId: a.id, startDate: '2025-03-01' });
+    const deletedEvent = await createEvent(s, { clientId: a.id, startDate: '2026-07-01' });
+    await call(s, 'POST', `/api/events/${deletedEvent.id}/delete`, { reason: 'Test' });
+    await createEvent(s); // no client
 
     const res = await list();
     expect(res.statusCode).toBe(200);
     expect(res.json()).toEqual([
-      { id: a.id, name: 'Client A Oy', notes: null, gigCount: 2, offerCount: 0 },
-      { id: b.id, name: 'Client B ry', notes: 'Notes B', gigCount: 0, offerCount: 0 },
+      { id: a.id, name: 'Client A Oy', notes: null, eventCount: 2, offerCount: 0 },
+      { id: b.id, name: 'Client B ry', notes: 'Notes B', eventCount: 0, offerCount: 0 },
     ]);
   });
 
@@ -153,26 +153,26 @@ describe('GET /api/clients', () => {
 });
 
 describe('GET /api/clients/{id}', () => {
-  it('returns the client, its non-deleted gigs of all years newest first, and offers []', async () => {
+  it('returns the client, its non-deleted events of all years newest first, and offers []', async () => {
     const a = await createClient('Client A Oy', 'Notes');
     const other = await createClient('Client B ry');
-    const g2025 = await createGig(s, { clientId: a.id, startDate: '2025-03-01' });
-    const g2027 = await createGig(s, { clientId: a.id, startDate: '2027-01-10' });
-    const g2026 = await createGig(s, { clientId: a.id, startDate: '2026-05-01', venue: 'Venue Y' });
-    await call(s, 'POST', `/api/gigs/${g2026.id}/cancel`, { reason: 'Test' }); // cancelled gigs are listed
-    const deletedGig = await createGig(s, { clientId: a.id, startDate: '2026-09-01' });
-    await call(s, 'POST', `/api/gigs/${deletedGig.id}/delete`, { reason: 'Test' });
-    await createGig(s, { clientId: other.id });
+    const g2025 = await createEvent(s, { clientId: a.id, startDate: '2025-03-01' });
+    const g2027 = await createEvent(s, { clientId: a.id, startDate: '2027-01-10' });
+    const g2026 = await createEvent(s, { clientId: a.id, startDate: '2026-05-01', venue: 'Venue Y' });
+    await call(s, 'POST', `/api/events/${g2026.id}/cancel`, { reason: 'Test' }); // cancelled events are listed
+    const deletedEvent = await createEvent(s, { clientId: a.id, startDate: '2026-09-01' });
+    await call(s, 'POST', `/api/events/${deletedEvent.id}/delete`, { reason: 'Test' });
+    await createEvent(s, { clientId: other.id });
 
     const res = await get(a.id);
     expect(res.statusCode).toBe(200);
     const body = res.json();
     expect(body.client).toEqual({ id: a.id, name: 'Client A Oy', notes: 'Notes' });
     expect(body.offers).toEqual([]);
-    expect(body.gigs.map((g: { id: string }) => g.id)).toEqual([g2027.id, g2026.id, g2025.id]);
-    // GigSummary, not GigDetail
-    expect(body.gigs[1]).toMatchObject({ status: 'CANCELLED', venue: 'Venue Y', clientId: a.id, clientName: 'Client A Oy' });
-    expect(body.gigs[0]).not.toHaveProperty('costLines');
+    expect(body.events.map((g: { id: string }) => g.id)).toEqual([g2027.id, g2026.id, g2025.id]);
+    // EventSummary, not EventDetail
+    expect(body.events[1]).toMatchObject({ status: 'CANCELLED', venue: 'Venue Y', clientId: a.id, clientName: 'Client A Oy' });
+    expect(body.events[0]).not.toHaveProperty('costLines');
   });
 
   it('404 for unknown, malformed and deleted clients', async () => {
@@ -246,11 +246,11 @@ describe('PATCH /api/clients/{id}', () => {
     }
   });
 
-  it('a rename shows on the linked gigs', async () => {
+  it('a rename shows on the linked events', async () => {
     const a = await createClient('Client A Oy');
-    const gig = await createGig(s, { clientId: a.id });
+    const event = await createEvent(s, { clientId: a.id });
     await patch(a.id, { name: 'Client A2 Oy' });
-    expect((await call(s, 'GET', `/api/gigs/${gig.id}`)).json().clientName).toBe('Client A2 Oy');
+    expect((await call(s, 'GET', `/api/events/${event.id}`)).json().clientName).toBe('Client A2 Oy');
   });
 });
 
@@ -266,26 +266,26 @@ describe('DELETE /api/clients/{id}', () => {
     expect(row.notes).toBe('Notes');
   });
 
-  it('409 CLIENT_IN_USE when a gig links to it; nothing changes', async () => {
+  it('409 CLIENT_IN_USE when an event links to it; nothing changes', async () => {
     const a = await createClient('Client A Oy');
-    await createGig(s, { clientId: a.id });
+    await createEvent(s, { clientId: a.id });
     const res = await del(a.id);
     expect(res.statusCode).toBe(409);
     expect(res.json()).toEqual({ error: { code: 'CLIENT_IN_USE', message: expect.any(String) } });
     expect((await testDb().client.findUniqueOrThrow({ where: { id: a.id } })).deletedAt).toBeNull();
   });
 
-  it('a deleted gig still links (restoring it must not point to a deleted client)', async () => {
+  it('a deleted event still links (restoring it must not point to a deleted client)', async () => {
     const a = await createClient('Client A Oy');
-    const gig = await createGig(s, { clientId: a.id });
-    await call(s, 'POST', `/api/gigs/${gig.id}/delete`, { reason: 'Test' });
+    const event = await createEvent(s, { clientId: a.id });
+    await call(s, 'POST', `/api/events/${event.id}/delete`, { reason: 'Test' });
     expect((await del(a.id)).statusCode).toBe(409);
   });
 
-  it('can be deleted once its gigs no longer link to it', async () => {
+  it('can be deleted once its events no longer link to it', async () => {
     const a = await createClient('Client A Oy');
-    const gig = await createGig(s, { clientId: a.id });
-    await call(s, 'PATCH', `/api/gigs/${gig.id}`, { clientId: null });
+    const event = await createEvent(s, { clientId: a.id });
+    await call(s, 'PATCH', `/api/events/${event.id}`, { clientId: null });
     expect((await del(a.id)).statusCode).toBe(204);
   });
 
@@ -300,49 +300,49 @@ describe('DELETE /api/clients/{id}', () => {
   });
 });
 
-describe('gigs: clientId / clientName', () => {
-  it('a gig without a client has clientId and clientName null', async () => {
-    const gig = await createGig(s);
-    expect(gig).toMatchObject({ clientId: null, clientName: null });
+describe('events: clientId / clientName', () => {
+  it('an event without a client has clientId and clientName null', async () => {
+    const event = await createEvent(s);
+    expect(event).toMatchObject({ clientId: null, clientName: null });
   });
 
-  it('POST /api/gigs accepts clientId and returns clientId + clientName', async () => {
+  it('POST /api/events accepts clientId and returns clientId + clientName', async () => {
     const a = await createClient('Client A Oy');
-    const gig = await createGig(s, { clientId: a.id });
-    expect(gig).toMatchObject({ clientId: a.id, clientName: 'Client A Oy' });
-    const listed = (await call(s, 'GET', '/api/gigs?year=2026')).json().gigs;
+    const event = await createEvent(s, { clientId: a.id });
+    expect(event).toMatchObject({ clientId: a.id, clientName: 'Client A Oy' });
+    const listed = (await call(s, 'GET', '/api/events?year=2026')).json().events;
     expect(listed[0]).toMatchObject({ clientId: a.id, clientName: 'Client A Oy' });
   });
 
-  it('POST /api/gigs: unknown, malformed or deleted clientId → 400 UNKNOWN_REFERENCE, nothing created', async () => {
+  it('POST /api/events: unknown, malformed or deleted clientId → 400 UNKNOWN_REFERENCE, nothing created', async () => {
     const gone = await createClient('Client A Oy');
     await del(gone.id);
     for (const clientId of [UNKNOWN_ID, 'not-a-uuid', gone.id]) {
-      const res = await call(s, 'POST', '/api/gigs', { ...gigBody(s.world), clientId });
+      const res = await call(s, 'POST', '/api/events', { ...eventBody(s.world), clientId });
       expect(res.statusCode, clientId).toBe(400);
       expect(res.json()).toEqual(validation({ clientId: 'UNKNOWN_REFERENCE' }));
     }
-    const res = await call(s, 'POST', '/api/gigs', { ...gigBody(s.world), clientId: 5 });
+    const res = await call(s, 'POST', '/api/events', { ...eventBody(s.world), clientId: 5 });
     expect(res.json()).toEqual(validation({ clientId: 'INVALID_VALUE' }));
-    expect(await testDb().gig.count()).toBe(0);
+    expect(await testDb().event.count()).toBe(0);
   });
 
   it('PATCH sets, changes and clears the client; each change is logged in UPDATED', async () => {
     const a = await createClient('Client A Oy');
     const b = await createClient('Client B ry');
-    const gig = await createGig(s);
+    const event = await createEvent(s);
 
-    let res = await call(s, 'PATCH', `/api/gigs/${gig.id}`, { clientId: a.id });
+    let res = await call(s, 'PATCH', `/api/events/${event.id}`, { clientId: a.id });
     expect(res.statusCode).toBe(200);
-    expect(res.json().gig).toMatchObject({ clientId: a.id, clientName: 'Client A Oy' });
+    expect(res.json().event).toMatchObject({ clientId: a.id, clientName: 'Client A Oy' });
 
-    res = await call(s, 'PATCH', `/api/gigs/${gig.id}`, { clientId: b.id });
-    expect(res.json().gig).toMatchObject({ clientId: b.id, clientName: 'Client B ry' });
+    res = await call(s, 'PATCH', `/api/events/${event.id}`, { clientId: b.id });
+    expect(res.json().event).toMatchObject({ clientId: b.id, clientName: 'Client B ry' });
 
-    res = await call(s, 'PATCH', `/api/gigs/${gig.id}`, { clientId: null });
-    expect(res.json().gig).toMatchObject({ clientId: null, clientName: null });
+    res = await call(s, 'PATCH', `/api/events/${event.id}`, { clientId: null });
+    expect(res.json().event).toMatchObject({ clientId: null, clientName: null });
 
-    const updates = (await history(s, gig.id)).filter((e) => e.type === 'UPDATED');
+    const updates = (await history(s, event.id)).filter((e) => e.type === 'UPDATED');
     expect(updates.map((e) => e.details)).toEqual([
       { changes: [{ field: 'clientId', from: b.id, to: null }], movedCostLineIds: [] },
       { changes: [{ field: 'clientId', from: a.id, to: b.id }], movedCostLineIds: [] },
@@ -352,37 +352,37 @@ describe('gigs: clientId / clientName', () => {
 
   it('PATCH with the same clientId (or omitted) is a no-op without history', async () => {
     const a = await createClient('Client A Oy');
-    const gig = await createGig(s, { clientId: a.id });
-    expect((await call(s, 'PATCH', `/api/gigs/${gig.id}`, { clientId: a.id })).statusCode).toBe(200);
-    expect((await call(s, 'PATCH', `/api/gigs/${gig.id}`, { venue: 'Venue X' })).json().gig.clientId).toBe(a.id);
-    expect((await history(s, gig.id)).map((e) => e.type)).toEqual(['CREATED']);
+    const event = await createEvent(s, { clientId: a.id });
+    expect((await call(s, 'PATCH', `/api/events/${event.id}`, { clientId: a.id })).statusCode).toBe(200);
+    expect((await call(s, 'PATCH', `/api/events/${event.id}`, { venue: 'Venue X' })).json().event.clientId).toBe(a.id);
+    expect((await history(s, event.id)).map((e) => e.type)).toEqual(['CREATED']);
   });
 
   it('PATCH: unknown or deleted clientId → 400 UNKNOWN_REFERENCE, nothing changes', async () => {
     const gone = await createClient('Client A Oy');
     await del(gone.id);
-    const gig = await createGig(s);
+    const event = await createEvent(s);
     for (const clientId of [UNKNOWN_ID, 'not-a-uuid', gone.id]) {
-      const res = await call(s, 'PATCH', `/api/gigs/${gig.id}`, { clientId, venue: 'Venue Y' });
+      const res = await call(s, 'PATCH', `/api/events/${event.id}`, { clientId, venue: 'Venue Y' });
       expect(res.statusCode, clientId).toBe(400);
       expect(res.json()).toEqual(validation({ clientId: 'UNKNOWN_REFERENCE' }));
     }
-    const row = await testDb().gig.findUniqueOrThrow({ where: { id: gig.id } });
+    const row = await testDb().event.findUniqueOrThrow({ where: { id: event.id } });
     expect(row).toMatchObject({ clientId: null, venue: 'Venue X' });
   });
 
-  it('GET /api/gigs q matches the client name (case-insensitive substring)', async () => {
+  it('GET /api/events q matches the client name (case-insensitive substring)', async () => {
     const a = await createClient('Client A Oy');
-    const withClient = await createGig(s, { clientId: a.id });
-    await createGig(s, { startDate: '2026-06-01' });
-    const res = await call(s, 'GET', '/api/gigs?year=2026&q=nt%20a%20o');
-    expect(res.json().gigs.map((g: { id: string }) => g.id)).toEqual([withClient.id]);
+    const withClient = await createEvent(s, { clientId: a.id });
+    await createEvent(s, { startDate: '2026-06-01' });
+    const res = await call(s, 'GET', '/api/events?year=2026&q=nt%20a%20o');
+    expect(res.json().events.map((g: { id: string }) => g.id)).toEqual([withClient.id]);
   });
 
-  it('the year page upcoming gigs carry clientName too', async () => {
+  it('the year page upcoming events carry clientName too', async () => {
     const a = await createClient('Client A Oy');
-    await createGig(s, { clientId: a.id, startDate: '2099-01-01' });
+    await createEvent(s, { clientId: a.id, startDate: '2099-01-01' });
     const res = await call(s, 'GET', '/api/years/2099');
-    expect(res.json().upcomingGigs[0]).toMatchObject({ clientId: a.id, clientName: 'Client A Oy' });
+    expect(res.json().upcomingEvents[0]).toMatchObject({ clientId: a.id, clientName: 'Client A Oy' });
   });
 });

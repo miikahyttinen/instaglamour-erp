@@ -2,7 +2,7 @@
  * Freelancer link (docs/api-contract.md "Purchase orders" → public endpoints; UC-033, BR-113…116).
  * NO authentication.
  *
- * - Responses are exactly the FreelancerView / PublicPurchaseOrder whitelists: never client, gig
+ * - Responses are exactly the FreelancerView / PublicPurchaseOrder whitelists: never client, event
  *   price, other people, notes, ids of other records, partner data or cancel reasons.
  * - Unknown, malformed, regenerated tokens, inactive people and active partners (BR-113, 2026-10-18)
  *   all give the same 404.
@@ -14,7 +14,7 @@ import type { AppDeps } from '../app.js';
 import { notFound, validationError } from '../http/errors.js';
 import { publicGuard } from '../http/publicGuard.js';
 import type { FixedWindowRateLimiter } from '../http/rateLimit.js';
-import { isUuid } from '../gigs/store.js';
+import { isUuid } from '../events/store.js';
 import { sameToken } from '../offers/shareToken.js';
 import {
   createPurchaseOrder,

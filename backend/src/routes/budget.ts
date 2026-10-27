@@ -4,8 +4,8 @@ import { z } from 'zod';
 import type { AppDeps } from '../app.js';
 import { amountsOf, loadActiveBudgetCategories, loadBudget, toBudgetRowDto, type BudgetAmounts } from '../budget/store.js';
 import { AppError, notFound, parseInput } from '../http/errors.js';
-import { money, yearString } from '../gigs/schemas.js';
-import { inTransaction, isUuid } from '../gigs/store.js';
+import { money, yearString } from '../events/schemas.js';
+import { inTransaction, isUuid } from '../events/store.js';
 
 const yearQuery = z.object({ year: yearString });
 const yearParams = z.object({ year: yearString });

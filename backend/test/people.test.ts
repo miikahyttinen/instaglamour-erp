@@ -1,7 +1,7 @@
 /** People endpoints (UC-014). Synthetic data only; money is 1000 or multiples of 10000 cents. */
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { closeTestDb, resetDb, testDb } from './helpers.js';
-import { call, createGig, startSession, UNKNOWN_ID, type Json, type Session } from './gigFixtures.js';
+import { call, createEvent, startSession, UNKNOWN_ID, type Json, type Session } from './eventFixtures.js';
 
 let s: Session;
 
@@ -22,7 +22,7 @@ describe('GET /api/people', () => {
     const active = await call(s, 'GET', '/api/people');
     expect(active.statusCode).toBe(200);
     expect(names(active.json())).toEqual(['Partner A', 'Partner B', 'Partner C', 'Person 1', 'Person 2', 'Person 3']);
-    expect(active.json()[3]).toEqual({ id: s.world.p1.id, name: 'Person 1', active: true, partner: null, roles: [], gigCount: 0 });
+    expect(active.json()[3]).toEqual({ id: s.world.p1.id, name: 'Person 1', active: true, partner: null, roles: [], eventCount: 0 });
 
     const inactive = await call(s, 'GET', '/api/people?active=false');
     expect(names(inactive.json())).toEqual(['Person 0']);
@@ -47,7 +47,7 @@ describe('POST /api/people', () => {
   it('creates an active person without warnings', async () => {
     const res = await call(s, 'POST', '/api/people', { name: '  Person 4 ' });
     expect(res.statusCode).toBe(201);
-    expect(res.json()).toEqual({ person: { id: expect.any(String), name: 'Person 4', active: true, partner: null, roles: [], gigCount: 0 }, warnings: [] });
+    expect(res.json()).toEqual({ person: { id: expect.any(String), name: 'Person 4', active: true, partner: null, roles: [], eventCount: 0 }, warnings: [] });
   });
 
   it('warns on a case-insensitive duplicate name but still creates', async () => {
@@ -77,7 +77,7 @@ describe('PATCH /api/people/{id}', () => {
   it('renames and deactivates', async () => {
     const res = await call(s, 'PATCH', `/api/people/${s.world.p1.id}`, { name: 'Person 9', active: false });
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toEqual({ person: { id: s.world.p1.id, name: 'Person 9', active: false, partner: null, roles: [], gigCount: 0 }, warnings: [] });
+    expect(res.json()).toEqual({ person: { id: s.world.p1.id, name: 'Person 9', active: false, partner: null, roles: [], eventCount: 0 }, warnings: [] });
     const reactivated = await call(s, 'PATCH', `/api/people/${s.world.p1.id}`, { active: true });
     expect(reactivated.json().person.active).toBe(true);
   });
@@ -88,7 +88,7 @@ describe('PATCH /api/people/{id}', () => {
     expect(dup.json().warnings).toEqual([{ code: 'DUPLICATE_NAME' }]);
 
     const self = await call(s, 'PATCH', `/api/people/${s.world.p3.id}`, { name: 'PERSON 3' });
-    expect(self.json()).toEqual({ person: { id: s.world.p3.id, name: 'PERSON 3', active: true, partner: null, roles: [], gigCount: 0 }, warnings: [] });
+    expect(self.json()).toEqual({ person: { id: s.world.p3.id, name: 'PERSON 3', active: true, partner: null, roles: [], eventCount: 0 }, warnings: [] });
   });
 
   it('a no-op returns 200 and writes nothing', async () => {
@@ -113,47 +113,47 @@ describe('PATCH /api/people/{id}', () => {
 });
 
 describe('GET /api/people/{id}/cost-lines', () => {
-  async function assign(gig: Json, type: string, personId: string, budgetedCents?: number) {
-    const line = gig.costLines.find((l: Json) => l.type === type);
+  async function assign(event: Json, type: string, personId: string, budgetedCents?: number) {
+    const line = event.costLines.find((l: Json) => l.type === type);
     const res = await call(s, 'PATCH', `/api/cost-lines/${line.id}`, { personId, ...(budgetedCents !== undefined && { budgetedCents }) });
     if (res.statusCode !== 200) throw new Error(res.body);
     return line.id as string;
   }
 
-  it("lists the person's lines on non-deleted gigs of the year in gig order, with totals", async () => {
+  it("lists the person's lines on non-deleted events of the year in event order, with totals", async () => {
     const p1 = s.world.p1.id;
-    const june = await createGig(s, { startDate: '2026-06-01', venue: 'Venue Y' });
-    const may = await createGig(s, { startDate: '2026-05-01' });
-    const cancelled = await createGig(s, { startDate: '2026-07-01' });
-    const deleted = await createGig(s, { startDate: '2026-08-01' });
-    const otherYear = await createGig(s, { startDate: '2027-05-01' });
+    const june = await createEvent(s, { startDate: '2026-06-01', venue: 'Venue Y' });
+    const may = await createEvent(s, { startDate: '2026-05-01' });
+    const cancelled = await createEvent(s, { startDate: '2026-07-01' });
+    const deleted = await createEvent(s, { startDate: '2026-08-01' });
+    const otherYear = await createEvent(s, { startDate: '2027-05-01' });
 
     const mayVoc = await assign(may, 'VOC', p1);
     const juneBass = await assign(june, 'BASS', p1);
     const cancelledVoc = await assign(cancelled, 'VOC', p1);
     await assign(deleted, 'VOC', p1);
     await assign(otherYear, 'VOC', p1);
-    // A second line for the same person on the same gig (BR-024)
-    const extra = await call(s, 'POST', `/api/gigs/${may.id}/cost-lines`, { type: 'TRAVEL', personId: p1, budgetedCents: 10000 });
-    const mayTravel = extra.json().gig.costLines.at(-1).id;
+    // A second line for the same person on the same event (BR-024)
+    const extra = await call(s, 'POST', `/api/events/${may.id}/cost-lines`, { type: 'TRAVEL', personId: p1, budgetedCents: 10000 });
+    const mayTravel = extra.json().event.costLines.at(-1).id;
 
     await call(s, 'POST', `/api/cost-lines/${mayVoc}/pay`, { actualCents: 20000 });
-    await call(s, 'POST', `/api/gigs/${cancelled.id}/cancel`, { reason: 'Reason 1' });
-    await call(s, 'POST', `/api/gigs/${deleted.id}/delete`, { reason: 'Reason 1' });
+    await call(s, 'POST', `/api/events/${cancelled.id}/cancel`, { reason: 'Reason 1' });
+    await call(s, 'POST', `/api/events/${deleted.id}/delete`, { reason: 'Reason 1' });
 
     const res = await call(s, 'GET', `/api/people/${p1}/cost-lines?year=2026`);
     expect(res.statusCode).toBe(200);
     const body = res.json();
     expect(body.lines.map((l: { costLine: { id: string } }) => l.costLine.id)).toEqual([mayVoc, mayTravel, juneBass, cancelledVoc]);
     expect(body.lines[0]).toEqual({
-      costLine: expect.objectContaining({ id: mayVoc, gigId: may.id, type: 'VOC', personId: p1, budgetedCents: 30000, actualCents: 20000 }),
-      gigId: may.id,
-      gigStartDate: '2026-05-01',
-      gigLineupName: 'Template A',
-      gigVenue: 'Venue X',
-      gigStatus: 'SOLD',
+      costLine: expect.objectContaining({ id: mayVoc, eventId: may.id, type: 'VOC', personId: p1, budgetedCents: 30000, actualCents: 20000 }),
+      eventId: may.id,
+      eventStartDate: '2026-05-01',
+      eventLineupName: 'Template A',
+      eventVenue: 'Venue X',
+      eventStatus: 'SOLD',
     });
-    expect(body.lines[3].gigStatus).toBe('CANCELLED');
+    expect(body.lines[3].eventStatus).toBe('CANCELLED');
     // budgeted: VOC 30000 + TRAVEL 10000 + BASS 20000 + VOC 30000; actual: paid VOC only
     expect(body.totals).toEqual({ budgetedCents: 90000, actualCents: 20000 });
   });

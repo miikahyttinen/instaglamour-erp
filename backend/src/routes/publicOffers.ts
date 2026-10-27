@@ -23,7 +23,7 @@ import type { Db } from '../db.js';
 import { hashShareToken, isWellFormedShareToken, sameToken } from '../offers/shareToken.js';
 import { offerInclude, toPublicOfferDto, type OfferWithRefs } from '../offers/store.js';
 import { loadActiveReferences, sendReferenceImage, storedImage } from '../references/store.js';
-import { isUuid } from '../gigs/store.js';
+import { isUuid } from '../events/store.js';
 import { UploadDir } from '../fileStore/uploadDir.js';
 
 /** The route pattern; the auth gate in app.ts lets exactly this pattern through without a session. */

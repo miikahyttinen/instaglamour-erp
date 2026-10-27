@@ -7,7 +7,7 @@ import { validateSeed } from '../seed/schema.js';
 import { closeTestDb, resetDb, testApp, testDb } from './helpers.js';
 
 const exampleSeedPath = path.resolve(import.meta.dirname, '../seed/seed.example.json');
-const example = () => structuredClone(readSeedFile(exampleSeedPath)) as Record<string, unknown> & { gigs: Record<string, unknown>[] };
+const example = () => structuredClone(readSeedFile(exampleSeedPath)) as Record<string, unknown> & { events: Record<string, unknown>[] };
 
 /** Row counts of every table, to compare database states. */
 async function snapshot() {
@@ -20,9 +20,9 @@ async function snapshot() {
     setting: await db.setting.count(),
     category: await db.budgetCategory.count(),
     client: await db.client.count(),
-    gig: await db.gig.count(),
+    event: await db.event.count(),
     costLine: await db.costLine.count(),
-    gigEvent: await db.gigEvent.count(),
+    eventHistory: await db.eventHistory.count(),
     offer: await db.offer.count(),
     offerEvent: await db.offerEvent.count(),
     task: await db.task.count(),
@@ -56,7 +56,7 @@ describe('validateSeed', () => {
   it('reports every broken cross reference and rule', () => {
     const data = example();
     data.settings = { 'fees.office_default': 10000 };
-    data.gigs.push({
+    data.events.push({
       startDate: '2026-05-02',
       endDate: '2026-05-01',
       lineupTemplate: 'Template Z',
@@ -87,32 +87,32 @@ describe('validateSeed', () => {
   it('rejects hours outside 0.25 steps and negative money', () => {
     const data = example();
     (data.hours as unknown[]).push({ partner: 'partner.a@example.com', date: '2026-01-01', comment: 'x', hours: 1.1 });
-    data.gigs[0]!.priceCents = -1;
+    data.events[0]!.priceCents = -1;
     const result = validateSeed(data);
     expect(result.ok ? [] : result.errors.join('\n')).toMatch(/hours\.\d+\.hours/);
-    expect(result.ok ? [] : result.errors.join('\n')).toMatch(/gigs\.0\.priceCents/);
+    expect(result.ok ? [] : result.errors.join('\n')).toMatch(/events\.0\.priceCents/);
   });
 });
 
 describe('validateSeed: technical setup / logistics (TASK-010)', () => {
   it('rejects the old multi-select list with a conversion hint', () => {
     const data = example();
-    data.gigs[0]!.technicalSetup = ['HOUSE_TECH', 'VAN'];
+    data.events[0]!.technicalSetup = ['HOUSE_TECH', 'VAN'];
     const result = validateSeed(data);
     expect(result.ok).toBe(false);
     const errors = result.ok ? '' : result.errors.join('\n');
-    expect(errors).toMatch(/gigs\.0\.technicalSetup: technicalSetup is a single value now/);
+    expect(errors).toMatch(/events\.0\.technicalSetup: technicalSetup is a single value now/);
     expect(errors).toMatch(/seed\/README\.md/);
   });
 
   it.each([
-    [{ technicalSetup: 'OWN_PA' }, /gigs\.0\.technicalSetup: must be one of HOUSE_TECH, SET_A, SET_B, SET_C/],
-    [{ logistics: 'VAN' }, /gigs\.0\.logistics: must be one of OWN_VAN, RENTAL_VAN, TAXI, OTHER/],
-    [{ logistics: ['OWN_VAN'] }, /gigs\.0\.logistics: logistics is a single value now/],
-    [{ houseTechnician: 'yes' }, /gigs\.0\.houseTechnician/],
+    [{ technicalSetup: 'OWN_PA' }, /events\.0\.technicalSetup: must be one of HOUSE_TECH, SET_A, SET_B, SET_C/],
+    [{ logistics: 'VAN' }, /events\.0\.logistics: must be one of OWN_VAN, RENTAL_VAN, TAXI, OTHER/],
+    [{ logistics: ['OWN_VAN'] }, /events\.0\.logistics: logistics is a single value now/],
+    [{ houseTechnician: 'yes' }, /events\.0\.houseTechnician/],
   ])('rejects %j', (fields, message) => {
     const data = example();
-    Object.assign(data.gigs[0]!, fields);
+    Object.assign(data.events[0]!, fields);
     const result = validateSeed(data);
     expect(result.ok ? '' : result.errors.join('\n')).toMatch(message);
   });
@@ -217,19 +217,19 @@ describe('loadSeed: budget categories (TASK-012)', () => {
 });
 
 describe('validateSeed: clients (TASK-015)', () => {
-  it('clients and gig client are optional (older seed files still validate)', () => {
+  it('clients and event client are optional (older seed files still validate)', () => {
     const old = example();
     delete old.clients;
     delete old.offers; // older seed files have no offers either (offers need a client)
-    for (const g of old.gigs) delete g.client;
+    for (const g of old.events) delete g.client;
     const result = validateSeed(old);
     expect(result.ok ? [] : result.errors).toEqual([]);
   });
 
-  it('rejects duplicate client names (case-insensitive), unknown gig clients and unknown keys', () => {
+  it('rejects duplicate client names (case-insensitive), unknown event clients and unknown keys', () => {
     const data = example();
     data.clients = [{ name: 'Client A Oy' }, { name: ' client a oy' }, { name: 'Client B ry', phone: '1' }];
-    data.gigs[0]!.client = 'Client Q Oy';
+    data.events[0]!.client = 'Client Q Oy';
     const result = validateSeed(data);
     expect(result.ok).toBe(false);
     const errors = result.ok ? [] : result.errors;
@@ -239,38 +239,38 @@ describe('validateSeed: clients (TASK-015)', () => {
     const second = validateSeed(data);
     const errors2 = second.ok ? [] : second.errors;
     expect(errors2).toContain('clients: duplicate name "client a oy" (names are compared case-insensitively)');
-    expect(errors2).toContain('gigs.0.client: unknown client "Client Q Oy" (list it in clients)');
+    expect(errors2).toContain('events.0.client: unknown client "Client Q Oy" (list it in clients)');
   });
 });
 
 describe('loadSeed: clients (TASK-015)', () => {
-  it('loads the example clients and links most example gigs to them', async () => {
+  it('loads the example clients and links most example events to them', async () => {
     const summary = await loadSeed(testDb(), example());
     expect(summary.clients).toEqual({ created: 5, updated: 0, skipped: 0 });
-    const clients = await testDb().client.findMany({ orderBy: { name: 'asc' }, include: { _count: { select: { gigs: true } } } });
+    const clients = await testDb().client.findMany({ orderBy: { name: 'asc' }, include: { _count: { select: { events: true } } } });
     expect(clients.map((c) => c.name)).toEqual(['Client A Oy', 'Client B ry', 'Client C Ltd', 'Client D Oy', 'Client E Oy']);
     expect(clients[0]).toMatchObject({ notes: 'Synthetic demo client.', deletedAt: null });
-    const linked = await testDb().gig.count({ where: { clientId: { not: null } } });
-    expect(linked).toBeGreaterThan((await testDb().gig.count()) / 2);
-    const gig = await testDb().gig.findFirstOrThrow({ where: { venue: 'Venue V' }, include: { client: true } });
-    expect(gig.client?.name).toBe('Client D Oy');
+    const linked = await testDb().event.count({ where: { clientId: { not: null } } });
+    expect(linked).toBeGreaterThan((await testDb().event.count()) / 2);
+    const event = await testDb().event.findFirstOrThrow({ where: { venue: 'Venue V' }, include: { client: true } });
+    expect(event.client?.name).toBe('Client D Oy');
   });
 
-  it('is insert-only: a re-run never changes notes, revives deleted clients or relinks gigs', async () => {
+  it('is insert-only: a re-run never changes notes, revives deleted clients or relinks events', async () => {
     await loadSeed(testDb(), example());
     const db = testDb();
     const a = await db.client.findFirstOrThrow({ where: { name: 'Client A Oy' } });
     await db.client.update({ where: { id: a.id }, data: { notes: 'Edited in the app' } });
     const e = await db.client.findFirstOrThrow({ where: { name: 'Client E Oy' } });
     await db.client.update({ where: { id: e.id }, data: { deletedAt: new Date() } });
-    await db.gig.updateMany({ where: { venue: 'Venue V' }, data: { clientId: null } });
+    await db.event.updateMany({ where: { venue: 'Venue V' }, data: { clientId: null } });
 
     const changed = example();
     (changed.clients as { name: string; notes?: string }[])[0]!.notes = 'Changed in the file';
     const summary = await loadSeed(db, changed);
 
     expect((await db.client.findUniqueOrThrow({ where: { id: a.id } })).notes).toBe('Edited in the app');
-    expect((await db.gig.findFirstOrThrow({ where: { venue: 'Venue V' } })).clientId).toBeNull();
+    expect((await db.event.findFirstOrThrow({ where: { venue: 'Venue V' } })).clientId).toBeNull();
     // A deleted client's name is free again, so the seed creates a new active client for it.
     expect(summary.clients).toEqual({ created: 1, updated: 0, skipped: 4 });
     expect(await db.client.count({ where: { name: 'Client E Oy', deletedAt: null } })).toBe(1);
@@ -280,18 +280,18 @@ describe('loadSeed: clients (TASK-015)', () => {
     const existing = await testDb().client.create({ data: { name: 'CLIENT A OY' } });
     const summary = await loadSeed(testDb(), example());
     expect(summary.clients).toEqual({ created: 4, updated: 0, skipped: 1 });
-    const gig = await testDb().gig.findFirstOrThrow({ where: { startDate: new Date('2026-02-14') } });
-    expect(gig.clientId).toBe(existing.id);
+    const event = await testDb().event.findFirstOrThrow({ where: { startDate: new Date('2026-02-14') } });
+    expect(event.clientId).toBe(existing.id);
   });
 
-  it('a seed without clients loads gigs without a client', async () => {
+  it('a seed without clients loads events without a client', async () => {
     const old = example();
     delete old.clients;
     delete old.offers; // older seed files have no offers either (offers need a client)
-    for (const g of old.gigs) delete g.client;
+    for (const g of old.events) delete g.client;
     await loadSeed(testDb(), old);
     expect(await testDb().client.count()).toBe(0);
-    expect(await testDb().gig.count({ where: { clientId: { not: null } } })).toBe(0);
+    expect(await testDb().event.count({ where: { clientId: { not: null } } })).toBe(0);
   });
 
   it('--reset also removes clients', async () => {
@@ -306,27 +306,27 @@ describe('loadSeed', () => {
   it('loads technicalSetup, logistics and houseTechnician (defaults null / null / false)', async () => {
     await loadSeed(testDb(), example());
     const pick = { technicalSetup: true, logistics: true, houseTechnician: true } as const;
-    const byVenue = async (venue: string) => testDb().gig.findFirstOrThrow({ where: { venue }, select: pick });
+    const byVenue = async (venue: string) => testDb().event.findFirstOrThrow({ where: { venue }, select: pick });
     expect(await byVenue('Venue W')).toEqual({ technicalSetup: 'HOUSE_TECH', logistics: 'TAXI', houseTechnician: true });
     expect(await byVenue('Venue Y')).toEqual({ technicalSetup: null, logistics: 'OWN_VAN', houseTechnician: false });
     expect(await byVenue('Venue Z')).toEqual({ technicalSetup: null, logistics: null, houseTechnician: false });
   });
 
-  it('loads the example seed with BR-020/BR-021 lines for gigs without explicit cost lines', async () => {
+  it('loads the example seed with BR-020/BR-021 lines for events without explicit cost lines', async () => {
     await loadSeed(testDb(), example());
-    const gig = await testDb().gig.findFirstOrThrow({
+    const event = await testDb().event.findFirstOrThrow({
       where: { venue: 'Venue V' },
-      include: { costLines: { orderBy: { createdAt: 'asc' } }, events: true, seller: true, producer: true },
+      include: { costLines: { orderBy: { createdAt: 'asc' } }, history: true, seller: true, producer: true },
     });
-    expect(gig.lineupName).toBe('Template C');
-    const types = gig.costLines.map((c) => c.type);
+    expect(event.lineupName).toBe('Template C');
+    const types = event.costLines.map((c) => c.type);
     expect(types.slice(-3)).toEqual(['OFFICE', 'SALES', 'PRODUCTION']);
     expect(types).toHaveLength(13);
-    expect(gig.costLines[0]).toMatchObject({ type: 'VOC', personId: null, joinsLoadIn: true, budgetedCents: 30000 });
-    expect(gig.costLines.find((c) => c.type === 'SALES')?.personId).toBe(gig.seller.personId);
-    expect(gig.costLines.find((c) => c.type === 'PRODUCTION')?.personId).toBe(gig.producer.personId);
-    expect(gig.costLines.find((c) => c.type === 'OFFICE')).toMatchObject({ joinsLoadIn: null, budgetedCents: 10000 });
-    expect(gig.events.map((e) => e.type)).toEqual(['CREATED']);
+    expect(event.costLines[0]).toMatchObject({ type: 'VOC', personId: null, joinsLoadIn: true, budgetedCents: 30000 });
+    expect(event.costLines.find((c) => c.type === 'SALES')?.personId).toBe(event.seller.personId);
+    expect(event.costLines.find((c) => c.type === 'PRODUCTION')?.personId).toBe(event.producer.personId);
+    expect(event.costLines.find((c) => c.type === 'OFFICE')).toMatchObject({ joinsLoadIn: null, budgetedCents: 10000 });
+    expect(event.history.map((e) => e.type)).toEqual(['CREATED']);
   });
 
   it('is idempotent: running twice gives the same data', async () => {
@@ -343,14 +343,14 @@ describe('loadSeed', () => {
     await loadSeed(testDb(), example());
     const db = testDb();
     await db.partner.update({ where: { email: 'partner.a@example.com' }, data: { language: 'en' } });
-    await db.gig.updateMany({ where: { venue: 'Venue V' }, data: { priceCents: 10000 } });
+    await db.event.updateMany({ where: { venue: 'Venue V' }, data: { priceCents: 10000 } });
 
     const changed = example();
     changed.settings = { ...(changed.settings as object), 'fees.load_in_deduction': 2000 };
     await loadSeed(db, changed);
 
     expect((await db.partner.findUniqueOrThrow({ where: { email: 'partner.a@example.com' } })).language).toBe('en');
-    expect((await db.gig.findFirstOrThrow({ where: { venue: 'Venue V' } })).priceCents).toBe(10000);
+    expect((await db.event.findFirstOrThrow({ where: { venue: 'Venue V' } })).priceCents).toBe(10000);
     expect((await db.setting.findUniqueOrThrow({ where: { key: 'fees.load_in_deduction' } })).valueCents).toBe(2000);
   });
 
@@ -391,9 +391,9 @@ describe('loadSeed', () => {
   it('a failure while writing rolls the whole seed back', async () => {
     const data = example();
     // Passes validation but overflows the INTEGER column, after partners/people were already written.
-    data.gigs[0]!.priceCents = 2 ** 31;
+    data.events[0]!.priceCents = 2 ** 31;
     await expect(loadSeed(testDb(), data)).rejects.toThrow();
-    expect(await snapshot()).toMatchObject({ person: 0, partner: 0, gig: 0, setting: 0 });
+    expect(await snapshot()).toMatchObject({ person: 0, partner: 0, event: 0, setting: 0 });
   });
 
   it('--reset empties the database first', async () => {
@@ -497,7 +497,7 @@ describe('loadSeed: offers (TASK-016)', () => {
   it('loads synthetic offers across dispositions, one converted per BR-105', async () => {
     const summary = await loadSeed(testDb(), example());
     const db = testDb();
-    const offers = await db.offer.findMany({ include: { gig: true, client: true } });
+    const offers = await db.offer.findMany({ include: { event: true, client: true } });
     expect(summary.offers.created).toBe(offers.length);
     expect(offers.length).toBeGreaterThanOrEqual(8);
     expect(new Set(offers.map((o) => o.disposition)).size).toBeGreaterThanOrEqual(6);
@@ -507,11 +507,11 @@ describe('loadSeed: offers (TASK-016)', () => {
     }
     expect(new Set(offers.map((o) => o.shareToken)).size).toBe(offers.length);
 
-    const converted = offers.filter((o) => o.gig !== null);
+    const converted = offers.filter((o) => o.event !== null);
     expect(converted).toHaveLength(1);
     const c = converted[0]!;
     expect(c.disposition).toBe('WON');
-    expect(c.gig).toMatchObject({
+    expect(c.event).toMatchObject({
       startDate: c.eventDate,
       venue: c.city ? `${c.venue}, ${c.city}` : c.venue,
       lineupName: c.eventName,
@@ -532,11 +532,11 @@ describe('loadSeed: offers (TASK-016)', () => {
     expect((await db.partner.findUniqueOrThrow({ where: { email: 'partner.a@example.com' } })).phone).toMatch(/^\+358 40 000 000\d$/);
   });
 
-  it('is insert-only: a re-run creates no offers or gigs and never changes app edits', async () => {
+  it('is insert-only: a re-run creates no offers or events and never changes app edits', async () => {
     await loadSeed(testDb(), example());
     const db = testDb();
     const first = await snapshot();
-    const any = await db.offer.findFirstOrThrow({ where: { gig: null } });
+    const any = await db.offer.findFirstOrThrow({ where: { event: null } });
     await db.offer.update({ where: { id: any.id }, data: { disposition: 'LOST_OTHER', venue: 'Venue Edited' } });
     const summary = await loadSeed(db, example());
     expect(summary.offers.created).toBe(0);
@@ -544,7 +544,7 @@ describe('loadSeed: offers (TASK-016)', () => {
     expect(await db.offer.findUniqueOrThrow({ where: { id: any.id } })).toMatchObject({ disposition: 'LOST_OTHER', venue: 'Venue Edited' });
   });
 
-  it('--reset also removes offers and their gigs', async () => {
+  it('--reset also removes offers and their events', async () => {
     await loadSeed(testDb(), example());
     const first = await snapshot();
     await loadSeed(testDb(), example(), { reset: true });

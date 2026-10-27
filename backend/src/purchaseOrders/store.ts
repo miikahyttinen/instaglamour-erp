@@ -2,10 +2,10 @@
  * Purchase orders (UC-033, UC-034, BR-113…BR-119): data access, state changes and serializers.
  *
  * - Creation (freelancer, via the public link) runs in one transaction under an advisory lock per
- *   person, locks the requested cost lines (FOR UPDATE) and their gigs (FOR SHARE), re-checks
+ *   person, locks the requested cost lines (FOR UPDATE) and their events (FOR SHARE), re-checks
  *   eligibility (BR-114) and creates everything or nothing (BR-115).
  * - Pay / unpay / cancel (partners) lock the PO row, check the state (BR-117) and update the cost
- *   lines with gig events carrying the PO number.
+ *   lines with event history entries carrying the PO number.
  * - Every change appends a PurchaseOrderEvent (BR-119); CREATED has partnerId null (freelancer).
  */
 import type { Db } from '../db.js';
@@ -13,8 +13,8 @@ import { isoFromDate, todayIso } from '../domain/dates.js';
 import { isPayable } from '../domain/enums.js';
 import { Prisma, type PurchaseOrderStatus } from '../generated/prisma/client.js';
 import { AppError, notFound } from '../http/errors.js';
-import { compareCostLines, costLinePurchaseOrderInclude } from '../gigs/serialize.js';
-import { logEvent } from '../gigs/store.js';
+import { compareCostLines, costLinePurchaseOrderInclude } from '../events/serialize.js';
+import { logHistory } from '../events/store.js';
 import { purchaseOrderNumber } from './number.js';
 
 type Tx = Prisma.TransactionClient;
@@ -26,7 +26,7 @@ export const purchaseOrderInclude = {
   lines: {
     orderBy: { position: 'asc' },
     include: {
-      gig: { select: { startDate: true, venue: true, lineupName: true } },
+      event: { select: { startDate: true, venue: true, lineupName: true } },
       costLine: { select: { description: true } },
     },
   },
@@ -54,10 +54,10 @@ export function toPurchaseOrderDto(po: PurchaseOrderWithLines) {
     cancelReason: po.cancelReason,
     lines: po.lines.map((l) => ({
       costLineId: l.costLineRef,
-      gigId: l.gigId,
-      gigStartDate: isoFromDate(l.gig.startDate),
-      gigVenue: l.gig.venue,
-      gigLineupName: l.gig.lineupName,
+      eventId: l.eventId,
+      eventStartDate: isoFromDate(l.event.startDate),
+      eventVenue: l.event.venue,
+      eventLineupName: l.event.lineupName,
       type: l.type,
       description: lineDescription(l),
       amountCents: l.amountCents,
@@ -74,8 +74,8 @@ export function toPublicPurchaseOrderDto(po: PurchaseOrderWithLines) {
     createdAt: po.createdAt.toISOString(),
     paidAt: po.paidAt?.toISOString() ?? null,
     lines: po.lines.map((l) => ({
-      gigStartDate: isoFromDate(l.gig.startDate),
-      venue: l.gig.venue,
+      eventStartDate: isoFromDate(l.event.startDate),
+      venue: l.event.venue,
       type: l.type,
       description: lineDescription(l),
       amountCents: l.amountCents,
@@ -121,31 +121,31 @@ export function helsinkiYearRange(year: number): { gte: Date; lt: Date } {
 
 type FreelancerLineState = 'SELECTABLE' | 'UPCOMING' | 'ON_PO' | 'PAID';
 
-/** Lines shown on the freelancer page: own, amount > 0, payable, on non-deleted SOLD gigs. */
+/** Lines shown on the freelancer page: own, amount > 0, payable, on non-deleted SOLD events. */
 const freelancerLinesWhere = (personId: string): Prisma.CostLineWhereInput => ({
   personId,
   budgetedCents: { gt: 0 },
   type: { not: 'FUEL' },
-  gig: { status: 'SOLD', deletedAt: null },
+  event: { status: 'SOLD', deletedAt: null },
 });
 
 export async function loadFreelancerView(db: Db, person: { id: string; name: string }, today = todayIso()) {
   const lines = await db.costLine.findMany({
     where: freelancerLinesWhere(person.id),
     include: {
-      gig: { select: { id: true, startDate: true, endDate: true, venue: true, createdAt: true } },
+      event: { select: { id: true, startDate: true, endDate: true, venue: true, createdAt: true } },
       purchaseOrderLines: {
         where: { active: true },
         select: { amountCents: true, purchaseOrder: { select: { number: true, status: true } } },
       },
     },
   });
-  // Newest gig first; a gig's own lines in their contract order.
+  // Newest event first; an event's own lines in their contract order.
   lines.sort(
     (a, b) =>
-      b.gig.startDate.getTime() - a.gig.startDate.getTime() ||
-      b.gig.createdAt.getTime() - a.gig.createdAt.getTime() ||
-      (a.gig.id < b.gig.id ? -1 : a.gig.id > b.gig.id ? 1 : 0) ||
+      b.event.startDate.getTime() - a.event.startDate.getTime() ||
+      b.event.createdAt.getTime() - a.event.createdAt.getTime() ||
+      (a.event.id < b.event.id ? -1 : a.event.id > b.event.id ? 1 : 0) ||
       compareCostLines(a, b),
   );
 
@@ -159,7 +159,7 @@ export async function loadFreelancerView(db: Db, person: { id: string; name: str
     name: person.name,
     lines: lines.map((line) => {
       const onPo = line.purchaseOrderLines[0];
-      const gigStartDate = isoFromDate(line.gig.startDate);
+      const eventStartDate = isoFromDate(line.event.startDate);
       let state: FreelancerLineState;
       let amountCents = line.budgetedCents;
       if (line.paidAt !== null) {
@@ -169,13 +169,13 @@ export async function loadFreelancerView(db: Db, person: { id: string; name: str
         state = 'ON_PO';
         amountCents = onPo.amountCents;
       } else {
-        state = gigStartDate < today ? 'SELECTABLE' : 'UPCOMING';
+        state = eventStartDate < today ? 'SELECTABLE' : 'UPCOMING';
       }
       return {
         costLineId: line.id,
-        gigStartDate,
-        gigEndDate: line.gig.endDate ? isoFromDate(line.gig.endDate) : null,
-        venue: line.gig.venue,
+        eventStartDate,
+        eventEndDate: line.event.endDate ? isoFromDate(line.event.endDate) : null,
+        venue: line.event.venue,
         type: line.type,
         description: line.description,
         amountCents,
@@ -226,13 +226,13 @@ export async function createPurchaseOrder(
     });
     if (!person || !input.isCurrent(person)) throw notFound('Not found');
 
-    // Same lock order everywhere: cost lines, then gigs (see purchaseOrders/lock.ts).
+    // Same lock order everywhere: cost lines, then events (see purchaseOrders/lock.ts).
     await tx.$queryRaw`SELECT "id" FROM "cost_line" WHERE "id" IN (${uuidList(ids)}) ORDER BY "id" FOR UPDATE`;
-    await tx.$queryRaw`SELECT g."id" FROM "gig" g WHERE g."id" IN (SELECT c."gig_id" FROM "cost_line" c WHERE c."id" IN (${uuidList(ids)})) ORDER BY g."id" FOR SHARE`;
+    await tx.$queryRaw`SELECT g."id" FROM "event" g WHERE g."id" IN (SELECT c."event_id" FROM "cost_line" c WHERE c."id" IN (${uuidList(ids)})) ORDER BY g."id" FOR SHARE`;
 
     const lines = await tx.costLine.findMany({
       where: { id: { in: ids } },
-      include: { gig: true, ...costLinePurchaseOrderInclude },
+      include: { event: true, ...costLinePurchaseOrderInclude },
     });
     const byId = new Map(lines.map((l) => [l.id, l]));
     const offending = ids.filter((id) => {
@@ -240,9 +240,9 @@ export async function createPurchaseOrder(
       return (
         !line ||
         line.personId !== person.id ||
-        line.gig.status !== 'SOLD' ||
-        line.gig.deletedAt !== null ||
-        !(isoFromDate(line.gig.startDate) < today) ||
+        line.event.status !== 'SOLD' ||
+        line.event.deletedAt !== null ||
+        !(isoFromDate(line.event.startDate) < today) ||
         line.paidAt !== null ||
         line.budgetedCents <= 0 ||
         !isPayable(line.type) ||
@@ -255,12 +255,12 @@ export async function createPurchaseOrder(
       });
     }
 
-    // Oldest gig first on the PO, a gig's lines in their contract order.
+    // Oldest event first on the PO, an event's lines in their contract order.
     const ordered = [...lines].sort(
       (a, b) =>
-        a.gig.startDate.getTime() - b.gig.startDate.getTime() ||
-        a.gig.createdAt.getTime() - b.gig.createdAt.getTime() ||
-        (a.gig.id < b.gig.id ? -1 : a.gig.id > b.gig.id ? 1 : 0) ||
+        a.event.startDate.getTime() - b.event.startDate.getTime() ||
+        a.event.createdAt.getTime() - b.event.createdAt.getTime() ||
+        (a.event.id < b.event.id ? -1 : a.event.id > b.event.id ? 1 : 0) ||
         compareCostLines(a, b),
     );
     const [{ seq }] = await tx.$queryRaw<[{ seq: number }]>`SELECT nextval('purchase_order_seq')::int AS "seq"`;
@@ -274,7 +274,7 @@ export async function createPurchaseOrder(
           create: ordered.map((l, position) => ({
             costLineId: l.id,
             costLineRef: l.id,
-            gigId: l.gigId,
+            eventId: l.eventId,
             type: l.type,
             description: l.description,
             amountCents: l.budgetedCents,
@@ -313,8 +313,8 @@ export async function payPurchaseOrder(db: Db, id: string, partnerId: string): P
         where: { id: line.costLineId },
         data: { actualCents: line.amountCents, paidAt: now, paidById: partnerId },
       });
-      await logEvent(tx, {
-        gigId: line.gigId,
+      await logHistory(tx, {
+        eventId: line.eventId,
         type: 'COST_PAID',
         partnerId,
         details: { costLineId: line.costLineId, type: line.type, actualCents: line.amountCents, purchaseOrderNumber: po.number },
@@ -340,8 +340,8 @@ export async function unpayPurchaseOrder(db: Db, id: string, partnerId: string):
         where: { id: line.costLineId },
         data: { actualCents: null, paidAt: null, paidById: null },
       });
-      await logEvent(tx, {
-        gigId: line.gigId,
+      await logHistory(tx, {
+        eventId: line.eventId,
         type: 'COST_UNPAID',
         partnerId,
         details: {

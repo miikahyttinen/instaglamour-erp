@@ -20,9 +20,9 @@ async function snapshot() {
     setting: await db.setting.count(),
     category: await db.budgetCategory.count(),
     client: await db.client.count(),
-    gig: await db.gig.count(),
+    event: await db.event.count(),
     costLine: await db.costLine.count(),
-    gigEvent: await db.gigEvent.count(),
+    eventHistory: await db.eventHistory.count(),
     offer: await db.offer.count(),
     offerEvent: await db.offerEvent.count(),
     task: await db.task.count(),
@@ -84,9 +84,9 @@ describe('POST /api/import', () => {
     const doc = example();
     // The signed-in partner already exists, so it's skipped; everything else is new.
     expect(summary.partners).toEqual({ created: doc.partners.length - 1, updated: 0, skipped: 1 });
-    expect(summary.gigs).toEqual({ created: (doc.gigs as unknown[]).length, updated: 0, skipped: 0 });
+    expect(summary.events).toEqual({ created: (doc.events as unknown[]).length, updated: 0, skipped: 0 });
     expect(summary.references).toEqual({ created: doc.references.length, updated: 0, skipped: 0 });
-    expect((await snapshot()).gig).toBeGreaterThan(0);
+    expect((await snapshot()).event).toBeGreaterThan(0);
   });
 
   it('defaults to a real import', async () => {
@@ -104,7 +104,7 @@ describe('POST /api/import', () => {
     for (const key of SEED_SUMMARY_KEYS) {
       expect(res.json().summary[key], key).toMatchObject({ created: 0, updated: 0 });
     }
-    expect(res.json().summary.gigs.skipped).toBe((example().gigs as unknown[]).length);
+    expect(res.json().summary.events.skipped).toBe((example().events as unknown[]).length);
     expect(await snapshot()).toEqual({ ...first, importRun: 2 });
   });
 
@@ -125,12 +125,12 @@ describe('POST /api/import', () => {
   it('serializes concurrent imports: the second one finds everything already there', async () => {
     const [a, b] = await Promise.all([post(example()), post(example())]);
     expect([a.statusCode, b.statusCode]).toEqual([200, 200]);
-    const gigCount = (example().gigs as unknown[]).length;
-    const created = [a, b].map((r) => (r.json().summary as SeedSummary).gigs.created).sort();
-    expect(created).toEqual([0, gigCount]);
-    // Converted offers create their own gig (BR-105).
+    const eventCount = (example().events as unknown[]).length;
+    const created = [a, b].map((r) => (r.json().summary as SeedSummary).events.created).sort();
+    expect(created).toEqual([0, eventCount]);
+    // Converted offers create their own event (BR-105).
     const converted = (example().offers as { converted?: boolean }[]).filter((o) => o.converted).length;
-    expect(await testDb().gig.count()).toBe(gigCount + converted);
+    expect(await testDb().event.count()).toBe(eventCount + converted);
   });
 
   it('converted: true is exempt from BR-109 (past event date, no accepted disposition)', async () => {
@@ -142,9 +142,9 @@ describe('POST /api/import', () => {
     offers.push(historical);
     const res = await post(doc);
     expect(res.statusCode).toBe(200);
-    const offer = await testDb().offer.findFirstOrThrow({ where: { eventName: 'Event Past' }, include: { gig: true } });
+    const offer = await testDb().offer.findFirstOrThrow({ where: { eventName: 'Event Past' }, include: { event: true } });
     expect(offer.disposition).toBe('WON');
-    expect(offer.gig).toMatchObject({ startDate: new Date('2020-03-01T00:00:00.000Z'), offerId: offer.id });
+    expect(offer.event).toMatchObject({ startDate: new Date('2020-03-01T00:00:00.000Z'), offerId: offer.id });
   });
 
   it('accepts files above the global 1 MB body limit (up to 10 MB) and a UTF-8 BOM', async () => {
