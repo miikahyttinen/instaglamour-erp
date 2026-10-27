@@ -5,8 +5,8 @@ import type {
   CostType,
   ErrorCode,
   FieldCode,
-  GigEventType,
-  GigStatus,
+  EventHistoryType,
+  EventStatus,
   InternalRole,
   Language,
   MusicianRole,
@@ -46,9 +46,9 @@ export interface ApiErrorBody {
 export interface PersonDoubleBookedWarning {
   code: 'PERSON_DOUBLE_BOOKED';
   personId: Id;
-  otherGigId: Id;
-  otherGigStartDate: IsoDate;
-  otherGigLineupName: string;
+  otherEventId: Id;
+  otherEventStartDate: IsoDate;
+  otherEventLineupName: string;
 }
 
 export interface DuplicateNameWarning {
@@ -86,16 +86,16 @@ export interface Person {
   partner: PersonPartner | null;
   /** Roles the person can play: unique, in MUSICIAN_ROLES order. */
   roles: MusicianRole[];
-  /** Distinct played gigs (SOLD, past, not deleted, all years) with a musician-role line. */
-  gigCount: number;
+  /** Distinct played events (SOLD, past, not deleted, all years) with a musician-role line. */
+  eventCount: number;
 }
 
-export interface GigSummary {
+export interface EventSummary {
   id: Id;
   startDate: IsoDate;
   endDate: IsoDate | null;
   year: number;
-  status: GigStatus;
+  status: EventStatus;
   played: boolean;
   lineupTemplateId: Id | null;
   lineupName: string;
@@ -118,10 +118,10 @@ export interface GigSummary {
   marginBudgetPct: number | null;
   marginActualPct: number | null;
   notFullyStaffed: boolean;
-  /** Client of the gig (UC-027), or null. `clientName` is the client's current name. */
+  /** Client of the event (UC-027), or null. `clientName` is the client's current name. */
   clientId: Id | null;
   clientName: string | null;
-  /** Offer the gig was converted from (UC-031), or null. */
+  /** Offer the event was converted from (UC-031), or null. */
   offerId: Id | null;
   deletedAt: IsoTimestamp | null;
   createdAt: IsoTimestamp;
@@ -130,7 +130,7 @@ export interface GigSummary {
 
 export interface CostLine {
   id: Id;
-  gigId: Id;
+  eventId: Id;
   type: CostType;
   personId: Id | null;
   description: string | null;
@@ -148,7 +148,7 @@ export interface CostLine {
 
 export interface Attachment {
   id: Id;
-  gigId: Id;
+  eventId: Id;
   filename: string;
   contentType: string;
   sizeBytes: number;
@@ -157,7 +157,7 @@ export interface Attachment {
   uploadedAt: IsoTimestamp;
 }
 
-export interface GigDetail extends GigSummary {
+export interface EventDetail extends EventSummary {
   costLines: CostLine[];
   attachments: Attachment[];
 }
@@ -173,9 +173,9 @@ export interface DateRange {
   endDate: IsoDate | null;
 }
 
-interface GigEventBase<T extends GigEventType, D> {
+interface EventHistoryEntryBase<T extends EventHistoryType, D> {
   id: Id;
-  gigId: Id;
+  eventId: Id;
   type: T;
   partnerId: Id;
   at: IsoTimestamp;
@@ -185,25 +185,25 @@ interface GigEventBase<T extends GigEventType, D> {
 
 type EmptyDetails = Record<string, never>;
 
-export type GigEvent =
-  | GigEventBase<'CREATED', EmptyDetails>
-  | GigEventBase<'UPDATED', { changes: FieldChange[]; movedCostLineIds: Id[] }>
-  | GigEventBase<'MOVED', { from: DateRange; to: DateRange }>
-  | GigEventBase<'CANCELLED' | 'UNCANCELLED' | 'DELETED' | 'RESTORED', EmptyDetails>
-  | GigEventBase<
+export type EventHistoryEntry =
+  | EventHistoryEntryBase<'CREATED', EmptyDetails>
+  | EventHistoryEntryBase<'UPDATED', { changes: FieldChange[]; movedCostLineIds: Id[] }>
+  | EventHistoryEntryBase<'MOVED', { from: DateRange; to: DateRange }>
+  | EventHistoryEntryBase<'CANCELLED' | 'UNCANCELLED' | 'DELETED' | 'RESTORED', EmptyDetails>
+  | EventHistoryEntryBase<
       'COST_ADDED' | 'COST_REMOVED',
       { costLineId: Id; type: CostType; personId: Id | null; budgetedCents: Cents }
     >
-  | GigEventBase<'COST_UPDATED', { costLineId: Id; type: CostType; changes: FieldChange[] }>
-  | GigEventBase<
+  | EventHistoryEntryBase<'COST_UPDATED', { costLineId: Id; type: CostType; changes: FieldChange[] }>
+  | EventHistoryEntryBase<
       'COST_PAID',
       { costLineId: Id; type: CostType; actualCents: Cents; purchaseOrderNumber?: string }
     >
-  | GigEventBase<
+  | EventHistoryEntryBase<
       'COST_UNPAID',
       { costLineId: Id; type: CostType; previousActualCents: Cents; purchaseOrderNumber?: string }
     >
-  | GigEventBase<'ATTACHMENT_ADDED' | 'ATTACHMENT_REMOVED', { attachmentId: Id; filename: string }>;
+  | EventHistoryEntryBase<'ATTACHMENT_ADDED' | 'ATTACHMENT_REMOVED', { attachmentId: Id; filename: string }>;
 
 export interface Task {
   id: Id;
@@ -334,10 +334,10 @@ export interface ReferenceData {
 
 // ---------- Year page ----------
 
-export interface YearGigTotals {
-  gigCount: number;
+export interface YearEventTotals {
+  eventCount: number;
   cancelledCount: number;
-  soldGigsSumCents: Cents;
+  soldEventsSumCents: Cents;
   budgetedCostsCents: Cents;
   actualCostsCents: Cents;
   marginBudgetCents: Cents;
@@ -346,16 +346,16 @@ export interface YearGigTotals {
 
 export interface YearPage {
   year: number;
-  gigs: YearGigTotals;
+  events: YearEventTotals;
   hours: { partners: { partnerId: Id; total: number }[]; grandTotal: number };
   budget: BudgetAmounts;
   yearResultCents: Cents;
-  upcomingGigs: GigSummary[];
+  upcomingEvents: EventSummary[];
 }
 
-// ---------- Gigs ----------
+// ---------- Events ----------
 
-export interface GigListQuery {
+export interface EventListQuery {
   year: number;
   status?: 'SOLD' | 'CANCELLED' | 'ALL';
   when?: 'all' | 'upcoming' | 'past';
@@ -366,12 +366,12 @@ export interface GigListQuery {
   deleted?: boolean;
 }
 
-export interface GigListResponse {
-  gigs: GigSummary[];
-  yearSummary: YearGigTotals;
+export interface EventListResponse {
+  events: EventSummary[];
+  yearSummary: YearEventTotals;
 }
 
-export interface GigCreate {
+export interface EventCreate {
   startDate: IsoDate;
   endDate?: IsoDate | null;
   lineupTemplateId?: Id | null;
@@ -390,7 +390,7 @@ export interface GigCreate {
   clientId?: Id | null;
 }
 
-export interface GigUpdate {
+export interface EventUpdate {
   lineupName?: string;
   venue?: string;
   technicalSetup?: TechnicalSetup | null;
@@ -406,19 +406,19 @@ export interface GigUpdate {
   clientId?: Id | null;
 }
 
-export interface GigUpdateResponse {
-  gig: GigDetail;
+export interface EventUpdateResponse {
+  event: EventDetail;
   movedCostLineIds: Id[];
 }
 
-export interface GigMoveRequest {
+export interface EventMoveRequest {
   startDate: IsoDate;
   endDate?: IsoDate | null;
   reason?: string;
 }
 
-export interface GigWithWarnings {
-  gig: GigDetail;
+export interface EventWithWarnings {
+  event: EventDetail;
   warnings: Warning[];
 }
 
@@ -475,11 +475,11 @@ export interface PersonWithWarnings {
 
 export interface PersonCostLine {
   costLine: CostLine;
-  gigId: Id;
-  gigStartDate: IsoDate;
-  gigLineupName: string;
-  gigVenue: string;
-  gigStatus: GigStatus;
+  eventId: Id;
+  eventStartDate: IsoDate;
+  eventLineupName: string;
+  eventVenue: string;
+  eventStatus: EventStatus;
 }
 
 export interface PersonCostLinesResponse {
@@ -545,7 +545,7 @@ export interface Client {
 
 /** Row of `GET /api/clients` (sorted by name). */
 export interface ClientListItem extends Client {
-  gigCount: number;
+  eventCount: number;
   offerCount: number;
 }
 
@@ -559,10 +559,10 @@ export interface ClientUpdate {
   notes?: string | null;
 }
 
-/** `GET /api/clients/{id}`: linked gigs and offers of all years, newest first. */
+/** `GET /api/clients/{id}`: linked events and offers of all years, newest first. */
 export interface ClientDetailResponse {
   client: Client;
-  gigs: GigSummary[];
+  events: EventSummary[];
   offers: OfferSummary[];
 }
 
@@ -584,7 +584,7 @@ export interface OfferSummary {
   status: OfferStatus;
   /** OPEN and the event date is before today (display only, BR-102). */
   expired: boolean;
-  gigId: Id | null;
+  eventId: Id | null;
   createdAt: IsoTimestamp;
   updatedAt: IsoTimestamp;
   deletedAt: IsoTimestamp | null;
@@ -677,7 +677,7 @@ export interface OfferUpdate extends Partial<Omit<OfferCreate, 'clientId' | 'eve
 
 export interface OfferConvertResponse {
   offer: OfferDetail;
-  gig: GigDetail;
+  event: EventDetail;
 }
 
 /** Offer history entry (BR-103). Unknown or missing `details` are shown without detail lines. */
@@ -696,8 +696,8 @@ export interface OfferEventDetails {
   /** DISPOSITION_CHANGED: old → new disposition. */
   from?: OfferDisposition;
   to?: OfferDisposition;
-  /** CONVERTED: the created gig. */
-  gigId?: Id;
+  /** CONVERTED: the created event. */
+  eventId?: Id;
 }
 
 // ---------- References (owner request 2026-10-07, BR-108) ----------

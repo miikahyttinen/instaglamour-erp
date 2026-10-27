@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 import { isApiError } from '../../api/client';
 import type { FieldCode, Language } from '../../api/enums';
 import { offersApi } from '../../api/endpoints';
-import type { GigCreate, Id, OfferConvertResponse, OfferSummary, ReferenceData } from '../../api/types';
+import type { EventCreate, Id, OfferConvertResponse, OfferSummary, ReferenceData } from '../../api/types';
 import { Button } from '../../components/Button';
 import { Dialog } from '../../components/Dialog';
 import { Field, MoneyInput } from '../../components/fields';
@@ -23,7 +23,7 @@ import { offerKeys, useApplyConvert, useOffer } from './queries';
 interface Props {
   offer: Pick<OfferSummary, 'id' | 'eventName'>;
   onClose: () => void;
-  /** 201: the caller closes the dialog and shows the notice with the gig link. */
+  /** 201: the caller closes the dialog and shows the notice with the event link. */
   onConverted: (result: OfferConvertResponse) => void;
 }
 
@@ -37,11 +37,11 @@ interface FormState {
   producerId: Id;
 }
 
-const DRAFT = 'gig-draft';
+const DRAFT = 'event-draft';
 
 type Errors = Partial<Record<keyof FormState, string>>;
 
-/** Contract field (GigCreate) → modal field that shows its error; others go to the notice. */
+/** Contract field (EventCreate) → modal field that shows its error; others go to the notice. */
 const FIELD_TO_CONTROL: Record<string, keyof FormState> = {
   startDate: 'startDate',
   lineupName: 'lineupName',
@@ -53,7 +53,7 @@ const FIELD_TO_CONTROL: Record<string, keyof FormState> = {
   producerId: 'producerId',
 };
 
-function formFromDraft(draft: GigCreate, lang: Language, reference: ReferenceData | undefined): FormState {
+function formFromDraft(draft: EventCreate, lang: Language, reference: ReferenceData | undefined): FormState {
   const templateName = reference?.lineupTemplates.find((tpl) => tpl.id === draft.lineupTemplateId)?.name;
   return {
     startDate: draft.startDate,
@@ -67,16 +67,16 @@ function formFromDraft(draft: GigCreate, lang: Language, reference: ReferenceDat
 }
 
 /**
- * Convert to gig (UC-031): a small modal prefilled from `GET /api/offers/{id}/gig-draft`
+ * Convert to event (UC-031): a small modal prefilled from `GET /api/offers/{id}/event-draft`
  * (BR-105) with the key fields editable and a yellow review tag. Confirm sends the draft merged
- * with the edited fields to `POST /api/offers/{id}/convert`. The other gig fields are edited
- * later on the gig page.
+ * with the edited fields to `POST /api/offers/{id}/convert`. The other event fields are edited
+ * later on the event page.
  */
 export function ConvertDialog({ offer, onClose, onConverted }: Props) {
   const { t } = useTranslation();
   const draft = useQuery({
     queryKey: [...offerKeys.detail(offer.id), DRAFT],
-    queryFn: () => offersApi.gigDraft(offer.id),
+    queryFn: () => offersApi.eventDraft(offer.id),
     // Always fresh: the offer may have changed since the dialog was last opened.
     staleTime: 0,
     gcTime: 0,
@@ -117,7 +117,7 @@ function blockingCode(error: unknown): BlockingCode | null {
 }
 
 /**
- * 409 ALREADY_CONVERTED (UC-031 E1): message + link to the existing gig (from the refetched offer).
+ * 409 ALREADY_CONVERTED (UC-031 E1): message + link to the existing event (from the refetched offer).
  * 409 OFFER_NOT_CONVERTIBLE (BR-109): the offer is no longer accepted / its date has passed.
  * Both refetch the offers so the row / page drop the Convert button.
  */
@@ -133,15 +133,15 @@ function ConvertBlocked({ offerId, code }: { offerId: Id; code: BlockingCode }) 
       predicate: (query) => query.queryKey.at(-1) !== DRAFT,
     });
   }, [queryClient]);
-  const gigId = code === 'ALREADY_CONVERTED' ? (offer.data?.gigId ?? null) : null;
+  const eventId = code === 'ALREADY_CONVERTED' ? (offer.data?.eventId ?? null) : null;
   return (
     <Notice tone="warn" role="alert">
       <p>
         {code === 'ALREADY_CONVERTED' ? t('convert.alreadyConverted') : t('errors.OFFER_NOT_CONVERTIBLE')}
-        {gigId && (
+        {eventId && (
           <>
             {' '}
-            <Link to={`/gigs/${gigId}`}>{t('convert.openGig')}</Link>
+            <Link to={`/events/${eventId}`}>{t('convert.openEvent')}</Link>
           </>
         )}
       </p>
@@ -154,7 +154,7 @@ function ConvertForm({
   draft,
   onClose,
   onConverted,
-}: Props & { draft: GigCreate }) {
+}: Props & { draft: EventCreate }) {
   const { t } = useTranslation();
   const lang = useLang();
   const applyConvert = useApplyConvert();
@@ -173,7 +173,7 @@ function ConvertForm({
   // Double-submit guard (AC-3): `isPending` only disables the button after a re-render.
   const submitting = useRef(false);
   const convert = useMutation({
-    mutationFn: (body: GigCreate) => offersApi.convert(offer.id, body),
+    mutationFn: (body: EventCreate) => offersApi.convert(offer.id, body),
     onSuccess: (result) => {
       void applyConvert(result.offer);
       onConverted(result);
@@ -230,7 +230,7 @@ function ConvertForm({
         <StatusTag tone="warn">{t('convert.review')}</StatusTag>
       </p>
       <div className="form-row">
-        <Field label={t('gigForm.startDate')} error={errors.startDate}>
+        <Field label={t('eventForm.startDate')} error={errors.startDate}>
           {(p) => (
             <input
               {...p}
@@ -239,23 +239,23 @@ function ConvertForm({
               value={form.startDate} onChange={(e) => set('startDate', e.target.value)} />
           )}
         </Field>
-        <Field label={t('gigForm.price')} error={errors.price}>
+        <Field label={t('eventForm.price')} error={errors.price}>
           {(p) => <MoneyInput {...p} value={form.price} onChange={(v) => set('price', v)} />}
         </Field>
       </div>
-      <Field label={t('gigForm.lineup')} error={errors.lineupName}>
+      <Field label={t('eventForm.lineup')} error={errors.lineupName}>
         {(p) => (
           <input {...p} type="text" value={form.lineupName} onChange={(e) => set('lineupName', e.target.value)} />
         )}
       </Field>
-      <Field label={t('gigForm.venue')} error={errors.venue}>
+      <Field label={t('eventForm.venue')} error={errors.venue}>
         {(p) => <input {...p} type="text" value={form.venue} onChange={(e) => set('venue', e.target.value)} />}
       </Field>
       <Field label={t('clients.select.label')} error={errors.clientId}>
         {(p) => <ClientSelect {...p} value={form.clientId} onChange={(id) => set('clientId', id)} />}
       </Field>
       <div className="form-row">
-        <Field label={t('gigForm.seller')} error={errors.sellerId}>
+        <Field label={t('eventForm.seller')} error={errors.sellerId}>
           {(p) => (
             <select {...p} value={form.sellerId} onChange={(e) => set('sellerId', e.target.value)}>
               {sellerOptions.map((o) => (
@@ -266,7 +266,7 @@ function ConvertForm({
             </select>
           )}
         </Field>
-        <Field label={t('gigForm.producer')} error={errors.producerId}>
+        <Field label={t('eventForm.producer')} error={errors.producerId}>
           {(p) => (
             <select {...p} value={form.producerId} onChange={(e) => set('producerId', e.target.value)}>
               {producerOptions.map((o) => (

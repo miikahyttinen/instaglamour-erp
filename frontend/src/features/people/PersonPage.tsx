@@ -16,7 +16,7 @@ import { costTypeLabel } from '../../i18n/labels';
 import { useLang } from '../../i18n/useLang';
 import { formatDate, formatMoney } from '../../lib/format';
 import { FreelancerLinkSection } from '../freelancer/FreelancerLinkSection';
-import { GigStatusTag } from '../gigs/GigStatusTag';
+import { EventStatusTag } from '../events/EventStatusTag';
 import { NoticeBox, type Notice } from './Notices';
 import { isPartner } from './partnerRules';
 import { PartnerStatus, PartnerTag } from './PartnerStatus';
@@ -29,7 +29,7 @@ const TOTALS_SPAN: GridSpan = { base: 6, lg: 3 };
 
 /**
  * One person: name, active, partner status and roles edited in place (NFR-8, UC-032), the played
- * gig count, and their cost lines in the selected year (UC-014 A2).
+ * event count, and their cost lines in the selected year (UC-014 A2).
  */
 export function PersonPage() {
   const { t } = useTranslation();
@@ -78,14 +78,14 @@ export function PersonPage() {
             <PersonActiveSwitch person={person} label={t('people.active')} onNotice={setNotice} />
             <PartnerStatus person={person} onNotice={setNotice} />
             <PersonRolesField person={person} label={t('people.roles')} hint={t('people.rolesHint')} />
-            <div className="person-gig-count" role="group" aria-labelledby="person-gig-count-label">
-              <span className="label" id="person-gig-count-label">
-                {t('people.gigCount')}
+            <div className="person-event-count" role="group" aria-labelledby="person-event-count-label">
+              <span className="label" id="person-event-count-label">
+                {t('people.eventCount')}
               </span>
-              <span className="person-gig-count-value">
-                {person.gigCount}
+              <span className="person-event-count-value">
+                {person.eventCount}
               </span>
-              <span className="muted small person-gig-count-hint">{t('people.gigCountHint')}</span>
+              <span className="muted small person-event-count-hint">{t('people.eventCountHint')}</span>
             </div>
           </FieldList>
           <NoticeBox notice={notice} onDismiss={() => setNotice(null)} />
@@ -147,24 +147,24 @@ function CostLines({ personId }: { personId: Id }) {
       label: t('people.lines.date'),
       primary: true,
       className: 'person-lines-date',
-      cell: (line) => <Link to={`/gigs/${line.gigId}`}>{formatDate(line.gigStartDate, lang)}</Link>,
+      cell: (line) => <Link to={`/events/${line.eventId}`}>{formatDate(line.eventStartDate, lang)}</Link>,
     },
     {
       key: 'lineup',
       label: t('people.lines.lineup'),
       cell: (line) => (
         <span className="person-lines-lineup">
-          {line.gigLineupName}
-          {line.gigStatus === 'CANCELLED' && (
+          {line.eventLineupName}
+          {line.eventStatus === 'CANCELLED' && (
             <>
               {' '}
-              <GigStatusTag status="CANCELLED" />
+              <EventStatusTag status="CANCELLED" />
             </>
           )}
         </span>
       ),
     },
-    { key: 'venue', label: t('people.lines.venue'), cell: (line) => line.gigVenue },
+    { key: 'venue', label: t('people.lines.venue'), cell: (line) => line.eventVenue },
     { key: 'type', label: t('people.lines.type'), cell: typeText },
     {
       key: 'budgeted',

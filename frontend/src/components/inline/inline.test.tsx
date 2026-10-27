@@ -115,12 +115,12 @@ describe('InlineText', () => {
 
   it('a non-validation error shows the translated error code, never the server message', async () => {
     const user = userEvent.setup();
-    const onSave = vi.fn().mockRejectedValue(new ApiError(409, 'GIG_DELETED', 'Server text'));
+    const onSave = vi.fn().mockRejectedValue(new ApiError(409, 'EVENT_DELETED', 'Server text'));
     render(<InlineText label="Venue" value="Venue X" onSave={onSave} />);
     const input = screen.getByRole('textbox', { name: 'Venue' });
     await user.type(input, '!');
     await user.tab();
-    expect(await screen.findByText('Keikka on poistettu. Palauta se ensin.')).toBeInTheDocument();
+    expect(await screen.findByText('Tapahtuma on poistettu. Palauta se ensin.')).toBeInTheDocument();
     expect(screen.queryByText('Server text')).not.toBeInTheDocument();
   });
 

@@ -11,16 +11,16 @@ import {
   tagOf,
   test,
 } from './helpers';
-import { suffix } from './gigs';
+import { suffix } from './events';
 
 // Technical setup / logistics / house technician (contract 2026-10-05, TASK-010, TASK-011):
 // technicalSetup and logistics are one code or null (selects with "–"), houseTechnician is a
-// boolean (switch). Created from the new gig form, then edited in place on the gig page.
+// boolean (switch). Created from the new event form, then edited in place on the event page.
 
 const TECH_OPTIONS = ['–', 'Talon tekniikka', 'Setti A', 'Setti B', 'Setti C'];
 const LOGISTICS_OPTIONS = ['–', 'Oma paku', 'Vuokrapaku', 'Taksi', 'Muu'];
 
-test('create a gig with Set A, own van and house technician; edit each in place; history shows old → new', async ({
+test('create an event with Set A, own van and house technician; edit each in place; history shows old → new', async ({
   page,
 }, testInfo) => {
   await signIn(page);
@@ -29,11 +29,11 @@ test('create a gig with Set A, own van and house technician; edit each in place;
   const startDate = tag === 'M' ? '2026-11-14' : '2026-11-15';
   const title = `${SEED.templateB.name} · ${venue}`;
 
-  // ---- New gig form: two selects and a switch ----
+  // ---- New event form: two selects and a switch ----
   await page.goto('/');
-  await goNav(page, 'Keikat');
-  await page.getByRole('link', { name: 'Uusi keikka' }).first().click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Uusi keikka' })).toBeVisible();
+  await goNav(page, 'Tapahtumat');
+  await page.getByRole('link', { name: 'Uusi tapahtuma' }).first().click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Uusi tapahtuma' })).toBeVisible();
 
   const main = page.getByRole('main');
   const newTech = main.getByRole('combobox', { name: 'Tekniikka', exact: true });
@@ -56,21 +56,21 @@ test('create a gig with Set A, own van and house technician; edit each in place;
   await newLogistics.selectOption({ label: 'Oma paku' });
   await newHouseTech.check();
   await expect(newHouseTech).toBeChecked();
-  await expectNoHorizontalScroll(page, 'new gig with technical setup');
+  await expectNoHorizontalScroll(page, 'new event with technical setup');
 
   const created = page.waitForResponse(
-    (res) => res.request().method() === 'POST' && new URL(res.url()).pathname === '/api/gigs',
+    (res) => res.request().method() === 'POST' && new URL(res.url()).pathname === '/api/events',
   );
-  await page.getByRole('button', { name: 'Luo keikka' }).click();
+  await page.getByRole('button', { name: 'Luo tapahtuma' }).click();
   const createRes = await created;
-  expect(createRes.status(), 'POST /api/gigs').toBe(201);
+  expect(createRes.status(), 'POST /api/events').toBe(201);
   expect(createRes.request().postDataJSON()).toMatchObject({
     technicalSetup: 'SET_A',
     logistics: 'OWN_VAN',
     houseTechnician: true,
   });
 
-  // ---- Gig page shows the saved values as inline controls ----
+  // ---- Event page shows the saved values as inline controls ----
   await expect(page.getByRole('heading', { level: 1, name: title })).toBeVisible();
   const id = page.url().split('/').pop() ?? '';
   const tech = main.getByRole('combobox', { name: 'Tekniikka', exact: true });
@@ -81,8 +81,8 @@ test('create a gig with Set A, own van and house technician; edit each in place;
   await expect(houseTech).toBeChecked();
   await expect(tech.locator('option')).toHaveText(TECH_OPTIONS);
   await expect(logistics.locator('option')).toHaveText(LOGISTICS_OPTIONS);
-  await expectNoEditSaveButtons(main, 'gig page');
-  const before = await api(page).get(`/gigs/${id}`);
+  await expectNoEditSaveButtons(main, 'event page');
+  const before = await api(page).get(`/events/${id}`);
   expect(before).toMatchObject({ technicalSetup: 'SET_A', logistics: 'OWN_VAN', houseTechnician: true });
 
   // ---- Inline: each control saves on change with one PATCH of just that field ----
@@ -92,7 +92,7 @@ test('create a gig with Set A, own van and house technician; edit each in place;
   await expect(logistics.locator('option:checked')).toHaveText('Taksi');
 
   const switched = page.waitForResponse(
-    (res) => res.request().method() === 'PATCH' && new URL(res.url()).pathname === `/api/gigs/${id}`,
+    (res) => res.request().method() === 'PATCH' && new URL(res.url()).pathname === `/api/events/${id}`,
   );
   await houseTech.click();
   const switchRes = await switched;
@@ -110,7 +110,7 @@ test('create a gig with Set A, own van and house technician; edit each in place;
   await expect(tech.locator('option:checked')).toHaveText('–');
   await expect(logistics.locator('option:checked')).toHaveText('Taksi');
   await expect(houseTech).not.toBeChecked();
-  const after = await api(page).get(`/gigs/${id}`);
+  const after = await api(page).get(`/events/${id}`);
   expect(after).toMatchObject({ technicalSetup: null, logistics: 'TAXI', houseTechnician: false });
 
   // ---- History: one "Tietoja muutettu" per saved field, old → new, newest first ----
@@ -121,14 +121,14 @@ test('create a gig with Set A, own van and house technician; edit each in place;
     'Tietoja muutettu',
     'Tietoja muutettu',
     'Tietoja muutettu',
-    'Keikka luotu',
+    'Tapahtuma luotu',
   ]);
   await expect(items.nth(0).locator('.history-line')).toHaveText(['Tekniikka: Setti B → –']);
   await expect(items.nth(1).locator('.history-line')).toHaveText(['Talon teknikko: kyllä → ei']);
   await expect(items.nth(2).locator('.history-line')).toHaveText(['Logistiikka: Oma paku → Taksi']);
   await expect(items.nth(3).locator('.history-line')).toHaveText(['Tekniikka: Setti A → Setti B']);
 
-  const events = (await api(page).get(`/gigs/${id}/history`)) as {
+  const events = (await api(page).get(`/events/${id}/history`)) as {
     type: string;
     details: { changes?: { field: string; from: unknown; to: unknown }[] };
   }[];
@@ -139,7 +139,7 @@ test('create a gig with Set A, own van and house technician; edit each in place;
     [{ field: 'logistics', from: 'OWN_VAN', to: 'TAXI' }],
     [{ field: 'technicalSetup', from: 'SET_A', to: 'SET_B' }],
   ]);
-  await expectNoHorizontalScroll(page, 'gig page after technical setup edits');
+  await expectNoHorizontalScroll(page, 'event page after technical setup edits');
 });
 
 // API: the contract's single-value shape; the old array and unknown codes are refused.
@@ -177,7 +177,7 @@ test('API: technicalSetup / logistics take one code or null; arrays and unknown 
     ['logistics', 'VAN'],
     ['houseTechnician', 'yes'],
   ] as const) {
-    const res = await api(page).raw.post('/api/gigs', { data: { ...base, [field]: value } });
+    const res = await api(page).raw.post('/api/events', { data: { ...base, [field]: value } });
     expect(res.status(), `${field}: ${JSON.stringify(value)}`).toBe(400);
     expect(await res.json(), `${field} error`).toMatchObject({
       error: { code: 'VALIDATION_ERROR', fields: { [field]: 'INVALID_VALUE' } },
@@ -185,15 +185,15 @@ test('API: technicalSetup / logistics take one code or null; arrays and unknown 
   }
 
   // Omitted fields default to null / null / false.
-  const gig = await api(page).post('/gigs', base);
-  expect(gig).toMatchObject({ technicalSetup: null, logistics: null, houseTechnician: false });
-  const patched = await api(page).patch(`/gigs/${gig.id}`, { technicalSetup: 'HOUSE_TECH', logistics: 'OTHER' });
-  expect(patched.gig).toMatchObject({ technicalSetup: 'HOUSE_TECH', logistics: 'OTHER', houseTechnician: false });
-  const bad = await api(page).raw.patch(`/api/gigs/${gig.id}`, { data: { technicalSetup: ['SET_B'] } });
+  const event = await api(page).post('/events', base);
+  expect(event).toMatchObject({ technicalSetup: null, logistics: null, houseTechnician: false });
+  const patched = await api(page).patch(`/events/${event.id}`, { technicalSetup: 'HOUSE_TECH', logistics: 'OTHER' });
+  expect(patched.event).toMatchObject({ technicalSetup: 'HOUSE_TECH', logistics: 'OTHER', houseTechnician: false });
+  const bad = await api(page).raw.patch(`/api/events/${event.id}`, { data: { technicalSetup: ['SET_B'] } });
   expect(bad.status()).toBe(400);
   expect(await bad.json()).toMatchObject({
     error: { code: 'VALIDATION_ERROR', fields: { technicalSetup: 'INVALID_VALUE' } },
   });
-  // Soft-delete the helper gig so it doesn't show up in later checks.
-  await api(page).post(`/gigs/${gig.id}/delete`, { reason: 'Synthetic cleanup' });
+  // Soft-delete the helper event so it doesn't show up in later checks.
+  await api(page).post(`/events/${event.id}/delete`, { reason: 'Synthetic cleanup' });
 });

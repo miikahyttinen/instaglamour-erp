@@ -1,5 +1,5 @@
 // Mock handlers for docs/api-contract.md → People (UC-014) and Partner status (UC-032). People
-// live in the gig mock store (db.gigs.people) so the gig pickers and the people register share
+// live in the event mock store (db.events.people) so the event pickers and the people register share
 // one list; `person.partner` is derived from db.partners (linked by personId).
 import { http, HttpResponse } from 'msw';
 import { isMusicianRole, MUSICIAN_ROLES, type FieldCode, type MusicianRole } from '../api/enums';
@@ -14,7 +14,7 @@ import type {
   Warning,
 } from '../api/types';
 import { db } from './data';
-import { mockId, type MockPerson } from './gigStore';
+import { mockId, type MockPerson } from './eventStore';
 import { todayIso } from '../lib/format';
 import { currentPartner, errorResponse, unauthenticated, validationError } from './util';
 
@@ -37,7 +37,7 @@ function checkName(value: unknown, required: boolean): { name?: string; error?: 
 /** Duplicate = case-insensitive exact name match with another person (warning only). */
 function duplicateWarnings(name: string, exceptId?: string): Warning[] {
   const lower = name.toLowerCase();
-  const exists = db.gigs.people.some((p) => p.id !== exceptId && p.name.toLowerCase() === lower);
+  const exists = db.events.people.some((p) => p.id !== exceptId && p.name.toLowerCase() === lower);
   return exists ? [{ code: 'DUPLICATE_NAME' }] : [];
 }
 
@@ -55,22 +55,22 @@ function partnerOf(personId: string) {
 }
 
 /**
- * Distinct played gigs (SOLD, start date before today, not deleted, all years) where the person
+ * Distinct played events (SOLD, start date before today, not deleted, all years) where the person
  * has at least one musician-role cost line.
  */
-function gigCountOf(personId: string): number {
+function eventCountOf(personId: string): number {
   const today = todayIso();
   const played = new Set(
-    db.gigs.gigs
+    db.events.events
       .filter((g) => g.deletedAt === null && g.status === 'SOLD' && g.startDate < today)
       .map((g) => g.id),
   );
-  const gigIds = new Set(
-    db.gigs.costLines
-      .filter((l) => l.personId === personId && isMusicianRole(l.type) && played.has(l.gigId))
-      .map((l) => l.gigId),
+  const eventIds = new Set(
+    db.events.costLines
+      .filter((l) => l.personId === personId && isMusicianRole(l.type) && played.has(l.eventId))
+      .map((l) => l.eventId),
   );
-  return gigIds.size;
+  return eventIds.size;
 }
 
 /** `roles` of PATCH: unique musician-role codes, returned in MUSICIAN_ROLES order. */
@@ -85,14 +85,14 @@ function checkRoles(value: unknown): { roles?: MusicianRole[]; error?: FieldCode
   return { roles: MUSICIAN_ROLES.filter((r) => codes.includes(r)) };
 }
 
-/** API shape: the stored person + its partner status and gig count. */
+/** API shape: the stored person + its partner status and event count. */
 function toPerson(stored: MockPerson): Person {
   const partner = partnerOf(stored.id);
   return {
     ...stored,
     roles: [...stored.roles],
     partner: partner ? { id: partner.id, email: partner.email, active: partner.active } : null,
-    gigCount: gigCountOf(stored.id),
+    eventCount: eventCountOf(stored.id),
   };
 }
 
@@ -110,7 +110,7 @@ function checkPartnerEmail(value: unknown, personId: string): { email?: string; 
 
 function findPerson(id: unknown): MockPerson | undefined {
   return typeof id === 'string' && UUID_RE.test(id)
-    ? db.gigs.people.find((p) => p.id === id)
+    ? db.events.people.find((p) => p.id === id)
     : undefined;
 }
 
@@ -130,7 +130,7 @@ export const peopleHandlers = [
     if (role !== null && !(MUSICIAN_ROLES as readonly string[]).includes(role)) {
       return validationError({ role: 'INVALID_VALUE' });
     }
-    const people: Person[] = db.gigs.people
+    const people: Person[] = db.events.people
       .filter((p) => active === 'all' || p.active === (active === 'true'))
       .map(toPerson)
       .filter((p) => partner === null || (p.partner?.active === true) === (partner === 'true'))
@@ -146,7 +146,7 @@ export const peopleHandlers = [
     if (error || name === undefined) return validationError({ name: error ?? 'REQUIRED' });
     const warnings = duplicateWarnings(name);
     const person: MockPerson = { id: mockId(), name, active: true, roles: [] };
-    db.gigs.people.push(person);
+    db.events.people.push(person);
     const response: PersonWithWarnings = { person: toPerson(person), warnings };
     return HttpResponse.json(response, { status: 201 });
   }),
@@ -224,7 +224,7 @@ export const peopleHandlers = [
     const person = findPerson(params.id);
     if (!person) return notFound();
 
-    const gigs = db.gigs.gigs
+    const events = db.events.events
       .filter((g) => g.deletedAt === null && g.startDate.startsWith(`${year}-`))
       .sort(
         (a, b) =>
@@ -234,17 +234,17 @@ export const peopleHandlers = [
       );
     const lines: PersonCostLine[] = [];
     const totals = { budgetedCents: 0, actualCents: 0 };
-    for (const gig of gigs) {
+    for (const event of events) {
       // costLines are kept in creation order.
-      for (const line of db.gigs.costLines) {
-        if (line.gigId !== gig.id || line.personId !== person.id) continue;
+      for (const line of db.events.costLines) {
+        if (line.eventId !== event.id || line.personId !== person.id) continue;
         lines.push({
           costLine: { ...line },
-          gigId: gig.id,
-          gigStartDate: gig.startDate,
-          gigLineupName: gig.lineupName,
-          gigVenue: gig.venue,
-          gigStatus: gig.status,
+          eventId: event.id,
+          eventStartDate: event.startDate,
+          eventLineupName: event.lineupName,
+          eventVenue: event.venue,
+          eventStatus: event.status,
         });
         totals.budgetedCents += line.budgetedCents;
         if (line.paidAt !== null) totals.actualCents += line.actualCents ?? 0;

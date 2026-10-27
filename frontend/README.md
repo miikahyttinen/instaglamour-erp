@@ -66,19 +66,19 @@ VITE_API_PROXY_TARGET=http://localhost:3100 VITE_PORT=5273 npm run dev
 | `src/api/types.ts` | Types for every shared object, request and response in `docs/api-contract.md` |
 | `src/api/client.ts` | `apiRequest`, `ApiError` (`status`, `code`, `fields`), global 401 hook |
 | `src/api/endpoints.ts` | Typed function per endpoint |
-| `src/api/cache.ts` | Shared root query keys and `invalidateYearData()`: call it after every gig, cost line, hours or budget mutation |
+| `src/api/cache.ts` | Shared root query keys and `invalidateYearData()`: call it after every event, cost line, hours or budget mutation |
 | `src/auth/` | `me` query, auth guard, sign-in page, `useSignedInPartner()` / `useSelectedYear()` |
 | `src/layout/` | App shell (Layout v2.1): collapsible sidebar, phone drawer, sticky top bar with year selector + language / theme / sign out (desktop), `.page-container` |
 | `src/reference/useReference.ts` | Reference data, loaded once per session and cached |
 | `src/reference/partners.ts` | Partner pickers (UC-032): `activePartners(partners)` for new choices, `partnerOptions(partners, currentId)` = active partners + the record's current (possibly removed) partner by name. `reference.partners` itself keeps everyone, so names on old records still resolve. |
 | `src/i18n/` | `fi.ts` / `en.ts` texts (glossary terms), label helpers for codes and errors |
 | `src/lib/format.ts` | Money (cents), date, hours and percent formatting per language |
-| `src/mocks/` | MSW handlers and synthetic data (browser worker + Node server for tests). All state is in `db` (`data.ts`); `resetMockDb()` resets every store. Gig rules live in `gigStore.ts`, demo gigs in `gigSeed.ts`; tasks, hours and budget in `tasksStore.ts`, `hoursStore.ts`, `budgetStore.ts`; offers (with history, `offers.*` settings and partner phones) in `offerStore.ts` / `offerSeed.ts` (`db.offers`, seeded offers have fixed ids `…000601`–`…000608`). Budget rows (`/api/budget-categories`, `budgetCategoryHandlers` in `budgetHandlers.ts`) live in `db.reference.budgetCategories` (active rows only; removing drops the row there and keeps its amounts in `db.budget`). The year mock is computed from these stores |
-| `src/features/<feature>/` | One folder per feature: `year`, `gigs`, `clients`, `people`, `tasks`, `hours`, `budget`; pages, query hooks and the feature texts in `i18n.ts` (gig texts are still in `src/i18n/fi.ts` / `en.ts`) |
+| `src/mocks/` | MSW handlers and synthetic data (browser worker + Node server for tests). All state is in `db` (`data.ts`); `resetMockDb()` resets every store. Event rules live in `eventStore.ts`, demo events in `eventSeed.ts`; tasks, hours and budget in `tasksStore.ts`, `hoursStore.ts`, `budgetStore.ts`; offers (with history, `offers.*` settings and partner phones) in `offerStore.ts` / `offerSeed.ts` (`db.offers`, seeded offers have fixed ids `…000601`–`…000608`). Budget rows (`/api/budget-categories`, `budgetCategoryHandlers` in `budgetHandlers.ts`) live in `db.reference.budgetCategories` (active rows only; removing drops the row there and keeps its amounts in `db.budget`). The year mock is computed from these stores |
+| `src/features/<feature>/` | One folder per feature: `year`, `events`, `clients`, `people`, `tasks`, `hours`, `budget`; pages, query hooks and the feature texts in `i18n.ts` (event texts are still in `src/i18n/fi.ts` / `en.ts`) |
 | `src/features/offers/` | Offers (UC-028, UC-029, UC-031, see "Offers"): list `/offers`, new offer `/offers/new`, offer page `/offers/:id`, convert dialog; plus `OfferPreview` (shared customer view) and the public page `/o/:token` (see "Offer preview") |
-| `src/features/gigs/` | Gig list, new gig, gig page (costs, attachments, history, move/cancel/delete dialogs) |
+| `src/features/events/` | Event list, new event, event page (costs, attachments, history, move/cancel/delete dialogs). Routes `/events`, `/events/new`, `/events/:id`; old `/gigs…` URLs redirect there with the query string and hash (`LegacyGigsRedirect`, Gig → Event rename) |
 | `src/features/people/` | People register (UC-014) + partner status (UC-032): list with "Osakas" tag column and "Osakkuus" filter (`?partner=true\|false`, combines with `?active=`); person page with the Osakas switch (`PartnerStatus.tsx`: on = email dialog → `PUT …/partner`, off = confirmation → `DELETE …/partner`, own switch disabled), inline email, tag in the header. Partner changes invalidate `['people']`, `['reference']` (and `['me']` for oneself). Mock: `mocks/peopleHandlers.ts` (`person.partner` derived from `db.partners`) |
-| `src/features/clients/` | Client register (UC-027): list + search + add, client page (inline name/notes, gigs, offers, delete), `ClientSelect` / `InlineClientSelect` ("–", clients, "New client…") used by the new gig and new offer forms, the gig page and the offer page. Mock: `mocks/clientHandlers.ts`; clients live in `db.gigs` (seed: Client A–C in `gigSeed.ts`), offers in `db.offers` |
+| `src/features/clients/` | Client register (UC-027): list + search + add, client page (inline name/notes, events, offers, delete), `ClientSelect` / `InlineClientSelect` ("–", clients, "New client…") used by the new event and new offer forms, the event page and the offer page. Mock: `mocks/clientHandlers.ts`; clients live in `db.events` (seed: Client A–C in `eventSeed.ts`), offers in `db.offers` |
 | `src/components/` | Shared UI: `Button`/`IconButton`, `Card`, `StatTile`/`StatGrid`, `MiniBars`, `PageHead`, `SectionLabel`, `StatusTag`, `Notice`, `DataTable`, `ExcelTable` (+ `ColumnFilter`, `excelTableState`), `Dialog`, `Field`, `MoneyInput`, `Logo` (see "Design system") |
 | `src/components/inline/` | Inline (save-on-blur) fields and `useInlineSave` (see "Inline editing") |
 | `src/lib/hours.ts` | Hours input parsing / validation / formatting (shared by the hours feature and `InlineHours`) |
@@ -88,14 +88,14 @@ VITE_API_PROXY_TARGET=http://localhost:3100 VITE_PORT=5273 npm run dev
 | `src/styleguide/` | Dev-only `/styleguide` page |
 | `src/assets/brand/` | Processed logos (generated, see "Logos") |
 | `src/pages/` | Not-found page |
-| `src/test/` | Test setup, `renderApp`, `gigFixtures` (synthetic gigs, `addMockClient`), `offerFixtures` (`addMockOffer`, `offerSummaryOf`), `testFile` for uploads |
+| `src/test/` | Test setup, `renderApp`, `eventFixtures` (synthetic events, `addMockClient`), `offerFixtures` (`addMockOffer`, `offerSummaryOf`), `testFile` for uploads |
 
 ## Conventions
 
 - **Never** show the server's `message`; translate `error.code` and field codes with
   `apiErrorMessage()` / `apiFieldErrors()` from `src/i18n/labels.ts`.
-- Code labels: `t('costType.BASS')`, `t('technicalSetup.SET_A')`, `t('logistics.OWN_VAN')`, `t('gigStatus.PLAYED')`,
-  `t('gigEventType.MOVED')`, … A test fails if any code is missing in FI or EN.
+- Code labels: `t('costType.BASS')`, `t('technicalSetup.SET_A')`, `t('logistics.OWN_VAN')`, `t('eventStatus.PLAYED')`,
+  `t('eventHistoryType.MOVED')`, … A test fails if any code is missing in FI or EN.
 - Money is integer cents end to end; format with `formatMoney(cents, lang)` and parse input
   with `parseMoneyToCents(text, lang)`.
 - Pages below the guard read the year with `useSelectedYear()`; change it only through
@@ -162,7 +162,7 @@ production builds) and its texts are English on purpose.
   **full width** up to the window edge (no `--content-max` cap since TASK-148; the top bar spans
   the same width). **Don't add your own max-width or side padding on a page.** Everything shares
   one left edge. Forms, notes and single-record field groups keep their own readable max width
-  (e.g. `--client-form-w`, the new offer form, the new gig form grid capped at `--content-max`).
+  (e.g. `--client-form-w`, the new offer form, the new event form grid capped at `--content-max`).
 - Vertical rhythm comes from the components: `PageHead`, `SectionLabel`, `.divider` and
   `StatGrid` use `--section-gap` (32 → 40). Don't add extra margins between sections; if a
   screen needs a different gap, use `--section-gap` / `--grid-gap` / `--space-*`.
@@ -186,7 +186,7 @@ production builds) and its texts are English on purpose.
 | Type size | `--fs-meta` 10, `--fs-label` 10, `--fs-small` 12, `--fs-body` 14, `--fs-lg` 16, `--fs-figure` 20, `--fs-title` 20→22, `--fs-display` 32 (customer document title) (px; → = desktop) |
 | Type other | `--lh-tight` 1.15, `--lh-body` 1.5, `--ls-label` (0.14em), `--ls-title`, `--fw-regular`, `--fw-medium`, `--fw-bold` |
 | Spacing | `--space-1` … `--space-7` = 4/8/12/16/24/32/48 px |
-| Layout | `--page-pad` 16→40, `--section-gap` 32→40, `--card-pad` 16→20, `--grid-gap` 16, `--content-max` 1200 (new gig form grid + styleguide only; pages are uncapped), `--label-w` 160, `--doc-max` 880 (customer document width) |
+| Layout | `--page-pad` 16→40, `--section-gap` 32→40, `--card-pad` 16→20, `--grid-gap` 16, `--content-max` 1200 (new event form grid + styleguide only; pages are uncapped), `--label-w` 160, `--doc-max` 880 (customer document width) |
 | Table | `--row-h` 48, `--cell-pad-y` 12, `--cell-pad-x` (= `--card-pad`) |
 | Shape / size | `--radius` (2 px, the max), `--hairline` (1 px), `--tap` 44, `--control-h` 44→36, `--inline-pad-x` 8, `--inline-num-trail` (space right of an inline money/hours unit), `--icon` 16, `--icon-nav` 18, `--icon-stroke` |
 | Shell | `--topbar-h` 56, `--sidebar-w` 232, `--sidebar-w-collapsed` 64, `--drawer-w` min(280 px, 85vw), `--nav-item-h` 44→40 |
@@ -210,10 +210,10 @@ production builds) and its texts are English on purpose.
 | `GridSpan`, `spanStyle()` | `grid.ts`: `number` (all widths) or `{ base?, sm?, md?, lg? }` (< 600 / ≥ 600 / ≥ 900 / ≥ 1200 viewport) | A missing breakpoint falls back to the next smaller one. No span = 12 / 6 / 6 / 3. Example: `span={{ base: 6, sm: 4, lg: 2 }}` = 2, 3, then 6 per row. CSS version: `.my-grid > * { --span: 6; --span-lg: 3; }`. |
 | `FieldList` | `labelWidth?: 'sm' \| 'md' \| 'lg'` (120 / 160 / 200 px), `className?`, `children` (`Field`s / inline fields) | Phones: label above. From 600 px: label column + control column; hint/error under the control; checkbox groups put their legend in the label column. |
 | `MiniBars` | `bars: { label, value, current?, valueText? }[]`, `label` (accessible name), `showLabels?` (true), `height?: number \| string` (48 px; a number is px, a string any CSS length), `compact?` (bar area `--space-6` 32 px, for tiles with a secondary figure) | Bar labels must be unique. Screen readers get a "label: valueText" list. |
-| `StatusTag` | `tone?: 'info' \| 'ok' \| 'warn' \| 'danger' \| 'muted'` (muted), `children`, `title?` | Gig statuses: use `GigStatusTag` (gigs feature). |
+| `StatusTag` | `tone?: 'info' \| 'ok' \| 'warn' \| 'danger' \| 'muted'` (muted), `children`, `title?` | Event statuses: use `EventStatusTag` (events feature). |
 | `Notice` | `tone?: 'info' \| 'ok' \| 'warn' \| 'danger'` (info), `role?: 'alert' \| 'status' \| 'note'`, `children` | Same as `.notice` / `.notice-*`. |
 | `DataTable<T>` | `columns`, `rows`, `rowKey`, `caption` (required, visually hidden unless `showCaption`), `empty?`, `cardsOnPhone?` (true), `cardsBelow?: 'sm' \| 'lg'` (`sm` = cards below 600 px; `lg` = below 1200 px, for wide tables that would scroll next to the sidebar at 900–1199 px), `rowClassName?`, `footer?` (`<tr>`s), `className?`. From 600 px the table is `width: 100%` and doesn't scroll sideways: text cells and header titles wrap between words (hyphenated only if needed), `.num` and `.tag` stay on one line; give date columns a page class with `white-space: nowrap` | Column: `key`, `label`, `cell(row)`, `header?`, `numeric?`, `primary?` (card title on phones), `hideOnPhone?`, `sort?: 'asc' \| 'desc'`, `onSort?` (makes the header a sort button; caller owns the sort state), `className?`. |
-| `ExcelTable<T>` | see "ExcelTable" below | Excel-style list: sort + per-column filter popovers, column priorities (no sideways scroll), URL state, phone cards + filter sheet. Use it for the year lists (offers, gigs). |
+| `ExcelTable<T>` | see "ExcelTable" below | Excel-style list: sort + per-column filter popovers, column priorities (no sideways scroll), URL state, phone cards + filter sheet. Use it for the year lists (offers, events). |
 | `Dialog` | `title`, `onClose`, `children` | Bottom sheet on phones, centred from 600 px. Put buttons in `<div className="form-actions">`. |
 | `Field` | `label`, `error?`, `hint?`, `children(fieldProps)` | Spread `fieldProps` on the native `input`/`select`/`textarea`; they are styled globally. |
 | `MoneyInput` | `value`, `onChange`, + field props | Euro input; the € sits inside the field, so it ends at the same right edge as other fields. |
@@ -266,13 +266,13 @@ import { InlineText, InlineTextarea, InlineMoney, InlineHours, InlineDate, Inlin
   InlineCheckbox, InlineSwitch, InlineCheckboxGroup } from '../../components/inline';
 
 // One PATCH per field; invalidate in onSave.
-const patch = (body: GigUpdate) => gigsApi.update(gig.id, body).then(() => invalidateYearData(qc));
+const patch = (body: EventUpdate) => eventsApi.update(event.id, body).then(() => invalidateYearData(qc));
 
-<InlineText label={t('gigForm.venue')} required value={gig.venue} field="venue"
+<InlineText label={t('eventForm.venue')} required value={event.venue} field="venue"
   onSave={(venue) => patch({ venue })} />
-<InlineTextarea label={t('gigForm.notes')} value={gig.notes} field="notes"
+<InlineTextarea label={t('eventForm.notes')} value={event.notes} field="notes"
   onSave={(notes) => patch({ notes })} />
-<InlineMoney label={t('gigForm.price')} required value={gig.priceCents} field="priceCents"
+<InlineMoney label={t('eventForm.price')} required value={event.priceCents} field="priceCents"
   onSave={(priceCents) => patch({ priceCents })} />
 <InlineHours label={t('hours.hours')} value={entry.hours} field="hours"
   onSave={(hours) => hoursApi.update(entry.id, { hours })} />
@@ -285,11 +285,11 @@ const patch = (body: GigUpdate) => gigsApi.update(gig.id, body).then(() => inval
   onSave={(active) => peopleApi.update(person.id, { active })} />
 <InlineSwitch label={t('costs.loadIn')} value={line.joinsLoadIn === true}
   onSave={(joinsLoadIn) => costLinesApi.update(line.id, { joinsLoadIn })} />
-// One choice or none (gig page basic info; options from features/gigs/gigOptions.ts):
-<InlineSelect<TechnicalSetup | null> label={t('gigForm.technicalSetup')} value={gig.technicalSetup}
+// One choice or none (event page basic info; options from features/events/eventOptions.ts):
+<InlineSelect<TechnicalSetup | null> label={t('eventForm.technicalSetup')} value={event.technicalSetup}
   field="technicalSetup" options={[{ value: null, label: NONE_LABEL }, ...technicalSetupOptions]}
   onSave={(technicalSetup) => patch({ technicalSetup })} />
-<InlineSwitch label={t('gigForm.houseTechnician')} value={gig.houseTechnician} field="houseTechnician"
+<InlineSwitch label={t('eventForm.houseTechnician')} value={event.houseTechnician} field="houseTechnician"
   onSave={(houseTechnician) => patch({ houseTechnician })} />
 // Multi-choice list (no current use in the app; see /styleguide):
 <InlineCheckboxGroup label="…" value={selected} options={codes.map((c) => ({ value: c, label: t(`ns.${c}`) }))}
@@ -302,7 +302,7 @@ const patch = (body: GigUpdate) => gigsApi.update(gig.id, body).then(() => inval
 
 (Names of APIs/keys above are illustrative; use the real ones of your screen.)
 
-Read-only values (deleted gig, other partners' entries): render plain text, or pass `disabled`
+Read-only values (deleted event, other partners' entries): render plain text, or pass `disabled`
 (looks like a muted value).
 
 **Custom control** (only if no component fits): `useInlineSave({ value, save, toDraft?, parse?,
@@ -320,7 +320,7 @@ Shell parts in `src/layout/`: `Sidebar` (rail / drawer), `NavDrawer` (modal draw
 
 ### ExcelTable (`src/components/ExcelTable.tsx`, docs/design.md "Excel-style tables")
 
-The shared Excel-style list (Tarjoukset, Keikat). Keikat opens with a default Tila filter (Myyty + Soitettu) that is not written to the URL until the filters are changed (`useDefaultStatusFilter` in `GigListPage`). See it on `/styleguide` → "Excel table".
+The shared Excel-style list (Tarjoukset, Tapahtumat). Tapahtumat opens with a default Tila filter (Myyty + Soitettu) that is not written to the URL until the filters are changed (`useDefaultStatusFilter` in `EventListPage`). See it on `/styleguide` → "Excel table".
 
 - **Header:** title = sort button (`aria-sort`, same icons as `DataTable`) + a **filter icon** on
   filterable columns. The icon is an accent, filled funnel while the column is filtered.
@@ -360,12 +360,12 @@ import { ExcelTable } from '../../components/ExcelTable';
 import { useUrlTableState, type ExcelColumn } from '../../components/excelTableState';
 
 const table = useUrlTableState({ defaultSort: { key: 'date', dir: 'asc' } });
-const columns: ExcelColumn<Gig>[] = [
+const columns: ExcelColumn<Event>[] = [
   { key: 'name', label: t('…'), primary: true, sortValue: (g) => g.name, cell: (g) => <Link …>{g.name}</Link> },
   { key: 'seller', label: t('…'), sortValue: (g) => sellerName(g), filterValue: (g) => g.sellerId,
     filterLabel: (id) => partnerName(id), cell: (g) => sellerName(g) },
   { key: 'status', label: t('…'), sortValue: (g) => STATUS_ORDER.indexOf(g.status), filterValue: (g) => g.status,
-    filterLabel: (code) => t(`gigStatus.${code}`), filterCompare: byOrder(STATUS_ORDER), cell: (g) => <GigStatusTag … /> },
+    filterLabel: (code) => t(`eventStatus.${code}`), filterCompare: byOrder(STATUS_ORDER), cell: (g) => <EventStatusTag … /> },
   { key: 'performers', label: t('…'), filterValue: (g) => g.performerNames /* list: any match */, cell: … },
   { key: 'price', label: t('…'), numeric: true, sortValue: (g) => g.priceCents, cell: (g) => formatMoney(…) },
 ];
@@ -466,11 +466,11 @@ offer's link is not found there either.
 - **List** (`OfferListPage`): KPI cards (above), search (`?q=`, sent to the API) and an `ExcelTable` (see above):
   every column sortable (default event date ascending; ties by event date, then created), column
   filters for Asiakas, Paikka / kaupunki, Tila (incl. Vanhentunut; `offerStatus.ts`), Myyjä, Lähde,
-  Tapahtumatyyppi, Lopputulos and Keikka (luotu / ei), all client-side and in the URL
+  Tapahtumatyyppi, Lopputulos and Linkitetty tapahtuma (luotu / ei), all client-side and in the URL
   (`f.status=EXPIRED`, `f.seller=<partner id>`, `f.source=` = blank, …). No filter dropdowns above the
   table (UC-028 change 2026-10-14).
-  Source / event type / disposition are `InlineSelect`s. Gig column: "Convert to gig" (confirm
-  dialog `ConvertDialog`, BR-105 fields) or the "Keikka →" link. Row actions: copy public link
+  Source / event type / disposition are `InlineSelect`s. Linked event column (key `linkedEvent`): "Convert to event" (confirm
+  dialog `ConvertDialog`, BR-105 fields) or the "Tapahtuma →" link. Row actions: copy public link
   (fetches the offer for `sharePath`), delete (confirm). Deleted view with Restore.
 - **New offer** (`NewOfferPage`): `ClientSelect` with "New client…", lineup textarea (one item per
   line) filled from a lineup template (role labels), seller = me. "What's included" is only sent when filled, so the server applies the setting
@@ -480,9 +480,9 @@ offer's link is not found there either.
   public page) + internal panel: every field inline (NFR-8), price / source / event type /
   disposition, status, created / changed, history (`OfferHistory`). Actions: Copy public link
   (absolute URL from `sharePath` + `window.location.origin`; falls back to a read-only field when
-  the clipboard is blocked), Regenerate link (confirm), Convert / Keikka →, Delete (confirm). A
+  the clipboard is blocked), Regenerate link (confirm), Convert / Tapahtuma →, Delete (confirm). A
   deleted offer is read-only with Restore only.
-- **Gig page:** "Tarjouksesta / From offer: <event>" (`GigOfferLink`) when `offerId` is set.
+- **Event page:** "Tarjouksesta / From offer: <event>" (`EventOfferLink`) when `offerId` is set.
 - Texts: `src/features/offers/i18n.ts` (`offers`, `offer`, `convert`, `newOffer`, `offerHistory`,
   code labels `offerSource`, `offerEventType`, `offerHistoryType`, `offerField`).
 - **References** (`ReferencesPage`, BR-108): `/offers/references`, reached from the "Referenssit" button
@@ -506,7 +506,7 @@ offer's link is not found there either.
 | `.muted`, `.small`, `.num`, `.visually-hidden` | Secondary text, 12 px text, right-aligned tabular number, screen-reader only |
 | `.btn` + `.btn-ghost/-primary/-danger`, `.btn-sm`, `.btn-block`, `.icon-btn` | What `Button`/`IconButton` render. |
 | `.segmented` | Toggle group of `<button aria-pressed>` |
-| `.tag .tag-<tone>` | What `StatusTag` renders. For gig statuses use `GigStatusTag` / `GigDeletedTag` (`src/features/gigs/GigStatusTag.tsx`; tones in `gigStatusTone.ts`). |
+| `.tag .tag-<tone>` | What `StatusTag` renders. For event statuses use `EventStatusTag` / `EventDeletedTag` (`src/features/events/EventStatusTag.tsx`; tones in `eventStatusTone.ts`). |
 | `.notice .notice-<ok\|warn\|error\|danger>` | Message box |
 | `.card`, `.stat-grid`, `.stat-tile`, `.section-label`, `.page-head`, `.divider`, `.field-list` | As the components |
 | `.page-container` | The content container (AppShell renders it; do not nest another) |
@@ -560,8 +560,8 @@ partner status"; a 409 shows as an `alert` inside the dialog. Success notices: "
   (`initTheme`).
 - **Fees** (`DataTable`, full width, cards < 600 px): date, venue, role (type label; description for
   `OTHER` / `OTHER_ROLE`), fee, state. SELECTABLE rows have a checkbox (+ "Valitse kaikki" in the
-  header); UPCOMING "Keikka ei ole vielä soitettu"; ON_PO tag "Ostotilaus <number>"; PAID tag
-  "Maksettu" (+ PO number). Order as the API sends it (newest gig first).
+  header); UPCOMING "Tapahtuma on vielä tulossa"; ON_PO tag "Ostotilaus <number>"; PAID tag
+  "Maksettu" (+ PO number). Order as the API sends it (newest event first).
 - Sticky bar: "Valittu: n", "Yhteensä <sum>", **Luo ostotilausnumero** (disabled with nothing
   selected; double-click guarded by a ref). 201 → the PO goes to the top of **Ostotilaukset** (class
   `is-new`, tag "Uusi"), its fees show "Ostotilaus <number>" at once, then the view is refetched. 409
@@ -576,18 +576,18 @@ partner status"; a 409 shows as an `alert` inside the dialog. Success notices: "
 - Types: `src/api/purchaseOrderTypes.ts` (all PO shapes of the contract, re-exported from `types.ts`).
 - Texts: `src/features/freelancer/i18n.ts` (`freelancer`, `freelancerLink`).
 - **Mock:** `mocks/freelancerStore.ts` (`db.freelancer`: tokens, POs, events, running number) over
-  the gig store's cost lines — BR-114 eligibility, all-or-nothing creation, BR-116 number
+  the event store's cost lines — BR-114 eligibility, all-or-nothing creation, BR-116 number
   (`PERSON-1-0001`); handlers in `mocks/freelancerHandlers.ts`. Demo link (Person 1, a paid and a
   cancelled PO): `/f/demo-person-1-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa`. Rate limiting is not
   simulated (tests override the handler for 429).
 
 ### Purchase orders (`src/features/purchaseOrders/`, UC-034, BR-117…BR-119)
 
-- **Nav:** "Ostotilaukset / Purchase orders" (icon `Receipt`) after Keikat; routes `/purchase-orders`
+- **Nav:** "Ostotilaukset / Purchase orders" (icon `Receipt`) after Tapahtumat; routes `/purchase-orders`
   and `/purchase-orders/:id` (`PurchaseOrdersRoutes`).
 - **List** (`PurchaseOrderListPage`, `ExcelTable`, full width, cards < 600 px): Numero (link, card
-  title), Freelancer, Luotu (date + time), Keikat (gig dates, comma-separated), Summa, Tila. Luotu and
-  Keikat are priority 2. Filters on Freelancer and Tila (client-side, `f.*` in the URL). Selected
+  title), Freelancer, Luotu (date + time), Tapahtumat (event dates, comma-separated), Summa, Tila. Luotu and
+  Tapahtumat are priority 2. Filters on Freelancer and Tila (client-side, `f.*` in the URL). Selected
   year = year of `createdAt` (server side). Default sort: Luotu, newest first.
 - **Tila cell** (`PurchaseOrderStatusCell`): OPEN → **Merkitse maksetuksi** (one click; accessible
   name "Merkitse maksetuksi: <number>"; error under it, role `alert`); PAID → green tag
@@ -595,29 +595,29 @@ partner status"; a 409 shows as an `alert` inside the dialog. Success notices: "
   `INVALID_STATUS_TRANSITION` says "Ostotilauksen tila on jo muuttunut" and refetches.
 - **Search** ("Haku", `?q=` in the URL): sends only `q` (no `year`) → all years; hint "Haetaan
   kaikilta vuosilta" and the title drops the year while searching.
-- **Log** ("Loki", table "Ostotilausten tapahtumat"): `GET /api/purchase-orders/events?limit=50` — time,
+- **Log** ("Loki", table "Ostotilausten muutokset"): `GET /api/purchase-orders/events?limit=50` — time,
   number (link), event (Luotu freelancerin linkillä / Merkitty maksetuksi / Maksu peruttu / Peruttu:
   <reason>), actor (partner name, or "Freelancer" when `partnerId` is null).
 - **PO page** (`PurchaseOrderPage`): number + status tag, actions (OPEN: Merkitse maksetuksi, Peru
   ostotilaus — dialog with required reason ≤ 500; PAID: Peru maksu — confirm dialog), facts
   (freelancer link to `/people/:id`, created, fee count, total, paid / cancelled info and reason), fee
-  lines ("Ostotilauksen palkkiot": gig date, venue, lineup, role, amount, "Avaa keikka") with a total
+  lines ("Ostotilauksen palkkiot": event date, venue, lineup, role, amount, "Avaa tapahtuma") with a total
   row, and the PO history ("Historia").
-- **Gig page cost list:** a line with `purchaseOrder` shows the tag link "PO <number>" (accessible name
+- **Event page cost list:** a line with `purchaseOrder` shows the tag link "PO <number>" (accessible name
   "Ostotilaus <number>"); person, budget, load-in switch, paid amount and pay / unpay / remove are
   disabled or hidden, with "Ostotilauksella <number>" (hint + `title`). The description stays
-  editable. 409 `COST_LINE_ON_PURCHASE_ORDER` (line edits, gig cancel / delete) → "Rivi on
+  editable. 409 `COST_LINE_ON_PURCHASE_ORDER` (line edits, event cancel / delete) → "Rivi on
   ostotilauksella <number>. Muuta ensin ostotilausta…" (`apiErrorMessage` reads
-  `details.purchaseOrderNumber`). Gig history lines of PO payments add "Ostotilaus <number>".
+  `details.purchaseOrderNumber`). Event history lines of PO payments add "Ostotilaus <number>".
 - After pay / unpay / cancel (`useApplyPurchaseOrder`): the PO is put in the detail and list caches,
-  then every `['purchase-orders']` query, the gig pages and the year data are refetched.
+  then every `['purchase-orders']` query, the event pages and the year data are refetched.
 - Texts: `src/features/purchaseOrders/i18n.ts` (`purchaseOrders`); `formatTime` in `lib/format.ts`.
 - **Mock:** one PO store, `db.freelancer` (`mocks/freelancerStore.ts`; creation there sets
   `CostLine.purchaseOrder`). Partner mutations in `mocks/purchaseOrderStore.ts` (pay: lines paid with
   the snapshot, `COST_PAID` with `purchaseOrderNumber`; unpay; cancel frees the lines) and handlers in
-  `mocks/purchaseOrderHandlers.ts`. The cost line / gig handlers return 409
+  `mocks/purchaseOrderHandlers.ts`. The cost line / event handlers return 409
   `COST_LINE_ON_PURCHASE_ORDER` per BR-118. Extra demo POs (Person 2 paid, Person 3 cancelled + open
-  on a 20 March gig, Person 4 paid in the previous year) come from `seedPartnerPurchaseOrders`. Test
+  on a 20 March event, Person 4 paid in the previous year) come from `seedPartnerPurchaseOrders`. Test
   helpers: `src/test/purchaseOrderFixtures.ts`.
 
 ### Data import (`src/features/dataImport/`, UC-035, BR-120/121)

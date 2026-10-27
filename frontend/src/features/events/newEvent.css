@@ -1,0 +1,105 @@
+/* New event form (NewEventPage). Tokens only; scoped under .new-event-page.
+   Layout v2: the form sits on the page container's 12-column grid (gap --grid-gap). It is full
+   width below 1200 px (1–2 field columns) and spans 8 of 12 columns from 1200 px; field pairs
+   split it into two 4-column halves, so every edge lands on a grid line. */
+
+.new-event-page .new-event-back {
+  margin: 0 0 var(--space-2);
+}
+.new-event-page .new-event-back a {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--tap);
+  color: var(--label);
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  text-decoration: none;
+}
+.new-event-page .new-event-back a:hover {
+  color: var(--text);
+}
+
+/* ---------- Grid ----------
+   The page container is full width (TASK-148); the form's grid keeps at most the former content
+   width, so on wide screens the 8-column form stays at a readable ~790 px. */
+.new-event-page .new-event-form {
+  max-width: var(--content-max);
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  column-gap: var(--grid-gap);
+}
+.new-event-page .new-event-form > * {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+/* Field pairs: same gap as the grid, so each half is exactly half of the form's columns. */
+.new-event-page .form-row {
+  column-gap: var(--grid-gap);
+}
+/* House technician switch: under the technical setup / logistics pair. */
+.new-event-page .new-event-switch {
+  margin-top: var(--space-4);
+}
+
+/* ---------- Sections ---------- */
+/* Hairline + --section-gap above and below it between sections (like .divider). The section
+   label keeps its own spacing from SectionLabel. */
+.new-event-page .new-event-section + .new-event-section {
+  margin-top: var(--section-gap);
+  padding-top: var(--section-gap);
+  border-top: var(--hairline) solid var(--border);
+}
+
+/* ---------- Total ---------- */
+.new-event-page .new-event-total {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin: var(--space-5) 0 0;
+  padding: var(--space-4) var(--card-pad);
+  background: var(--surface);
+  border: var(--hairline) solid var(--border);
+  border-radius: var(--radius);
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  color: var(--label);
+}
+.new-event-page .new-event-total strong {
+  font-family: var(--font-sans);
+  font-size: var(--fs-figure);
+  font-weight: var(--fw-bold);
+  line-height: var(--lh-tight);
+  letter-spacing: normal;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Error + actions ---------- */
+.new-event-page .new-event-error {
+  margin: var(--section-gap) 0 0;
+}
+.new-event-page .new-event-actions {
+  margin-top: var(--section-gap);
+  padding-top: var(--space-5);
+  border-top: var(--hairline) solid var(--border);
+}
+.new-event-page .new-event-error + .new-event-actions {
+  margin-top: var(--space-5);
+}
+
+/* ---------- ≥ 1200 px ---------- */
+@media (min-width: 1200px) {
+  .new-event-page .new-event-form > * {
+    grid-column: 1 / span 8;
+  }
+  .new-event-page .check-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}

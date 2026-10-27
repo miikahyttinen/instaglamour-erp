@@ -2,8 +2,8 @@
 // the real backend.
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { ApiError } from '../api/client';
-import { costLinesApi, gigsApi, purchaseOrdersApi } from '../api/endpoints';
-import { addMockGig, partnerA, person, staffMockGig, TEST_YEAR } from '../test/gigFixtures';
+import { costLinesApi, eventsApi, purchaseOrdersApi } from '../api/endpoints';
+import { addMockEvent, partnerA, person, staffMockEvent, TEST_YEAR } from '../test/eventFixtures';
 import { addMockPurchaseOrder, clearPurchaseOrders, localTs } from '../test/purchaseOrderFixtures';
 import { signInMock } from '../test/renderApp';
 import { db, resetMockDb } from './data';
@@ -18,7 +18,7 @@ async function expectError(promise: Promise<unknown>): Promise<ApiError> {
   throw new Error('expected an error');
 }
 
-const costLine = (id: string) => db.gigs.costLines.find((l) => l.id === id)!;
+const costLine = (id: string) => db.events.costLines.find((l) => l.id === id)!;
 
 describe('purchase order number (BR-116)', () => {
   it('slugs the name: accents removed, upper case, other characters → dashes', () => {
@@ -68,7 +68,7 @@ describe('purchase order mocks', () => {
   });
 
   it('pay marks every line paid with the PO amount, logs COST_PAID with the number; unpay reverts', async () => {
-    const { po, gig } = addMockPurchaseOrder();
+    const { po, event } = addMockPurchaseOrder();
     const lineId = po.lines[0]!.costLineId;
     costLine(lineId).budgetedCents = 99999; // the snapshot is what gets paid
 
@@ -80,14 +80,14 @@ describe('purchase order mocks', () => {
       paidBy: partnerA().id,
       purchaseOrder: { id: po.id, number: po.number, status: 'PAID' },
     });
-    const history = await gigsApi.history(gig.id);
+    const history = await eventsApi.history(event.id);
     expect(history[0]).toMatchObject({ type: 'COST_PAID', details: { purchaseOrderNumber: po.number } });
     expect((await expectError(purchaseOrdersApi.pay(po.id))).code).toBe('INVALID_STATUS_TRANSITION');
 
     const reopened = await purchaseOrdersApi.unpay(po.id);
     expect(reopened.status).toBe('OPEN');
     expect(costLine(lineId)).toMatchObject({ actualCents: null, paidAt: null, purchaseOrder: { status: 'OPEN' } });
-    expect((await gigsApi.history(gig.id))[0]).toMatchObject({ type: 'COST_UNPAID' });
+    expect((await eventsApi.history(event.id))[0]).toMatchObject({ type: 'COST_UNPAID' });
     expect((await expectError(purchaseOrdersApi.unpay(po.id))).code).toBe('INVALID_STATUS_TRANSITION');
   });
 
@@ -123,7 +123,7 @@ describe('purchase order mocks', () => {
   });
 
   it('locks person, amount, load-in, paid state and delete of a line on a PO (BR-118)', async () => {
-    const { po, gig } = addMockPurchaseOrder();
+    const { po, event } = addMockPurchaseOrder();
     const lineId = po.lines[0]!.costLineId;
     for (const call of [
       () => costLinesApi.update(lineId, { personId: null }),
@@ -132,8 +132,8 @@ describe('purchase order mocks', () => {
       () => costLinesApi.pay(lineId),
       () => costLinesApi.unpay(lineId),
       () => costLinesApi.remove(lineId),
-      () => gigsApi.cancel(gig.id, { reason: 'x' }),
-      () => gigsApi.delete(gig.id, { reason: 'x' }),
+      () => eventsApi.cancel(event.id, { reason: 'x' }),
+      () => eventsApi.delete(event.id, { reason: 'x' }),
     ]) {
       const error = await expectError(call());
       expect(error.code).toBe('COST_LINE_ON_PURCHASE_ORDER');
@@ -141,21 +141,21 @@ describe('purchase order mocks', () => {
     }
     // The description stays editable.
     const result = await costLinesApi.update(lineId, { description: 'Extra set' });
-    expect(result.gig.costLines.find((l) => l.id === lineId)?.description).toBe('Extra set');
+    expect(result.event.costLines.find((l) => l.id === lineId)?.description).toBe('Extra set');
   });
 
-  it('a paid PO no longer blocks cancelling the gig (only open POs do)', async () => {
-    const { gig } = addMockPurchaseOrder({ status: 'PAID' });
-    const cancelled = await gigsApi.cancel(gig.id, { reason: 'Called off.' });
+  it('a paid PO no longer blocks cancelling the event (only open POs do)', async () => {
+    const { event } = addMockPurchaseOrder({ status: 'PAID' });
+    const cancelled = await eventsApi.cancel(event.id, { reason: 'Called off.' });
     expect(cancelled.status).toBe('CANCELLED');
   });
 
   it('a PO made by the freelancer puts the line on it; cancelling frees it (one PO store)', async () => {
-    const gig = addMockGig({ startDate: '2020-05-01' }); // played
-    staffMockGig(gig, ['Person 1']);
-    const lineId = db.gigs.costLines.find((l) => l.gigId === gig.id && l.type === 'VOC')!.id;
-    const person1 = db.gigs.people.find((p) => p.id === person('Person 1').id)!;
-    const result = createPurchaseOrder(db.freelancer, db.gigs, person1, [lineId]);
+    const event = addMockEvent({ startDate: '2020-05-01' }); // played
+    staffMockEvent(event, ['Person 1']);
+    const lineId = db.events.costLines.find((l) => l.eventId === event.id && l.type === 'VOC')!.id;
+    const person1 = db.events.people.find((p) => p.id === person('Person 1').id)!;
+    const result = createPurchaseOrder(db.freelancer, db.events, person1, [lineId]);
     if (!result.ok) throw new Error('not created');
     const po = result.purchaseOrder;
     expect(costLine(lineId).purchaseOrder).toEqual({ id: po.id, number: po.number, status: 'OPEN' });

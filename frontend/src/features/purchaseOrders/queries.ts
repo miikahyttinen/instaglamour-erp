@@ -39,7 +39,7 @@ export function usePurchaseOrderEvents() {
 
 /**
  * After a PO mutation (pay / unpay / cancel) or a 409 that says it changed: put the returned PO
- * in the cache and refresh every PO query, the gig pages (their cost lines changed) and the
+ * in the cache and refresh every PO query, the event pages (their cost lines changed) and the
  * year-derived lists (actual costs).
  */
 export function useApplyPurchaseOrder() {
@@ -54,8 +54,8 @@ export function useApplyPurchaseOrder() {
         );
       }
       void queryClient.invalidateQueries({ queryKey: purchaseOrderKeys.all });
-      void queryClient.invalidateQueries({ queryKey: ['gigs'] });
-      void invalidateYearData(queryClient, 'gigs');
+      void queryClient.invalidateQueries({ queryKey: ['events'] });
+      void invalidateYearData(queryClient, 'events');
     },
     [queryClient],
   );

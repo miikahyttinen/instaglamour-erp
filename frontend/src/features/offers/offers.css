@@ -111,7 +111,7 @@
   color: var(--text);
   text-decoration: none;
 }
-.offers-page .offer-gig-link {
+.offers-page .offer-event-link {
   font-family: var(--font-mono);
   font-size: var(--fs-label);
   letter-spacing: var(--ls-label);
@@ -197,7 +197,7 @@
     .offers-page .offer-table td.offer-col-date {
       white-space: normal;
     }
-    .offers-page .offer-table td.offer-col-gig .btn {
+    .offers-page .offer-table td.offer-col-linked-event .btn {
       white-space: normal;
       text-align: center;
     }
@@ -274,7 +274,7 @@
 .offer-page .offer-facts dd {
   margin: 0;
 }
-/* History: same look as the gig history (gigPage.css). */
+/* History: same look as the event history (eventPage.css). */
 .offer-page .offer-history {
   list-style: none;
   margin: 0;

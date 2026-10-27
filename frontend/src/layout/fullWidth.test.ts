@@ -67,7 +67,7 @@ describe('full-width app pages', () => {
   });
 
   it('forms that would get too wide keep their own max width', () => {
-    expect(rulesFor(read('features/gigs/newGig.css'), '.new-gig-page .new-gig-form').join()).toMatch(
+    expect(rulesFor(read('features/events/newEvent.css'), '.new-event-page .new-event-form').join()).toMatch(
       /max-width:\s*var\(--content-max\)/,
     );
     expect(rulesFor(read('features/offers/offers.css'), '.new-offer-page .new-offer-form').join()).toMatch(/max-width/);

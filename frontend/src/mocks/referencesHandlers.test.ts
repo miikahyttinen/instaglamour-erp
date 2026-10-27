@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { ApiError } from '../api/client';
 import { offersApi, publicOffersApi, referencesApi } from '../api/endpoints';
-import { addMockClient } from '../test/gigFixtures';
+import { addMockClient } from '../test/eventFixtures';
 import { testFile } from '../test/files';
 import { addMockOffer } from '../test/offerFixtures';
 import { signInMock } from '../test/renderApp';

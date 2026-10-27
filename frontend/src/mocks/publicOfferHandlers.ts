@@ -6,7 +6,7 @@ import { errorResponse } from './util';
 // Public offer (UC-030): `GET /api/public/offers/{token}` and its reference photos (BR-108). No
 // session check — these are the only /api routes besides /api/auth/* that work signed out. The
 // token is looked up in the offers mock (db.offers, offerStore.ts); `toPublicOffer` applies the
-// contract's whitelist, so price, disposition, source, event type, gig, notes and ids never leave
+// contract's whitelist, so price, disposition, source, event type, event, notes and ids never leave
 // (BR-104). A regenerated (old) token or a deleted offer is 404 like an unknown one. Synthetic
 // data only (BR-090).
 
@@ -25,7 +25,7 @@ export const publicOfferHandlers = [
     if (!offer) return notFound();
     const body = toPublicOffer(
       toPublicView(db.offers, offer, {
-        clients: db.gigs.clients,
+        clients: db.events.clients,
         partners: db.partners,
         references: db.references,
       }),

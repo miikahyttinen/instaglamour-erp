@@ -1,4 +1,4 @@
-import { createGigViaApi, costField, costLine, suffix } from './gigs';
+import { createEventViaApi, costField, costLine, suffix } from './events';
 import {
   api,
   CURRENT_YEAR,
@@ -37,20 +37,20 @@ import {
 } from './po';
 
 // Purchase orders end to end (UC-033, UC-034, BR-113…BR-119, TASK-024): freelancer link → the
-// freelancer creates a PO without a session → a partner marks it paid → the gig cost lines are
+// freelancer creates a PO without a session → a partner marks it paid → the event cost lines are
 // paid and locked; unmark, cancel, logs, and the guards around it. Synthetic, tagged data only;
-// played gigs live in a past year of their own per project (poPastYear), so other specs' figures
+// played events live in a past year of their own per project (poPastYear), so other specs' figures
 // stay untouched. Public requests are kept low (rate limit 60 / min / IP, shared with offers).
 
-const PRICE_CENTS = 4370000; // distinctive gig price: must never reach the freelancer
+const PRICE_CENTS = 4370000; // distinctive event price: must never reach the freelancer
 const PRICE_FORMS = ['4370000', '43700', '43 700', '43 700', '43 700', '43,700', '43.700'];
 const VIEW_KEYS = ['lines', 'name', 'purchaseOrders'];
-const LINE_KEYS = ['amountCents', 'costLineId', 'description', 'gigEndDate', 'gigStartDate', 'purchaseOrderNumber', 'state', 'type', 'venue'];
+const LINE_KEYS = ['amountCents', 'costLineId', 'description', 'eventEndDate', 'eventStartDate', 'purchaseOrderNumber', 'state', 'type', 'venue'];
 const PUBLIC_PO_KEYS = ['createdAt', 'lines', 'number', 'paidAt', 'status', 'totalCents'];
-const PUBLIC_PO_LINE_KEYS = ['amountCents', 'description', 'gigStartDate', 'type', 'venue'];
+const PUBLIC_PO_LINE_KEYS = ['amountCents', 'description', 'eventStartDate', 'type', 'venue'];
 const PO_NUMBER = /^[A-Z0-9-]+-\d{4,}$/;
 
-test('freelancer link → create PO → mark paid → gig lines paid and locked; unmark, cancel, logs', async ({ page, context, browser, baseURL, request }, testInfo) => {
+test('freelancer link → create PO → mark paid → event lines paid and locked; unmark, cancel, logs', async ({ page, context, browser, baseURL, request }, testInfo) => {
   test.setTimeout(240_000);
   const tag = tagOf(testInfo);
   const s = suffix();
@@ -67,21 +67,21 @@ test('freelancer link → create PO → mark paid → gig lines paid and locked;
   const d2 = `${past}-04-12`;
   const d3 = `${poFutureYear(testInfo)}-05-20`;
   const d4 = `${past}-05-05`;
-  const gig1 = await createGigViaApi(page, { startDate: d1, venue: venue(1), priceCents: PRICE_CENTS });
-  const gig2 = await createGigViaApi(page, { startDate: d2, venue: venue(2), priceCents: PRICE_CENTS });
-  const gig3 = await createGigViaApi(page, { startDate: d3, venue: venue(3), priceCents: PRICE_CENTS });
-  const gig4 = await createGigViaApi(page, { startDate: d4, venue: venue(4), priceCents: PRICE_CENTS });
-  await api(page).patch(`/gigs/${gig1.id}`, { clientId: client.id });
-  const drums1 = await addLine(page, gig1.id, person.id, 'DRUMS', 30000); // selectable
-  const keys1 = await addLine(page, gig1.id, person.id, 'KEYS', 10000); // goes on the other-year PO
-  const zero1 = await addLine(page, gig1.id, person.id, 'GUITAR', 0); // 0 € → hidden
-  await addLine(page, gig1.id, other.id, 'PIANO', 70000); // another person → hidden
-  const bass2 = await addLine(page, gig2.id, person.id, 'BASS', 40000); // selectable
-  const backing2 = await addLine(page, gig2.id, person.id, 'BACKING_VOC', 20000); // paid outside a PO
+  const event1 = await createEventViaApi(page, { startDate: d1, venue: venue(1), priceCents: PRICE_CENTS });
+  const event2 = await createEventViaApi(page, { startDate: d2, venue: venue(2), priceCents: PRICE_CENTS });
+  const event3 = await createEventViaApi(page, { startDate: d3, venue: venue(3), priceCents: PRICE_CENTS });
+  const event4 = await createEventViaApi(page, { startDate: d4, venue: venue(4), priceCents: PRICE_CENTS });
+  await api(page).patch(`/events/${event1.id}`, { clientId: client.id });
+  const drums1 = await addLine(page, event1.id, person.id, 'DRUMS', 30000); // selectable
+  const keys1 = await addLine(page, event1.id, person.id, 'KEYS', 10000); // goes on the other-year PO
+  const zero1 = await addLine(page, event1.id, person.id, 'GUITAR', 0); // 0 € → hidden
+  await addLine(page, event1.id, other.id, 'PIANO', 70000); // another person → hidden
+  const bass2 = await addLine(page, event2.id, person.id, 'BASS', 40000); // selectable
+  const backing2 = await addLine(page, event2.id, person.id, 'BACKING_VOC', 20000); // paid outside a PO
   await api(page).post(`/cost-lines/${backing2}/pay`, {});
-  const voc3 = await addLine(page, gig3.id, person.id, 'VOC', 60000); // upcoming
-  const voc4 = await addLine(page, gig4.id, person.id, 'VOC', 50000); // cancelled gig → hidden
-  await api(page).post(`/gigs/${gig4.id}/cancel`, { reason: 'Synthetic reason' });
+  const voc3 = await addLine(page, event3.id, person.id, 'VOC', 60000); // upcoming
+  const voc4 = await addLine(page, event4.id, person.id, 'VOC', 50000); // cancelled event → hidden
+  await api(page).post(`/events/${event4.id}/cancel`, { reason: 'Synthetic reason' });
 
   // ---- Person page: copy the link; regenerate → the old link is not found ----
   const firstPath = await freelancerPath(page, person.id);
@@ -141,9 +141,9 @@ test('freelancer link → create PO → mark paid → gig lines paid and locked;
     [drums1]: 'SELECTABLE',
     [keys1]: 'ON_PO',
   });
-  const dates = view.lines.map((l: { gigStartDate: string }) => l.gigStartDate);
-  expect(dates, 'newest gig first').toEqual([...dates].sort().reverse());
-  for (const hidden of [zero1, voc4]) expect(states[hidden], 'cancelled gig / 0 € line hidden').toBeUndefined();
+  const dates = view.lines.map((l: { eventStartDate: string }) => l.eventStartDate);
+  expect(dates, 'newest event first').toEqual([...dates].sort().reverse());
+  for (const hidden of [zero1, voc4]) expect(states[hidden], 'cancelled event / 0 € line hidden').toBeUndefined();
 
   // Only own lines: no price, client, notes, other people or partners — in the page and the JSON.
   await expect(fp.getByRole('heading', { level: 1, name: person.name })).toBeVisible();
@@ -165,14 +165,14 @@ test('freelancer link → create PO → mark paid → gig lines paid and locked;
   // Rows: upcoming not selectable; paid; the other-year PO's line "Ostotilaus <number>".
   await expect(feeRows(fp)).toHaveCount(5);
   const upcoming = feeRow(fp, venue(3), 'Laulu');
-  await expect(upcoming).toContainText('Keikka ei ole vielä soitettu');
+  await expect(upcoming).toContainText('Tapahtuma on vielä tulossa');
   await expect(upcoming.getByRole('checkbox')).toHaveCount(0);
   await expect(feeRow(fp, venue(2), 'Taustalaulu')).toContainText('Maksettu');
   await expect(feeRow(fp, venue(2), 'Taustalaulu').getByRole('checkbox')).toHaveCount(0);
   await expect(feeRow(fp, venue(1), 'Koskettimet')).toContainText(`Ostotilaus ${oldPo.number}`);
   await expect(fp.getByText(venue(4))).toHaveCount(0);
 
-  // Select fees from two gigs → create.
+  // Select fees from two events → create.
   const create = fp.getByRole('button', { name: 'Luo ostotilausnumero', exact: true });
   await expect(create).toBeDisabled();
   await fp.getByRole('checkbox', { name: `Valitse: ${fiDate(d1)}, ${venue(1)}, Rummut` }).check();
@@ -226,14 +226,14 @@ test('freelancer link → create PO → mark paid → gig lines paid and locked;
   await expect(paidLabel).toHaveText(fiPaidLabel(paid.paidAt!));
   await expect(poRow(page, po.number).getByRole('button', { name: /Merkitse maksetuksi/ })).toHaveCount(0);
 
-  // Gig page: lines paid with the PO amount, PO tag, controls locked.
-  for (const [lineId, gigId, amount] of [[drums1, gig1.id, 30000], [bass2, gig2.id, 40000]] as const) {
-    const line = await costLineOf(page, gigId, lineId);
+  // Event page: lines paid with the PO amount, PO tag, controls locked.
+  for (const [lineId, eventId, amount] of [[drums1, event1.id, 30000], [bass2, event2.id, 40000]] as const) {
+    const line = await costLineOf(page, eventId, lineId);
     expect(line.paidAt).not.toBeNull();
     expect(line.actualCents).toBe(amount);
     expect(line.purchaseOrder).toEqual({ id: paid.id, number: po.number, status: 'PAID' });
   }
-  await page.goto(`/gigs/${gig1.id}`);
+  await page.goto(`/events/${event1.id}`);
   await expect(pageHead(page)).toBeVisible();
   const drums = costLine(page, 'Rummut');
   const tagLink = drums.getByRole('link', { name: `Ostotilaus ${po.number}` });
@@ -265,8 +265,8 @@ test('freelancer link → create PO → mark paid → gig lines paid and locked;
   await expect(page.getByRole('heading', { level: 1, name: po.number })).toBeVisible();
   await expect(pageHead(page).locator('.tag.tag-ok')).toHaveText(fiPaidLabel(paid.paidAt!));
   const lines = page.getByRole('table', { name: 'Ostotilauksen palkkiot' });
-  await expect(lines.getByRole('link', { name: `Avaa keikka: ${venue(1)}` })).toHaveAttribute('href', `/gigs/${gig1.id}`);
-  await expect(lines.getByRole('link', { name: `Avaa keikka: ${venue(2)}` })).toHaveAttribute('href', `/gigs/${gig2.id}`);
+  await expect(lines.getByRole('link', { name: `Avaa tapahtuma: ${venue(1)}` })).toHaveAttribute('href', `/events/${event1.id}`);
+  await expect(lines.getByRole('link', { name: `Avaa tapahtuma: ${venue(2)}` })).toHaveAttribute('href', `/events/${event2.id}`);
   await expect(lines).toContainText(fiMoney(70000));
 
   await page.getByRole('button', { name: 'Peru maksu', exact: true }).click();
@@ -276,8 +276,8 @@ test('freelancer link → create PO → mark paid → gig lines paid and locked;
   await expect(unpay).toBeHidden();
   await expect(pageHead(page)).toContainText('Avoin');
   expect((await poByNumber(page, po.number)).status).toBe('OPEN');
-  for (const [lineId, gigId] of [[drums1, gig1.id], [bass2, gig2.id]] as const) {
-    const line = await costLineOf(page, gigId, lineId);
+  for (const [lineId, eventId] of [[drums1, event1.id], [bass2, event2.id]] as const) {
+    const line = await costLineOf(page, eventId, lineId);
     expect(line.paidAt).toBeNull();
     expect(line.purchaseOrder?.status).toBe('OPEN');
   }
@@ -292,7 +292,7 @@ test('freelancer link → create PO → mark paid → gig lines paid and locked;
   await expect(cancel).toBeHidden();
   await expect(pageHead(page).locator('.tag.tag-muted')).toHaveText('Peruttu');
   await expect(page.getByRole('main')).toContainText(reason);
-  expect((await costLineOf(page, gig1.id, drums1)).purchaseOrder).toBeNull();
+  expect((await costLineOf(page, event1.id, drums1)).purchaseOrder).toBeNull();
 
   // Log on the PO page: created (Freelancer), paid, unpaid, cancelled — newest first, with actors.
   const expectedLog: [string, string][] = [
@@ -321,7 +321,7 @@ test('freelancer link → create PO → mark paid → gig lines paid and locked;
   await expect(page.getByRole('heading', { level: 1, name: `Ostotilaukset ${CURRENT_YEAR}` })).toBeVisible();
   await expect(poRow(page, po.number).locator('.tag.tag-muted')).toHaveText('Peruttu');
   const log = page
-    .getByRole('table', { name: 'Ostotilausten tapahtumat' })
+    .getByRole('table', { name: 'Ostotilausten muutokset' })
     .getByRole('row')
     .filter({ has: page.getByRole('link', { name: po.number, exact: true }) });
   await expect(log).toHaveCount(4);
@@ -344,7 +344,7 @@ test('freelancer link → create PO → mark paid → gig lines paid and locked;
 
 test('two parallel creates with the same line → one 201, one 409 COST_LINE_NOT_ELIGIBLE', async ({ page, playwright, baseURL }, testInfo) => {
   await signIn(page);
-  const { lineId, sharePath, gigId } = await personWithPlayedFee(page, testInfo, 'PO Race');
+  const { lineId, sharePath, eventId } = await personWithPlayedFee(page, testInfo, 'PO Race');
   const url = `/api/public/freelancers/${sharePath.replace(/^\/f\//, '')}/purchase-orders`;
   const [a, b] = await Promise.all([playwright.request.newContext({ baseURL }), playwright.request.newContext({ baseURL })]);
   const results = await Promise.all([a.post(url, { data: { costLineIds: [lineId] } }), b.post(url, { data: { costLineIds: [lineId] } })]);
@@ -356,25 +356,25 @@ test('two parallel creates with the same line → one 201, one 409 COST_LINE_NOT
   expect(err.details.costLineIds).toEqual([lineId]);
   const ok = await results.find((r) => r.status() === 201)!.json();
   // Exactly one PO holds the line.
-  const line = await costLineOf(page, gigId, lineId);
+  const line = await costLineOf(page, eventId, lineId);
   expect(line.purchaseOrder?.number).toBe(ok.number);
   const list = (await api(page).get(`/purchase-orders?q=${encodeURIComponent(ok.number.replace(/-\d+$/, ''))}`)) as { purchaseOrders: unknown[] };
   expect(list.purchaseOrders).toHaveLength(1);
   await Promise.all([a.dispose(), b.dispose()]);
 });
 
-test('gig cancel with a line on an open PO → error shown, gig unchanged', async ({ page, request }, testInfo) => {
+test('event cancel with a line on an open PO → error shown, event unchanged', async ({ page, request }, testInfo) => {
   await signIn(page);
-  const { lineId, sharePath, gigId } = await personWithPlayedFee(page, testInfo, 'PO Guard');
+  const { lineId, sharePath, eventId } = await personWithPlayedFee(page, testInfo, 'PO Guard');
   const po = await createPoPublic(request, sharePath, [lineId]);
 
-  await page.goto(`/gigs/${gigId}`);
+  await page.goto(`/events/${eventId}`);
   await expect(pageHead(page)).toBeVisible();
-  await page.getByRole('group', { name: 'Toiminnot' }).getByRole('button', { name: 'Peru keikka' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Peru keikka' });
+  await page.getByRole('group', { name: 'Toiminnot' }).getByRole('button', { name: 'Peru tapahtuma' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Peru tapahtuma' });
   await dialog.getByLabel('Syy').fill('Synthetic reason');
   const res = page.waitForResponse((r) => r.request().method() === 'POST' && r.url().endsWith('/cancel'));
-  await dialog.getByRole('button', { name: 'Peru keikka' }).click();
+  await dialog.getByRole('button', { name: 'Peru tapahtuma' }).click();
   const cancelRes = await res;
   expect(cancelRes.status()).toBe(409);
   const err = (await cancelRes.json()).error;
@@ -387,10 +387,10 @@ test('gig cancel with a line on an open PO → error shown, gig unchanged', asyn
   await page.reload();
   await expect(pageHead(page)).toBeVisible();
   await expect(pageHead(page)).not.toContainText('Peruttu');
-  const gig = (await api(page).get(`/gigs/${gigId}`)) as { status: string };
-  expect(gig.status).toBe('SOLD');
+  const event = (await api(page).get(`/events/${eventId}`)) as { status: string };
+  expect(event.status).toBe('SOLD');
   // Delete is guarded the same way.
-  const del = await page.request.post(`/api/gigs/${gigId}/delete`, { data: { reason: 'Synthetic reason' } });
+  const del = await page.request.post(`/api/events/${eventId}/delete`, { data: { reason: 'Synthetic reason' } });
   expect(del.status()).toBe(409);
   expect((await del.json()).error.code).toBe('COST_LINE_ON_PURCHASE_ORDER');
 });
@@ -398,7 +398,7 @@ test('gig cancel with a line on an open PO → error shown, gig unchanged', asyn
 test('no horizontal scroll: purchase order list, PO page and freelancer page', async ({ page, browser, baseURL, request }, testInfo) => {
   await signIn(page);
   const setup = await personWithPlayedFee(page, testInfo, 'PO Layout', { month: '07' });
-  const second = await addLine(page, setup.gigId, setup.person.id, 'VOC', 20000);
+  const second = await addLine(page, setup.eventId, setup.person.id, 'VOC', 20000);
   const po = await createPoPublic(request, setup.sharePath, [setup.lineId, second]);
   const full = await poByNumber(page, po.number);
   await api(page).post(`/purchase-orders/${full.id}/pay`);

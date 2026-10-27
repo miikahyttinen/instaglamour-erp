@@ -12,22 +12,22 @@ export const fi = {
     searchPlaceholder: 'Asiakkaan nimi',
     columns: {
       name: 'Nimi',
-      gigs: 'Keikat',
+      events: 'Tapahtumat',
       offers: 'Tarjoukset',
     },
     empty: 'Ei asiakkaita.',
     emptyFiltered: 'Ei hakua vastaavia asiakkaita.',
     back: '← Asiakkaat',
     notFound: 'Asiakasta ei löytynyt.',
-    gigs: {
-      title: 'Keikat',
-      caption: 'Asiakkaan keikat',
+    events: {
+      title: 'Tapahtumat',
+      caption: 'Asiakkaan tapahtumat',
       date: 'Päivä',
       lineup: 'Kokoonpano',
       venue: 'Paikka',
       status: 'Tila',
       totalPrice: 'Kokonaishinta',
-      empty: 'Asiakkaalla ei ole keikkoja.',
+      empty: 'Asiakkaalla ei ole tapahtumia.',
     },
     offers: {
       title: 'Tarjoukset',
@@ -42,9 +42,9 @@ export const fi = {
     delete: 'Poista asiakas',
     deleteTitle: 'Poista asiakas',
     deleteConfirm: 'Poistetaanko asiakas {{name}}?',
-    deleteInUse: 'Asiakasta ei voi poistaa, koska siihen on liitetty keikkoja tai tarjouksia.',
+    deleteInUse: 'Asiakasta ei voi poistaa, koska siihen on liitetty tapahtumia tai tarjouksia.',
     deleted: 'Asiakas poistettu: {{name}}.',
-    // Client select on the gig page and the new gig form.
+    // Client select on the event page and the new event form.
     select: {
       label: 'Asiakas',
       none: '–',
@@ -52,7 +52,7 @@ export const fi = {
       newClientName: 'Uuden asiakkaan nimi',
       create: 'Lisää asiakas',
     },
-    gigColumn: 'Asiakas',
+    eventColumn: 'Asiakas',
   },
 };
 
@@ -67,22 +67,22 @@ export const en: typeof fi = {
     searchPlaceholder: 'Client name',
     columns: {
       name: 'Name',
-      gigs: 'Gigs',
+      events: 'Events',
       offers: 'Offers',
     },
     empty: 'No clients.',
     emptyFiltered: 'No clients match the search.',
     back: '← Clients',
     notFound: 'Client not found.',
-    gigs: {
-      title: 'Gigs',
-      caption: "Client's gigs",
+    events: {
+      title: 'Events',
+      caption: "Client's events",
       date: 'Date',
       lineup: 'Lineup',
       venue: 'Venue',
       status: 'Status',
       totalPrice: 'Total price',
-      empty: 'This client has no gigs.',
+      empty: 'This client has no events.',
     },
     offers: {
       title: 'Offers',
@@ -97,7 +97,7 @@ export const en: typeof fi = {
     delete: 'Delete client',
     deleteTitle: 'Delete client',
     deleteConfirm: 'Delete the client {{name}}?',
-    deleteInUse: "The client can't be deleted because gigs or offers are linked to it.",
+    deleteInUse: "The client can't be deleted because events or offers are linked to it.",
     deleted: 'Client deleted: {{name}}.',
     select: {
       label: 'Client',
@@ -106,6 +106,6 @@ export const en: typeof fi = {
       newClientName: 'New client name',
       create: 'Add client',
     },
-    gigColumn: 'Client',
+    eventColumn: 'Client',
   },
 };

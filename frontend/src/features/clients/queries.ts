@@ -3,7 +3,7 @@ import { rootKeys } from '../../api/cache';
 import { clientsApi } from '../../api/endpoints';
 import type { ClientCreate, ClientUpdate, Id } from '../../api/types';
 
-// Every client query starts with ['clients'] (rootKeys.clients), so gig mutations refresh the
+// Every client query starts with ['clients'] (rootKeys.clients), so event mutations refresh the
 // counts and the client pages through invalidateYearData (api/cache.ts).
 export const clientKeys = {
   all: rootKeys.clients,
@@ -11,11 +11,11 @@ export const clientKeys = {
   detail: (id: Id) => [...rootKeys.clients, 'detail', id] as const,
 };
 
-/** Client changes also change the client name shown on gigs (detail pages, lists, search). */
+/** Client changes also change the client name shown on events (detail pages, lists, search). */
 function refreshAfterClientChange(queryClient: QueryClient) {
   return Promise.all([
     queryClient.invalidateQueries({ queryKey: clientKeys.all }),
-    queryClient.invalidateQueries({ queryKey: ['gigs'] }),
+    queryClient.invalidateQueries({ queryKey: ['events'] }),
   ]);
 }
 

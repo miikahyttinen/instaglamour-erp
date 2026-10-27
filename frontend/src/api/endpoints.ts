@@ -17,15 +17,15 @@ import type {
   CostLinePayRequest,
   CostLineUpdate,
   DevLoginRequest,
-  GigCreate,
-  GigDetail,
-  GigEvent,
-  GigListQuery,
-  GigListResponse,
-  GigMoveRequest,
-  GigUpdate,
-  GigUpdateResponse,
-  GigWithWarnings,
+  EventCreate,
+  EventDetail,
+  EventHistoryEntry,
+  EventListQuery,
+  EventListResponse,
+  EventMoveRequest,
+  EventUpdate,
+  EventUpdateResponse,
+  EventWithWarnings,
   HourEntry,
   HourEntryCreate,
   HourEntryUpdate,
@@ -121,53 +121,53 @@ export const yearsApi = {
   get: (year: number) => apiRequest<YearPage>(`/years/${year}`),
 };
 
-// ---------- Gigs ----------
+// ---------- Events ----------
 
-export const gigsApi = {
-  list: (query: GigListQuery) =>
-    apiRequest<GigListResponse>('/gigs', {
+export const eventsApi = {
+  list: (query: EventListQuery) =>
+    apiRequest<EventListResponse>('/events', {
       query: {
         ...query,
         notFullyStaffed: query.notFullyStaffed ? true : undefined,
         deleted: query.deleted ? true : undefined,
       },
     }),
-  create: (body: GigCreate) => apiRequest<GigDetail>('/gigs', { method: 'POST', body }),
-  get: (id: Id) => apiRequest<GigDetail>(`/gigs/${id}`),
-  update: (id: Id, body: GigUpdate) =>
-    apiRequest<GigUpdateResponse>(`/gigs/${id}`, { method: 'PATCH', body }),
-  move: (id: Id, body: GigMoveRequest) =>
-    apiRequest<GigWithWarnings>(`/gigs/${id}/move`, { method: 'POST', body }),
+  create: (body: EventCreate) => apiRequest<EventDetail>('/events', { method: 'POST', body }),
+  get: (id: Id) => apiRequest<EventDetail>(`/events/${id}`),
+  update: (id: Id, body: EventUpdate) =>
+    apiRequest<EventUpdateResponse>(`/events/${id}`, { method: 'PATCH', body }),
+  move: (id: Id, body: EventMoveRequest) =>
+    apiRequest<EventWithWarnings>(`/events/${id}/move`, { method: 'POST', body }),
   cancel: (id: Id, body: ReasonRequest) =>
-    apiRequest<GigDetail>(`/gigs/${id}/cancel`, { method: 'POST', body }),
+    apiRequest<EventDetail>(`/events/${id}/cancel`, { method: 'POST', body }),
   uncancel: (id: Id, body: ReasonRequest) =>
-    apiRequest<GigDetail>(`/gigs/${id}/uncancel`, { method: 'POST', body }),
+    apiRequest<EventDetail>(`/events/${id}/uncancel`, { method: 'POST', body }),
   delete: (id: Id, body: ReasonRequest) =>
-    apiRequest<void>(`/gigs/${id}/delete`, { method: 'POST', body }),
-  restore: (id: Id) => apiRequest<GigDetail>(`/gigs/${id}/restore`, { method: 'POST' }),
-  history: (id: Id) => apiRequest<GigEvent[]>(`/gigs/${id}/history`),
+    apiRequest<void>(`/events/${id}/delete`, { method: 'POST', body }),
+  restore: (id: Id) => apiRequest<EventDetail>(`/events/${id}/restore`, { method: 'POST' }),
+  history: (id: Id) => apiRequest<EventHistoryEntry[]>(`/events/${id}/history`),
 };
 
 // ---------- Cost lines ----------
 
 export const costLinesApi = {
-  create: (gigId: Id, body: CostLineCreate) =>
-    apiRequest<GigWithWarnings>(`/gigs/${gigId}/cost-lines`, { method: 'POST', body }),
+  create: (eventId: Id, body: CostLineCreate) =>
+    apiRequest<EventWithWarnings>(`/events/${eventId}/cost-lines`, { method: 'POST', body }),
   update: (id: Id, body: CostLineUpdate) =>
-    apiRequest<GigWithWarnings>(`/cost-lines/${id}`, { method: 'PATCH', body }),
-  remove: (id: Id) => apiRequest<GigWithWarnings>(`/cost-lines/${id}`, { method: 'DELETE' }),
+    apiRequest<EventWithWarnings>(`/cost-lines/${id}`, { method: 'PATCH', body }),
+  remove: (id: Id) => apiRequest<EventWithWarnings>(`/cost-lines/${id}`, { method: 'DELETE' }),
   pay: (id: Id, body: CostLinePayRequest = {}) =>
-    apiRequest<GigWithWarnings>(`/cost-lines/${id}/pay`, { method: 'POST', body }),
-  unpay: (id: Id) => apiRequest<GigWithWarnings>(`/cost-lines/${id}/unpay`, { method: 'POST' }),
+    apiRequest<EventWithWarnings>(`/cost-lines/${id}/pay`, { method: 'POST', body }),
+  unpay: (id: Id) => apiRequest<EventWithWarnings>(`/cost-lines/${id}/unpay`, { method: 'POST' }),
 };
 
 // ---------- Attachments ----------
 
 export const attachmentsApi = {
-  upload: (gigId: Id, file: File) => {
+  upload: (eventId: Id, file: File) => {
     const form = new FormData();
     form.append('file', file);
-    return apiRequest<Attachment>(`/gigs/${gigId}/attachments`, { method: 'POST', body: form });
+    return apiRequest<Attachment>(`/events/${eventId}/attachments`, { method: 'POST', body: form });
   },
   downloadUrl: (id: Id) => buildUrl(`/attachments/${id}/download`),
   remove: (id: Id) => apiRequest<void>(`/attachments/${id}`, { method: 'DELETE' }),
@@ -221,9 +221,9 @@ export const offersApi = {
   regenerateLink: (id: Id) =>
     apiRequest<OfferDetail>(`/offers/${id}/regenerate-link`, { method: 'POST' }),
   /** BR-105 prefilled values for the convert form (UC-031). */
-  gigDraft: (id: Id) => apiRequest<GigCreate>(`/offers/${id}/gig-draft`),
-  /** With `body`: the gig is created from the (edited) form; without: BR-105 defaults. */
-  convert: (id: Id, body?: GigCreate) =>
+  eventDraft: (id: Id) => apiRequest<EventCreate>(`/offers/${id}/event-draft`),
+  /** With `body`: the event is created from the (edited) form; without: BR-105 defaults. */
+  convert: (id: Id, body?: EventCreate) =>
     apiRequest<OfferConvertResponse>(`/offers/${id}/convert`, { method: 'POST', body }),
   delete: (id: Id) => apiRequest<void>(`/offers/${id}/delete`, { method: 'POST' }),
   restore: (id: Id) => apiRequest<OfferDetail>(`/offers/${id}/restore`, { method: 'POST' }),

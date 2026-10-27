@@ -1,6 +1,6 @@
 # Instaglamour ERP
 
-A small, focused web app for the partners of a live-music band to run the business: **offers with a customer-facing link, clients, gigs, staffing and costs, contracts, tasks, work hours and the yearly budget — all organised by year.** It replaces a large spreadsheet with a real data model, keeps a full change history, and works on desktop and phone in Finnish and English, in dark and light mode.
+A small, focused web app for the partners of a live-music band to run the business: **offers with a customer-facing link, clients, events, staffing and costs, contracts, tasks, work hours and the yearly budget — all organised by year.** It replaces a large spreadsheet with a real data model, keeps a full change history, and works on desktop and phone in Finnish and English, in dark and light mode.
 
 > All data in this README and in the repository is **synthetic test data** ("Partner A", "Person 1", "Venue X", round amounts). Real names, customers, fees and budgets never enter the repository — see [Data protection](#data-protection).
 
@@ -24,8 +24,10 @@ A small, focused web app for the partners of a live-music band to run the busine
 
 ## Screenshots
 
+> The screenshots were taken before the Gig → Event rename (SaaS phase 1, see [docs/saas-roadmap.md](docs/saas-roadmap.md)), so they still say "Keikat / Gigs" where the app now says "Tapahtumat / Events".
+
 ### Offers
-Offer list for the selected year with open value and win rate; Excel-style sortable table, inline source/event type/outcome, and **Convert to gig** (creates the gig, links it, marks the offer won).
+Offer list for the selected year with open value and win rate; Excel-style sortable table, inline source/event type/outcome, and **Convert to event** (creates the event, links it, marks the offer won).
 
 | Offer list | Offer page (customer preview + internal fields) |
 |---|---|
@@ -43,32 +45,32 @@ Each offer has one unguessable link (`/o/<token>`, 32 random bytes) that shows o
 | ![](docs/screenshots/public-offer-light.png) | ![](docs/screenshots/public-offer-dark.png) | ![](docs/screenshots/phone-public-offer-light.png) |
 
 ### Clients
-| Client list | Client page (gigs and offers) |
+| Client list | Client page (events and offers) |
 |---|---|
 | ![](docs/screenshots/clients-dark.png) | ![](docs/screenshots/client-dark.png) |
 
 ### Year page (home)
-The selected year at a glance: sold gigs sum, costs and margin, hours per partner, budget vs. actual and the year result, plus the next upcoming gigs.
+The selected year at a glance: sold events sum, costs and margin, hours per partner, budget vs. actual and the year result, plus the next upcoming events.
 
 | Dark | Light |
 |---|---|
 | ![](docs/screenshots/year-dark.png) | ![](docs/screenshots/year-light.png) |
 
-### Gigs
-Gig list for the selected year with a year summary, search and filters (table on wide screens, cards on narrow ones).
+### Events
+Event list for the selected year with a year summary, search and filters (table on wide screens, cards on narrow ones).
 
 | Dark | Light |
 |---|---|
 | ![](docs/screenshots/gigs-dark.png) | ![](docs/screenshots/gigs-light.png) |
 
-### Gig page — everything edited in place
+### Event page — everything edited in place
 Click any field to edit; it saves when it loses focus (click outside or Enter), Esc reverts. Basic info, price and additional sales, economics, the cost & staffing list (load-in switch, mark paid), attachments and the full change history.
 
 | Dark | Light |
 |---|---|
 | ![](docs/screenshots/gig-dark.png) | ![](docs/screenshots/gig-light.png) |
 
-### New gig
+### New event
 Template or custom lineup, technical setup, logistics, house technician, price and additional sales.
 
 | Dark | Light |
@@ -104,7 +106,7 @@ Fixed costs and income per category: budget, actual and variance; every cell sav
 |---|---|
 | ![](docs/screenshots/sidebar-collapsed-dark.png) | ![](docs/screenshots/signin-dark.png) |
 
-| Phone: year | Phone: gigs | Phone: menu drawer | Phone: budget (light) |
+| Phone: year | Phone: events | Phone: menu drawer | Phone: budget (light) |
 |---|---|---|---|
 | ![](docs/screenshots/phone-year-dark.png) | ![](docs/screenshots/phone-gigs-dark.png) | ![](docs/screenshots/phone-drawer-dark.png) | ![](docs/screenshots/phone-budget-light.png) |
 
@@ -116,17 +118,17 @@ Fixed costs and income per category: budget, actual and variance; every cell sav
 
 | Area | What it does |
 |---|---|
-| **Offers** | Offer list per year with open value and win rate; create/edit in place with full history; outcome (won, lost: price/competitor/…); **Convert to gig#** with one gig per offer (safe against double clicks and parallel requests). Email sync intentionally left out. |
+| **Offers** | Offer list per year with open value and win rate; create/edit in place with full history; outcome (won, lost: price/competitor/…); **Convert to event#** with one event per offer (safe against double clicks and parallel requests). Email sync intentionally left out. |
 | **Public offer link** | `/o/<token>` without sign-in: event, client, date, venue, lineup, what's included, Spotify, references, seller contact — **never price or internal data**; FI/EN; regenerate to revoke; rate-limited, `noindex`. |
 | **References** | Testimonials with photo, FI/EN quote and author, managed in the app; shown on offers that enable them; photos only reachable through a valid offer link. |
-| **Clients** | Name + notes; gigs and offers link to a client; client page lists them. |
-| **Year first** | A selected year (always visible top right) drives every total: sold gigs sum, hours sum, budget vs. actual, year result. |
-| **Gigs** | Create from a lineup template or custom; status *Sold / Cancelled* ("played" derived from the date); move (dates logged), cancel/uncancel with reason, soft delete & restore. |
+| **Clients** | Name + notes; events and offers link to a client; client page lists them. |
+| **Year first** | A selected year (always visible top right) drives every total: sold events sum, hours sum, budget vs. actual, year result. |
+| **Events** | Create from a lineup template or custom; status *Sold / Cancelled* ("played" derived from the date); move (dates logged), cancel/uncancel with reason, soft delete & restore. |
 | **Price** | Price + additional sales; total, margin and margin % calculated live. |
-| **Costs & staffing** | One cost list per gig: musicians, internal fees (office/sales/production) and expenses. Load-in & soundcheck switch deducts a configured amount; *mark paid* records time and partner; fuel is an estimate only; performer double-booking warnings; unpaid sales/production lines follow a seller/producer change. |
+| **Costs & staffing** | One cost list per event: musicians, internal fees (office/sales/production) and expenses. Load-in & soundcheck switch deducts a configured amount; *mark paid* records time and partner; fuel is an estimate only; performer double-booking warnings; unpaid sales/production lines follow a seller/producer change. |
 | **Technical setup & logistics** | Technical setup (house tech, own PA set A/B/C), logistics (own van, rental van, taxi, other), house technician yes/no. |
-| **Attachments** | Contracts and other files per gig (PDF, DOCX, PNG, JPG); customer and invoicing details live in the contract, not in the database. |
-| **History** | Every change on a gig is logged (who, when, old → new) and cannot be edited. |
+| **Attachments** | Contracts and other files per event (PDF, DOCX, PNG, JPG); customer and invoicing details live in the contract, not in the database. |
+| **History** | Every change on an event is logged (who, when, old → new) and cannot be edited. |
 | **People, tasks, hours** | Simple people register; shared to-do list; hours as spreadsheet-style tables (date, partner, comment, hours) with partner filter and totals. |
 | **Budget** | Partners add, rename and remove budget rows; budget and actual per row and year; copy budget from the previous year. |
 | **Inline editing** | No Edit/Save buttons: fields save on blur/Enter, selects and switches on change, with saving/saved/error feedback. |
@@ -196,10 +198,10 @@ Use cases by area:
 | Area | Use cases |
 |---|---|
 | Access & home | UC-001 Sign in · UC-022 Year page |
-| Gigs | UC-002 Create · UC-003 List · UC-004 View & edit · UC-005 Costs & staffing · UC-007 Price · UC-008 Attachments · UC-009 Move · UC-010 Cancel · UC-012 Uncancel · UC-013 History · UC-025 Delete & restore |
+| Events | UC-002 Create · UC-003 List · UC-004 View & edit · UC-005 Costs & staffing · UC-007 Price · UC-008 Attachments · UC-009 Move · UC-010 Cancel · UC-012 Uncancel · UC-013 History · UC-025 Delete & restore |
 | People, tasks, hours | UC-014 People · UC-017 Tasks · UC-018 Log hours · UC-019 Hours totals |
 | Budget | UC-020 Yearly budget |
-| Clients & offers | UC-027 Clients · UC-028 Offer list · UC-029 Create & edit offer (+ references) · UC-030 Public offer link · UC-031 Convert offer to gig |
+| Clients & offers | UC-027 Clients · UC-028 Offer list · UC-029 Create & edit offer (+ references) · UC-030 Public offer link · UC-031 Convert offer to event |
 | Development | UC-024 Local seed data |
 
 ---
@@ -250,7 +252,7 @@ flowchart LR
 |---|---|---|
 | Specs | Owner interviews, simplification, approval of 19 UCs, API contract | PM |
 | 1 Foundation | Backend scaffold, schema, seed, Google auth · UI scaffold, i18n, shell | 2 |
-| 2 Gigs | Gig/cost/history/attachment API · all gig screens | 2 |
+| 2 Events | Event/cost/history/attachment API · all event screens | 2 |
 | 3 Rest | Year/people/tasks/hours/budget API · five UI screens | 6 |
 | 4 Integration | Playwright e2e on the real stack · UI integration polish · fixes | 2–3 |
 | 5 Design system | Tokens, dark/light, fonts, logo, shared components → six screen restyles | 1 → 6 |
@@ -258,7 +260,7 @@ flowchart LR
 | 7 Layout v2 | Collapsible icon sidebar, smaller type, spacing → five alignment passes → polish, top-bar controls, e2e | 1 → 5 → 3 |
 | 8 Domain change | Technical setup / logistics / house technician: migration with data mapping · UI · e2e | 2 → 1 |
 | 9 Owner iterations | Partner-managed budget rows, hours as spreadsheet tables (three owner feedback rounds) | 2 → 1 |
-| 10 Clients & offers | Prototype studied read-only (kept out of git) → clients · offers · public link · references with photos · convert-to-gig · e2e incl. "no price leaks" checks | 3 → 3 → 3 |
+| 10 Clients & offers | Prototype studied read-only (kept out of git) → clients · offers · public link · references with photos · convert-to-event · e2e incl. "no price leaks" checks | 3 → 3 → 3 |
 
 About **60 tasks, 270 commits and 64 reviewed merges** over five days.
 

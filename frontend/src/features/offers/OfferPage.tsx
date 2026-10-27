@@ -32,14 +32,14 @@ import { ConvertDialog } from './ConvertDialog';
 import { OfferHistory } from './OfferHistory';
 import { OfferPreview } from './OfferPreview';
 import { copyToClipboard, useOfferOptions, type CopyResult } from './offerOptions';
-import { ConfirmDialog, CopyResultNotice, GigCell, OfferStatusTag } from './offerParts';
+import { ConfirmDialog, CopyResultNotice, EventCell, OfferStatusTag } from './offerParts';
 import { publicOfferUrl, useApplyOffer, useOffer } from './queries';
 import './offers.css';
 
 type PageNotice =
   | { kind: 'copy'; result: CopyResult }
   | { kind: 'regenerated' | 'restored' }
-  | { kind: 'converted'; gigId: string }
+  | { kind: 'converted'; eventId: string }
   | { kind: 'error'; error: unknown };
 
 type ActionDialog = 'regenerate' | 'convert' | 'delete' | null;
@@ -121,7 +121,7 @@ export function OfferPage() {
       <Button icon={RefreshCw} onClick={() => setDialog('regenerate')}>
         {t('offer.actions.regenerate')}
       </Button>
-      <GigCell offer={offer} size="md" onConvert={() => setDialog('convert')} />
+      <EventCell offer={offer} size="md" onConvert={() => setDialog('convert')} />
       <Button variant="danger" icon={Trash2} onClick={() => setDialog('delete')}>
         {t('offer.actions.delete')}
       </Button>
@@ -201,7 +201,7 @@ export function OfferPage() {
           onClose={close}
           onConverted={(result) => {
             close();
-            setNotice({ kind: 'converted', gigId: result.gig.id });
+            setNotice({ kind: 'converted', eventId: result.event.id });
           }}
         />
       )}
@@ -233,7 +233,7 @@ function PageNoticeBox({ notice, onDismiss }: { notice: PageNotice; onDismiss: (
   else if (notice.kind === 'converted') {
     text = (
       <p>
-        {t('convert.created')} <Link to={`/gigs/${notice.gigId}`}>{t('convert.openGig')}</Link>
+        {t('convert.created')} <Link to={`/events/${notice.eventId}`}>{t('convert.openEvent')}</Link>
       </p>
     );
   }
@@ -360,7 +360,7 @@ function OfferDetailFields({ offer, readOnly }: { offer: OfferDetail; readOnly: 
   );
 }
 
-/** Internal fields: price, source, event type, disposition (status follows it), created, gig. */
+/** Internal fields: price, source, event type, disposition (status follows it), created, event. */
 function OfferInternalFields({ offer, readOnly }: { offer: OfferDetail; readOnly: boolean }) {
   const { t } = useTranslation();
   const lang = useLang();

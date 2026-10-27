@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { formatDate, formatMoneyWhole } from '../../lib/format';
 import { DESKTOP_QUERY, TABLET_QUERY } from '../../lib/useMediaQuery';
 import { db } from '../../mocks/data';
-import { addMockClient, partnerB, TEST_YEAR } from '../../test/gigFixtures';
+import { addMockClient, partnerB, TEST_YEAR } from '../../test/eventFixtures';
 import { installMatchMedia } from '../../test/matchMedia';
 import { addMockOffer } from '../../test/offerFixtures';
 import { renderApp, signInMock } from '../../test/renderApp';
@@ -59,7 +59,7 @@ describe('offer list (UC-028)', () => {
       'Lähde',
       'Tapahtumatyyppi',
       'Lopputulos',
-      'Keikka',
+      'Linkitetty tapahtuma',
       'Toiminnot',
     ]);
     // Column priorities (TASK-147): 2 hidden below 1100 px, 3 below 1400 px of table width.
@@ -142,10 +142,10 @@ describe('offer list (UC-028)', () => {
     await screen.findByRole('table', { name: 'Tarjoukset' });
     expect(eventNames()).toHaveLength(3);
     // A won offer whose date has passed can't be converted (BR-109): no button, "–".
-    expect(screen.queryByRole('button', { name: /^Muuta keikaksi:/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Muuta tapahtumaksi:/ })).not.toBeInTheDocument();
     // No filter dropdowns above the table any more.
     expect(screen.queryByRole('combobox', { name: 'Tila' })).not.toBeInTheDocument();
-    for (const column of ['Asiakas', 'Paikka / kaupunki', 'Tila', 'Myyjä', 'Lähde', 'Tapahtumatyyppi', 'Lopputulos', 'Keikka']) {
+    for (const column of ['Asiakas', 'Paikka / kaupunki', 'Tila', 'Myyjä', 'Lähde', 'Tapahtumatyyppi', 'Lopputulos', 'Linkitetty tapahtuma']) {
       expect(within(table()).getByRole('button', { name: `Suodata: ${column}` })).toBeInTheDocument();
     }
 
@@ -232,7 +232,7 @@ describe('offer list (UC-028)', () => {
     expect(screen.getAllByRole('link', { name: 'Uusi tarjous' })).toHaveLength(2);
   });
 
-  it('converts to a gig in the modal; the row then links to the gig (UC-031)', async () => {
+  it('converts to an event in the modal; the row then links to the event (UC-031)', async () => {
     const offer = addMockOffer({
       clientId,
       eventName: 'Event 1',
@@ -242,44 +242,44 @@ describe('offer list (UC-028)', () => {
     });
     const { user } = renderApp('/offers');
     await screen.findByRole('table', { name: 'Tarjoukset' });
-    await user.click(screen.getByRole('button', { name: 'Muuta keikaksi: Event 1' }));
-    const dialog = screen.getByRole('dialog', { name: 'Muuta keikaksi' });
+    await user.click(screen.getByRole('button', { name: 'Muuta tapahtumaksi: Event 1' }));
+    const dialog = screen.getByRole('dialog', { name: 'Muuta tapahtumaksi' });
     expect(await within(dialog).findByRole('textbox', { name: 'Paikka' })).toHaveValue('Venue X, City Y');
-    await user.click(within(dialog).getByRole('button', { name: 'Muuta keikaksi' }));
+    await user.click(within(dialog).getByRole('button', { name: 'Muuta tapahtumaksi' }));
 
-    expect(await screen.findByText('Keikka luotu tarjouksesta Event 1.', { exact: false })).toBeInTheDocument();
+    expect(await screen.findByText('Tapahtuma luotu tarjouksesta Event 1.', { exact: false })).toBeInTheDocument();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    const link = await screen.findByRole('link', { name: 'Keikka: Event 1' });
-    expect(link).toHaveTextContent('Keikka →');
-    expect(link).toHaveAttribute('href', `/gigs/${offer.gigId}`);
-    expect(screen.getByRole('link', { name: 'Avaa keikka' })).toHaveAttribute('href', `/gigs/${offer.gigId}`);
-    expect(db.gigs.gigs.filter((g) => g.offerId === offer.id)).toHaveLength(1);
+    const link = await screen.findByRole('link', { name: 'Tapahtuma: Event 1' });
+    expect(link).toHaveTextContent('Tapahtuma →');
+    expect(link).toHaveAttribute('href', `/events/${offer.eventId}`);
+    expect(screen.getByRole('link', { name: 'Avaa tapahtuma' })).toHaveAttribute('href', `/events/${offer.eventId}`);
+    expect(db.events.events.filter((g) => g.offerId === offer.id)).toHaveLength(1);
     expect(bodyRows()[0]).toHaveTextContent('Hyväksytty');
   });
 
-  it('shows Convert only for accepted, upcoming offers without a gig; Voitettu inline shows it at once (BR-109)', async () => {
+  it('shows Convert only for accepted, upcoming offers without an event; Voitettu inline shows it at once (BR-109)', async () => {
     addMockOffer({ clientId, eventName: 'Pending 1' });
     addMockOffer({ clientId, eventName: 'Lost 1', disposition: 'LOST_PRICE' });
     addMockOffer({ clientId, eventName: 'Won 1', disposition: 'WON' });
     const converted = addMockOffer({ clientId, eventName: 'Converted 1', disposition: 'WON' });
-    converted.gigId = '00000000-0000-4000-8000-00000000ffff';
+    converted.eventId = '00000000-0000-4000-8000-00000000ffff';
     const { user } = renderApp('/offers');
     await screen.findByRole('table', { name: 'Tarjoukset' });
-    const gigCell = (event: string) => {
+    const linkedEventCell = (event: string) => {
       const row = bodyRows().find((r) => within(r).queryByRole('link', { name: event }))!;
-      return row.querySelector<HTMLElement>('td[data-label="Keikka"]')!;
+      return row.querySelector<HTMLElement>('td[data-label="Linkitetty tapahtuma"]')!;
     };
-    expect(within(gigCell('Won 1')).getByRole('button', { name: 'Muuta keikaksi: Won 1' })).toBeInTheDocument();
-    expect(gigCell('Pending 1')).toHaveTextContent(/^–$/);
-    expect(gigCell('Lost 1')).toHaveTextContent(/^–$/);
-    expect(within(gigCell('Converted 1')).getByRole('link', { name: 'Keikka: Converted 1' })).toHaveTextContent(
-      'Keikka →',
+    expect(within(linkedEventCell('Won 1')).getByRole('button', { name: 'Muuta tapahtumaksi: Won 1' })).toBeInTheDocument();
+    expect(linkedEventCell('Pending 1')).toHaveTextContent(/^–$/);
+    expect(linkedEventCell('Lost 1')).toHaveTextContent(/^–$/);
+    expect(within(linkedEventCell('Converted 1')).getByRole('link', { name: 'Tapahtuma: Converted 1' })).toHaveTextContent(
+      'Tapahtuma →',
     );
-    expect(screen.getAllByRole('button', { name: /^Muuta keikaksi:/ })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: /^Muuta tapahtumaksi:/ })).toHaveLength(1);
 
     await user.selectOptions(screen.getByRole('combobox', { name: 'Lopputulos: Pending 1' }), 'Voitettu');
     expect(
-      await within(gigCell('Pending 1')).findByRole('button', { name: 'Muuta keikaksi: Pending 1' }),
+      await within(linkedEventCell('Pending 1')).findByRole('button', { name: 'Muuta tapahtumaksi: Pending 1' }),
     ).toBeInTheDocument();
   });
 

@@ -60,12 +60,12 @@ export function useApplyOffer() {
   );
 }
 
-/** After convert: the offer, and every gig-derived view (a gig was created). */
+/** After convert: the offer, and every event-derived view (an event was created). */
 export function useApplyConvert() {
   const queryClient = useQueryClient();
   return useCallback(
     (offer: OfferDetail) => {
-      void invalidateYearData(queryClient, 'gigs');
+      void invalidateYearData(queryClient, 'events');
       return refreshAfterOfferChange(queryClient, offer, offer.id);
     },
     [queryClient],

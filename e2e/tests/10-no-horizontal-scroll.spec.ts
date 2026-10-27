@@ -2,7 +2,7 @@ import { expect, expectNoHorizontalScroll, signIn, test } from './helpers';
 import { busyIds, MAIN_PAGE_NAMES, mainPages, openLoaded, type BusyIds } from './pages';
 
 // NFR-1: no horizontal scroll on every main page (asserted in both projects; the 375 px run is
-// the one that matters). Uses the busiest seed data: the fully staffed February gig and Person 1.
+// the one that matters). Uses the busiest seed data: the fully staffed February event and Person 1.
 // Both sidebar states (desktop) and the open drawer (phone) are covered in 12-layout-v2.
 test.describe('no horizontal scroll on main pages', () => {
   let ids: BusyIds | undefined;

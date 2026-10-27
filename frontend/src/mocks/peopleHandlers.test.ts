@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { ApiError } from '../api/client';
 import { authApi, meApi, peopleApi, referenceApi } from '../api/endpoints';
-import { addMockGig, mockLine, person, staffMockGig, TEST_YEAR } from '../test/gigFixtures';
+import { addMockEvent, mockLine, person, staffMockEvent, TEST_YEAR } from '../test/eventFixtures';
 import { signInMock } from '../test/renderApp';
 import { db, setMockSession } from './data';
 
@@ -94,38 +94,38 @@ describe('partner status mock (contract → Partner status, UC-032)', () => {
   });
 });
 
-describe('people roles and gig count mock (contract → People: roles and gig count)', () => {
+describe('people roles and event count mock (contract → People: roles and event count)', () => {
   beforeEach(() => {
     signInMock();
   });
 
-  const gigCount = async (name: string) =>
-    (await peopleApi.list('all')).find((p) => p.name === name)!.gigCount;
+  const eventCount = async (name: string) =>
+    (await peopleApi.list('all')).find((p) => p.name === name)!.eventCount;
 
-  it('every person has roles (MUSICIAN_ROLES order) and a gigCount', async () => {
+  it('every person has roles (MUSICIAN_ROLES order) and a eventCount', async () => {
     const all = await peopleApi.list('all');
     for (const p of all) {
       expect(Array.isArray(p.roles)).toBe(true);
-      expect(typeof p.gigCount).toBe('number');
+      expect(typeof p.eventCount).toBe('number');
     }
     expect(all.find((p) => p.name === 'Person 1')!.roles).toEqual(['VOC', 'BACKING_VOC']);
   });
 
-  it('gigCount = distinct played SOLD non-deleted gigs with a musician-role line', async () => {
-    const before = await gigCount('Person 3');
-    const played = addMockGig({ startDate: '2020-03-01' });
-    staffMockGig(played, ['Person 3', 'Person 3']); // two lines on one gig count once
-    const future = addMockGig({ startDate: `${TEST_YEAR}-03-01` });
-    staffMockGig(future, ['Person 3']);
-    const cancelled = addMockGig({ startDate: '2020-04-01' });
-    staffMockGig(cancelled, ['Person 3']);
+  it('eventCount = distinct played SOLD non-deleted events with a musician-role line', async () => {
+    const before = await eventCount('Person 3');
+    const played = addMockEvent({ startDate: '2020-03-01' });
+    staffMockEvent(played, ['Person 3', 'Person 3']); // two lines on one event count once
+    const future = addMockEvent({ startDate: `${TEST_YEAR}-03-01` });
+    staffMockEvent(future, ['Person 3']);
+    const cancelled = addMockEvent({ startDate: '2020-04-01' });
+    staffMockEvent(cancelled, ['Person 3']);
     cancelled.status = 'CANCELLED';
-    const deleted = addMockGig({ startDate: '2020-05-01' });
-    staffMockGig(deleted, ['Person 3']);
+    const deleted = addMockEvent({ startDate: '2020-05-01' });
+    staffMockEvent(deleted, ['Person 3']);
     deleted.deletedAt = new Date().toISOString();
-    const internalOnly = addMockGig({ startDate: '2020-06-01' });
+    const internalOnly = addMockEvent({ startDate: '2020-06-01' });
     mockLine(internalOnly, 'OFFICE').personId = person('Person 3').id;
-    expect(await gigCount('Person 3')).toBe(before + 1);
+    expect(await eventCount('Person 3')).toBe(before + 1);
   });
 
   it('?role= filters by role, combines with active / partner; unknown role → 400', async () => {

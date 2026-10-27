@@ -1,5 +1,5 @@
 import type { Browser, BrowserContext, Page, Response, TestInfo } from '@playwright/test';
-import { suffix } from './gigs';
+import { suffix } from './events';
 import { api, CURRENT_YEAR, expect, expectNoHorizontalScroll, PARTNER_A, signIn, tagOf, test } from './helpers';
 import { createClientViaApi, createOfferViaApi, fiDateWithWeekday, offerList, offerYear, type OfferDetail } from './offers';
 
@@ -196,7 +196,7 @@ test('public link without a session: only that offer, no price or internal field
   expect(apiCalls(anon), 'switching the language sends nothing').toHaveLength(calls.length);
 
   // The anonymous context can't reach any other data.
-  for (const path of ['/api/me', `/api/offers?year=${year}`, `/api/offers/${offer.id}`, `/api/clients/${client.id}`, `/api/gigs?year=${year}`]) {
+  for (const path of ['/api/me', `/api/offers?year=${year}`, `/api/offers/${offer.id}`, `/api/clients/${client.id}`, `/api/events?year=${year}`]) {
     const r = await anon.context.request.get(path);
     expect(r.status(), `${path} without a session`).toBe(401);
   }

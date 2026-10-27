@@ -17,7 +17,7 @@ const base: OfferSummary = {
   disposition: 'PENDING',
   status: 'OPEN',
   expired: false,
-  gigId: null,
+  eventId: null,
   createdAt: '2030-01-01T10:00:00.000Z',
   updatedAt: '2030-01-01T10:00:00.000Z',
   deletedAt: null,
@@ -42,12 +42,12 @@ describe('offer display status', () => {
 
 describe('canConvertOffer (BR-109)', () => {
   const today = '2030-06-01';
-  it('needs an accepted offer dated today or later without a gig', () => {
+  it('needs an accepted offer dated today or later without an event', () => {
     expect(canConvertOffer(offer({ status: 'ACCEPTED', eventDate: today }), today)).toBe(true);
     expect(canConvertOffer(offer({ status: 'ACCEPTED', eventDate: '2030-06-02' }), today)).toBe(true);
     expect(canConvertOffer(offer({ status: 'ACCEPTED', eventDate: '2030-05-31' }), today)).toBe(false);
     expect(canConvertOffer(offer({ status: 'OPEN', eventDate: today }), today)).toBe(false);
     expect(canConvertOffer(offer({ status: 'REJECTED', eventDate: today }), today)).toBe(false);
-    expect(canConvertOffer(offer({ status: 'ACCEPTED', eventDate: today, gigId: 'g' }), today)).toBe(false);
+    expect(canConvertOffer(offer({ status: 'ACCEPTED', eventDate: today, eventId: 'g' }), today)).toBe(false);
   });
 });

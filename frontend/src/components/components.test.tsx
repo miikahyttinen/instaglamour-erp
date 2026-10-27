@@ -72,10 +72,10 @@ describe('StatusTag', () => {
 
 describe('PageHead, SectionLabel, Card', () => {
   it('PageHead renders h1, subtitle and actions', () => {
-    render(<PageHead title="Gigs 2030" subtitle="4 gigs" actions={<Button>New gig</Button>} />);
-    expect(screen.getByRole('heading', { level: 1, name: 'Gigs 2030' })).toBeInTheDocument();
-    expect(screen.getByText('4 gigs')).toHaveClass('page-subtitle');
-    expect(screen.getByRole('button', { name: 'New gig' })).toBeInTheDocument();
+    render(<PageHead title="Events 2030" subtitle="4 events" actions={<Button>New event</Button>} />);
+    expect(screen.getByRole('heading', { level: 1, name: 'Events 2030' })).toBeInTheDocument();
+    expect(screen.getByText('4 events')).toHaveClass('page-subtitle');
+    expect(screen.getByRole('button', { name: 'New event' })).toBeInTheDocument();
   });
 
   it('SectionLabel is an h2 by default', () => {
@@ -111,14 +111,14 @@ describe('StatTile and MiniBars', () => {
   it('StatTile is a region named by its label with the value and caption', () => {
     render(
       <StatTile
-        label="Gigs"
+        label="Events"
         value="12"
         caption="this year"
         secondaryValue="1 000 €"
         secondaryCaption="Total"
       />,
     );
-    const tile = screen.getByRole('region', { name: 'Gigs' });
+    const tile = screen.getByRole('region', { name: 'Events' });
     expect(within(tile).getByText('12')).toHaveClass('stat-tile-value');
     expect(within(tile).getByText('this year')).toBeInTheDocument();
     expect(within(tile).getByText('1 000 €')).toBeInTheDocument();
@@ -310,14 +310,14 @@ describe('StatGrid spans (12 columns)', () => {
   it('StatTile and Card pass their span to the grid item; no span = CSS default', () => {
     render(
       <StatGrid className="extra">
-        <StatTile label="Gigs" value="12" span={{ base: 12, md: 4 }} />
+        <StatTile label="Events" value="12" span={{ base: 12, md: 4 }} />
         <Card label="Side" span={8}>
           x
         </Card>
         <StatTile label="Plain" value="1" />
       </StatGrid>,
     );
-    const tile = screen.getByRole('region', { name: 'Gigs' });
+    const tile = screen.getByRole('region', { name: 'Events' });
     expect(tile.parentElement).toHaveClass('stat-grid', 'extra');
     expect(tile.style.getPropertyValue('--span')).toBe('12');
     expect(tile.style.getPropertyValue('--span-md')).toBe('4');

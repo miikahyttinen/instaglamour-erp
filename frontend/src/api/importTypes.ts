@@ -12,7 +12,7 @@ export const IMPORT_DATA_TYPES = [
   'settings',
   'budgetCategories',
   'clients',
-  'gigs',
+  'events',
   'offers',
   'references',
   'tasks',

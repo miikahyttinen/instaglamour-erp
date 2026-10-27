@@ -17,7 +17,7 @@ import type {
   PublicOffer,
 } from '../api/types';
 import { todayIso } from '../lib/format';
-import { mockId, nowTs, type MockClient } from './gigStore';
+import { mockId, nowTs, type MockClient } from './eventStore';
 import { publicReferences, type ReferencesState } from './referencesStore';
 
 /** Full offer record, including the internal fields the public endpoint must never return. */
@@ -36,7 +36,7 @@ export interface MockOffer {
   source: OfferSource | null;
   eventType: OfferEventType | null;
   disposition: OfferDisposition;
-  gigId: Id | null;
+  eventId: Id | null;
   shareToken: string;
   /** Internal note: not in the contract objects; only here to prove the public whitelist. */
   internalNote: string | null;
@@ -100,7 +100,7 @@ export function toOfferSummary(offer: MockOffer, ctx: OfferContext, today = toda
     disposition: offer.disposition,
     status: statusOf(offer.disposition),
     expired: isExpired(offer, today),
-    gigId: offer.gigId,
+    eventId: offer.eventId,
     createdAt: offer.createdAt,
     updatedAt: offer.updatedAt,
     deletedAt: offer.deletedAt,
@@ -328,7 +328,7 @@ export function createOffer(state: OfferState, input: NewOfferInput, actorId: Id
     source: input.source,
     eventType: input.eventType,
     disposition: input.disposition ?? 'PENDING',
-    gigId: null,
+    eventId: null,
     shareToken: input.shareToken ?? newShareToken(),
     internalNote: input.internalNote ?? null,
     createdAt: ts,
@@ -391,10 +391,10 @@ export function regenerateLink(state: OfferState, offer: MockOffer, actorId: Id)
 }
 
 /**
- * BR-105 gig fields from the offer. The caller creates the gig and then calls `markConverted`.
+ * BR-105 event fields from the offer. The caller creates the event and then calls `markConverted`.
  * `isActive` + `callerId`: an inactive offer seller falls back to the caller (BR-111).
  */
-export function gigInputFromOffer(
+export function eventInputFromOffer(
   offer: MockOffer,
   fallback?: { isActive: (partnerId: Id) => boolean; callerId: Id },
 ) {
@@ -419,10 +419,10 @@ export function gigInputFromOffer(
   };
 }
 
-/** Links the gig, sets disposition WON (logged) and logs CONVERTED (UC-031, BR-105). */
-export function markConverted(state: OfferState, offer: MockOffer, gigId: Id, actorId: Id): void {
+/** Links the event, sets disposition WON (logged) and logs CONVERTED (UC-031, BR-105). */
+export function markConverted(state: OfferState, offer: MockOffer, eventId: Id, actorId: Id): void {
   updateOffer(state, offer, { disposition: 'WON' }, actorId);
-  offer.gigId = gigId;
+  offer.eventId = eventId;
   offer.updatedAt = nowTs();
-  logOfferEvent(state, offer.id, 'CONVERTED', actorId, { gigId });
+  logOfferEvent(state, offer.id, 'CONVERTED', actorId, { eventId });
 }

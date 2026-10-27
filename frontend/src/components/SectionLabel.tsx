@@ -8,7 +8,7 @@ export interface SectionLabelProps {
   children: ReactNode;
 }
 
-/** Mono uppercase label above a group of cards / a table ("OPEN GIGS"-style). */
+/** Mono uppercase label above a group of cards / a table ("OPEN EVENTS"-style). */
 export function SectionLabel({ as: Tag = 'h2', id, className, children }: SectionLabelProps) {
   return (
     <Tag id={id} className={['section-label', className].filter(Boolean).join(' ')}>

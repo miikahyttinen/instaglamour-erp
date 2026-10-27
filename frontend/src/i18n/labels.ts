@@ -3,8 +3,8 @@ import type { ApiError } from '../api/client';
 import type {
   CostType,
   FieldCode,
-  GigDisplayStatus,
-  GigEventType,
+  EventDisplayStatus,
+  EventHistoryType,
   Language,
   OfferDisposition,
   OfferEventType,
@@ -16,7 +16,7 @@ import type {
   TechnicalSetup,
   Logistics,
 } from '../api/enums';
-import type { GigSummary, Warning } from '../api/types';
+import type { EventSummary, Warning } from '../api/types';
 import { formatDate } from '../lib/format';
 
 // Helpers that turn contract codes into translated labels. Every code list in api/enums.ts
@@ -26,9 +26,9 @@ export const costTypeLabel = (t: TFunction, code: CostType) => t(`costType.${cod
 export const technicalSetupLabel = (t: TFunction, code: TechnicalSetup) =>
   t(`technicalSetup.${code}`);
 export const logisticsLabel = (t: TFunction, code: Logistics) => t(`logistics.${code}`);
-export const gigStatusLabel = (t: TFunction, code: GigDisplayStatus) => t(`gigStatus.${code}`);
+export const eventStatusLabel = (t: TFunction, code: EventDisplayStatus) => t(`eventStatus.${code}`);
 export const taskStatusLabel = (t: TFunction, code: TaskStatus) => t(`taskStatus.${code}`);
-export const gigEventTypeLabel = (t: TFunction, code: GigEventType) => t(`gigEventType.${code}`);
+export const eventHistoryTypeLabel = (t: TFunction, code: EventHistoryType) => t(`eventHistoryType.${code}`);
 export const offerStatusLabel = (t: TFunction, code: OfferStatus) => t(`offerStatus.${code}`);
 export const offerDispositionLabel = (t: TFunction, code: OfferDisposition) =>
   t(`offerDisposition.${code}`);
@@ -40,10 +40,10 @@ export const fieldErrorLabel = (t: TFunction, code: FieldCode) => t(`fields.${co
 export const signInErrorLabel = (t: TFunction, code: SignInErrorCode) =>
   t(`signIn.errors.${code}`);
 
-/** Display status of a gig: SOLD with a past date is shown as PLAYED (BR-010). */
-export function gigDisplayStatus(gig: Pick<GigSummary, 'status' | 'played'>): GigDisplayStatus {
-  if (gig.status === 'CANCELLED') return 'CANCELLED';
-  return gig.played ? 'PLAYED' : 'SOLD';
+/** Display status of an event: SOLD with a past date is shown as PLAYED (BR-010). */
+export function eventDisplayStatus(event: Pick<EventSummary, 'status' | 'played'>): EventDisplayStatus {
+  if (event.status === 'CANCELLED') return 'CANCELLED';
+  return event.played ? 'PLAYED' : 'SOLD';
 }
 
 /** User-facing text for an API error. Never shows the server's English `message`. */
@@ -51,7 +51,7 @@ export function apiErrorMessage(t: TFunction, error: unknown): string {
   const code = (error as Partial<ApiError> | null)?.code;
   const poNumber = (error as Partial<ApiError> | null)?.details?.purchaseOrderNumber;
   if (code === 'COST_LINE_ON_PURCHASE_ORDER' && typeof poNumber === 'string') {
-    // BR-118: say which PO locks the line / gig.
+    // BR-118: say which PO locks the line / event.
     return t('purchaseOrders.lockedError', { number: poNumber });
   }
   if (typeof code === 'string' && t(`errors.${code}`, { defaultValue: '' })) {
@@ -73,8 +73,8 @@ export function apiFieldErrors(t: TFunction, error: unknown): Record<string, str
 export function warningMessage(t: TFunction, warning: Warning, lang: Language): string {
   if (warning.code === 'PERSON_DOUBLE_BOOKED') {
     return t('warnings.PERSON_DOUBLE_BOOKED', {
-      lineupName: warning.otherGigLineupName,
-      date: formatDate(warning.otherGigStartDate, lang),
+      lineupName: warning.otherEventLineupName,
+      date: formatDate(warning.otherEventStartDate, lang),
     });
   }
   return t(`warnings.${warning.code}`);

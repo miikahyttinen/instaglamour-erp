@@ -201,7 +201,7 @@
 }
 
 /* 600–1199 px (table next to the sidebar): the open link is the chevron only (its accessible
-   name stays), so name, roles, gig count, partner and active fit without sideways scrolling. */
+   name stays), so name, roles, event count, partner and active fit without sideways scrolling. */
 @media (min-width: 600px) and (max-width: 1199px) {
   .people-page .people-table .people-open-text {
     display: none;
@@ -215,13 +215,13 @@
   }
 }
 
-/* Roles (tags, wrap) and gig count (number, one line). */
+/* Roles (tags, wrap) and event count (number, one line). */
 .people-page .people-roles {
   display: inline-flex;
   flex-wrap: wrap;
   gap: var(--space-1);
 }
-.people-page .people-table .people-gigs-cell {
+.people-page .people-table .people-events-cell {
   width: 1%;
   white-space: nowrap;
 }
@@ -258,7 +258,7 @@
   .people-page .people-table td.people-partner-cell:not(:has(.tag)) {
     display: none;
   }
-  .people-page .people-table .people-gigs-cell {
+  .people-page .people-table .people-events-cell {
     width: auto;
   }
   .people-page .people-roles {
@@ -266,18 +266,18 @@
   }
 }
 
-/* Person page: gig count as a read-only row in the field list. */
-.people-page .person-gig-count {
+/* Person page: event count as a read-only row in the field list. */
+.people-page .person-event-count {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
   margin: var(--space-2) 0;
 }
-.people-page .person-gig-count-value {
+.people-page .person-event-count-value {
   font-variant-numeric: tabular-nums;
 }
 @media (min-width: 600px) {
-  .people-page .field-list > .person-gig-count {
+  .people-page .field-list > .person-event-count {
     display: grid;
     grid-template-columns: var(--field-label-w) minmax(0, 1fr);
     column-gap: var(--space-4);
@@ -285,7 +285,7 @@
     min-height: var(--control-h);
     margin: 0;
   }
-  .people-page .person-gig-count > .person-gig-count-hint {
+  .people-page .person-event-count > .person-event-count-hint {
     grid-column: 2;
   }
 }

@@ -26,10 +26,10 @@ interface Row {
 }
 
 const ROWS: Row[] = [
-  { id: 1, name: 'Gig 10', city: 'City A', price: 300, tags: ['x'] },
-  { id: 2, name: 'Gig 2', city: null, price: null, tags: [] },
-  { id: 3, name: 'gig 1', city: 'City B', price: 100, tags: ['x', 'y'] },
-  { id: 4, name: 'Gig 3', city: 'City A', price: 200, tags: ['y'] },
+  { id: 1, name: 'Event 10', city: 'City A', price: 300, tags: ['x'] },
+  { id: 2, name: 'Event 2', city: null, price: null, tags: [] },
+  { id: 3, name: 'event 1', city: 'City B', price: 100, tags: ['x', 'y'] },
+  { id: 4, name: 'Event 3', city: 'City A', price: 200, tags: ['y'] },
 ];
 
 const COLUMNS: ExcelColumn<Row>[] = [
@@ -61,7 +61,7 @@ describe('excel table state (pure)', () => {
     expect(ids(filterRows(ROWS, COLUMNS, { tags: [BLANK] }))).toEqual([2]);
     expect(ids(filterRows(ROWS, COLUMNS, { city: ['City A'], tags: ['y'] }))).toEqual([4]);
     // Unknown or unfilterable keys are ignored.
-    expect(ids(filterRows(ROWS, COLUMNS, { nope: ['x'], name: ['Gig 2'] }))).toEqual([1, 2, 3, 4]);
+    expect(ids(filterRows(ROWS, COLUMNS, { nope: ['x'], name: ['Event 2'] }))).toEqual([1, 2, 3, 4]);
   });
 
   it('offers the values left by the other filters plus the selected ones, blank last', () => {
@@ -148,7 +148,7 @@ describe('<ExcelTable> from 600 px', () => {
   it('filters through the header popover; the icon shows the active filter; the URL keeps it', async () => {
     installMatchMedia({ [TABLET_QUERY]: true });
     const { user } = renderDemo();
-    expect(names()).toEqual(['Gig 10', 'Gig 2', 'gig 1', 'Gig 3']);
+    expect(names()).toEqual(['Event 10', 'Event 2', 'event 1', 'Event 3']);
     // Only filterable columns get an icon.
     expect(within(table()).queryByRole('button', { name: 'Suodata: Name' })).not.toBeInTheDocument();
     const button = within(table()).getByRole('button', { name: 'Suodata: City' });
@@ -171,7 +171,7 @@ describe('<ExcelTable> from 600 px', () => {
     await user.click(within(popover).getByRole('checkbox', { name: 'City B' }));
     await user.click(within(popover).getByRole('button', { name: 'OK' }));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    expect(names()).toEqual(['Gig 10', 'Gig 2', 'Gig 3']);
+    expect(names()).toEqual(['Event 10', 'Event 2', 'Event 3']);
     expect(button).toHaveClass('is-active');
     expect(button).toHaveAccessibleDescription('Suodatin käytössä');
     expect(button).toHaveFocus();
@@ -185,10 +185,10 @@ describe('<ExcelTable> from 600 px', () => {
     expect(within(tags).getByRole('button', { name: 'OK' })).toBeDisabled();
     await user.click(within(tags).getByRole('checkbox', { name: 'Tag Y' }));
     await user.click(within(tags).getByRole('button', { name: 'OK' }));
-    expect(names()).toEqual(['Gig 3']);
+    expect(names()).toEqual(['Event 3']);
 
     await user.click(screen.getByRole('button', { name: 'Tyhjennä suodattimet' }));
-    expect(names()).toEqual(['Gig 10', 'Gig 2', 'gig 1', 'Gig 3']);
+    expect(names()).toEqual(['Event 10', 'Event 2', 'event 1', 'Event 3']);
     expect(location()).toBe('');
     expect(button).not.toHaveClass('is-active');
   });
@@ -196,7 +196,7 @@ describe('<ExcelTable> from 600 px', () => {
   it('restores filters and sort from the URL; selecting every value removes the filter', async () => {
     installMatchMedia({ [TABLET_QUERY]: true });
     const { user } = renderDemo('/?sort=price&dir=desc&f.city=');
-    expect(names()).toEqual(['Gig 2']);
+    expect(names()).toEqual(['Event 2']);
     expect(within(table()).getByRole('columnheader', { name: /Price/ })).toHaveAttribute('aria-sort', 'descending');
     await user.click(within(table()).getByRole('button', { name: 'Suodata: City' }));
     const popover = screen.getByRole('dialog', { name: 'Suodata: City' });
@@ -204,13 +204,13 @@ describe('<ExcelTable> from 600 px', () => {
     expect(within(popover).getByRole('checkbox', { name: 'City A' })).not.toBeChecked();
     await user.click(within(popover).getByRole('button', { name: 'Valitse kaikki' }));
     await user.click(within(popover).getByRole('button', { name: 'OK' }));
-    expect(names()).toEqual(['Gig 10', 'Gig 3', 'gig 1', 'Gig 2']);
+    expect(names()).toEqual(['Event 10', 'Event 3', 'event 1', 'Event 2']);
     expect(location()).toBe('?sort=price&dir=desc');
 
     await user.click(within(table()).getByRole('button', { name: /^Price/ }));
     expect(location()).toBe('?sort=price&dir=asc');
     await user.click(within(table()).getByRole('button', { name: /^Name/ }));
-    expect(names()).toEqual(['gig 1', 'Gig 2', 'Gig 3', 'Gig 10']);
+    expect(names()).toEqual(['event 1', 'Event 2', 'Event 3', 'Event 10']);
   });
 
   it('is keyboard accessible: Esc / Cancel / outside click discard, Enter applies, Tab stays inside', async () => {
@@ -249,14 +249,14 @@ describe('<ExcelTable> from 600 px', () => {
     cityA.focus();
     await user.keyboard('{Enter}');
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    expect(names()).toEqual(['Gig 2', 'gig 1']);
+    expect(names()).toEqual(['Event 2', 'event 1']);
   });
 
   it('shows a search box for more than 8 values; Select all / Clear act on the visible values', async () => {
     installMatchMedia({ [TABLET_QUERY]: true });
     const many: Row[] = Array.from({ length: 10 }, (_, i) => ({
       id: i + 1,
-      name: `Gig ${i + 1}`,
+      name: `Event ${i + 1}`,
       city: `City ${i + 1}`,
       price: i,
       tags: [],
@@ -278,7 +278,7 @@ describe('<ExcelTable> from 600 px', () => {
     await user.clear(search);
     await user.click(within(popover).getByRole('button', { name: 'OK' }));
     expect(names()).toHaveLength(8);
-    expect(names()).not.toContain('Gig 10');
+    expect(names()).not.toContain('Event 10');
   });
 
   it('shows a message with Clear filters when the filters hide every row', async () => {
@@ -302,7 +302,7 @@ describe('<ExcelTable> from 600 px', () => {
     const tags = screen.getByRole('dialog', { name: 'Suodata: Tags' });
     await user.click(within(tags).getByRole('button', { name: 'Valitse kaikki' }));
     await user.click(within(tags).getByRole('button', { name: 'OK' }));
-    expect(names()).toEqual(['Gig 10', 'Gig 3']);
+    expect(names()).toEqual(['Event 10', 'Event 3']);
     expect(location()).toBe('?f.city=City A');
   });
 
@@ -403,10 +403,10 @@ describe('<ExcelTable> column priorities (TASK-147)', () => {
     installMatchMedia({ [TABLET_QUERY]: true });
     const { user } = renderDemo('/?f.city=City A&sort=price&dir=desc', { columns: PRIORITY_COLUMNS });
     // Filter on the priority 3 column + sort by the priority 2 column, both from the URL.
-    expect(names()).toEqual(['Gig 10', 'Gig 3']);
+    expect(names()).toEqual(['Event 10', 'Event 3']);
     expect(screen.getByText('Näytetään 2 / 4')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Tyhjennä suodattimet' }));
-    expect(names()).toEqual(['Gig 10', 'Gig 3', 'gig 1', 'Gig 2']);
+    expect(names()).toEqual(['Event 10', 'Event 3', 'event 1', 'Event 2']);
     expect(location()).toBe('?sort=price&dir=desc');
   });
 
@@ -448,7 +448,7 @@ describe('<ExcelTable> on phones (< 600 px)', () => {
     expect(city).toHaveFocus();
     await user.click(within(sheet).getByRole('button', { name: 'Valmis' }));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    expect(names()).toEqual(['gig 1']);
+    expect(names()).toEqual(['event 1']);
     expect(open).toHaveFocus();
 
     await user.click(open);

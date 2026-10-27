@@ -6,7 +6,7 @@ import { DESKTOP_QUERY, TABLET_QUERY } from '../../lib/useMediaQuery';
 import { db } from '../../mocks/data';
 import { addPurchaseOrder } from '../../mocks/purchaseOrderStore';
 import { server } from '../../mocks/server';
-import { addMockGig, partnerB, person, staffMockGig, TEST_YEAR } from '../../test/gigFixtures';
+import { addMockEvent, partnerB, person, staffMockEvent, TEST_YEAR } from '../../test/eventFixtures';
 import { installMatchMedia } from '../../test/matchMedia';
 import { addMockPurchaseOrder, clearPurchaseOrders, localTs } from '../../test/purchaseOrderFixtures';
 import { renderApp, signInMock } from '../../test/renderApp';
@@ -27,21 +27,21 @@ describe('purchase order list (UC-034)', () => {
     installMatchMedia({ [TABLET_QUERY]: true, [DESKTOP_QUERY]: true });
   });
 
-  it('is in the menu after Keikat and lists the selected year by creation date with every column', async () => {
-    const gig = addMockGig({ startDate: `${TEST_YEAR}-06-01`, venue: 'Venue X' });
-    const second = addMockGig({ startDate: `${TEST_YEAR}-07-15`, venue: 'Venue Y' });
-    staffMockGig(gig, ['Person 1']);
-    staffMockGig(second, ['Person 1']);
-    const lineIds = [gig, second].map((g) => db.gigs.costLines.find((l) => l.gigId === g.id && l.type === 'VOC')!.id);
-    // One PO with two gigs, made through the store like the freelancer would.
-    const two = addPurchaseOrder(db.freelancer, db.gigs, person('Person 1').id, lineIds, localTs(TEST_YEAR, 8, 1, 9, 5));
+  it('is in the menu after Tapahtumat and lists the selected year by creation date with every column', async () => {
+    const event = addMockEvent({ startDate: `${TEST_YEAR}-06-01`, venue: 'Venue X' });
+    const second = addMockEvent({ startDate: `${TEST_YEAR}-07-15`, venue: 'Venue Y' });
+    staffMockEvent(event, ['Person 1']);
+    staffMockEvent(second, ['Person 1']);
+    const lineIds = [event, second].map((g) => db.events.costLines.find((l) => l.eventId === g.id && l.type === 'VOC')!.id);
+    // One PO with two events, made through the store like the freelancer would.
+    const two = addPurchaseOrder(db.freelancer, db.events, person('Person 1').id, lineIds, localTs(TEST_YEAR, 8, 1, 9, 5));
     const paid = addMockPurchaseOrder({ personName: 'Person 2', status: 'PAID', paidAt: localTs(TEST_YEAR, 10, 16, 14, 32) }).po;
     addMockPurchaseOrder({ personName: 'Person 3', createdAt: localTs(TEST_YEAR + 1, 1, 2) }); // next year
 
     const { user } = renderApp('/');
     const nav = await screen.findByRole('navigation', { name: 'Päävalikko' });
     const labels = within(nav).getAllByRole('link').map((l) => l.textContent);
-    expect(labels.indexOf('Ostotilaukset')).toBe(labels.indexOf('Keikat') + 1);
+    expect(labels.indexOf('Ostotilaukset')).toBe(labels.indexOf('Tapahtumat') + 1);
     await user.click(within(nav).getByRole('link', { name: 'Ostotilaukset' }));
 
     expect(await screen.findByRole('heading', { level: 1, name: `Ostotilaukset ${TEST_YEAR}` })).toBeInTheDocument();
@@ -50,7 +50,7 @@ describe('purchase order list (UC-034)', () => {
       'Numero',
       'Freelancer',
       'Luotu',
-      'Keikat',
+      'Tapahtumat',
       'Summa',
       'Tila',
     ]);
@@ -65,14 +65,14 @@ describe('purchase order list (UC-034)', () => {
     expect(text(rowOf(paid.number))).toContain(`Maksettu 16.10.${TEST_YEAR} klo 14.32`);
   });
 
-  it('Mark paid is one click: the row then shows the green paid label and the gig line is paid', async () => {
+  it('Mark paid is one click: the row then shows the green paid label and the event line is paid', async () => {
     const { po } = addMockPurchaseOrder();
     const { user } = renderApp('/purchase-orders');
     await screen.findByRole('table', { name: 'Ostotilaukset' });
     await user.click(within(rowOf(po.number)).getByRole('button', { name: `Merkitse maksetuksi: ${po.number}` }));
     const tag = await within(rowOf(po.number)).findByText(/^Maksettu \d+\.\d+\.\d{4} klo \d\d\.\d\d$/);
     expect(tag).toHaveClass('tag', 'tag-ok');
-    expect(db.gigs.costLines.find((l) => l.id === po.lines[0]!.costLineId)!.paidAt).not.toBeNull();
+    expect(db.events.costLines.find((l) => l.id === po.lines[0]!.costLineId)!.paidAt).not.toBeNull();
     expect(within(rowOf(po.number)).queryByRole('button')).not.toBeInTheDocument();
   });
 
@@ -152,7 +152,7 @@ describe('purchase order list (UC-034)', () => {
     renderApp('/purchase-orders');
 
     expect(await screen.findByRole('heading', { name: 'Loki' })).toBeInTheDocument();
-    const log = await screen.findByRole('table', { name: 'Ostotilausten tapahtumat' });
+    const log = await screen.findByRole('table', { name: 'Ostotilausten muutokset' });
     await waitFor(() => expect(within(log).getAllByRole('row').filter((r) => r.closest('tbody'))).toHaveLength(2));
     const [paidRow, createdRow] = within(log).getAllByRole('row').filter((r) => r.closest('tbody'));
     expect(within(paidRow!).getByRole('link', { name: po.number })).toHaveAttribute('href', `/purchase-orders/${po.id}`);

@@ -43,6 +43,12 @@ export function validateImportDocument(doc: unknown): string[] {
     const value = doc[type];
     if (value !== undefined && !Array.isArray(value)) errors.push(`${type}: must be a list`);
   }
+  // Gig → Event rename: the loader also accepts the legacy top-level `gigs` (contract), not both.
+  if (doc.events !== undefined && doc.gigs !== undefined) {
+    errors.push('events: use "events" or the legacy "gigs", not both');
+  } else if (doc.gigs !== undefined && !Array.isArray(doc.gigs)) {
+    errors.push('gigs: must be a list');
+  }
   if (doc.settings !== undefined && !isObject(doc.settings)) errors.push('settings: must be an object');
   if (Array.isArray(doc.references)) {
     doc.references.forEach((r, i) => {
@@ -69,7 +75,7 @@ function load(doc: Record<string, unknown>, commit: boolean): ImportSummary {
   for (const type of IMPORT_DATA_TYPES) {
     const counts: ImportCounts = { created: 0, updated: 0, skipped: 0 };
     const known = importStore.items[type];
-    const raw = doc[type];
+    const raw = type === 'events' && doc.events === undefined ? doc.gigs : doc[type];
     const entries: [string, string][] =
       type === 'settings'
         ? Object.entries(isObject(raw) ? raw : {}).map(([key, value]) => [key, JSON.stringify(value)])

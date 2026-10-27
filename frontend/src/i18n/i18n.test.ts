@@ -3,8 +3,8 @@ import {
   COST_TYPES,
   ERROR_CODES,
   FIELD_CODES,
-  GIG_DISPLAY_STATUSES,
-  GIG_EVENT_TYPES,
+  EVENT_DISPLAY_STATUSES,
+  EVENT_HISTORY_TYPES,
   LANGUAGES,
   SIGN_IN_ERROR_CODES,
   TASK_STATUSES,
@@ -20,7 +20,7 @@ import {
 import en from './en';
 import fi from './fi';
 import i18n, { detectBrowserLanguage } from './index';
-import { apiErrorMessage, apiFieldErrors, gigDisplayStatus } from './labels';
+import { apiErrorMessage, apiFieldErrors, eventDisplayStatus } from './labels';
 import { ApiError } from '../api/client';
 
 type Tree = { [key: string]: string | Tree };
@@ -41,14 +41,14 @@ const enumNamespaces: [string, readonly string[]][] = [
   ['costType', COST_TYPES],
   ['technicalSetup', TECHNICAL_SETUPS],
   ['logistics', LOGISTICS],
-  ['gigStatus', GIG_DISPLAY_STATUSES],
+  ['eventStatus', EVENT_DISPLAY_STATUSES],
   ['taskStatus', TASK_STATUSES],
   ['offerStatus', OFFER_STATUSES],
   ['offerDisposition', OFFER_DISPOSITIONS],
   ['offerSource', OFFER_SOURCES],
   ['offerEventType', OFFER_EVENT_TYPES],
   ['offerHistoryType', OFFER_HISTORY_TYPES],
-  ['gigEventType', GIG_EVENT_TYPES],
+  ['eventHistoryType', EVENT_HISTORY_TYPES],
   ['errors', ERROR_CODES],
   ['fields', FIELD_CODES],
   ['warnings', WARNING_CODES],
@@ -76,9 +76,9 @@ describe('translations', () => {
     });
   });
 
-  it('uses glossary terms for gig statuses', () => {
-    expect(fi.gigStatus).toEqual({ SOLD: 'Myyty', PLAYED: 'Soitettu', CANCELLED: 'Peruttu' });
-    expect(en.gigStatus).toEqual({ SOLD: 'Sold', PLAYED: 'Played', CANCELLED: 'Cancelled' });
+  it('uses glossary terms for event statuses', () => {
+    expect(fi.eventStatus).toEqual({ SOLD: 'Myyty', PLAYED: 'Soitettu', CANCELLED: 'Peruttu' });
+    expect(en.eventStatus).toEqual({ SOLD: 'Sold', PLAYED: 'Played', CANCELLED: 'Cancelled' });
     expect(fi.costType.OFFICE).toBe('Toimisto');
     expect(fi.costType.SALES).toBe('Myynti');
     expect(fi.costType.PRODUCTION).toBe('Tuotanto');
@@ -115,8 +115,8 @@ describe('label helpers', () => {
   });
 
   it('derives the played display status', () => {
-    expect(gigDisplayStatus({ status: 'SOLD', played: true })).toBe('PLAYED');
-    expect(gigDisplayStatus({ status: 'SOLD', played: false })).toBe('SOLD');
-    expect(gigDisplayStatus({ status: 'CANCELLED', played: false })).toBe('CANCELLED');
+    expect(eventDisplayStatus({ status: 'SOLD', played: true })).toBe('PLAYED');
+    expect(eventDisplayStatus({ status: 'SOLD', played: false })).toBe('SOLD');
+    expect(eventDisplayStatus({ status: 'CANCELLED', played: false })).toBe('CANCELLED');
   });
 });

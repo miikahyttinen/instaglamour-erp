@@ -84,7 +84,7 @@ describe('people register (UC-014)', () => {
     expect(await screen.findByText('Henkilö lisätty: Person 10.')).toBeInTheDocument();
     await waitFor(() => expect(names()).toContain('Person 10'));
     expect(screen.getByLabelText('Nimi')).toHaveValue('');
-    expect(db.gigs.people.some((p) => p.name === 'Person 10' && p.active)).toBe(true);
+    expect(db.events.people.some((p) => p.name === 'Person 10' && p.active)).toBe(true);
   });
 
   it('empty name shows "required" and sends nothing', async () => {
@@ -101,7 +101,7 @@ describe('people register (UC-014)', () => {
   });
 
   it('duplicate name shows the DUPLICATE_NAME warning but still saves', async () => {
-    const before = db.gigs.people.length;
+    const before = db.events.people.length;
     const { user } = await openPeople();
     await user.type(screen.getByLabelText('Nimi'), 'person 1');
     await user.click(screen.getByRole('button', { name: 'Lisää' }));
@@ -109,7 +109,7 @@ describe('people register (UC-014)', () => {
     const status = await screen.findByText('Samanniminen henkilö on jo olemassa.');
     expect(status.closest('[role="status"]')).toHaveTextContent('Henkilö lisätty: person 1.');
     await waitFor(() => expect(names()).toContain('person 1'));
-    expect(db.gigs.people).toHaveLength(before + 1);
+    expect(db.events.people).toHaveLength(before + 1);
   });
 
   it('translates server field errors and never shows the server message', async () => {
@@ -152,7 +152,7 @@ describe('people register (UC-014)', () => {
     await waitFor(() => expect(names()).toContain('Person 20'));
     expect(names()).not.toContain('Person 2');
     expect(patches).toEqual([{ name: 'Person 20' }]);
-    expect(db.gigs.people.some((p) => p.name === 'Person 20')).toBe(true);
+    expect(db.events.people.some((p) => p.name === 'Person 20')).toBe(true);
 
     await user.clear(screen.getByLabelText('Nimi: Person 20'));
     await user.type(screen.getByLabelText('Nimi: Person 20'), 'Person 3{Enter}');
@@ -205,14 +205,14 @@ describe('people register (UC-014)', () => {
     await user.click(screen.getByRole('switch', { name: 'Aktiivinen: Person 2' }));
     expect(await screen.findByText('Person 2 poistettu käytöstä.')).toBeInTheDocument();
     await waitFor(() => expect(names()).not.toContain('Person 2'));
-    expect(db.gigs.people.find((p) => p.name === 'Person 2')!.active).toBe(false);
+    expect(db.events.people.find((p) => p.name === 'Person 2')!.active).toBe(false);
 
     await user.click(screen.getByRole('button', { name: 'Ei käytössä' }));
     await waitFor(() => expect(names()).toContain('Person 2'));
     await user.click(screen.getByRole('switch', { name: 'Aktiivinen: Person 2' }));
     expect(await screen.findByText('Person 2 otettu käyttöön.')).toBeInTheDocument();
     await waitFor(() => expect(names()).not.toContain('Person 2'));
-    expect(db.gigs.people.find((p) => p.name === 'Person 2')!.active).toBe(true);
+    expect(db.events.people.find((p) => p.name === 'Person 2')!.active).toBe(true);
   });
 
   it('shows an Osakas tag on partners and the "only partners" checkbox filters (UC-032 AC-5)', async () => {
@@ -243,11 +243,11 @@ describe('people register (UC-014)', () => {
     expect(within(row('Partner C')).queryByText('Osakas')).not.toBeInTheDocument();
   });
 
-  it('shows roles as tags and the played gig count', async () => {
-    db.gigs.people.find((p) => p.name === 'Person 5')!.roles = ['KEYS', 'PIANO'];
+  it('shows roles as tags and the played event count', async () => {
+    db.events.people.find((p) => p.name === 'Person 5')!.roles = ['KEYS', 'PIANO'];
     await openPeople();
     const head = within(list()).getAllByRole('columnheader').map((th) => th.textContent);
-    expect(head).toEqual(expect.arrayContaining(['Roolit', 'Keikkoja', 'Osakas']));
+    expect(head).toEqual(expect.arrayContaining(['Roolit', 'Tapahtumia', 'Osakas']));
     const tags = within(row('Person 5')).getAllByText(/Koskettimet|Piano/);
     expect(tags.map((t) => t.textContent)).toEqual(['Koskettimet', 'Piano']);
     tags.forEach((tag) => expect(tag).toHaveClass('tag'));
@@ -255,11 +255,11 @@ describe('people register (UC-014)', () => {
     expect(count).toHaveClass('num');
   });
 
-  it('gig count comes from the API', async () => {
+  it('event count comes from the API', async () => {
     server.use(
       http.get('/api/people', () =>
         HttpResponse.json([
-          { id: '00000000-0000-4000-8000-000000000999', name: 'Person X', active: true, partner: null, roles: ['DRUMS'], gigCount: 12 },
+          { id: '00000000-0000-4000-8000-000000000999', name: 'Person X', active: true, partner: null, roles: ['DRUMS'], eventCount: 12 },
         ]),
       ),
     );
@@ -307,13 +307,13 @@ describe('people register (UC-014)', () => {
     const sortHeader = (name: string) => within(list()).getByRole('columnheader', { name: new RegExp(`^${name}`) });
     const setPeople = (people: object[]) =>
       server.use(http.get('/api/people', () => HttpResponse.json(people)));
-    const person = (n: number, name: string, gigCount: number, partner = false) => ({
+    const person = (n: number, name: string, eventCount: number, partner = false) => ({
       id: `00000000-0000-4000-8000-00000000010${n}`,
       name,
       active: true,
       partner: partner ? { active: true, email: `p${n}@example.com`, language: 'fi' } : null,
       roles: [],
-      gigCount,
+      eventCount,
     });
     // API order deliberately unsorted; names test FI collation (å/ä/ö after z) and case.
     const synthetic = [
@@ -329,26 +329,26 @@ describe('people register (UC-014)', () => {
       await openPeople();
       expect(names()).toEqual(['Person A', 'person b', 'Zeta Z', 'Ärrä Y', 'Örjan X']);
       expect(sortHeader('Nimi')).toHaveAttribute('aria-sort', 'ascending');
-      expect(sortHeader('Keikkoja')).toHaveAttribute('aria-sort', 'none');
+      expect(sortHeader('Tapahtumia')).toHaveAttribute('aria-sort', 'none');
       expect(sortHeader('Osakas')).toHaveAttribute('aria-sort', 'none');
     });
 
-    it('header clicks sort by gig count and toggle direction; ties by name; kept in the URL', async () => {
+    it('header clicks sort by event count and toggle direction; ties by name; kept in the URL', async () => {
       setPeople(synthetic);
       const { user } = await openPeopleWithUrl('/people?role=DJ&active=all');
       // The role filter is applied by the API; the overridden handler returns these rows anyway.
-      await user.click(within(sortHeader('Keikkoja')).getByRole('button'));
+      await user.click(within(sortHeader('Tapahtumia')).getByRole('button'));
       await waitFor(() => expect(names()).toEqual(['Person A', 'Zeta Z', 'Örjan X', 'person b', 'Ärrä Y']));
-      expect(sortHeader('Keikkoja')).toHaveAttribute('aria-sort', 'ascending');
+      expect(sortHeader('Tapahtumia')).toHaveAttribute('aria-sort', 'ascending');
       expect(sortHeader('Nimi')).toHaveAttribute('aria-sort', 'none');
-      expect(url().get('sort')).toBe('gigCount');
+      expect(url().get('sort')).toBe('eventCount');
       expect(url().get('dir')).toBe('asc');
       expect(url().get('role')).toBe('DJ');
       expect(url().get('active')).toBe('all');
 
-      await user.click(within(sortHeader('Keikkoja')).getByRole('button'));
+      await user.click(within(sortHeader('Tapahtumia')).getByRole('button'));
       await waitFor(() => expect(names()).toEqual(['person b', 'Ärrä Y', 'Örjan X', 'Zeta Z', 'Person A']));
-      expect(sortHeader('Keikkoja')).toHaveAttribute('aria-sort', 'descending');
+      expect(sortHeader('Tapahtumia')).toHaveAttribute('aria-sort', 'descending');
       expect(url().get('dir')).toBe('desc');
     });
 
@@ -372,9 +372,9 @@ describe('people register (UC-014)', () => {
 
     it('reads the sort from the URL (survives reload); unknown keys fall back to the default', async () => {
       setPeople(synthetic);
-      const first = await openPeople('/people?sort=gigCount&dir=desc');
+      const first = await openPeople('/people?sort=eventCount&dir=desc');
       expect(names()).toEqual(['person b', 'Ärrä Y', 'Örjan X', 'Zeta Z', 'Person A']);
-      expect(sortHeader('Keikkoja')).toHaveAttribute('aria-sort', 'descending');
+      expect(sortHeader('Tapahtumia')).toHaveAttribute('aria-sort', 'descending');
       first.unmount();
       await openPeople('/people?sort=bogus&dir=desc');
       expect(names()).toEqual(['Person A', 'person b', 'Zeta Z', 'Ärrä Y', 'Örjan X']);
@@ -386,14 +386,14 @@ describe('people register (UC-014)', () => {
       const { user } = await openPeopleWithUrl();
       const key = screen.getByRole('combobox', { name: 'Järjestys' });
       const dir = screen.getByRole('combobox', { name: 'Suunta' });
-      expect(within(key).getAllByRole('option').map((o) => o.textContent)).toEqual(['Nimi', 'Keikkoja', 'Osakas']);
+      expect(within(key).getAllByRole('option').map((o) => o.textContent)).toEqual(['Nimi', 'Tapahtumia', 'Osakas']);
       expect(key).toHaveDisplayValue('Nimi');
       expect(dir).toHaveDisplayValue('Nouseva');
 
-      await user.selectOptions(key, 'Keikkoja');
+      await user.selectOptions(key, 'Tapahtumia');
       await user.selectOptions(dir, 'Laskeva');
       await waitFor(() => expect(names()).toEqual(['person b', 'Ärrä Y', 'Örjan X', 'Zeta Z', 'Person A']));
-      expect(url().get('sort')).toBe('gigCount');
+      expect(url().get('sort')).toBe('eventCount');
       expect(url().get('dir')).toBe('desc');
     });
 

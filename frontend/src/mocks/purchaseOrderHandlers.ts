@@ -90,7 +90,7 @@ export const purchaseOrderHandlers = [
     const po = findPo(params.id);
     if (!po) return notFound();
     if (po.status !== 'OPEN') return badTransition();
-    payPurchaseOrder(db.freelancer, db.gigs, po, me.id);
+    payPurchaseOrder(db.freelancer, db.events, po, me.id);
     return HttpResponse.json(toPurchaseOrder(po));
   }),
 
@@ -100,7 +100,7 @@ export const purchaseOrderHandlers = [
     const po = findPo(params.id);
     if (!po) return notFound();
     if (po.status !== 'PAID') return badTransition();
-    unpayPurchaseOrder(db.freelancer, db.gigs, po, me.id);
+    unpayPurchaseOrder(db.freelancer, db.events, po, me.id);
     return HttpResponse.json(toPurchaseOrder(po));
   }),
 
@@ -117,7 +117,7 @@ export const purchaseOrderHandlers = [
     const po = findPo(params.id);
     if (!po) return notFound();
     if (po.status !== 'OPEN') return badTransition();
-    cancelPurchaseOrder(db.freelancer, db.gigs, po, me.id, reason);
+    cancelPurchaseOrder(db.freelancer, db.events, po, me.id, reason);
     return HttpResponse.json(toPurchaseOrder(po));
   }),
 ];

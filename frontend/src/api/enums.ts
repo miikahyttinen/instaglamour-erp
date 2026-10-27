@@ -46,24 +46,24 @@ export type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number];
 export const COST_TYPES = [...MUSICIAN_ROLES, ...INTERNAL_ROLES, ...EXPENSE_CATEGORIES] as const;
 export type CostType = MusicianRole | InternalRole | ExpenseCategory;
 
-/** One choice per gig: house tech or one of the own PA sets A–C. */
+/** One choice per event: house tech or one of the own PA sets A–C. */
 export const TECHNICAL_SETUPS = ['HOUSE_TECH', 'SET_A', 'SET_B', 'SET_C'] as const;
 export type TechnicalSetup = (typeof TECHNICAL_SETUPS)[number];
 
 export const LOGISTICS = ['OWN_VAN', 'RENTAL_VAN', 'TAXI', 'OTHER'] as const;
 export type Logistics = (typeof LOGISTICS)[number];
 
-export const GIG_STATUSES = ['SOLD', 'CANCELLED'] as const;
-export type GigStatus = (typeof GIG_STATUSES)[number];
+export const EVENT_STATUSES = ['SOLD', 'CANCELLED'] as const;
+export type EventStatus = (typeof EVENT_STATUSES)[number];
 
-/** Display status: a SOLD gig with a past date is shown as "played" (BR-010). */
-export const GIG_DISPLAY_STATUSES = ['SOLD', 'PLAYED', 'CANCELLED'] as const;
-export type GigDisplayStatus = (typeof GIG_DISPLAY_STATUSES)[number];
+/** Display status: a SOLD event with a past date is shown as "played" (BR-010). */
+export const EVENT_DISPLAY_STATUSES = ['SOLD', 'PLAYED', 'CANCELLED'] as const;
+export type EventDisplayStatus = (typeof EVENT_DISPLAY_STATUSES)[number];
 
 export const TASK_STATUSES = ['OPEN', 'DONE'] as const;
 export type TaskStatus = (typeof TASK_STATUSES)[number];
 
-export const GIG_EVENT_TYPES = [
+export const EVENT_HISTORY_TYPES = [
   'CREATED',
   'UPDATED',
   'MOVED',
@@ -79,7 +79,7 @@ export const GIG_EVENT_TYPES = [
   'ATTACHMENT_ADDED',
   'ATTACHMENT_REMOVED',
 ] as const;
-export type GigEventType = (typeof GIG_EVENT_TYPES)[number];
+export type EventHistoryType = (typeof EVENT_HISTORY_TYPES)[number];
 
 export const ERROR_CODES = [
   'VALIDATION_ERROR',
@@ -87,7 +87,7 @@ export const ERROR_CODES = [
   'FORBIDDEN',
   'NOT_FOUND',
   'INVALID_STATUS_TRANSITION',
-  'GIG_DELETED',
+  'EVENT_DELETED',
   'COST_NOT_PAYABLE',
   'BUDGET_NOT_EMPTY',
   'CLIENT_IN_USE',

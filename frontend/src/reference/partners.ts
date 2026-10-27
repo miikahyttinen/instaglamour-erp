@@ -1,7 +1,7 @@
 import type { Id, Partner } from '../api/types';
 
 // Partner pickers (UC-032, BR-111): `/api/reference.partners` lists every partner, including
-// removed (inactive) ones, so old gigs, offers, tasks and hours still show their names. New
+// removed (inactive) ones, so old events, offers, tasks and hours still show their names. New
 // choices (seller, producer, task owner, offer seller) offer only active partners.
 
 export interface PartnerOption {

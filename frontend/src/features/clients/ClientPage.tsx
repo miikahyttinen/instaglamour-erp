@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ApiError } from '../../api/client';
-import type { Client, GigSummary, OfferSummary } from '../../api/types';
+import type { Client, EventSummary, OfferSummary } from '../../api/types';
 import { Button } from '../../components/Button';
 import { DataTable, type DataTableColumn } from '../../components/DataTable';
 import { Dialog } from '../../components/Dialog';
@@ -13,15 +13,15 @@ import { Notice } from '../../components/Notice';
 import { PageHead } from '../../components/PageHead';
 import { SectionLabel } from '../../components/SectionLabel';
 import { StatusTag } from '../../components/StatusTag';
-import { apiErrorMessage, gigDisplayStatus, offerDispositionLabel, offerStatusLabel } from '../../i18n/labels';
+import { apiErrorMessage, eventDisplayStatus, offerDispositionLabel, offerStatusLabel } from '../../i18n/labels';
 import { useLang } from '../../i18n/useLang';
 import { formatDate, formatDateRange, formatMoney } from '../../lib/format';
-import { GigStatusTag } from '../gigs/GigStatusTag';
+import { EventStatusTag } from '../events/EventStatusTag';
 import { useClient, useDeleteClient, useUpdateClient } from './queries';
 import './clients.css';
 
 /**
- * One client (UC-027 step 3): name and notes edited in place (A1), the client's gigs and offers
+ * One client (UC-027 step 3): name and notes edited in place (A1), the client's events and offers
  * of all years (newest first, linking to their pages) and delete with confirmation (A3, E2).
  */
 export function ClientPage() {
@@ -63,7 +63,7 @@ export function ClientPage() {
     );
   }
 
-  const { client, gigs, offers } = query.data;
+  const { client, events, offers } = query.data;
   return (
     <section className="page clients-page">
       <PageHead
@@ -79,9 +79,9 @@ export function ClientPage() {
 
       <ClientFields client={client} />
 
-      <section className="client-section" aria-labelledby="client-gigs-title">
-        <SectionLabel id="client-gigs-title">{t('clients.gigs.title')}</SectionLabel>
-        <ClientGigs gigs={gigs} />
+      <section className="client-section" aria-labelledby="client-events-title">
+        <SectionLabel id="client-events-title">{t('clients.events.title')}</SectionLabel>
+        <ClientEvents events={events} />
       </section>
 
       <section className="client-section" aria-labelledby="client-offers-title">
@@ -121,41 +121,41 @@ function ClientFields({ client }: { client: Client }) {
   );
 }
 
-function ClientGigs({ gigs }: { gigs: GigSummary[] }) {
+function ClientEvents({ events }: { events: EventSummary[] }) {
   const { t } = useTranslation();
   const lang = useLang();
-  const columns: DataTableColumn<GigSummary>[] = [
+  const columns: DataTableColumn<EventSummary>[] = [
     {
       key: 'date',
-      label: t('clients.gigs.date'),
+      label: t('clients.events.date'),
       primary: true,
       className: 'client-col-date',
-      cell: (gig) => (
-        <Link to={`/gigs/${gig.id}`}>{formatDateRange(gig.startDate, gig.endDate, lang)}</Link>
+      cell: (event) => (
+        <Link to={`/events/${event.id}`}>{formatDateRange(event.startDate, event.endDate, lang)}</Link>
       ),
     },
-    { key: 'lineup', label: t('clients.gigs.lineup'), cell: (gig) => gig.lineupName },
-    { key: 'venue', label: t('clients.gigs.venue'), cell: (gig) => gig.venue },
+    { key: 'lineup', label: t('clients.events.lineup'), cell: (event) => event.lineupName },
+    { key: 'venue', label: t('clients.events.venue'), cell: (event) => event.venue },
     {
       key: 'status',
-      label: t('clients.gigs.status'),
-      cell: (gig) => <GigStatusTag status={gigDisplayStatus(gig)} />,
+      label: t('clients.events.status'),
+      cell: (event) => <EventStatusTag status={eventDisplayStatus(event)} />,
     },
     {
       key: 'total',
-      label: t('clients.gigs.totalPrice'),
+      label: t('clients.events.totalPrice'),
       numeric: true,
-      cell: (gig) => formatMoney(gig.totalPriceCents, lang),
+      cell: (event) => formatMoney(event.totalPriceCents, lang),
     },
   ];
   return (
     <DataTable
-      className="client-gigs"
-      caption={t('clients.gigs.caption')}
+      className="client-events"
+      caption={t('clients.events.caption')}
       columns={columns}
-      rows={gigs}
-      rowKey={(gig) => gig.id}
-      empty={<p className="empty">{t('clients.gigs.empty')}</p>}
+      rows={events}
+      rowKey={(event) => event.id}
+      empty={<p className="empty">{t('clients.events.empty')}</p>}
     />
   );
 }
@@ -210,7 +210,7 @@ function ClientOffers({ offers }: { offers: OfferSummary[] }) {
   );
 }
 
-/** Delete with confirmation (A3). Linked gigs/offers → 409 CLIENT_IN_USE message (E2, BR-101). */
+/** Delete with confirmation (A3). Linked events/offers → 409 CLIENT_IN_USE message (E2, BR-101). */
 function DeleteDialog({ client, onClose }: { client: Client; onClose: () => void }) {
   const { t } = useTranslation();
   const navigate = useNavigate();

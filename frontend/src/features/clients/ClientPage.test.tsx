@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { formatMoney } from '../../lib/format';
-import { addMockClient, addMockGig, TEST_YEAR } from '../../test/gigFixtures';
+import { addMockClient, addMockEvent, TEST_YEAR } from '../../test/eventFixtures';
 import { renderApp, signInMock } from '../../test/renderApp';
 import { addMockOffer } from '../../test/offerFixtures';
 
@@ -14,12 +14,12 @@ describe('client page (UC-027)', () => {
     signInMock().selectedYear = TEST_YEAR;
   });
 
-  it("lists the client's gigs of all years, newest first, with links; offers empty state", async () => {
+  it("lists the client's events of all years, newest first, with links; offers empty state", async () => {
     const x = addMockClient('Client X', 'Synthetic note');
-    const old = addMockGig({ clientId: x.id, startDate: `${TEST_YEAR - 1}-03-01`, venue: 'Venue Old' });
-    const newer = addMockGig({ clientId: x.id, startDate: `${TEST_YEAR}-05-01`, venue: 'Venue New', priceCents: 200000 });
+    const old = addMockEvent({ clientId: x.id, startDate: `${TEST_YEAR - 1}-03-01`, venue: 'Venue Old' });
+    const newer = addMockEvent({ clientId: x.id, startDate: `${TEST_YEAR}-05-01`, venue: 'Venue New', priceCents: 200000 });
     newer.status = 'CANCELLED';
-    addMockGig({ venue: 'Venue Other' }); // no client
+    addMockEvent({ venue: 'Venue Other' }); // no client
     renderApp(`/clients/${x.id}`);
 
     expect(await screen.findByRole('heading', { name: 'Client X', level: 1 })).toBeInTheDocument();
@@ -27,13 +27,13 @@ describe('client page (UC-027)', () => {
     expect(screen.getByRole('textbox', { name: 'Nimi' })).toHaveValue('Client X');
     expect(screen.getByRole('textbox', { name: 'Muistiinpanot' })).toHaveValue('Synthetic note');
 
-    const rows = bodyRows('Asiakkaan keikat');
+    const rows = bodyRows('Asiakkaan tapahtumat');
     expect(rows).toHaveLength(2);
-    expect(within(rows[0]!).getByRole('link')).toHaveAttribute('href', `/gigs/${newer.id}`);
+    expect(within(rows[0]!).getByRole('link')).toHaveAttribute('href', `/events/${newer.id}`);
     expect(rows[0]).toHaveTextContent('Venue New');
     expect(rows[0]).toHaveTextContent('Peruttu');
     expect(rows[0]!.textContent!.replace(/\s/g, ' ')).toContain(fi(200000));
-    expect(within(rows[1]!).getByRole('link', { name: `1.3.${TEST_YEAR - 1}` })).toHaveAttribute('href', `/gigs/${old.id}`);
+    expect(within(rows[1]!).getByRole('link', { name: `1.3.${TEST_YEAR - 1}` })).toHaveAttribute('href', `/events/${old.id}`);
     expect(screen.queryByText('Venue Other')).not.toBeInTheDocument();
 
     expect(screen.getByRole('heading', { name: 'Tarjoukset', level: 2 })).toBeInTheDocument();
@@ -72,7 +72,7 @@ describe('client page (UC-027)', () => {
 
   it('renames and edits notes in place; empty and duplicate names are not saved (A1, E1)', async () => {
     const x = addMockClient('Client X');
-    const gig = addMockGig({ clientId: x.id });
+    const event = addMockEvent({ clientId: x.id });
     const { user } = renderApp(`/clients/${x.id}`);
     const name = await screen.findByRole('textbox', { name: 'Nimi' });
 
@@ -96,10 +96,10 @@ describe('client page (UC-027)', () => {
     await user.tab();
     await waitFor(() => expect(x.notes).toBe('Note 1'));
 
-    // The gig shows the new client name.
-    await user.click(within(screen.getByRole('table', { name: 'Asiakkaan keikat' })).getByRole('link'));
+    // The event shows the new client name.
+    await user.click(within(screen.getByRole('table', { name: 'Asiakkaan tapahtumat' })).getByRole('link'));
     expect(await screen.findByRole('combobox', { name: 'Asiakas' })).toHaveDisplayValue('Client Y');
-    expect(gig.clientId).toBe(x.id);
+    expect(event.clientId).toBe(x.id);
   });
 
   it('deletes an unused client after confirmation', async () => {
@@ -121,15 +121,15 @@ describe('client page (UC-027)', () => {
     expect(screen.queryByRole('link', { name: 'Client X' })).not.toBeInTheDocument();
   });
 
-  it('shows "client in use" when gigs or offers link to it (E2, BR-101)', async () => {
+  it('shows "client in use" when events or offers link to it (E2, BR-101)', async () => {
     const x = addMockClient('Client X');
-    addMockGig({ clientId: x.id });
+    addMockEvent({ clientId: x.id });
     const { user } = renderApp(`/clients/${x.id}`);
     await user.click(await screen.findByRole('button', { name: 'Poista asiakas' }));
     const dialog = screen.getByRole('dialog', { name: 'Poista asiakas' });
     await user.click(within(dialog).getByRole('button', { name: 'Poista asiakas' }));
     expect(await within(dialog).findByRole('alert')).toHaveTextContent(
-      'Asiakasta ei voi poistaa, koska siihen on liitetty keikkoja tai tarjouksia.',
+      'Asiakasta ei voi poistaa, koska siihen on liitetty tapahtumia tai tarjouksia.',
     );
     expect(within(dialog).getByRole('button', { name: 'Poista asiakas' })).toBeDisabled();
     expect(x.deletedAt).toBeNull();

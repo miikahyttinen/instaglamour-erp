@@ -37,7 +37,7 @@ export interface OfferSummary {
   disposition: OfferDisposition;
   status: 'OPEN' | 'ACCEPTED' | 'REJECTED';
   expired: boolean;
-  gigId: string | null;
+  eventId: string | null;
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
@@ -92,9 +92,9 @@ export async function createClientViaApi(page: Page, name: string, notes: string
   return api(page).post('/clients', { name, notes });
 }
 
-export async function clientByName(page: Page, name: string): Promise<Client & { gigCount: number; offerCount: number }> {
+export async function clientByName(page: Page, name: string): Promise<Client & { eventCount: number; offerCount: number }> {
   const list = (await api(page).get(`/clients?q=${encodeURIComponent(name)}`)) as (Client & {
-    gigCount: number;
+    eventCount: number;
     offerCount: number;
   })[];
   const client = list.find((c) => c.name === name);

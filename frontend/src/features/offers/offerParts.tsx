@@ -1,4 +1,4 @@
-// Shared components of the offer screens: status tag, gig cell, copy-link notice, confirm dialog.
+// Shared components of the offer screens: status tag, event cell, copy-link notice, confirm dialog.
 import { useMutation } from '@tanstack/react-query';
 import { useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -122,12 +122,12 @@ export function ConfirmDialog<T>({
 }
 
 /**
- * Gig column / action: the gig link once converted, else Convert (UC-031) when the offer can be
+ * Event column / action: the event link once converted, else Convert (UC-031) when the offer can be
  * converted (BR-109: accepted, event date today or later). Otherwise nothing: "–" in the table,
  * no action on the offer page. `size="md"` is the page-head action (full-size button look); the
  * table uses the small one.
  */
-export function GigCell({
+export function EventCell({
   offer,
   onConvert,
   size = 'sm',
@@ -137,14 +137,14 @@ export function GigCell({
   size?: 'sm' | 'md';
 }) {
   const { t } = useTranslation();
-  if (offer.gigId) {
+  if (offer.eventId) {
     return (
       <Link
-        to={`/gigs/${offer.gigId}`}
-        className={size === 'md' ? buttonClass() : 'offer-gig-link'}
-        aria-label={t('convert.gigLinkLabel', { event: offer.eventName })}
+        to={`/events/${offer.eventId}`}
+        className={size === 'md' ? buttonClass() : 'offer-event-link'}
+        aria-label={t('convert.eventLinkLabel', { event: offer.eventName })}
       >
-        {t('convert.gigLink')}
+        {t('convert.eventLink')}
       </Link>
     );
   }

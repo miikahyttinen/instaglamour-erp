@@ -20,7 +20,7 @@ const DOC = {
   partners: [{ name: 'Partner A', email: 'partner.a@example.com' }],
   people: [{ name: 'Person 1' }, { name: 'Person 2' }],
   settings: { 'fees.office_default': 100 },
-  gigs: [{ startDate: '2030-05-01', venue: 'Venue X', lineupName: 'Template A' }],
+  events: [{ startDate: '2030-05-01', venue: 'Venue X', lineupName: 'Template A' }],
 };
 
 function jsonFile(content: unknown, name = 'import.json'): File {
@@ -100,7 +100,7 @@ describe('data import (UC-035)', () => {
     expect(rowsOf('Tarkistus: mitä tuonti tekisi')).toHaveLength(IMPORT_DATA_TYPES.length + 1); // + total row
     expect(row('Tarkistus: mitä tuonti tekisi', 'Osakkaat')).toEqual(['Osakkaat', '1', '0', '0']);
     expect(row('Tarkistus: mitä tuonti tekisi', 'Henkilöt')).toEqual(['Henkilöt', '2', '0', '0']);
-    expect(row('Tarkistus: mitä tuonti tekisi', 'Keikat')).toEqual(['Keikat', '1', '0', '0']);
+    expect(row('Tarkistus: mitä tuonti tekisi', 'Tapahtumat')).toEqual(['Tapahtumat', '1', '0', '0']);
     expect(row('Tarkistus: mitä tuonti tekisi', 'Yhteensä')).toEqual(['Yhteensä', '5', '0', '0']);
 
     expect(posts).toHaveLength(1);
@@ -222,7 +222,7 @@ describe('data import (UC-035)', () => {
 
   it('lists the import history with partner, file and totals; details on expand', async () => {
     const summary = zeroSummary();
-    summary.gigs = { created: 3, updated: 0, skipped: 1 };
+    summary.events = { created: 3, updated: 0, skipped: 1 };
     summary.people = { created: 1, updated: 2, skipped: 0 };
     const partnerB = db.partners[1]!;
     importStore.runs.push(
@@ -253,7 +253,7 @@ describe('data import (UC-035)', () => {
     const details = within(body[0]!).getByRole('list');
     expect(within(details).getAllByRole('listitem').map((li) => li.textContent)).toEqual([
       'Henkilöt: luotu 1, päivitetty 2, ohitettu 0',
-      'Keikat: luotu 3, päivitetty 0, ohitettu 1',
+      'Tapahtumat: luotu 3, päivitetty 0, ohitettu 1',
     ]);
   });
 

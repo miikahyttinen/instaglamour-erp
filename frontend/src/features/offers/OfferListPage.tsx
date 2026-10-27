@@ -28,13 +28,13 @@ import { useReference } from '../../reference/useReference';
 import { ConvertDialog } from './ConvertDialog';
 import { OfferKpis } from './OfferKpis';
 import { copyToClipboard, useOfferOptions, type CopyResult } from './offerOptions';
-import { ConfirmDialog, CopyResultNotice, GigCell, OfferStatusTag } from './offerParts';
+import { ConfirmDialog, CopyResultNotice, EventCell, OfferStatusTag } from './offerParts';
 import { OFFER_DISPLAY_STATUSES, offerDisplayStatus, offerTieBreak, type OfferDisplayStatus } from './offerStatus';
 import { offerKeys, publicOfferUrl, useApplyOffer, useOfferList } from './queries';
 import './offers.css';
 
 type PageNotice =
-  | { kind: 'converted'; gigId: string; event: string }
+  | { kind: 'converted'; eventId: string; event: string }
   | { kind: 'deleted'; event: string }
   | { kind: 'restored'; id: string; event: string }
   | { kind: 'copy'; result: CopyResult }
@@ -233,7 +233,7 @@ export function OfferListPage() {
           onClose={() => setDialog(null)}
           onConverted={(result) => {
             setDialog(null);
-            setNotice({ kind: 'converted', gigId: result.gig.id, event: result.offer.eventName });
+            setNotice({ kind: 'converted', eventId: result.event.id, event: result.offer.eventName });
           }}
         />
       )}
@@ -278,7 +278,7 @@ function ListNotice({ notice, onDismiss }: { notice: PageNotice; onDismiss: () =
   if (notice.kind === 'converted') {
     content = (
       <p>
-        {t('convert.done', { event: notice.event })} <Link to={`/gigs/${notice.gigId}`}>{t('convert.openGig')}</Link>
+        {t('convert.done', { event: notice.event })} <Link to={`/events/${notice.eventId}`}>{t('convert.openEvent')}</Link>
       </p>
     );
   } else if (notice.kind === 'deleted') {
@@ -313,7 +313,7 @@ interface OfferTableProps {
  * Excel-style table (UC-028, design.md "Excel-style tables"): every column sortable, filter icons
  * on the coded / text columns. From 600 px it fills the width without scrolling sideways; columns
  * with priority 2 / 3 are hidden on narrower tables (TASK-147, TASK-160: 1 event, date, created,
- * client, price, status, actions · 2 place, seller, disposition, gig · 3 source, event type).
+ * client, price, status, actions · 2 place, seller, disposition, event · 3 source, event type).
  * Phones (< 600 px): one card per offer + the "Suodattimet" sheet.
  */
 function OfferTable(props: OfferTableProps) {
@@ -461,15 +461,15 @@ function OfferTable(props: OfferTableProps) {
       ),
     },
     {
-      key: 'gig',
-      label: t('offers.columns.gig'),
-      className: 'offer-col-gig excel-col-fit',
+      key: 'linkedEvent',
+      label: t('offers.columns.linkedEvent'),
+      className: 'offer-col-linked-event excel-col-fit',
       priority: 2,
-      sortValue: (o) => (o.gigId ? 1 : 0),
-      filterValue: (o) => (o.gigId ? 'yes' : 'no'),
-      filterLabel: (v) => t(v === 'yes' ? 'offers.gigFilter.yes' : 'offers.gigFilter.no'),
+      sortValue: (o) => (o.eventId ? 1 : 0),
+      filterValue: (o) => (o.eventId ? 'yes' : 'no'),
+      filterLabel: (v) => t(v === 'yes' ? 'offers.eventFilter.yes' : 'offers.eventFilter.no'),
       filterCompare: byCodeOrder(['yes', 'no']),
-      cell: (o) => <GigCell offer={o} onConvert={() => props.onConvert(o)} />,
+      cell: (o) => <EventCell offer={o} onConvert={() => props.onConvert(o)} />,
     },
     {
       key: 'actions',

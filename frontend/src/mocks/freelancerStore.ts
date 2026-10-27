@@ -1,6 +1,6 @@
 // In-memory mock of purchase orders as seen through the freelancer link (UC-033, BR-113…BR-116):
-// one link token per person, the POs and their log. Fee lines are the cost lines of the gig
-// store (db.gigs), so eligibility always reflects the current gig data. Implements BR-114
+// one link token per person, the POs and their log. Fee lines are the cost lines of the event
+// store (db.events), so eligibility always reflects the current event data. Implements BR-114
 // eligibility, BR-115 all-or-nothing creation and the BR-116 number. The partner PO pages
 // (TASK-152, pay / unpay / cancel) work on the same `purchaseOrders` list.
 // Synthetic data only (BR-090). Does not import mocks/data.ts (no import cycle).
@@ -15,8 +15,8 @@ import type {
   PurchaseOrderEvent,
 } from '../api/types';
 import { todayIso } from '../lib/format';
-import { PERSON_IDS } from './gigSeed';
-import { mockId, nowTs, type GigState, type MockGig, type MockPerson } from './gigStore';
+import { PERSON_IDS } from './eventSeed';
+import { mockId, nowTs, type EventState, type MockEvent, type MockPerson } from './eventStore';
 
 export interface FreelancerState {
   /** Person id → current link token (`/f/<token>`). Created on first use. */
@@ -68,9 +68,9 @@ export function regenerateFreelancerToken(state: FreelancerState, personId: Id):
 }
 
 /** The active person behind a token; unknown / regenerated token or inactive person → undefined. */
-export function personByToken(state: FreelancerState, gigs: GigState, token: string): MockPerson | undefined {
+export function personByToken(state: FreelancerState, events: EventState, token: string): MockPerson | undefined {
   const personId = Object.keys(state.tokens).find((id) => state.tokens[id] === token);
-  const person = gigs.people.find((p) => p.id === personId);
+  const person = events.people.find((p) => p.id === personId);
   return person?.active ? person : undefined;
 }
 
@@ -83,29 +83,29 @@ export function activePurchaseOrderOf(state: FreelancerState, costLineId: Id): P
 
 export interface FeeLine {
   line: CostLine;
-  gig: MockGig;
+  event: MockEvent;
 }
 
-/** BR-113: the person's lines with an amount > 0 on non-deleted SOLD gigs, newest gig first. */
-function feeLines(gigs: GigState, personId: Id): FeeLine[] {
+/** BR-113: the person's lines with an amount > 0 on non-deleted SOLD events, newest event first. */
+function feeLines(events: EventState, personId: Id): FeeLine[] {
   const out: FeeLine[] = [];
-  gigs.costLines.forEach((line) => {
+  events.costLines.forEach((line) => {
     if (line.personId !== personId || line.budgetedCents <= 0) return;
-    const gig = gigs.gigs.find((g) => g.id === line.gigId);
-    if (!gig || gig.status !== 'SOLD' || gig.deletedAt !== null) return;
-    out.push({ line, gig });
+    const event = events.events.find((g) => g.id === line.eventId);
+    if (!event || event.status !== 'SOLD' || event.deletedAt !== null) return;
+    out.push({ line, event });
   });
-  // Stable sort keeps creation order within a gig / date.
-  return out.sort((a, b) => b.gig.startDate.localeCompare(a.gig.startDate));
+  // Stable sort keeps creation order within an event / date.
+  return out.sort((a, b) => b.event.startDate.localeCompare(a.event.startDate));
 }
 
-function toFreelancerLine(state: FreelancerState, { line, gig }: FeeLine, today: IsoDate): FreelancerLine {
+function toFreelancerLine(state: FreelancerState, { line, event }: FeeLine, today: IsoDate): FreelancerLine {
   const po = activePurchaseOrderOf(state, line.id);
   const base = {
     costLineId: line.id,
-    gigStartDate: gig.startDate,
-    gigEndDate: gig.endDate,
-    venue: gig.venue,
+    eventStartDate: event.startDate,
+    eventEndDate: event.endDate,
+    venue: event.venue,
     type: line.type,
     description: line.description,
   };
@@ -122,7 +122,7 @@ function toFreelancerLine(state: FreelancerState, { line, gig }: FeeLine, today:
     return { ...base, amountCents: snapshot, state: 'ON_PO', purchaseOrderNumber: po.number };
   }
   // BR-114: played = start date before today.
-  const played = gig.startDate < today;
+  const played = event.startDate < today;
   return { ...base, amountCents: line.budgetedCents, state: played ? 'SELECTABLE' : 'UPCOMING', purchaseOrderNumber: null };
 }
 
@@ -135,8 +135,8 @@ export function toPublicPurchaseOrder(po: PurchaseOrder): PublicPurchaseOrder {
     createdAt: po.createdAt,
     paidAt: po.paidAt,
     lines: po.lines.map((l) => ({
-      gigStartDate: l.gigStartDate,
-      venue: l.gigVenue,
+      eventStartDate: l.eventStartDate,
+      venue: l.eventVenue,
       type: l.type,
       description: l.description,
       amountCents: l.amountCents,
@@ -147,13 +147,13 @@ export function toPublicPurchaseOrder(po: PurchaseOrder): PublicPurchaseOrder {
 /** `GET /api/public/freelancers/{token}`: exactly the contract fields. */
 export function freelancerView(
   state: FreelancerState,
-  gigs: GigState,
+  events: EventState,
   person: MockPerson,
   today: IsoDate = todayIso(),
 ): FreelancerView {
   return {
     name: person.name,
-    lines: feeLines(gigs, person.id).map((fee) => toFreelancerLine(state, fee, today)),
+    lines: feeLines(events, person.id).map((fee) => toFreelancerLine(state, fee, today)),
     purchaseOrders: state.purchaseOrders
       .filter((po) => po.personId === person.id)
       .slice()
@@ -174,10 +174,10 @@ export function newPurchaseOrder(
 ): PurchaseOrder {
   const lines = fees.map((fee) => ({
     costLineId: fee.line.id,
-    gigId: fee.gig.id,
-    gigStartDate: fee.gig.startDate,
-    gigVenue: fee.gig.venue,
-    gigLineupName: fee.gig.lineupName,
+    eventId: fee.event.id,
+    eventStartDate: fee.event.startDate,
+    eventVenue: fee.event.venue,
+    eventLineupName: fee.event.lineupName,
     type: fee.line.type,
     description: fee.line.description,
     amountCents: amount(fee),
@@ -221,12 +221,12 @@ export function logPurchaseOrderEvent(
  */
 export function createPurchaseOrder(
   state: FreelancerState,
-  gigs: GigState,
+  events: EventState,
   person: MockPerson,
   costLineIds: Id[],
   today: IsoDate = todayIso(),
 ): CreateResult {
-  const fees = feeLines(gigs, person.id);
+  const fees = feeLines(events, person.id);
   const chosen: FeeLine[] = [];
   const notEligible: Id[] = [];
   for (const id of costLineIds) {
@@ -235,8 +235,8 @@ export function createPurchaseOrder(
     else notEligible.push(id);
   }
   if (notEligible.length > 0) return { ok: false, notEligible };
-  // Gig order, newest first (same as the page).
-  chosen.sort((a, b) => b.gig.startDate.localeCompare(a.gig.startDate));
+  // Event order, newest first (same as the page).
+  chosen.sort((a, b) => b.event.startDate.localeCompare(a.event.startDate));
   return { ok: true, purchaseOrder: newPurchaseOrder(state, person, chosen, (f) => f.line.budgetedCents, nowTs()) };
 }
 
@@ -247,34 +247,34 @@ function at(date: IsoDate, days: number, time = '12:00:00.000Z'): string {
 }
 
 /**
- * Demo data on the seeded gigs: Person 1 has a fixed link, a PAID PO for their paid fee and a
+ * Demo data on the seeded events: Person 1 has a fixed link, a PAID PO for their paid fee and a
  * CANCELLED PO for an unpaid one (which is therefore selectable again, UC-034 AC-3).
  */
-export function seedFreelancer(gigs: GigState, partnerId: Id | undefined): FreelancerState {
+export function seedFreelancer(events: EventState, partnerId: Id | undefined): FreelancerState {
   const state: FreelancerState = { tokens: {}, purchaseOrders: [], events: [], nextSeq: 1 };
   const personId = PERSON_IDS[0];
-  const person = gigs.people.find((p) => p.id === personId);
+  const person = events.people.find((p) => p.id === personId);
   if (!person) return state;
   state.tokens[person.id] = DEMO_FREELANCER_TOKEN;
 
-  const fees = feeLines(gigs, person.id).reverse(); // oldest first
+  const fees = feeLines(events, person.id).reverse(); // oldest first
   const today = todayIso();
   const paid = fees.find((f) => f.line.paidAt !== null);
   if (paid) {
-    const created = at(paid.gig.startDate, 2);
+    const created = at(paid.event.startDate, 2);
     const po = newPurchaseOrder(state, person, [paid], (f) => f.line.actualCents ?? f.line.budgetedCents, created);
     po.status = 'PAID';
-    po.paidAt = at(paid.gig.startDate, 9, '11:32:00.000Z');
+    po.paidAt = at(paid.event.startDate, 9, '11:32:00.000Z');
     po.paidBy = partnerId ?? null;
     paid.line.purchaseOrder = { id: po.id, number: po.number, status: 'PAID' };
     logPurchaseOrderEvent(state, po, 'PAID', po.paidBy, { totalCents: po.totalCents }, po.paidAt);
   }
-  const open = fees.find((f) => f.line.paidAt === null && f.gig.startDate < today);
+  const open = fees.find((f) => f.line.paidAt === null && f.event.startDate < today);
   if (open) {
-    const created = at(open.gig.startDate, 1);
+    const created = at(open.event.startDate, 1);
     const po = newPurchaseOrder(state, person, [open], (f) => f.line.budgetedCents, created);
     po.status = 'CANCELLED';
-    po.cancelledAt = at(open.gig.startDate, 1, '15:00:00.000Z');
+    po.cancelledAt = at(open.event.startDate, 1, '15:00:00.000Z');
     po.cancelledBy = partnerId ?? null;
     po.cancelReason = 'Wrong fee selected.';
     open.line.purchaseOrder = null;

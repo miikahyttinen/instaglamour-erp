@@ -1,0 +1,231 @@
+/* Event list (EventListPage). Tokens only; scoped under .event-list-page.
+   The table is the shared ExcelTable (components/excelTable.css), same look as the offer list. */
+
+/* ---------- Year summary ---------- */
+.event-list-page .event-year-summary {
+  margin: 0 0 var(--section-gap);
+}
+/* The cancelled-count line belongs to the tiles: keep it close, the section gap comes after. */
+.event-list-page .event-year-summary .event-stat-grid {
+  margin-bottom: 0;
+}
+/* Six small tiles: 2 per row on phones, 3 from 600 px (and at 900–1199 px next to the
+   sidebar), 6 in one row from 1200 px. */
+.event-list-page .event-stat-grid > * {
+  --span: 6;
+  --span-sm: 4;
+  --span-lg: 2;
+}
+.event-list-page .event-stat-grid .stat-tile-value {
+  overflow-wrap: anywhere;
+  margin-top: auto; /* tiles in a row are equally tall: the figures share one baseline */
+}
+.event-list-page .event-cancelled-count {
+  margin: var(--space-3) 0 0;
+}
+
+/* ---------- Toolbar: view switch, search (as on the offer list) ---------- */
+/* The column filters live in the table headers (ExcelTable). */
+.event-list-page .event-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin: 0 0 var(--space-6);
+}
+.event-list-page .event-view-switch {
+  align-self: flex-start;
+}
+.event-list-page .event-search label {
+  margin-top: 0;
+}
+.event-list-page .event-search-input {
+  position: relative;
+}
+.event-list-page .event-search-icon {
+  position: absolute;
+  top: 50%;
+  left: var(--space-3);
+  transform: translateY(-50%);
+  color: var(--label);
+  pointer-events: none;
+}
+.event-list-page .event-search-input input {
+  padding-left: calc(var(--space-3) + var(--icon) + var(--space-2));
+}
+
+/* ---------- Notices, loading, empty ---------- */
+.event-list-page > .notice {
+  margin: 0 0 var(--space-5);
+}
+.event-list-page .event-list-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.event-list-page .event-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-6) var(--card-pad);
+  border: var(--hairline) dashed var(--border);
+  border-radius: var(--radius);
+  color: var(--text-muted);
+}
+.event-list-page .event-empty p {
+  margin: 0;
+}
+
+/* ---------- Shared bits of rows ---------- */
+.event-list-page .event-date {
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.event-list-page .event-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  min-width: 0;
+}
+.event-list-page .event-link {
+  color: var(--text);
+  font-weight: var(--fw-bold);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+.event-list-page .event-link:hover,
+.event-list-page .event-client-link:hover {
+  text-decoration: underline;
+}
+.event-list-page .event-client-link {
+  color: var(--text);
+  text-decoration: none;
+}
+.event-list-page .event-margin-actual {
+  color: var(--text-muted);
+  font-size: var(--fs-small);
+}
+/* Kate-%: each percentage stays on one line (no-break space before %); on a narrow table the
+   actual one ("tot. 10,0 %") wraps under the budget one (TASK-147). */
+.event-list-page .event-table td.event-col-margin {
+  white-space: normal;
+  overflow-wrap: normal;
+}
+.event-list-page .event-margin-budget {
+  white-space: nowrap;
+}
+
+/* ---------- Table (ExcelTable, same look as the offer list) ---------- */
+.event-list-page .event-table td.event-col-total {
+  font-weight: var(--fw-bold);
+}
+.event-list-page .event-table td.event-col-staffing {
+  color: var(--text-muted);
+}
+.event-list-page .event-table tr.status-cancelled td {
+  color: var(--text-muted);
+}
+.event-list-page .event-table tr.status-cancelled .event-link {
+  color: var(--text-muted);
+}
+.event-list-page .event-table .event-date-part {
+  display: inline-block;
+  white-space: nowrap;
+}
+/* The date column fits its content (.excel-col-fit): a range stays on one line unless the table
+   is narrow. */
+@container excel-table (min-width: 900px) {
+  .event-list-page .event-table .event-date-range {
+    white-space: nowrap;
+  }
+}
+/* From 600 px (table rows): mono dates, as on the offer list. */
+@media (min-width: 600px) {
+  .event-list-page .event-table td.event-col-date {
+    font-family: var(--font-mono);
+    font-size: var(--fs-label);
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* ---------- Deleted view ---------- */
+/* Same frame and cell padding as DataTable, so it lines up with the active list. */
+.event-list-page .event-deleted-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  background: var(--surface);
+  border: var(--hairline) solid var(--border);
+  border-radius: var(--radius);
+}
+.event-list-page .event-deleted-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+  min-height: var(--row-h);
+  padding: var(--cell-pad-y) var(--cell-pad-x);
+  border-bottom: var(--hairline) solid var(--border);
+}
+.event-list-page .event-deleted-row:last-child {
+  border-bottom: 0;
+}
+.event-list-page .event-deleted-row .event-date,
+.event-list-page .event-deleted-row .event-main,
+.event-list-page .event-deleted-row .event-restore {
+  grid-column: 1 / -1;
+}
+.event-list-page .event-deleted-row .event-main {
+  flex-direction: column;
+  align-items: flex-start;
+}
+.event-list-page .event-deleted-row .event-restore {
+  justify-self: start;
+  margin-top: var(--space-1);
+}
+.event-list-page .event-deleted-meta {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* ---------- ≥ 900 px ---------- */
+@media (min-width: 900px) {
+  /* Rows share one column grid (subgrid), so dates, names and buttons line up across rows. */
+  .event-list-page .event-deleted-list {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr) auto;
+  }
+  .event-list-page .event-deleted-row {
+    grid-column: 1 / -1;
+    grid-template-columns: subgrid;
+  }
+  .event-list-page .event-deleted-row .event-date,
+  .event-list-page .event-deleted-row .event-main,
+  .event-list-page .event-deleted-row .event-restore {
+    grid-column: auto;
+  }
+  .event-list-page .event-deleted-row .event-restore {
+    margin-top: 0;
+  }
+  .event-list-page .event-deleted-row .event-main {
+    flex-direction: row;
+    align-items: center;
+    gap: var(--space-1) var(--space-3);
+  }
+}
+
+/* ---------- ≥ 600 px ---------- */
+@media (min-width: 600px) {
+  .event-list-page .event-search {
+    max-width: calc(var(--label-w) * 2.5);
+  }
+}

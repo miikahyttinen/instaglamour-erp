@@ -1,18 +1,18 @@
 // Mock for the Year page (UC-022): GET /api/years/{year}.
-// Every figure comes from the shared mock stores (db.gigs, db.hours, db.budget), so it matches
-// the gig list, hours totals and budget pages. Synthetic data only (BR-090).
+// Every figure comes from the shared mock stores (db.events, db.hours, db.budget), so it matches
+// the event list, hours totals and budget pages. Synthetic data only (BR-090).
 import { http, HttpResponse } from 'msw';
-import type { GigSummary, YearPage } from '../api/types';
+import type { EventSummary, YearPage } from '../api/types';
 import { todayIso } from '../lib/format';
 import { budgetOfYear } from './budgetStore';
 import { db } from './data';
-import { toSummary, yearTotals, type GigState } from './gigStore';
+import { toSummary, yearTotals, type EventState } from './eventStore';
 import { hoursTotals } from './hoursStore';
 import { errorResponse, unauthenticated } from './util';
 
-/** Next 5 non-deleted SOLD gigs with startDate ≥ today, regardless of year (contract). */
-export function upcomingGigs(state: GigState, today = todayIso()): GigSummary[] {
-  return state.gigs
+/** Next 5 non-deleted SOLD events with startDate ≥ today, regardless of year (contract). */
+export function upcomingEvents(state: EventState, today = todayIso()): EventSummary[] {
+  return state.events
     .filter((g) => g.status === 'SOLD' && g.deletedAt === null && g.startDate >= today)
     .sort((a, b) => a.startDate.localeCompare(b.startDate))
     .slice(0, 5)
@@ -38,17 +38,17 @@ function hoursAndBudget(year: number): Pick<YearPage, 'hours' | 'budget'> {
 }
 
 export function mockYearPage(year: number, today = todayIso()): YearPage {
-  const gigs = yearTotals(db.gigs, year);
+  const events = yearTotals(db.events, year);
   const { hours, budget } = hoursAndBudget(year);
   return {
     year,
-    gigs,
+    events,
     hours,
     budget,
     // BR-063
     yearResultCents:
-      gigs.soldGigsSumCents - gigs.actualCostsCents + budget.actualIncomeCents - budget.actualExpenseCents,
-    upcomingGigs: upcomingGigs(db.gigs, today),
+      events.soldEventsSumCents - events.actualCostsCents + budget.actualIncomeCents - budget.actualExpenseCents,
+    upcomingEvents: upcomingEvents(db.events, today),
   };
 }
 

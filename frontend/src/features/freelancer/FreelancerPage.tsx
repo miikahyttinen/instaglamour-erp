@@ -186,7 +186,7 @@ function FreelancerContent({ token, view, refetch }: { token: string; view: Free
           <input
             type="checkbox"
             aria-label={t('freelancer.selectLine', {
-              date: formatDate(line.gigStartDate, lang),
+              date: formatDate(line.eventStartDate, lang),
               venue: line.venue,
               role: feeRoleLabel(t, line),
             })}
@@ -200,7 +200,7 @@ function FreelancerContent({ token, view, refetch }: { token: string; view: Free
       label: t('freelancer.columns.date'),
       primary: true,
       className: 'nowrap',
-      cell: (line) => formatDateRange(line.gigStartDate, line.gigEndDate, lang),
+      cell: (line) => formatDateRange(line.eventStartDate, line.eventEndDate, lang),
     },
     { key: 'venue', label: t('freelancer.columns.venue'), cell: (line) => line.venue },
     { key: 'role', label: t('freelancer.columns.role'), cell: (line) => feeRoleLabel(t, line) },
@@ -324,7 +324,7 @@ function PurchaseOrderItem({ po, isNew }: { po: PublicPurchaseOrder; isNew: bool
       label: t('freelancer.columns.date'),
       primary: true,
       className: 'nowrap',
-      cell: (line) => formatDate(line.gigStartDate, lang),
+      cell: (line) => formatDate(line.eventStartDate, lang),
     },
     { key: 'venue', label: t('freelancer.columns.venue'), cell: (line) => line.venue },
     { key: 'role', label: t('freelancer.columns.role'), cell: (line) => feeRoleLabel(t, line) },
