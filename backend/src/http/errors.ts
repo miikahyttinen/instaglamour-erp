@@ -2,7 +2,7 @@
  * Error format from docs/api-contract.md:
  * { "error": { "code": "...", "message": "...", "fields": { "venue": "REQUIRED" } } }
  */
-import type { FastifyError, FastifyInstance } from 'fastify';
+import type { FastifyError, FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { z } from 'zod';
 
 export type ErrorCode =
@@ -130,7 +130,12 @@ export function parseInput<S extends z.ZodType>(schema: S, input: unknown): z.ou
   return result.data;
 }
 
-export function registerErrorHandling(app: FastifyInstance): void {
+export interface ErrorHandlingOptions {
+  /** Tried before the JSON 404 (e.g. the SPA fallback); returns true if it answered the request. */
+  notFoundFallback?: (request: FastifyRequest, reply: FastifyReply) => boolean;
+}
+
+export function registerErrorHandling(app: FastifyInstance, options: ErrorHandlingOptions = {}): void {
   app.setErrorHandler((err: FastifyError | AppError, request, reply) => {
     if (err instanceof AppError) {
       return reply.status(err.statusCode).send(errorBody(err.code, err.message, err.fields, err.details));
@@ -148,6 +153,7 @@ export function registerErrorHandling(app: FastifyInstance): void {
   });
 
   app.setNotFoundHandler((request, reply) => {
-    reply.status(404).send(errorBody('NOT_FOUND', `Route ${request.method} ${request.url} not found`));
+    if (options.notFoundFallback?.(request, reply)) return reply;
+    return reply.status(404).send(errorBody('NOT_FOUND', `Route ${request.method} ${request.url} not found`));
   });
 }

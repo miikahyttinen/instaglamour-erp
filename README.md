@@ -13,6 +13,7 @@ A small, focused web app for the partners of a live-music band to run the busine
 - [Features](#features)
 - [Tech stack](#tech-stack)
 - [Run it locally](#run-it-locally)
+- [Deploy to Railway](#deploy-to-railway)
 - [Specifications: vision, use cases, rules](#specifications)
 - [How this was built: AI agent orchestration](#how-this-was-built-ai-agent-orchestration)
 - [Testing](#testing)
@@ -175,6 +176,119 @@ npm run dev:mock              # or: no backend needed, mock API + dev login (par
 ```
 
 Details: [`backend/README.md`](backend/README.md), [`frontend/README.md`](frontend/README.md) (design system, components, inline editing), [`e2e/README.md`](e2e/README.md).
+
+---
+
+## Deploy to Railway
+
+One app service serves both the API and the UI: in production (`NODE_ENV=production`) the backend
+serves the built frontend (`frontend/dist`) on the same port, with an SPA fallback (every non-`/api`
+GET answers `index.html`; hashed `assets/*` are cached for a year, `index.html` is `no-cache`).
+Development is unchanged (Vite dev server + `/api` proxy).
+
+Everything below uses placeholders — put real values only into Railway's variables, never into the repository.
+
+### Services
+
+| Service | What |
+|---|---|
+| **app** | This repository (GitHub repo or `railway up`). Build/start come from [`railway.json`](railway.json) and the root [`package.json`](package.json). |
+| **Postgres** | Railway's PostgreSQL template. |
+| **Volume** | Attached to **app**, mount path `/data`. Attachments and reference photos live in `/data/uploads`. |
+
+How Railway runs it ([`railway.json`](railway.json)):
+
+| Step | Command | What it does |
+|---|---|---|
+| Build | `npm run build` | `npm ci` in `backend/` and `frontend/` (incl. dev deps), frontend `vite build` with `VITE_USE_MOCKS=false VITE_DEV_LOGIN=false`, backend `prisma generate && tsc` |
+| Pre-deploy | `npm run db:migrate` | `prisma migrate deploy` in `backend/` — applies pending migrations before the new version takes traffic; a failure stops the deploy |
+| Start | `npm start` | `node dist/src/server.js` in `backend/`; listens on `$PORT`, `0.0.0.0` |
+| Healthcheck | `GET /api/health` | `200 { "ok": true }` when the database answers, `503 { "ok": false }` otherwise; no sign-in |
+| Restart | on failure | up to 10 retries |
+
+Node is pinned to 24 (`.nvmrc`, `engines`).
+
+### Environment variables (app service)
+
+| Variable | Example (placeholder) | Notes |
+|---|---|---|
+| `NODE_ENV` | `production` | Enables static serving, the safety checks below, `HOST` default `0.0.0.0` |
+| `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` | Railway reference variable (private network) |
+| `SESSION_SECRET` | `<openssl rand -hex 32>` | ≥ 16 chars; changing it signs everyone out |
+| `GOOGLE_CLIENT_ID` | `your-client-id.apps.googleusercontent.com` | Google OAuth "Web application" client |
+| `GOOGLE_CLIENT_SECRET` | `your-client-secret` | |
+| `GOOGLE_REDIRECT_URL` | `https://your-app.up.railway.app/api/auth/google/callback` | Must be an authorised redirect URI of the client |
+| `AUTH_ALLOWED_DOMAIN` | `example.com` | Only verified Google accounts of this domain may sign in |
+| `FRONTEND_URL` | `https://your-app.up.railway.app` | The app's own public URL (same origin). **Must be https** in production; also turns on `Secure` cookies |
+| `UPLOAD_DIR` | `/data/uploads` | On the volume; created at startup if missing |
+| `DEV_LOGIN_ENABLED` | *(unset)* or `false` | `true` with `NODE_ENV=production` **refuses to start** |
+| `PORT` | *(set by Railway)* | Don't set it yourself |
+| `HOST` | *(unset)* | Optional override of the `0.0.0.0` default |
+| `FRONTEND_DIST_DIR` | *(unset)* | Optional; default `../frontend/dist` relative to `backend/` |
+| `LOG_LEVEL` | *(unset)* | Optional; default `info` |
+| `VITE_AUTH_ALLOWED_DOMAIN` | `example.com` | Optional, **build time**: only the hint on the partner email field |
+
+Startup fails fast with one clear line (`Startup aborted: …`) if the configuration is unsafe or incomplete
+(dev login on, non-https `FRONTEND_URL`, missing `index.html`, `UPLOAD_DIR` not creatable, invalid variables).
+
+### Google OAuth
+
+In Google Cloud console → APIs & Services → Credentials → your OAuth client ("Web application"):
+add `https://your-app.up.railway.app/api/auth/google/callback` to **Authorised redirect URIs** and set
+`GOOGLE_REDIRECT_URL` to exactly the same value. With a custom domain, add that URL too and update
+`GOOGLE_REDIRECT_URL` and `FRONTEND_URL`.
+
+### First deploy: copy local data
+
+Do this **before the first app deploy** (into the empty Railway database), so the restored
+`_prisma_migrations` table tells the pre-deploy step what is already applied.
+
+```bash
+# 1. Dump the local database (custom format). backups/ is gitignored — never commit dumps.
+pg_dump -Fc --no-owner --no-privileges \
+  "postgresql://instaglamour:instaglamour@localhost:5432/instaglamour" -f backups/instaglamour.dump
+
+# 2. Restore into Railway Postgres. Use its *public* URL (Postgres service → Variables →
+#    DATABASE_PUBLIC_URL). Client tools must be at least the server's major version
+#    (or run them from a matching `postgres:<version>` Docker image).
+pg_restore --no-owner --no-privileges -d "postgresql://user:password@host.proxy.rlwy.net:12345/railway" \
+  backups/instaglamour.dump
+```
+
+If the app was already deployed once (migrations created empty tables), add `--clean --if-exists`
+to `pg_restore` to replace them.
+
+Then copy the uploaded files (local `UPLOAD_DIR`, default `../instaglamour-uploads` next to the repo)
+to the volume, once the app service is running:
+
+```bash
+railway link                                   # select the project and the app service
+tar czf - -C ../instaglamour-uploads . | railway ssh -- "mkdir -p /data/uploads && tar xzf - -C /data/uploads"
+railway ssh -- ls /data/uploads | head         # check
+```
+
+Files are named by UUID storage keys, so they need no renaming. Afterwards sign in and open an event with
+attachments and an offer with reference photos to verify.
+
+### Backups
+
+- **Database:** enable scheduled backups on the Postgres service (Railway → Postgres → Backups), and/or
+  take your own dumps: `pg_dump -Fc "<DATABASE_PUBLIC_URL>" -f backups/railway-$(date +%F).dump`.
+  Restore with `pg_restore --clean --if-exists -d "<url>" <file>`.
+- **Uploads:** back up the app's volume too (volume backups, or
+  `railway ssh -- tar czf - -C /data/uploads . > backups/uploads-$(date +%F).tgz`).
+- Keep backups outside the repository (`backups/` is gitignored); they contain real data.
+
+### Check a production build locally
+
+```bash
+npm run build                                  # repo root
+cd backend && NODE_ENV=production PORT=3100 FRONTEND_URL=https://your-app.up.railway.app \
+  DATABASE_URL=… SESSION_SECRET=… AUTH_ALLOWED_DOMAIN=example.com npm start
+curl http://127.0.0.1:3100/api/health          # {"ok":true}; http://127.0.0.1:3100/ serves the UI
+```
+
+(Sign-in won't work locally this way: `Secure` cookies need https.)
 
 ---
 
