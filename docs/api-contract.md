@@ -556,7 +556,12 @@ One derived value **`invoiceState`** = the next invoicing action; first match wi
 - Filter `?invoiceState=` (repeatable, OR; unknown → 400) replaces `?invoiceCoverage=` / `?paymentState=`.
 - UI: the same single tag in the Keikat table (one line), phone cards and at the top of the gig page Laskutus card; one "Laskutus" filter. The purple tone is no longer used for invoicing (keep the token).
 
+## Attachments removed (owner decision 2026-10-31)
+- `POST/GET/DELETE /api/events/{id}/attachments…` and the download endpoint are **removed** (404). `EventDetail.attachments` is removed. History types `ATTACHMENT_ADDED/REMOVED` stay for old entries (UI keeps their texts).
+- The `attachment` table and files on disk are **kept unused** (no data deleted); a later cleanup can drop them. Reference photos still use `UPLOAD_DIR`.
+
 ## Change log
+- 2026-10-31 – Gig file attachments removed from the app (PM)
 - 2026-10-31 – Invoicing back to one label (next action): PAID / ROWS_TO_INVOICE / OPEN_INVOICES / NEEDS_INVOICES / NONE (PM)
 - 2026-10-31 – invoiceState split into invoiceCoverage + paymentState (owner states, colours) (PM)
 - 2026-10-31 – Invoice rows per gig (READY/SENT/PAID), balance from paid rows, derived invoiceState; gig invoice status + prepayment removed (PM)
