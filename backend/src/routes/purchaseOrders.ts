@@ -1,17 +1,20 @@
 /**
- * Purchase orders, partner side (docs/api-contract.md "Purchase orders"; UC-034, BR-116…BR-119)
+ * Purchase orders, partner side (docs/api-contract.md "Purchase orders"; UC-034, BR-116…BR-119),
+ * manual POs by partners (api-contract "Purchase orders created by partners", 2026-10-31)
  * and the person's freelancer link (UC-034 A4, BR-113).
  */
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import type { AppDeps } from '../app.js';
 import type { Prisma } from '../generated/prisma/client.js';
-import { AppError, notFound, parseInput } from '../http/errors.js';
+import { AppError, notFound, parseInput, validationError, type FieldCode } from '../http/errors.js';
 import { requiredText, SHORT_TEXT_MAX, yearString } from '../events/schemas.js';
 import { isUuid } from '../events/store.js';
 import {
   cancelPurchaseOrder,
+  createPurchaseOrder,
   helsinkiYearRange,
+  loadPartnerEligibleLines,
   newestFirst,
   payPurchaseOrder,
   purchaseOrderEventInclude,
@@ -21,6 +24,7 @@ import {
   toPurchaseOrderEventDto,
   unpayPurchaseOrder,
 } from '../purchaseOrders/store.js';
+import { parseCostLineIds } from '../purchaseOrders/input.js';
 import { freelancerSharePath, newFreelancerToken } from '../purchaseOrders/token.js';
 
 type IdParams = { Params: { id: string } };
@@ -41,6 +45,8 @@ const eventsQuery = z.object({
 });
 
 const cancelBody = z.object({ reason: requiredText(SHORT_TEXT_MAX) });
+
+const eligibleLinesQuery = z.object({ eventId: z.string().max(SHORT_TEXT_MAX).optional() });
 
 /** Newest first, `seq` (insertion order) breaks ties. */
 const eventOrder = [{ at: 'desc' }, { seq: 'desc' }] as const satisfies Prisma.PurchaseOrderEventOrderByWithRelationInput[];
@@ -72,6 +78,53 @@ export function purchaseOrderRoutes(app: FastifyInstance, deps: AppDeps): void {
     };
     const purchaseOrders = await db.purchaseOrder.findMany({ where, include: purchaseOrderInclude, orderBy: newestFirst });
     return { purchaseOrders: purchaseOrders.map(toPurchaseOrderDto) };
+  });
+
+  /**
+   * Manual PO by a partner: `{ personId, costLineIds }`. Field errors for both are reported together;
+   * any person (also inactive or a partner) may get one. Eligibility, numbering, snapshots, locks
+   * and all-or-nothing are the freelancer path's (store.createPurchaseOrder), minus "played".
+   */
+  app.post('/api/purchase-orders', async (request, reply) => {
+    const me = request.requirePartner();
+    const body: Record<string, unknown> =
+      request.body !== null && typeof request.body === 'object' ? (request.body as Record<string, unknown>) : {};
+    const fields: Record<string, FieldCode> = {};
+    let costLineIds: string[] = [];
+    try {
+      costLineIds = parseCostLineIds(body);
+    } catch (err) {
+      if (!(err instanceof AppError) || !err.fields) throw err;
+      Object.assign(fields, err.fields);
+    }
+    const { personId } = body;
+    let person: { id: string } | null = null;
+    if (personId === undefined || personId === null || personId === '') fields.personId = 'REQUIRED';
+    else if (typeof personId !== 'string') fields.personId = 'INVALID_VALUE';
+    else {
+      person = isUuid(personId) ? await db.person.findUnique({ where: { id: personId }, select: { id: true } }) : null;
+      if (!person) fields.personId = 'UNKNOWN_REFERENCE';
+    }
+    if (Object.keys(fields).length > 0 || !person) throw validationError(fields);
+
+    const po = await createPurchaseOrder(db, {
+      personId: person.id,
+      costLineIds,
+      isCurrent: () => true,
+      eligibility: 'PARTNER',
+      createdBy: me.id,
+    });
+    return reply.status(201).send(toPurchaseOrderDto(po));
+  });
+
+  app.get<IdParams>('/api/people/:id/po-eligible-lines', async (request) => {
+    const { eventId } = parseInput(eligibleLinesQuery, request.query);
+    const { id } = request.params;
+    const person = isUuid(id) ? await db.person.findUnique({ where: { id }, select: { id: true } }) : null;
+    if (!person) throw notFound('Person not found');
+    // Unknown / malformed filter ids give an empty list (contract clarification 2026-10-03).
+    if (eventId !== undefined && !isUuid(eventId)) return [];
+    return loadPartnerEligibleLines(db, person.id, eventId);
   });
 
   app.get('/api/purchase-orders/events', async (request) => {
