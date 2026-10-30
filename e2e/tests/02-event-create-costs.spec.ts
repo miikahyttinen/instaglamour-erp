@@ -117,9 +117,9 @@ test('create an event from a template, staff it, switch load-in, mark paid', asy
   await expect(
     eventsRegion.getByRole('link', { name: `Myytyjen keikkojen summa ${fiMoney(year.events.soldEventsSumCents)}` }),
   ).toBeVisible();
-  // Actual costs are the secondary figure inside the budgeted-costs tile (a link to the list).
+  // Actual costs are the "Toteuma" figure of the single costs tile (a link to the list).
   await expect(
-    yearFigure(eventsRegion.getByRole('link', { name: /^Kulut, budjetti / }), 'Kulut, toteuma'),
+    yearFigure(eventsRegion.getByRole('link', { name: /^Kulut Budjetti / }), 'Toteuma'),
   ).toHaveText(fiMoney(year.events.actualCostsCents));
 });
 

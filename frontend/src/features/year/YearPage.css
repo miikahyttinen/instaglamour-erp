@@ -75,6 +75,15 @@
   row-gap: var(--space-1);
 }
 
+/* Costs tile: "Budjetti" and "Toteuma" figures alike, caption left and figure right; on phones
+   (2 tiles per row) both always stack, caption over figure, so the two read the same. */
+@media (max-width: 599px) {
+  .year-costs .year-labelled-fig {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
 /* Event tiles: 2 per row up to 1199 px (phones too), 4 per row from 1200 px. Each tile is a
    4-row subgrid (label | figure | secondary | chart), so labels, figures, secondary figures
    and charts line up across a row and the tiles in a row are equally tall. */

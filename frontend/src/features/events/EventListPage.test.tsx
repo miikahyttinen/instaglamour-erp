@@ -295,6 +295,10 @@ describe('event list (UC-003)', () => {
     expect(rows()[0]).toHaveTextContent('Template A · Venue X');
     // Every column is a labelled line of the card (economics included).
     expect(within(rows()[0]!).getAllByRole('cell').map((c) => c.getAttribute('data-label'))).toContain('Kate-%');
+    // Kate-%: budget and actual ("tot. x %") are separate lines (block elements, eventList.css).
+    const margin = within(rows()[0]!).getAllByRole('cell').find((c) => c.getAttribute('data-label') === 'Kate-%')!;
+    expect(margin.querySelector('.event-margin-budget')).toHaveTextContent(/^\S+\s%$/);
+    expect(margin.querySelector('.event-margin-actual')).toHaveTextContent(/^tot\. \S+\s%$/);
     await user.click(screen.getByRole('button', { name: 'Suodattimet' }));
     const sheet = screen.getByRole('dialog', { name: 'Suodattimet' });
     for (const column of ['Kokoonpano', 'Paikka', 'Asiakas', 'Tila', 'Miehitys kesken', 'Myyjä', 'Tuottaja']) {

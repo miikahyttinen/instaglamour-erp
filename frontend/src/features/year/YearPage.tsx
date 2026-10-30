@@ -114,6 +114,19 @@ function Secondary({ label, value }: { label: string; value: ReactNode }) {
   );
 }
 
+/**
+ * Caption + figure on one line, caption first (so the tile's accessible name reads
+ * "Budjetti 3 000 €"); in a narrow tile the figure wraps under its caption.
+ */
+function LabelledFigure({ label, value }: { label: string; value: ReactNode }) {
+  return (
+    <span className="stat-tile-secondary year-fig year-labelled-fig">
+      <span className="meta year-fig-label">{label}</span>
+      <span className="stat-tile-secondary-value year-fig-value">{value}</span>
+    </span>
+  );
+}
+
 function SectionHead({ id, title, to }: { id: string; title: string; to: string }) {
   return (
     <SectionLabel id={id} className="year-section-head">
@@ -147,8 +160,11 @@ function EventsSection({ data }: { data: YearPageData }) {
           <Secondary label={t('year.events.cancelledCount')} value={g.cancelledCount} />
         </LinkTile>
         <LinkTile to="/gigs" label={t('year.events.soldEventsSum')} value={formatMoney(g.soldEventsSumCents, lang)} />
-        <LinkTile to="/gigs" label={t('year.events.budgetedCosts')} value={formatMoney(g.budgetedCostsCents, lang)}>
-          <Secondary label={t('year.events.actualCosts')} value={formatMoney(g.actualCostsCents, lang)} />
+        {/* Costs: one tile, budget and actual as equal labelled figures. */}
+        <Link to="/gigs" className="stat-tile year-tile year-costs">
+          <span className="label">{t('year.events.costs')}</span>
+          <LabelledFigure label={budget} value={formatMoney(g.budgetedCostsCents, lang)} />
+          <LabelledFigure label={actual} value={formatMoney(g.actualCostsCents, lang)} />
           <div className="stat-tile-bars">
             <MiniBars
               label={t('year.events.costsChart')}
@@ -156,7 +172,7 @@ function EventsSection({ data }: { data: YearPageData }) {
               compact
             />
           </div>
-        </LinkTile>
+        </Link>
         <LinkTile to="/gigs" label={t('year.events.marginBudget')} value={formatMoney(g.marginBudgetCents, lang)}>
           <Secondary label={t('year.events.marginActual')} value={formatMoney(g.marginActualCents, lang)} />
           <div className="stat-tile-bars">

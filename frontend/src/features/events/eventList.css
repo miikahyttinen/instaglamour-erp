@@ -110,13 +110,11 @@
   color: var(--text-muted);
   font-size: var(--fs-small);
 }
-/* Kate-%: each percentage stays on one line (no-break space before %); on a narrow table the
-   actual one ("tot. 10,0 %") wraps under the budget one (TASK-147). */
-.event-list-page .event-table td.event-col-margin {
-  white-space: normal;
-  overflow-wrap: normal;
-}
-.event-list-page .event-margin-budget {
+/* Kate-%: the actual one ("tot. 10 %") is always on its own line under the budget one, table
+   and phone cards alike; each percentage stays on one line. */
+.event-list-page .event-margin-budget,
+.event-list-page .event-margin-actual {
+  display: block;
   white-space: nowrap;
 }
 

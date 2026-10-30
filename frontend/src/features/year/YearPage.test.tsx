@@ -33,6 +33,17 @@ function tileValue(label: string): string | null {
   return figure(label).querySelector(':scope > .year-fig-value')?.textContent ?? null;
 }
 
+/** The single costs tile ("Kulut"): budget and actual as labelled figures (link to the gig list). */
+function costsTile(): HTMLAnchorElement {
+  return screen.getByRole('link', { name: /^Kulut\s*Budjetti\s*\d.*Toteuma\s*\d/ });
+}
+
+/** Exact value of the figure `label` ("Budjetti" / "Toteuma") inside the costs tile. */
+function costValue(label: string): string | null {
+  const fig = within(costsTile()).getByText(label, { selector: '.year-fig-label' }).closest('.year-fig');
+  return fig?.querySelector(':scope > .year-fig-value')?.textContent ?? null;
+}
+
 const budgetTable = () => screen.getByRole('table', { name: 'Budjetti' });
 const rowText = (name: RegExp) => within(budgetTable()).getByRole('row', { name }).textContent ?? '';
 
@@ -97,8 +108,8 @@ describe('year page', () => {
     expect(tileValue('Keikkoja')).toBe('6');
     expect(tileValue('Peruttuja')).toBe('1');
     expect(tileValue('Myytyjen keikkojen summa')).toBe(fiMoney(500000));
-    expect(tileValue('Kulut, budjetti')).toBe(fiMoney(300000));
-    expect(tileValue('Kulut, toteuma')).toBe(fiMoney(200000));
+    expect(costValue('Budjetti')).toBe(fiMoney(300000));
+    expect(costValue('Toteuma')).toBe(fiMoney(200000));
     expect(tileValue('Kate, budjetti')).toBe(fiMoney(200000));
     expect(tileValue('Kate, toteuma')).toBe(fiMoney(300000));
 
@@ -126,7 +137,8 @@ describe('year page', () => {
     expect(expected.eventCount).toBe(2);
     expect(tileValue('Keikkoja')).toBe('2');
     expect(tileValue('Myytyjen keikkojen summa')).toBe(fiMoney(expected.soldEventsSumCents));
-    expect(tileValue('Kulut, budjetti')).toBe(fiMoney(expected.budgetedCostsCents));
+    expect(costValue('Budjetti')).toBe(fiMoney(expected.budgetedCostsCents));
+    expect(costValue('Toteuma')).toBe(fiMoney(expected.actualCostsCents));
     expect(tileValue('Kate, budjetti')).toBe(fiMoney(expected.marginBudgetCents));
   });
 
@@ -161,9 +173,10 @@ describe('year page', () => {
     renderApp('/');
     await screen.findByText('Myytyjen keikkojen summa');
 
-    for (const label of ['Keikkoja', 'Peruttuja', 'Myytyjen keikkojen summa', 'Kulut, toteuma', 'Kate, budjetti']) {
+    for (const label of ['Keikkoja', 'Peruttuja', 'Myytyjen keikkojen summa', 'Kate, budjetti']) {
       expect(tile(label)).toHaveAttribute('href', '/gigs');
     }
+    expect(costsTile()).toHaveAttribute('href', '/gigs');
     for (const label of ['Partner A', 'Yhteensä']) expect(tile(label)).toHaveAttribute('href', '/hours');
     expect(tile('Vuoden tulos')).toHaveAttribute('href', '/budget');
     for (const link of within(budgetTable()).getAllByRole('link')) {
@@ -223,9 +236,11 @@ describe('year page', () => {
     await screen.findByText('Myytyjen keikkojen summa');
     expect(tileValue('Keikkoja')).toBe('0');
     expect(tileValue('Peruttuja')).toBe('0');
-    for (const label of ['Myytyjen keikkojen summa', 'Kulut, budjetti', 'Kulut, toteuma', 'Kate, budjetti', 'Kate, toteuma', 'Vuoden tulos']) {
+    for (const label of ['Myytyjen keikkojen summa', 'Kate, budjetti', 'Kate, toteuma', 'Vuoden tulos']) {
       expect(tileValue(label)).toBe(fiMoney(0));
     }
+    expect(costValue('Budjetti')).toBe(fiMoney(0));
+    expect(costValue('Toteuma')).toBe(fiMoney(0));
     for (const label of ['Partner A', 'Partner B', 'Partner C', 'Yhteensä']) {
       expect(tileValue(label)).toBe('0 h');
     }
@@ -247,9 +262,11 @@ describe('year page', () => {
     signInMock('partner.b@example.com');
     renderApp('/');
     expect(await screen.findByText('Sold gigs sum')).toBeInTheDocument();
-    for (const text of ['Cancelled', 'Costs, budget', 'Margin, actual', 'Year result', 'Expenses', 'Income']) {
+    for (const text of ['Cancelled', 'Costs', 'Margin, actual', 'Year result', 'Expenses', 'Income']) {
       expect(screen.getByText(text)).toBeInTheDocument();
     }
+    const costs = screen.getByRole('link', { name: /^Costs\s*Budget\s*\S.*Actual\s*\S/ });
+    expect(within(costs).getByText('Budget', { selector: '.year-fig-label' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /^Upcoming gigs/ })).toBeInTheDocument();
   });
 

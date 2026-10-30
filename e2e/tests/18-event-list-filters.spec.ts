@@ -195,3 +195,28 @@ test('old /events URLs redirect to /gigs and keep the query string', async ({ pa
   await expect(page).toHaveURL(/\/gigs\/new$/);
   await expect(page.getByRole('heading', { level: 1, name: 'Uusi keikka' })).toBeVisible();
 });
+
+// Kate-%: the actual percentage ("tot. x %") is always on its own line under the budget one
+// (wide table, narrow table and phone cards); each percentage stays on one line.
+test('Kate-%: the actual percentage is always on a second line', async ({ page }, testInfo) => {
+  const { year } = await setup(page, testInfo);
+  const widths = tagOf(testInfo) === 'M' ? [375] : [900, 1440];
+  for (const w of widths) {
+    await page.setViewportSize({ width: w, height: 800 });
+    await openList(page, year);
+    const cell = eventListRows(page).first().locator('td.event-col-margin');
+    await expect(cell).toBeVisible();
+    const parts = await cell.evaluate((td) => {
+      const lineHeight = parseFloat(getComputedStyle(td).fontSize) * 1.8;
+      return ['.event-margin-budget', '.event-margin-actual'].map((sel) => {
+        const el = td.querySelector<HTMLElement>(sel)!;
+        const r = el.getBoundingClientRect();
+        return { top: r.top, bottom: r.bottom, oneLine: r.height < lineHeight, text: el.textContent ?? '' };
+      });
+    });
+    const [budget, actual] = parts as [(typeof parts)[0], (typeof parts)[0]];
+    expect(actual.text.trim(), `${w} px: actual text`).toMatch(/^tot\. /);
+    expect(actual.top, `${w} px: actual under the budget`).toBeGreaterThanOrEqual(budget.bottom - 1);
+    for (const part of parts) expect(part.oneLine, `${w} px: "${part.text}" on one line`).toBe(true);
+  }
+});

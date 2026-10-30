@@ -456,7 +456,7 @@ function EventTable({ events, partners, lang, tableState }: EventTableProps) {
       numeric: true,
       className: 'event-col-margin',
       sortValue: (g) => g.marginBudgetPct,
-      // Each percentage stays on one line; on a narrow table the actual one goes under the budget.
+      // Each percentage stays on one line; the actual one is always on its own line under the budget.
       cell: (g) => (
         <span>
           <span className="event-margin-budget">{formatPercent(g.marginBudgetPct, lang)}</span>
