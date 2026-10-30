@@ -10,11 +10,11 @@ export const fi = {
     errorTitle: 'Sivua ei voitu ladata',
     errorText: 'Yhteys palvelimeen epäonnistui. Yritä uudelleen.',
     eyebrow: 'Palkkiot ja ostotilaukset',
-    intro: 'Valitse soitettujen tapahtumien maksamattomat palkkiot ja luo ostotilausnumero. Kirjoita numero laskullesi.',
+    intro: 'Valitse soitettujen keikkojen maksamattomat palkkiot ja luo ostotilausnumero. Kirjoita numero laskullesi.',
     fees: {
       title: 'Palkkiot',
       empty: 'Ei palkkioita.',
-      noneSelectable: 'Ei maksamattomia palkkioita soitetuista tapahtumista.',
+      noneSelectable: 'Ei maksamattomia palkkioita soitetuista keikoista.',
     },
     columns: {
       select: 'Valitse',
@@ -28,7 +28,7 @@ export const fi = {
     selectLine: 'Valitse: {{date}}, {{venue}}, {{role}}',
     state: {
       SELECTABLE: 'Maksamatta',
-      UPCOMING: 'Tapahtuma on vielä tulossa',
+      UPCOMING: 'Keikka on vielä tulossa',
       ON_PO: 'Ostotilaus {{number}}',
       PAID: 'Maksettu',
     },
@@ -83,11 +83,11 @@ export const en: typeof fi = {
     errorTitle: 'The page could not be loaded',
     errorText: 'Could not reach the server. Please try again.',
     eyebrow: 'Fees and purchase orders',
-    intro: 'Select unpaid fees of played events and create a purchase order number. Put the number on your invoice.',
+    intro: 'Select unpaid fees of played gigs and create a purchase order number. Put the number on your invoice.',
     fees: {
       title: 'Fees',
       empty: 'No fees.',
-      noneSelectable: 'No unpaid fees from played events.',
+      noneSelectable: 'No unpaid fees from played gigs.',
     },
     columns: {
       select: 'Select',
