@@ -129,7 +129,9 @@ test('add, rename and deactivate a person; person page lists their lines', async
   await expect(link(name)).toHaveCount(0);
   await page.getByRole('button', { name: 'Ei käytössä', exact: true }).click();
   await expect(link(renamed)).toBeVisible();
-  await expect(list.getByRole('row').filter({ has: link(renamed) })).toContainText('Ei käytössä');
+  // `has` is resolved inside the row, so the inner locator must not start from the table.
+  const renamedRow = list.getByRole('row').filter({ has: page.getByRole('link', { name: renamed, exact: true }) });
+  await expect(renamedRow).toContainText('Ei käytössä');
   await expectReadOnlyList(list);
   const saved = ((await api(page).get('/people?active=all')) as ApiPerson[]).find((p) => p.id === person?.id);
   expect(saved).toMatchObject({ name: renamed, active: false });
