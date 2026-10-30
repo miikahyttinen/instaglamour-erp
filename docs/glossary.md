@@ -7,7 +7,7 @@ Code, API and specs use the English term; the UI shows the user's language.
 | English (code) | Finnish (UI) | Meaning |
 |---|---|---|
 | Gig | Keikka | A sold performance |
-| Sold | Myyty | Gig status; shown as "played" once the date has passed |
+| Upcoming / Played / Cancelled | Tuleva / Soitettu / Peruttu | Gig status shown in the UI (blue / green / red); API: SOLD (+ played) / CANCELLED. "Ready to be invoiced" (Valmis laskutukseen) is a separate manual flag |
 | Played | Soitettu | Display only: a Sold gig with a past date |
 | Cancelled | Peruttu | Gig status |
 | Uncancel | Palauta | Cancelled → Sold, with reason |
