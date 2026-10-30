@@ -224,10 +224,10 @@ test('Kate-%: the actual percentage is always on a second line', async ({ page }
 // Gig statuses (owner decision 2026-10-31): Tuleva = blue (info), Soitettu = green (ok), Peruttu =
 // red (danger). Invoice rows (TASK-173): the "Laskutus" card under the price card lists invoice
 // rows (inline description / amount / status, who / when, remove with confirm; row status
-// "Valmis laskutukseen" blue, "Lähetetty" amber, "Maksettu" dark green), an add form, and
+// "Valmis laskutukseen" blue, "Lähetetty" light green, "Maksettu" full green box), an add form, and
 // Laskutettu / Avoimet / Maksettu / Saldo (= total − paid; warning when negative). Invoicing state
 // (api-contract "Invoicing: one label"): ONE tag = the next action, first match wins — Maksettu
-// (dark green) · Laskutettavia rivejä (blue) · Avoimia laskuja (amber) · Laskuttamatta (yellow, played
+// (full green box) · Laskutettavia rivejä (blue) · Avoimia laskuja (amber) · Laskuttamatta (yellow, played
 // gigs only; upcoming and cancelled gigs fall to "–") · "–"; on the gig card and in the list
 // "Laskutus" cell (one line), with one filter (f.invoiceState).
 test('gig statuses and "Laskutus": invoice rows, one invoicing state tag on the gig page and in the list, one filter', async ({ page }, testInfo) => {
@@ -273,9 +273,9 @@ test('gig statuses and "Laskutus": invoice rows, one invoicing state tag on the 
   await expect(readyTag).toHaveClass(/tag-info/);
   await page.goto(`/gigs/${gig.id}`);
 
-  // Sent (amber row) → "Avoimia laskuja" (amber); Avoimet = the row.
+  // Sent (light green row) → "Avoimia laskuja" (amber); Avoimet = the row.
   await status.selectOption({ label: 'Lähetetty' });
-  await expect(row.locator('.invoice-row-status')).toHaveClass(/tone-warn/);
+  await expect(row.locator('.invoice-row-status')).toHaveClass(/tone-ok(\s|$)/);
   await expect(stateTag).toHaveText('Avoimia laskuja');
   await expect(stateTag).toHaveClass(/tag-warn/);
   await expect(card.locator('dt', { hasText: 'Avoimet' }).locator('xpath=following-sibling::dd')).not.toHaveText(/^0,00/);
