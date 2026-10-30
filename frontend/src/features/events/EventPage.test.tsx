@@ -223,7 +223,7 @@ describe('event page (UC-004, UC-007)', () => {
       expect(stateGroup().querySelectorAll('.tag')).toHaveLength(1);
       expect(state().getByText(label)).toHaveClass('tag', toneClass);
     };
-    expectState('Laskuttamatta', 'tag-danger');
+    expectState('Laskuttamatta', 'tag-muted');
 
     // Add: required fields checked client-side; status defaults to "Valmis laskutukseen".
     await user.click(card.getByRole('button', { name: '+ Lisää laskurivi' }));
@@ -256,7 +256,7 @@ describe('event page (UC-004, UC-007)', () => {
     await user.selectOptions(status, 'Maksettu');
     await waitFor(() => expect(total('Maksettu')).toHaveTextContent(/400,00\s€/));
     expect(total('Avoimet')).toHaveTextContent(/0,00\s€/);
-    expectState('Laskuttamatta', 'tag-danger');
+    expectState('Laskuttamatta', 'tag-muted');
     expect(total('Laskutettu')).toHaveTextContent(/400,00\s€/);
     expect(card.getByRole('group', { name: 'Saldo' })).toHaveTextContent(/600,00\s€/);
     expect(status.closest('.inline-field')).toHaveClass('tone-ok-strong');

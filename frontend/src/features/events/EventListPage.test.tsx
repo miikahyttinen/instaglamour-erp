@@ -309,10 +309,10 @@ describe('event list (UC-003)', () => {
       return t ? `${[...t.classList].find((k) => k.startsWith('tag-'))} ${t.textContent}` : c.textContent;
     };
     expect(tag('Venue Zero')).toBe('–');
-    expect(tag('Venue New')).toBe('tag-danger Laskuttamatta');
+    expect(tag('Venue New')).toBe('tag-muted Laskuttamatta');
     expect(tag('Venue Draft')).toBe('tag-info Laskutettavia rivejä');
     expect(tag('Venue Open')).toBe('tag-warn Avoimia laskuja');
-    expect(tag('Venue Partly')).toBe('tag-danger Laskuttamatta');
+    expect(tag('Venue Partly')).toBe('tag-muted Laskuttamatta');
     expect(tag('Venue Paid')).toBe('tag-ok-strong Maksettu');
     // Saldo = total − paid rows; negative in warn colour.
     expect(cell('Venue New', 'Saldo')).toHaveTextContent(/1\s000,00\s€/);
