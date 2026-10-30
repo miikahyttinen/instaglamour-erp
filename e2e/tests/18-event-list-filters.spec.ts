@@ -227,7 +227,7 @@ test('Kate-%: the actual percentage is always on a second line', async ({ page }
 // "Valmis laskutukseen" blue, "Lähetetty" amber, "Maksettu" dark green), an add form, and
 // Laskutettu / Avoimet / Maksettu / Saldo (= total − paid; warning when negative). Invoicing state
 // (api-contract "Invoicing: one label"): ONE tag = the next action, first match wins — Maksettu
-// (dark green) · Laskutettavia rivejä (blue) · Avoimia laskuja (amber) · Laskuttamatta (red) · "–";
+// (dark green) · Laskutettavia rivejä (blue) · Avoimia laskuja (amber) · Laskuttamatta (gray) · "–";
 // on the gig card and in the list "Laskutus" cell (one line), with one filter (f.invoiceState).
 test('gig statuses and "Laskutus": invoice rows, one invoicing state tag on the gig page and in the list, one filter', async ({ page }, testInfo) => {
   const { year, north } = await setup(page, testInfo);
@@ -245,7 +245,7 @@ test('gig statuses and "Laskutus": invoice rows, one invoicing state tag on the 
   const stateTag = card.getByRole('group', { name: 'Laskutuksen tila' }).locator('.tag');
   await expect(stateTag).toHaveCount(1);
   await expect(stateTag).toHaveText('Laskuttamatta');
-  await expect(stateTag).toHaveClass(/tag-danger/);
+  await expect(stateTag).toHaveClass(/tag-muted/);
   expect((await apiGig()).invoiceState).toBe('NEEDS_INVOICES');
 
   // Add a row: status defaults to "Valmis laskutukseen" (blue), who / when shown → "Laskutettavia rivejä".
@@ -324,12 +324,12 @@ test('gig statuses and "Laskutus": invoice rows, one invoicing state tag on the 
   await openList(page, year, '?f.status=CANCELLED');
   await expect(eventListRows(page).first().getByText('Peruttu', { exact: true })).toHaveClass(/tag-danger/);
 
-  // Part paid, nothing open → still "Laskuttamatta" (red).
+  // Part paid, nothing open → still "Laskuttamatta" (gray).
   const half = Math.floor(total / 2);
   await api(page).post(`/events/${gig.id}/invoice-rows`, { description: 'Invoice 2', amountCents: half, status: 'PAID' });
   await page.goto(`/gigs/${gig.id}`);
   await expect(stateTag).toHaveText('Laskuttamatta');
-  await expect(stateTag).toHaveClass(/tag-danger/);
+  await expect(stateTag).toHaveClass(/tag-muted/);
   expect((await apiGig()).invoiceState).toBe('NEEDS_INVOICES');
 
   // Fully paid = solid dark green "Maksettu"; the columns fit without sideways scroll
