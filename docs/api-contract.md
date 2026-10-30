@@ -481,6 +481,7 @@ No compatibility aliases for old API paths (no external clients). The UI renames
 ## Role cleanup: Horn 1/2 and Technician removed (owner decision 2026-10-30)
 - Musician roles **`HORN_1`, `HORN_2` and `TECHNICIAN` are removed** from `CostType` / `MUSICIAN_ROLES` and from `/api/reference.costTypes`. `MIX` is labelled FI **"Miksaus"**, EN **"Mixing"** (covers mixing and technician work).
 - Migration converts existing data (cost lines, person `roles`, lineup template roles): `HORN_1` → `TRUMPET`; `TECHNICIAN` → `MIX`; `HORN_2` → `SAX` if the line's person has `SAX` but not `TROMBONE` in roles, `TROMBONE` if the person has `TROMBONE` but not `SAX`, otherwise `TROMBONE`. Person roles are de-duplicated and kept in `MUSICIAN_ROLES` order. Stored history details keep their old codes; the UI still labels them ("Horn 1", "Horn 2", "Teknikko") in history only.
+- Purchase order lines (snapshots) are converted with the same rule (person = the PO's freelancer).
 - Seed/import accept the old codes and convert them the same way (HORN_2 by the person's roles in the file, else `TROMBONE`).
 - API requests with the removed codes → 400 `INVALID_VALUE`.
 
