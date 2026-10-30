@@ -6,7 +6,7 @@ const row = (status: InvoicingRow['status'], amountCents: number): InvoicingRow 
 
 describe('invoicing()', () => {
   it('no rows: nothing invoiced/paid/open, balance = total', () => {
-    expect(invoicing(100000, [])).toEqual({
+    expect(invoicing(100000, [], true)).toEqual({
       balanceCents: 100000,
       invoicedCents: 0,
       paidCents: 0,
@@ -18,7 +18,7 @@ describe('invoicing()', () => {
 
   it('sums: invoiced = SENT + PAID, paid = PAID, open = SENT, ready = READY, balance = total − paid', () => {
     const rows = [row('READY', 10000), row('READY', 2500), row('SENT', 20000), row('SENT', 5000), row('PAID', 30000), row('PAID', 1000)];
-    expect(invoicing(100000, rows)).toMatchObject({
+    expect(invoicing(100000, rows, true)).toMatchObject({
       invoicedCents: 56000,
       paidCents: 31000,
       openCents: 25000,
@@ -27,7 +27,7 @@ describe('invoicing()', () => {
     });
   });
 
-  // [name, total, rows, invoiceState] — precedence: PAID > ROWS_TO_INVOICE > OPEN_INVOICES > NEEDS_INVOICES > NONE
+  // [name, total, rows, invoiceState] — played event (SOLD, start date passed). Precedence: PAID > ROWS_TO_INVOICE > OPEN_INVOICES > NEEDS_INVOICES > NONE
   it.each([
     // total 0
     ['total 0, no rows', 0, [], 'NONE'],
@@ -60,11 +60,34 @@ describe('invoicing()', () => {
     ['overpaid with READY rows', 100000, [row('PAID', 120000), row('READY', 5000), row('READY', 1000)], 'PAID'],
     ['PAID whole, SENT still open', 100000, [row('PAID', 100000), row('SENT', 1000)], 'PAID'],
   ] as const)('%s → %s', (_name, total, rows, state) => {
-    expect(invoicing(total, rows).invoiceState).toBe(state);
+    expect(invoicing(total, rows, true).invoiceState).toBe(state);
+  });
+
+  // Not played (upcoming SOLD or CANCELLED): NEEDS_INVOICES never applies, it falls to NONE; rules 1–3 unchanged.
+  // [name, total, rows, invoiceState]
+  it.each([
+    ['no rows', 100000, [], 'NONE'],
+    ['PAID part', 100000, [row('PAID', 30000)], 'NONE'],
+    ['PAID total − 1', 100000, [row('PAID', 99999)], 'NONE'],
+    ['total 0, no rows', 0, [], 'NONE'],
+    ['READY-only', 100000, [row('READY', 50000)], 'ROWS_TO_INVOICE'],
+    ['SENT part', 100000, [row('SENT', 40000)], 'OPEN_INVOICES'],
+    ['SENT + PAID part', 100000, [row('PAID', 30000), row('SENT', 30000)], 'OPEN_INVOICES'],
+    ['PAID whole', 100000, [row('PAID', 100000)], 'PAID'],
+    ['overpaid with READY rows', 100000, [row('PAID', 120000), row('READY', 1000)], 'PAID'],
+  ] as const)('not played: %s → %s', (_name, total, rows, state) => {
+    expect(invoicing(total, rows, false).invoiceState).toBe(state);
+  });
+
+  it('the played flag does not change the sums', () => {
+    const rows = [row('READY', 1000), row('SENT', 2000), row('PAID', 3000)];
+    const { invoiceState: _a, ...played } = invoicing(100000, rows, true);
+    const { invoiceState: _b, ...notPlayed } = invoicing(100000, rows, false);
+    expect(notPlayed).toEqual(played);
   });
 
   it('overpaid: balance is negative', () => {
-    expect(invoicing(100000, [row('PAID', 120000)])).toMatchObject({ balanceCents: -20000, paidCents: 120000, openCents: 0 });
+    expect(invoicing(100000, [row('PAID', 120000)], true)).toMatchObject({ balanceCents: -20000, paidCents: 120000, openCents: 0 });
   });
 });
 
