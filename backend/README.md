@@ -174,20 +174,22 @@ Replace the TASK-045 event invoice status and prepayment (and, before that, the 
   `InvoiceRowStatus` READY | SENT | PAID, `status_at`/`status_by` = last status change, `created_at`/`created_by`).
   `created_by`/`status_by` are null for rows made by the migration or the seed/import.
 - `EventDetail.invoiceRows` (creation order). EventSummary/EventDetail derive (`src/domain/invoicing.ts`,
-  api-contract "Invoicing state: coverage + payment"; `invoiceState` was removed):
+  api-contract "Invoicing: one label"; `invoiceCoverage` / `paymentState` were removed):
   `balanceCents = totalPriceCents − Σ PAID`, `invoicedCents = Σ SENT + PAID`, `paidCents = Σ PAID`,
-  `openCents = Σ SENT`, `readyCents = Σ READY` (READY rows are drafts, not invoiced) and two states:
-  - `invoiceCoverage`: NONE (total 0 and no SENT/PAID rows — READY drafts don't count) · NEEDS_INVOICES
-    (invoiced < total) · FULLY_INVOICED (invoiced ≥ total).
-  - `paymentState`: NONE (no SENT/PAID rows) · OPEN_INVOICES (open > 0) · PARTLY_PAID (open 0, 0 < paid < total)
-    · FULLY_PAID (open 0, paid ≥ total, incl. overpaid and PAID rows on a total of 0).
+  `openCents = Σ SENT`, `readyCents = Σ READY` (READY rows are drafts, not invoiced) and one state
+  `invoiceState` = the next invoicing action, first match wins:
+  1. PAID — paid > 0 and paid ≥ total (incl. overpaid with READY/SENT rows left)
+  2. ROWS_TO_INVOICE — readyCents > 0
+  3. OPEN_INVOICES — openCents > 0
+  4. NEEDS_INVOICES — invoiced < total
+  5. NONE — otherwise (total 0 and no rows)
   Same formulas for cancelled events.
 - `POST /api/events/{id}/invoice-rows`, `PATCH /api/invoice-rows/{id}`, `DELETE /api/invoice-rows/{id}` →
   200 EventDetail; history `INVOICE_ROW_ADDED` / `INVOICE_ROW_UPDATED` / `INVOICE_ROW_REMOVED` with details
   `{ invoiceRowId, description, amountCents, status }` (UPDATED: `{ invoiceRowId, description, changes }`).
   SOLD and CANCELLED events; deleted → 409 `EVENT_DELETED`. Same-value PATCH = no-op (no history).
-- `GET /api/events?invoiceCoverage=NEEDS_INVOICES&paymentState=OPEN_INVOICES&paymentState=PARTLY_PAID`: both repeatable
-  (any of the values), both given → AND; unknown value → 400 `INVALID_VALUE`. The old `?invoiceState=` is ignored.
+- `GET /api/events?invoiceState=OPEN_INVOICES&invoiceState=NEEDS_INVOICES`: repeatable (any of the values);
+  unknown value → 400 `INVALID_VALUE`. The old `?invoiceCoverage=` / `?paymentState=` are ignored.
 - Removed: `invoiceStatus*`, `prepaymentCents`, `?invoiceStatus=` (PATCH ignores the old keys like any unknown key).
 - Migration `20261031140000_invoice_rows` converts first, then drops the old columns and the `InvoiceStatus`
   enum: prepayment > 0 → PAID "Ennakkomaksu"; READY / INVOICED / PAID → READY / SENT / PAID "Lasku" for
