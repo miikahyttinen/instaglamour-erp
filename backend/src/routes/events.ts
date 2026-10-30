@@ -28,7 +28,7 @@ import {
   logHistory,
   requireEventDetail,
 } from '../events/store.js';
-import { INVOICE_COVERAGES, PAYMENT_STATES } from '../domain/enums.js';
+import { INVOICE_STATES } from '../domain/enums.js';
 import { invoicing } from '../domain/invoicing.js';
 import { findActiveClient } from '../clients/store.js';
 import { assertCostLineNotOnPurchaseOrder, assertEventHasNoOpenPurchaseOrder } from '../purchaseOrders/lock.js';
@@ -53,10 +53,8 @@ const listQuery = z.object({
   notFullyStaffed: z.enum(['true', 'false'], { message: 'INVALID_VALUE' }).optional(),
   q: z.string().max(500).optional(),
   deleted: z.enum(['true', 'false'], { message: 'INVALID_VALUE' }).optional(),
-  // Repeatable (`?paymentState=OPEN_INVOICES&paymentState=PARTLY_PAID`): any of the given derived
-  // values; both filters given → both must match.
-  invoiceCoverage: repeatableEnum(INVOICE_COVERAGES),
-  paymentState: repeatableEnum(PAYMENT_STATES),
+  // Repeatable (`?invoiceState=OPEN_INVOICES&invoiceState=NEEDS_INVOICES`): any of the given derived values.
+  invoiceState: repeatableEnum(INVOICE_STATES),
 });
 
 const eventUpdateBody = z.object({
@@ -133,10 +131,9 @@ export function eventRoutes(app: FastifyInstance, deps: AppDeps): void {
       if (query.sellerId && g.sellerId !== query.sellerId) return false;
       if (query.producerId && g.producerId !== query.producerId) return false;
       if (query.notFullyStaffed === 'true' && !isNotFullyStaffed(g.costLines)) return false;
-      if (query.invoiceCoverage || query.paymentState) {
+      if (query.invoiceState) {
         const inv = invoicing(eventEconomics(g).totalPriceCents, g.invoiceRows);
-        if (query.invoiceCoverage && !query.invoiceCoverage.includes(inv.invoiceCoverage)) return false;
-        if (query.paymentState && !query.paymentState.includes(inv.paymentState)) return false;
+        if (!query.invoiceState.includes(inv.invoiceState)) return false;
       }
       if (q && ![g.venue, g.lineupName, g.notes ?? '', g.client?.name ?? ''].some((s) => s.toLowerCase().includes(q)))
         return false;
