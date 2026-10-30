@@ -771,9 +771,15 @@
 .event-page .invoice-table td.invoice-row-amount .inline-field {
   min-width: calc(var(--label-w) - var(--space-6));
 }
-.event-page .invoice-table td.invoice-row-changed {
+/* Status select with the last change (who / when) under it. */
+.event-page .invoice-table .invoice-row-status-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+}
+.event-page .invoice-table .invoice-row-changed {
   color: var(--text-muted);
-  white-space: nowrap;
 }
 .event-page .invoice-table td.invoice-row-actions {
   width: 1%;
@@ -782,6 +788,8 @@
 /* Status select drawn as its colour tag (design.md: Valmis laskutukseen light green, Lähetetty
    amber, Maksettu solid dark green); hover / focus keep the usual inline outline. */
 .event-page .invoice-row-status select.inline-input {
+  width: auto;
+  min-width: max-content;
   min-height: 0;
   font-family: var(--font-mono);
   font-size: var(--fs-meta);
@@ -860,10 +868,8 @@
 @media (max-width: 599px) {
   .event-page .invoice-table td.invoice-row-description > .inline-field,
   .event-page .invoice-table td.invoice-row-amount > .inline-field,
-  .event-page .invoice-table td.invoice-row-status-cell > .inline-field {
-    flex: 1 1 auto;
-    min-width: 0;
-    max-width: 70%;
+  .event-page .invoice-table .invoice-row-status-wrap {
+    align-items: flex-end;
   }
   .event-page .invoice-table td.invoice-row-amount,
   .event-page .invoice-table td.invoice-row-status-cell {

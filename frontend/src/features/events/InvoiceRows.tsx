@@ -59,7 +59,6 @@ export function EventInvoicing({ event, readOnly }: Props) {
                   {t('event.invoicing.amount')}
                 </th>
                 <th scope="col">{t('event.invoicing.status')}</th>
-                <th scope="col">{t('event.invoicing.changed')}</th>
                 {!readOnly && (
                   <th scope="col">
                     <span className="visually-hidden">{t('event.actions.label')}</span>
@@ -175,28 +174,31 @@ function InvoiceRowItem({
         )}
       </td>
       <td className="invoice-row-status-cell" data-label={t('event.invoicing.status')}>
-        {readOnly ? (
-          <StatusTag tone={INVOICE_ROW_STATUS_TONE[row.status]}>{statusLabel}</StatusTag>
-        ) : (
-          <InlineSelect<InvoiceRowStatus>
-            label={`${t('event.invoicing.status')}: ${name}`}
-            hideLabel
-            className={`invoice-row-status tone-${INVOICE_ROW_STATUS_TONE[row.status]}`}
-            value={row.status}
-            field="status"
-            options={statusOptions}
-            onSave={(status) => update({ status })}
-          />
-        )}
-      </td>
-      <td className="meta small invoice-row-changed" data-label={t('event.invoicing.changed')}>
-        {row.statusAt
-          ? t('event.invoicing.by', {
-              name: statusBy?.name ?? '–',
-              date: formatDate(row.statusAt, lang),
-              time: formatTime(row.statusAt, lang),
-            })
-          : '–'}
+        <div className="invoice-row-status-wrap">
+          {readOnly ? (
+            <StatusTag tone={INVOICE_ROW_STATUS_TONE[row.status]}>{statusLabel}</StatusTag>
+          ) : (
+            <InlineSelect<InvoiceRowStatus>
+              label={`${t('event.invoicing.status')}: ${name}`}
+              hideLabel
+              className={`invoice-row-status tone-${INVOICE_ROW_STATUS_TONE[row.status]}`}
+              value={row.status}
+              field="status"
+              options={statusOptions}
+              onSave={(status) => update({ status })}
+            />
+          )}
+          {/* Last status change (who / when); migrated or imported rows have none. */}
+          {row.statusAt && (
+            <span className="meta small invoice-row-changed" title={t('event.invoicing.changed')}>
+              {t('event.invoicing.by', {
+                name: statusBy?.name ?? '–',
+                date: formatDate(row.statusAt, lang),
+                time: formatTime(row.statusAt, lang),
+              })}
+            </span>
+          )}
+        </div>
       </td>
       {!readOnly && (
         <td className="invoice-row-actions">
