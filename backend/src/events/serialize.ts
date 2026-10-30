@@ -89,6 +89,7 @@ export type EventWithDetail = Omit<EventWithLines, 'costLines'> & {
 
 export function toEventSummaryDto(event: EventWithLines, today: string) {
   const startDate = isoFromDate(event.startDate);
+  const economics = eventEconomics(event);
   return {
     id: event.id,
     startDate,
@@ -111,10 +112,14 @@ export function toEventSummaryDto(event: EventWithLines, today: string) {
     clientId: event.clientId,
     clientName: event.client?.name ?? null,
     offerId: event.offerId,
-    ...eventEconomics(event),
+    ...economics,
     notFullyStaffed: isNotFullyStaffed(event.costLines),
-    readyForInvoiceAt: event.readyForInvoiceAt?.toISOString() ?? null,
-    readyForInvoiceBy: event.readyForInvoiceById,
+    invoiceStatus: event.invoiceStatus,
+    invoiceStatusAt: event.invoiceStatusAt?.toISOString() ?? null,
+    invoiceStatusBy: event.invoiceStatusById,
+    prepaymentCents: event.prepaymentCents,
+    // May be negative when the prepayment exceeds the total price (the UI warns).
+    balanceCents: economics.totalPriceCents - event.prepaymentCents,
     deletedAt: event.deletedAt?.toISOString() ?? null,
     createdAt: event.createdAt.toISOString(),
     updatedAt: event.updatedAt.toISOString(),

@@ -11,6 +11,7 @@ import {
   isoDate,
   logistics,
   LONG_TEXT_MAX,
+  MAX_CENTS,
   money,
   optionalText,
   reasonBody,
@@ -28,6 +29,7 @@ import {
   logHistory,
   requireEventDetail,
 } from '../events/store.js';
+import { INVOICE_STATUSES } from '../domain/enums.js';
 import { findActiveClient } from '../clients/store.js';
 import { assertCostLineNotOnPurchaseOrder, assertEventHasNoOpenPurchaseOrder } from '../purchaseOrders/lock.js';
 import { insertEvent, prepareEventCreate } from '../events/create.js';
@@ -44,7 +46,20 @@ const listQuery = z.object({
   notFullyStaffed: z.enum(['true', 'false'], { message: 'INVALID_VALUE' }).optional(),
   q: z.string().max(500).optional(),
   deleted: z.enum(['true', 'false'], { message: 'INVALID_VALUE' }).optional(),
+  // Repeatable (`?invoiceStatus=READY&invoiceStatus=INVOICED`): any of the given values.
+  invoiceStatus: z
+    .union([z.enum(INVOICE_STATUSES), z.array(z.enum(INVOICE_STATUSES))], { message: 'INVALID_VALUE' })
+    .transform((v) => (Array.isArray(v) ? v : [v]))
+    .optional(),
 });
+
+const invoiceStatus = z.enum(INVOICE_STATUSES, { message: 'INVALID_VALUE' });
+/** Prepayment: integer cents ≥ 0; anything else (negative, fraction, null, text) → INVALID_VALUE. */
+const prepaymentCents = z
+  .number({ message: 'INVALID_VALUE' })
+  .int({ message: 'INVALID_VALUE' })
+  .min(0, { message: 'INVALID_VALUE' })
+  .max(MAX_CENTS, { message: 'INVALID_VALUE' });
 
 const eventUpdateBody = z.object({
   lineupName: requiredText().optional(),
@@ -59,6 +74,8 @@ const eventUpdateBody = z.object({
   additionalSalesDescription: optionalText(),
   notes: optionalText(LONG_TEXT_MAX),
   clientId: z.string().nullable().optional(),
+  invoiceStatus: invoiceStatus.optional(),
+  prepaymentCents: prepaymentCents.optional(),
 });
 
 /** Fields of EventUpdate in the order they are logged. */
@@ -75,6 +92,8 @@ const UPDATE_FIELDS = [
   'additionalSalesDescription',
   'notes',
   'clientId',
+  'invoiceStatus',
+  'prepaymentCents',
 ] as const;
 
 const moveBody = z.object({
@@ -120,6 +139,7 @@ export function eventRoutes(app: FastifyInstance, deps: AppDeps): void {
       if (query.sellerId && g.sellerId !== query.sellerId) return false;
       if (query.producerId && g.producerId !== query.producerId) return false;
       if (query.notFullyStaffed === 'true' && !isNotFullyStaffed(g.costLines)) return false;
+      if (query.invoiceStatus && !query.invoiceStatus.includes(g.invoiceStatus)) return false;
       if (q && ![g.venue, g.lineupName, g.notes ?? '', g.client?.name ?? ''].some((s) => s.toLowerCase().includes(q)))
         return false;
       return true;
@@ -184,6 +204,11 @@ export function eventRoutes(app: FastifyInstance, deps: AppDeps): void {
       if (sameValue(current, next)) continue;
       changes.push({ field, from: current, to: next });
       data[field] = next;
+    }
+    // The status's at/by record its last change (also a change back to NONE).
+    if ('invoiceStatus' in data) {
+      data.invoiceStatusAt = new Date();
+      data.invoiceStatusById = me.id;
     }
 
     // BR-027: the old seller's (producer's) unpaid SALES (PRODUCTION) lines move to the new one.
@@ -290,39 +315,6 @@ export function eventRoutes(app: FastifyInstance, deps: AppDeps): void {
 
   statusChange('/api/events/:id/cancel', 'SOLD', 'CANCELLED');
   statusChange('/api/events/:id/uncancel', 'CANCELLED', 'SOLD');
-
-  // ---------------------------------------------------------------- ready to be invoiced (2026-10-31)
-  // Set by hand; allowed for upcoming and played SOLD events. Already set / not set → 200 no-op.
-  app.post<IdParams>('/api/events/:id/ready-for-invoice', async (request) => {
-    const me = request.requirePartner();
-    const event = await requireEventDetail(db, request.params.id);
-    assertNotDeleted(event);
-    if (event.status !== 'SOLD') {
-      throw new AppError('INVALID_STATUS_TRANSITION', `Event is ${event.status}, expected SOLD`);
-    }
-    if (event.readyForInvoiceAt) return detail(event.id);
-    await inTransaction(db, async (tx) => {
-      await tx.event.update({
-        where: { id: event.id },
-        data: { readyForInvoiceAt: new Date(), readyForInvoiceById: me.id },
-      });
-      await logHistory(tx, { eventId: event.id, type: 'READY_FOR_INVOICE', partnerId: me.id });
-    });
-    return detail(event.id);
-  });
-
-  // Clearing is allowed whatever the status (a cancelled event keeps its values until cleared).
-  app.delete<IdParams>('/api/events/:id/ready-for-invoice', async (request) => {
-    const me = request.requirePartner();
-    const event = await requireEventDetail(db, request.params.id);
-    assertNotDeleted(event);
-    if (!event.readyForInvoiceAt) return detail(event.id);
-    await inTransaction(db, async (tx) => {
-      await tx.event.update({ where: { id: event.id }, data: { readyForInvoiceAt: null, readyForInvoiceById: null } });
-      await logHistory(tx, { eventId: event.id, type: 'READY_FOR_INVOICE_CLEARED', partnerId: me.id });
-    });
-    return detail(event.id);
-  });
 
   // ---------------------------------------------------------------- delete / restore (soft, BR-018)
   app.post<IdParams>('/api/events/:id/delete', async (request, reply) => {
