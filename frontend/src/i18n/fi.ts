@@ -142,7 +142,7 @@ const fi = {
     TROMBONE: 'Pasuuna',
     VIOLIN: 'Viulu',
     DJ: 'DJ',
-    OTHER_ROLE: 'Muu rooli',
+    OTHER_ROLE: 'Oma rooli',
     OFFICE: 'Toimisto',
     SALES: 'Myynti',
     PRODUCTION: 'Tuotanto',
