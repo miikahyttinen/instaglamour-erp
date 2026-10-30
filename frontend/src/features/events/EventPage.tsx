@@ -183,7 +183,7 @@ function BackLink() {
   const { t } = useTranslation();
   return (
     <p className="event-back">
-      <Link to="/events">
+      <Link to="/gigs">
         <ChevronLeft />
         {t('event.back')}
       </Link>
@@ -243,7 +243,7 @@ function WarningList({
                 person: personName(people, w.personId) ?? '–',
                 date: formatDate(w.otherEventStartDate, lang),
               })}{' '}
-              <Link to={`/events/${w.otherEventId}`}>{w.otherEventLineupName}</Link>
+              <Link to={`/gigs/${w.otherEventId}`}>{w.otherEventLineupName}</Link>
             </li>
           ) : (
             <li key={i}>{t(`warnings.${w.code}`)}</li>

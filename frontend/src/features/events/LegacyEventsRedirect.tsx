@@ -1,13 +1,13 @@
 import { Navigate, useLocation, useParams } from 'react-router-dom';
 
 /**
- * Old `/gigs…` URLs (bookmarks, links in e-mails) from before the Gig → Event rename
- * (SaaS phase 1): `/gigs`, `/gigs/new`, `/gigs/:id` go to the same `/events…` page. The query
- * string and hash are kept, and the old URL is replaced in the history.
+ * Old `/events…` URLs (bookmarks, links in e-mails) from before the UI went back to "Gigs":
+ * `/events`, `/events/new`, `/events/:id` go to the same `/gigs…` page. The query string and
+ * hash are kept, and the old URL is replaced in the history. (API and code still say `event`.)
  */
-export function LegacyGigsRedirect() {
+export function LegacyEventsRedirect() {
   const { '*': rest = '' } = useParams();
   const { search, hash } = useLocation();
-  const pathname = rest ? `/events/${rest}` : '/events';
+  const pathname = rest ? `/gigs/${rest}` : '/gigs';
   return <Navigate to={{ pathname, search, hash }} replace />;
 }

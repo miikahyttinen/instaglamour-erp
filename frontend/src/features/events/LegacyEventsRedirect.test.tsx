@@ -21,27 +21,27 @@ function renderAt(path: string) {
   return () => screen.getByTestId('url').textContent;
 }
 
-describe('old /gigs URLs (Gig → Event rename)', () => {
+describe('old /events URLs (UI back to "Gigs")', () => {
   beforeEach(() => {
     signInMock().selectedYear = TEST_YEAR;
   });
 
-  it('redirects /gigs to the event list and keeps the query string', async () => {
-    const url = renderAt('/gigs?q=Venue&status=ALL');
-    await screen.findByRole('heading', { name: `Tapahtumat ${TEST_YEAR}` });
-    expect(url()).toBe('/events?q=Venue&status=ALL');
+  it('redirects /events to the gig list and keeps the query string', async () => {
+    const url = renderAt('/events?q=Venue&status=ALL');
+    await screen.findByRole('heading', { name: `Keikat ${TEST_YEAR}` });
+    expect(url()).toBe('/gigs?q=Venue&status=ALL');
   });
 
-  it('redirects /gigs/new to the new event form', async () => {
-    const url = renderAt('/gigs/new');
-    await screen.findByRole('heading', { name: 'Uusi tapahtuma' });
-    expect(url()).toBe('/events/new');
+  it('redirects /events/new to the new gig form', async () => {
+    const url = renderAt('/events/new');
+    await screen.findByRole('heading', { name: 'Uusi keikka' });
+    expect(url()).toBe('/gigs/new');
   });
 
-  it('redirects /gigs/:id to the event page, keeping query and hash', async () => {
+  it('redirects /events/:id to the gig page, keeping query and hash', async () => {
     const event = addMockEvent({ venue: 'Venue X' });
-    const url = renderAt(`/gigs/${event.id}?tab=history#costs`);
-    expect(await screen.findByRole('button', { name: 'Peru tapahtuma' })).toBeInTheDocument();
-    expect(url()).toBe(`/events/${event.id}?tab=history#costs`);
+    const url = renderAt(`/events/${event.id}?tab=history#costs`);
+    expect(await screen.findByRole('button', { name: 'Peru keikka' })).toBeInTheDocument();
+    expect(url()).toBe(`/gigs/${event.id}?tab=history#costs`);
   });
 });

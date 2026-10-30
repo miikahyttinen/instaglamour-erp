@@ -131,7 +131,7 @@ function ClientEvents({ events }: { events: EventSummary[] }) {
       primary: true,
       className: 'client-col-date',
       cell: (event) => (
-        <Link to={`/events/${event.id}`}>{formatDateRange(event.startDate, event.endDate, lang)}</Link>
+        <Link to={`/gigs/${event.id}`}>{formatDateRange(event.startDate, event.endDate, lang)}</Link>
       ),
     },
     { key: 'lineup', label: t('clients.events.lineup'), cell: (event) => event.lineupName },

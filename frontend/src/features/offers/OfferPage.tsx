@@ -233,7 +233,7 @@ function PageNoticeBox({ notice, onDismiss }: { notice: PageNotice; onDismiss: (
   else if (notice.kind === 'converted') {
     text = (
       <p>
-        {t('convert.created')} <Link to={`/events/${notice.eventId}`}>{t('convert.openEvent')}</Link>
+        {t('convert.created')} <Link to={`/gigs/${notice.eventId}`}>{t('convert.openEvent')}</Link>
       </p>
     );
   }
