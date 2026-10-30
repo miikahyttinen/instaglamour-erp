@@ -1,0 +1,46 @@
+/* "Uusi ostotilaus" dialog (partners create a PO by hand): Ostotilaukset page and event page. */
+
+.po-create-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: var(--hairline) solid var(--border);
+}
+.po-create-list li {
+  border-bottom: var(--hairline) solid var(--border);
+}
+.po-create-line {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0;
+  padding: var(--space-2) 0;
+  min-height: 44px;
+  font-family: inherit;
+  font-size: var(--fs-body);
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--text);
+  cursor: pointer;
+}
+.po-create-line-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.po-create-line-amount {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.po-create-total {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin: var(--space-3) 0 0;
+}
+.po-create .notice {
+  margin-top: var(--space-3);
+}
+.po-create .notice p {
+  margin: 0;
+}

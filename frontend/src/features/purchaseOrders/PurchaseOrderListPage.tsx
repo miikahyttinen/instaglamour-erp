@@ -13,6 +13,7 @@ import { SectionLabel } from '../../components/SectionLabel';
 import { apiErrorMessage } from '../../i18n/labels';
 import { useLang } from '../../i18n/useLang';
 import { formatDate, formatMoney } from '../../lib/format';
+import { NewPurchaseOrderButton } from './NewPurchaseOrderButton';
 import { PoNumber, PurchaseOrderEventTable, PurchaseOrderStatusCell } from './poParts';
 import { poDateTime } from './poText';
 import { usePurchaseOrderEvents, usePurchaseOrderList } from './queries';
@@ -59,7 +60,7 @@ export function PurchaseOrderListPage() {
 
   return (
     <section className="page purchase-orders-page">
-      <PageHead title={t('pages.purchaseOrders')} />
+      <PageHead title={t('pages.purchaseOrders')} actions={<NewPurchaseOrderButton />} />
 
       <div className="po-toolbar">
         <div className="po-search">

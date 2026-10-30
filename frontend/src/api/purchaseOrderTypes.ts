@@ -93,6 +93,28 @@ export interface PurchaseOrderEvent {
   details: PurchaseOrderEventDetails;
 }
 
+/**
+ * `GET /api/people/{id}/po-eligible-lines?eventId=`: the person's fees a partner can put on a PO
+ * by hand (amount > 0, unpaid, not on an OPEN/PAID PO, non-deleted SOLD events played or
+ * upcoming, no FUEL). Newest event first.
+ */
+export interface PoEligibleLine {
+  costLineId: Id;
+  eventId: Id;
+  eventStartDate: IsoDate;
+  eventVenue: string;
+  eventLineupName: string;
+  type: CostType;
+  description: string | null;
+  amountCents: Cents;
+}
+
+/** `POST /api/purchase-orders` (partner, by hand): 1…200 unique ids of that person's eligible fees. */
+export interface PurchaseOrderCreate {
+  personId: Id;
+  costLineIds: Id[];
+}
+
 /** `GET /api/people/{id}/freelancer-link` and `POST …/freelancer-link/regenerate`. */
 export interface FreelancerLink {
   /** `/f/<token>` */

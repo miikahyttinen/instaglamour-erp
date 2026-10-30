@@ -68,8 +68,10 @@ import type {
 import type {
   FreelancerLink,
   FreelancerView,
+  PoEligibleLine,
   PublicPurchaseOrder,
   PublicPurchaseOrderCreate,
+  PurchaseOrderCreate,
 } from './purchaseOrderTypes';
 import type { ImportOptions, ImportResponse, ImportRun } from './importTypes';
 import { IMPORT_FILENAME_MAX } from './importTypes';
@@ -195,6 +197,9 @@ export const peopleApi = {
   /** New token; the old link stops working (404). */
   regenerateFreelancerLink: (id: Id) =>
     apiRequest<FreelancerLink>(`/people/${id}/freelancer-link/regenerate`, { method: 'POST' }),
+  /** Fees a partner can put on a PO by hand; `eventId` limits to one event. */
+  poEligibleLines: (id: Id, eventId?: Id) =>
+    apiRequest<PoEligibleLine[]>(`/people/${id}/po-eligible-lines`, { query: { eventId } }),
 };
 
 // ---------- Clients ----------
@@ -304,6 +309,9 @@ export const purchaseOrdersApi = {
       query: { year: query.q ? undefined : query.year, q: query.q || undefined, status: query.status },
     }),
   get: (id: Id) => apiRequest<PurchaseOrder>(`/purchase-orders/${id}`),
+  /** By hand (partner): 201; 409 COST_LINE_NOT_ELIGIBLE with `details.costLineIds`. */
+  create: (body: PurchaseOrderCreate) =>
+    apiRequest<PurchaseOrder>('/purchase-orders', { method: 'POST', body }),
   pay: (id: Id) => apiRequest<PurchaseOrder>(`/purchase-orders/${id}/pay`, { method: 'POST' }),
   unpay: (id: Id) => apiRequest<PurchaseOrder>(`/purchase-orders/${id}/unpay`, { method: 'POST' }),
   cancel: (id: Id, body: ReasonRequest) =>

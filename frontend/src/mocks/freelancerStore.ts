@@ -87,7 +87,7 @@ export interface FeeLine {
 }
 
 /** BR-113: the person's lines with an amount > 0 on non-deleted SOLD events, newest event first. */
-function feeLines(events: EventState, personId: Id): FeeLine[] {
+export function feeLines(events: EventState, personId: Id): FeeLine[] {
   const out: FeeLine[] = [];
   events.costLines.forEach((line) => {
     if (line.personId !== personId || line.budgetedCents <= 0) return;
@@ -171,6 +171,8 @@ export function newPurchaseOrder(
   fees: FeeLine[],
   amount: (fee: FeeLine) => number,
   createdAt: string,
+  /** Partner who created it by hand; null = the freelancer via the link. */
+  createdBy: Id | null = null,
 ): PurchaseOrder {
   const lines = fees.map((fee) => ({
     costLineId: fee.line.id,
@@ -200,7 +202,7 @@ export function newPurchaseOrder(
   state.nextSeq += 1;
   state.purchaseOrders.push(po);
   for (const fee of fees) fee.line.purchaseOrder = { id: po.id, number: po.number, status: 'OPEN' };
-  logPurchaseOrderEvent(state, po, 'CREATED', null, {}, createdAt);
+  logPurchaseOrderEvent(state, po, 'CREATED', createdBy, {}, createdAt);
   return po;
 }
 

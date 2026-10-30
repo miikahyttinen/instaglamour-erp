@@ -18,6 +18,7 @@ import { useLang } from '../../i18n/useLang';
 import { centsToInput, formatDateTime, formatMoney } from '../../lib/format';
 import { parseMoneyField } from '../../lib/moneyField';
 import { usePartner, useReference } from '../../reference/useReference';
+import { EventPurchaseOrder } from './EventPurchaseOrder';
 import { InlinePersonSelect, PersonSelect } from './PersonSelect';
 import { personName, useApplyEvent } from './queries';
 
@@ -46,6 +47,7 @@ export function CostList({ event, people, readOnly, onWarnings }: Props) {
 
   return (
     <div className="cost-list">
+      {!readOnly && <EventPurchaseOrder event={event} people={people} />}
       {event.notFullyStaffed && (
         <p className="cost-staffing" role="note">
           <StatusTag tone="warn">{t('events.notFullyStaffed')}</StatusTag>

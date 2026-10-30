@@ -2,7 +2,7 @@
 // the real backend.
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { ApiError } from '../api/client';
-import { costLinesApi, eventsApi, purchaseOrdersApi } from '../api/endpoints';
+import { costLinesApi, eventsApi, peopleApi, purchaseOrdersApi } from '../api/endpoints';
 import { addMockEvent, partnerA, person, staffMockEvent, TEST_YEAR } from '../test/eventFixtures';
 import { addMockPurchaseOrder, clearPurchaseOrders, localTs } from '../test/purchaseOrderFixtures';
 import { signInMock } from '../test/renderApp';
@@ -166,5 +166,39 @@ describe('purchase order mocks', () => {
     expect((await purchaseOrdersApi.list({ q: po.number })).purchaseOrders.map((p) => p.id)).toEqual([po.id]);
     await purchaseOrdersApi.cancel(po.id, { reason: 'Wrong fee.' });
     expect(costLine(lineId).purchaseOrder).toBeNull();
+  });
+});
+
+describe('purchase orders created by partners (mocks)', () => {
+  beforeEach(() => {
+    signInMock();
+    clearPurchaseOrders();
+  });
+
+  it('eligible lines: unpaid, not on a PO, amount > 0, SOLD (upcoming too), no FUEL; eventId limits', async () => {
+    const event = addMockEvent({ venue: 'Venue Q', startDate: `${TEST_YEAR}-06-01` });
+    const other = addMockEvent({ venue: 'Venue R', startDate: `${TEST_YEAR}-07-01` });
+    staffMockEvent(event, ['Person 5']);
+    staffMockEvent(other, ['Person 5']);
+    const id = person('Person 5').id;
+    const all = await peopleApi.poEligibleLines(id);
+    const ours = all.filter((l) => l.eventId === event.id || l.eventId === other.id);
+    expect(ours.map((l) => l.eventVenue)).toEqual(['Venue R', 'Venue Q']);
+    expect(all.some((l) => l.type === 'FUEL')).toBe(false);
+    const one = await peopleApi.poEligibleLines(id, event.id);
+    expect(one.map((l) => l.eventId)).toEqual([event.id]);
+
+    const po = await purchaseOrdersApi.create({ personId: id, costLineIds: [one[0]!.costLineId] });
+    expect(po.status).toBe('OPEN');
+    expect(costLine(one[0]!.costLineId).purchaseOrder).toEqual({ id: po.id, number: po.number, status: 'OPEN' });
+    expect(db.freelancer.events.at(-1)).toMatchObject({ type: 'CREATED', partnerId: partnerA().id });
+    expect(await peopleApi.poEligibleLines(id, event.id)).toEqual([]);
+
+    // Already on a PO → 409 with the ids; unknown person → 400.
+    const conflict = await expectError(purchaseOrdersApi.create({ personId: id, costLineIds: [one[0]!.costLineId] }));
+    expect(conflict.code).toBe('COST_LINE_NOT_ELIGIBLE');
+    expect(conflict.details.costLineIds).toEqual([one[0]!.costLineId]);
+    const unknown = await expectError(purchaseOrdersApi.create({ personId: 'nope', costLineIds: ['x'] }));
+    expect(unknown.fields.personId).toBe('UNKNOWN_REFERENCE');
   });
 });

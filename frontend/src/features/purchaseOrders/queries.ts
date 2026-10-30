@@ -12,6 +12,9 @@ export const purchaseOrderKeys = {
   detail: (id: Id) => [...rootKeys.purchaseOrders, 'detail', id] as const,
   history: (id: Id) => [...rootKeys.purchaseOrders, 'history', id] as const,
   events: [...rootKeys.purchaseOrders, 'events'] as const,
+  /** A person's fees that can go on a PO by hand (optionally one event's). */
+  eligible: (personId: Id, eventId?: Id) =>
+    [...rootKeys.purchaseOrders, 'eligible', personId, eventId ?? 'all'] as const,
 };
 
 /** Number of log rows shown under the list. */
