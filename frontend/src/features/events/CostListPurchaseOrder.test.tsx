@@ -12,7 +12,7 @@ const costs = () => screen.getByRole('table', { name: 'Kulut ja miehitys' });
 const line = (name: string) => within(costs()).getByRole('rowgroup', { name });
 
 async function openEvent(eventId: string) {
-  const app = renderApp(`/events/${eventId}`);
+  const app = renderApp(`/gigs/${eventId}`);
   await screen.findByRole('table', { name: 'Kulut ja miehitys' });
   await within(line('Laulu')).findByRole('option', { name: 'Person 1' });
   return app;
@@ -63,10 +63,10 @@ describe('cost lines on a purchase order (BR-118)', () => {
   it('cancelling an event with a line on an open PO explains which PO blocks it', async () => {
     const { po, event } = addMockPurchaseOrder();
     const { user } = await openEvent(event.id);
-    await user.click(screen.getByRole('button', { name: 'Peru tapahtuma' }));
-    const dialog = screen.getByRole('dialog', { name: 'Peru tapahtuma' });
+    await user.click(screen.getByRole('button', { name: 'Peru keikka' }));
+    const dialog = screen.getByRole('dialog', { name: 'Peru keikka' });
     await user.type(within(dialog).getByRole('textbox', { name: 'Syy' }), 'Called off.');
-    await user.click(within(dialog).getByRole('button', { name: 'Peru tapahtuma' }));
+    await user.click(within(dialog).getByRole('button', { name: 'Peru keikka' }));
     expect(await within(dialog).findByRole('alert')).toHaveTextContent(
       `Rivi on ostotilauksella ${po.number}. Muuta ensin ostotilausta`,
     );

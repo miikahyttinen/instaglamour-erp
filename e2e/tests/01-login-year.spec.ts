@@ -29,13 +29,13 @@ test('dev login shows the year page with figures from the backend', async ({ pag
   await expect(page.getByRole('heading', { level: 1, name: `Vuosi ${CURRENT_YEAR}` })).toBeVisible();
 
   const year = await api(page).get(`/years/${CURRENT_YEAR}`);
-  const events = page.getByRole('region', { name: 'Tapahtumat' });
-  await expect(events.getByRole('link', { name: `Tapahtumia ${year.events.eventCount}` })).toBeVisible();
+  const events = page.getByRole('region', { name: 'Keikat' });
+  await expect(events.getByRole('link', { name: `Keikkoja ${year.events.eventCount}` })).toBeVisible();
   // The cancelled count is the secondary figure inside the event-count tile (a link to the list).
-  await expect(yearFigure(events.getByRole('link', { name: /^Tapahtumia / }), 'Peruttuja')).toHaveText(
+  await expect(yearFigure(events.getByRole('link', { name: /^Keikkoja / }), 'Peruttuja')).toHaveText(
     String(year.events.cancelledCount),
   );
-  await expect(events.getByRole('link', { name: `Myytyjen tapahtumien summa ${fiMoney(year.events.soldEventsSumCents)}` })).toBeVisible();
+  await expect(events.getByRole('link', { name: `Myytyjen keikkojen summa ${fiMoney(year.events.soldEventsSumCents)}` })).toBeVisible();
   await expect(events.getByRole('link', { name: `Kulut, budjetti ${fiMoney(year.events.budgetedCostsCents)}` })).toBeVisible();
   // The seed has sold events in the current year, so the figures are not all zero.
   expect(year.events.eventCount).toBeGreaterThan(0);

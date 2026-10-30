@@ -55,8 +55,8 @@ async function rowVenues(page: Page, venues: string[]): Promise<string[]> {
 }
 
 async function openList(page: Page, year: number, query = ''): Promise<void> {
-  await page.goto(`/events${query}`);
-  await expect(page.getByRole('heading', { level: 1, name: `Tapahtumat ${year}` })).toBeVisible();
+  await page.goto(`/gigs${query}`);
+  await expect(page.getByRole('heading', { level: 1, name: `Keikat ${year}` })).toBeVisible();
   await expect(page.getByText('Ladataan…')).toHaveCount(0);
 }
 
@@ -68,7 +68,7 @@ test('event list: cancelled hidden by default, Tila filter shows them, Paikka fi
 
   // Default view: sold events only; the default Tila filter is not written to the URL.
   await openList(page, year);
-  await expect(page.getByRole('table', { name: 'Tapahtumalista', exact: true })).toBeVisible();
+  await expect(page.getByRole('table', { name: 'Keikkalista', exact: true })).toBeVisible();
   await expect.poll(venuesOf).toEqual([north, south, club]);
   await expect(rows.filter({ hasText: 'Peruttu' })).toHaveCount(0);
   expect(urlFilter(page, 'status')).toEqual([]);
@@ -127,7 +127,7 @@ test('event list: cancelled hidden by default, Tila filter shows them, Paikka fi
   // A search that matches only another venue: nothing passes both.
   await page.getByLabel('Haku').fill('South');
   await expect(page).toHaveURL(/[?&]q=South/);
-  await expect(page.getByText('Ei suodattimia vastaavia tapahtumia.')).toBeVisible();
+  await expect(page.getByText('Ei suodattimia vastaavia keikkoja.')).toBeVisible();
   await expect(rows).toHaveCount(0);
   await page.getByLabel('Haku').fill('North');
   await expect.poll(venuesOf).toEqual([north, north]);
@@ -175,23 +175,23 @@ test('event list: a Tila filter that shows every status (cancelled included) sur
   await expect.poll(venuesOf).toEqual([north, south, north, club]);
 });
 
-// Gig → Event rename (SaaS phase 1): old /gigs… links (bookmarks, e-mails) open the same page
-// under /events…, with the query string kept.
-test('old /gigs URLs redirect to /events and keep the query string', async ({ page }, testInfo) => {
+// UI back to "Gigs" (API and code still say `event`): old /events… links (bookmarks, e-mails)
+// open the same page under /gigs…, with the query string kept.
+test('old /events URLs redirect to /gigs and keep the query string', async ({ page }, testInfo) => {
   const { year, north, south, club } = await setup(page, testInfo);
   const venuesOf = () => rowVenues(page, [north, south, club]);
   const q = north.split(' ')[1]!;
-  await page.goto(`/gigs?q=${encodeURIComponent(q)}&f.venue=${encodeURIComponent(north)}`);
-  await expect(page).toHaveURL(/\/events\?q=/);
+  await page.goto(`/events?q=${encodeURIComponent(q)}&f.venue=${encodeURIComponent(north)}`);
+  await expect(page).toHaveURL(/\/gigs\?q=/);
   expect(new URL(page.url()).searchParams.get('q')).toBe(q);
   expect(urlFilter(page, 'venue')).toEqual([north]);
-  await expect(page.getByRole('heading', { level: 1, name: `Tapahtumat ${year}` })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: `Keikat ${year}` })).toBeVisible();
   await expect.poll(venuesOf).toEqual([north]);
 
   const event = await createEventViaApi(page, { startDate: `${year}-07-01`, venue: club });
-  await page.goto(`/gigs/${event.id}`);
-  await expect(page).toHaveURL(new RegExp(`/events/${event.id}$`));
-  await page.goto('/gigs/new');
-  await expect(page).toHaveURL(/\/events\/new$/);
-  await expect(page.getByRole('heading', { level: 1, name: 'Uusi tapahtuma' })).toBeVisible();
+  await page.goto(`/events/${event.id}`);
+  await expect(page).toHaveURL(new RegExp(`/gigs/${event.id}$`));
+  await page.goto('/events/new');
+  await expect(page).toHaveURL(/\/gigs\/new$/);
+  await expect(page.getByRole('heading', { level: 1, name: 'Uusi keikka' })).toBeVisible();
 });

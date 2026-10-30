@@ -76,7 +76,7 @@ VITE_API_PROXY_TARGET=http://localhost:3100 VITE_PORT=5273 npm run dev
 | `src/mocks/` | MSW handlers and synthetic data (browser worker + Node server for tests). All state is in `db` (`data.ts`); `resetMockDb()` resets every store. Event rules live in `eventStore.ts`, demo events in `eventSeed.ts`; tasks, hours and budget in `tasksStore.ts`, `hoursStore.ts`, `budgetStore.ts`; offers (with history, `offers.*` settings and partner phones) in `offerStore.ts` / `offerSeed.ts` (`db.offers`, seeded offers have fixed ids `…000601`–`…000608`). Budget rows (`/api/budget-categories`, `budgetCategoryHandlers` in `budgetHandlers.ts`) live in `db.reference.budgetCategories` (active rows only; removing drops the row there and keeps its amounts in `db.budget`). The year mock is computed from these stores |
 | `src/features/<feature>/` | One folder per feature: `year`, `events`, `clients`, `people`, `tasks`, `hours`, `budget`; pages, query hooks and the feature texts in `i18n.ts` (event texts are still in `src/i18n/fi.ts` / `en.ts`) |
 | `src/features/offers/` | Offers (UC-028, UC-029, UC-031, see "Offers"): list `/offers`, new offer `/offers/new`, offer page `/offers/:id`, convert dialog; plus `OfferPreview` (shared customer view) and the public page `/o/:token` (see "Offer preview") |
-| `src/features/events/` | Event list, new event, event page (costs, attachments, history, move/cancel/delete dialogs). Routes `/events`, `/events/new`, `/events/:id`; old `/gigs…` URLs redirect there with the query string and hash (`LegacyGigsRedirect`, Gig → Event rename) |
+| `src/features/events/` | Event list, new event, event page (costs, attachments, history, move/cancel/delete dialogs). Routes `/gigs`, `/gigs/new`, `/gigs/:id` (UI says "Keikat / Gigs"; API and code stay `event`); old `/events…` URLs redirect there with the query string and hash (`LegacyEventsRedirect`) |
 | `src/features/people/` | People register (UC-014) + partner status (UC-032): list with "Osakas" tag column and "Osakkuus" filter (`?partner=true\|false`, combines with `?active=`); person page with the Osakas switch (`PartnerStatus.tsx`: on = email dialog → `PUT …/partner`, off = confirmation → `DELETE …/partner`, own switch disabled), inline email, tag in the header. Partner changes invalidate `['people']`, `['reference']` (and `['me']` for oneself). Mock: `mocks/peopleHandlers.ts` (`person.partner` derived from `db.partners`) |
 | `src/features/clients/` | Client register (UC-027): list + search + add, client page (inline name/notes, events, offers, delete), `ClientSelect` / `InlineClientSelect` ("–", clients, "New client…") used by the new event and new offer forms, the event page and the offer page. Mock: `mocks/clientHandlers.ts`; clients live in `db.events` (seed: Client A–C in `eventSeed.ts`), offers in `db.offers` |
 | `src/components/` | Shared UI: `Button`/`IconButton`, `Card`, `StatTile`/`StatGrid`, `MiniBars`, `PageHead`, `SectionLabel`, `StatusTag`, `Notice`, `DataTable`, `ExcelTable` (+ `ColumnFilter`, `excelTableState`), `Dialog`, `Field`, `MoneyInput`, `Logo` (see "Design system") |
@@ -320,7 +320,7 @@ Shell parts in `src/layout/`: `Sidebar` (rail / drawer), `NavDrawer` (modal draw
 
 ### ExcelTable (`src/components/ExcelTable.tsx`, docs/design.md "Excel-style tables")
 
-The shared Excel-style list (Tarjoukset, Tapahtumat). Tapahtumat opens with a default Tila filter (Myyty + Soitettu) that is not written to the URL until the filters are changed (`useDefaultStatusFilter` in `EventListPage`). See it on `/styleguide` → "Excel table".
+The shared Excel-style list (Tarjoukset, Keikat). Keikat opens with a default Tila filter (Myyty + Soitettu) that is not written to the URL until the filters are changed (`useDefaultStatusFilter` in `EventListPage`). See it on `/styleguide` → "Excel table".
 
 - **Header:** title = sort button (`aria-sort`, same icons as `DataTable`) + a **filter icon** on
   filterable columns. The icon is an accent, filled funnel while the column is filtered.
@@ -466,11 +466,11 @@ offer's link is not found there either.
 - **List** (`OfferListPage`): KPI cards (above), search (`?q=`, sent to the API) and an `ExcelTable` (see above):
   every column sortable (default event date ascending; ties by event date, then created), column
   filters for Asiakas, Paikka / kaupunki, Tila (incl. Vanhentunut; `offerStatus.ts`), Myyjä, Lähde,
-  Tapahtumatyyppi, Lopputulos and Linkitetty tapahtuma (luotu / ei), all client-side and in the URL
+  Tapahtumatyyppi, Lopputulos and Linkitetty keikka (luotu / ei), all client-side and in the URL
   (`f.status=EXPIRED`, `f.seller=<partner id>`, `f.source=` = blank, …). No filter dropdowns above the
   table (UC-028 change 2026-10-14).
   Source / event type / disposition are `InlineSelect`s. Linked event column (key `linkedEvent`): "Convert to event" (confirm
-  dialog `ConvertDialog`, BR-105 fields) or the "Tapahtuma →" link. Row actions: copy public link
+  dialog `ConvertDialog`, BR-105 fields) or the "Keikka →" link. Row actions: copy public link
   (fetches the offer for `sharePath`), delete (confirm). Deleted view with Restore.
 - **New offer** (`NewOfferPage`): `ClientSelect` with "New client…", lineup textarea (one item per
   line) filled from a lineup template (role labels), seller = me. "What's included" is only sent when filled, so the server applies the setting
@@ -480,7 +480,7 @@ offer's link is not found there either.
   public page) + internal panel: every field inline (NFR-8), price / source / event type /
   disposition, status, created / changed, history (`OfferHistory`). Actions: Copy public link
   (absolute URL from `sharePath` + `window.location.origin`; falls back to a read-only field when
-  the clipboard is blocked), Regenerate link (confirm), Convert / Tapahtuma →, Delete (confirm). A
+  the clipboard is blocked), Regenerate link (confirm), Convert / Keikka →, Delete (confirm). A
   deleted offer is read-only with Restore only.
 - **Event page:** "Tarjouksesta / From offer: <event>" (`EventOfferLink`) when `offerId` is set.
 - Texts: `src/features/offers/i18n.ts` (`offers`, `offer`, `convert`, `newOffer`, `offerHistory`,
@@ -560,7 +560,7 @@ partner status"; a 409 shows as an `alert` inside the dialog. Success notices: "
   (`initTheme`).
 - **Fees** (`DataTable`, full width, cards < 600 px): date, venue, role (type label; description for
   `OTHER` / `OTHER_ROLE`), fee, state. SELECTABLE rows have a checkbox (+ "Valitse kaikki" in the
-  header); UPCOMING "Tapahtuma on vielä tulossa"; ON_PO tag "Ostotilaus <number>"; PAID tag
+  header); UPCOMING "Keikka on vielä tulossa"; ON_PO tag "Ostotilaus <number>"; PAID tag
   "Maksettu" (+ PO number). Order as the API sends it (newest event first).
 - Sticky bar: "Valittu: n", "Yhteensä <sum>", **Luo ostotilausnumero** (disabled with nothing
   selected; double-click guarded by a ref). 201 → the PO goes to the top of **Ostotilaukset** (class
@@ -583,7 +583,7 @@ partner status"; a 409 shows as an `alert` inside the dialog. Success notices: "
 
 ### Purchase orders (`src/features/purchaseOrders/`, UC-034, BR-117…BR-119)
 
-- **Nav:** "Ostotilaukset / Purchase orders" (icon `Receipt`) after Tapahtumat; routes `/purchase-orders`
+- **Nav:** "Ostotilaukset / Purchase orders" (icon `Receipt`) after Keikat; routes `/purchase-orders`
   and `/purchase-orders/:id` (`PurchaseOrdersRoutes`).
 - **List** (`PurchaseOrderListPage`, `ExcelTable`, full width, cards < 600 px): Numero (link, card
   title), Freelancer, Luotu (date + time), Tapahtumat (event dates, comma-separated), Summa, Tila. Luotu and

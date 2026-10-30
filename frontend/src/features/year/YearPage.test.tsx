@@ -91,12 +91,12 @@ describe('year page', () => {
     );
     renderApp('/');
     expect(await screen.findByRole('heading', { name: `Vuosi ${TEST_YEAR}` })).toBeInTheDocument();
-    await screen.findByText('Myytyjen tapahtumien summa');
+    await screen.findByText('Myytyjen keikkojen summa');
     expect(requested).toEqual([String(TEST_YEAR)]);
 
-    expect(tileValue('Tapahtumia')).toBe('6');
+    expect(tileValue('Keikkoja')).toBe('6');
     expect(tileValue('Peruttuja')).toBe('1');
-    expect(tileValue('Myytyjen tapahtumien summa')).toBe(fiMoney(500000));
+    expect(tileValue('Myytyjen keikkojen summa')).toBe(fiMoney(500000));
     expect(tileValue('Kulut, budjetti')).toBe(fiMoney(300000));
     expect(tileValue('Kulut, toteuma')).toBe(fiMoney(200000));
     expect(tileValue('Kate, budjetti')).toBe(fiMoney(200000));
@@ -121,11 +121,11 @@ describe('year page', () => {
     addMockEvent({ startDate: `${TEST_YEAR}-07-01` });
     addMockEvent({ startDate: `${TEST_YEAR + 1}-07-01` });
     renderApp('/');
-    await screen.findByText('Myytyjen tapahtumien summa');
+    await screen.findByText('Myytyjen keikkojen summa');
     const expected = mockYearPage(TEST_YEAR).events;
     expect(expected.eventCount).toBe(2);
-    expect(tileValue('Tapahtumia')).toBe('2');
-    expect(tileValue('Myytyjen tapahtumien summa')).toBe(fiMoney(expected.soldEventsSumCents));
+    expect(tileValue('Keikkoja')).toBe('2');
+    expect(tileValue('Myytyjen keikkojen summa')).toBe(fiMoney(expected.soldEventsSumCents));
     expect(tileValue('Kulut, budjetti')).toBe(fiMoney(expected.budgetedCostsCents));
     expect(tileValue('Kate, budjetti')).toBe(fiMoney(expected.marginBudgetCents));
   });
@@ -143,7 +143,7 @@ describe('year page', () => {
     setMockBudget(TEST_YEAR, catA!.id, { budgetExpenseCents: 100000, actualExpenseCents: 20000 });
     setMockBudget(TEST_YEAR, catB!.id, { budgetIncomeCents: 30000, actualIncomeCents: 10000 });
     renderApp('/');
-    await screen.findByText('Myytyjen tapahtumien summa');
+    await screen.findByText('Myytyjen keikkojen summa');
 
     expect(tileValue('Partner A')).toBe(formatHours(3.5, 'fi'));
     expect(tileValue('Partner B')).toBe('4 h');
@@ -159,17 +159,17 @@ describe('year page', () => {
     signInFor(TEST_YEAR);
     server.use(http.get('/api/years/:year', ({ params }) => HttpResponse.json(fixedYear(Number(params.year)))));
     renderApp('/');
-    await screen.findByText('Myytyjen tapahtumien summa');
+    await screen.findByText('Myytyjen keikkojen summa');
 
-    for (const label of ['Tapahtumia', 'Peruttuja', 'Myytyjen tapahtumien summa', 'Kulut, toteuma', 'Kate, budjetti']) {
-      expect(tile(label)).toHaveAttribute('href', '/events');
+    for (const label of ['Keikkoja', 'Peruttuja', 'Myytyjen keikkojen summa', 'Kulut, toteuma', 'Kate, budjetti']) {
+      expect(tile(label)).toHaveAttribute('href', '/gigs');
     }
     for (const label of ['Partner A', 'Yhteensä']) expect(tile(label)).toHaveAttribute('href', '/hours');
     expect(tile('Vuoden tulos')).toHaveAttribute('href', '/budget');
     for (const link of within(budgetTable()).getAllByRole('link')) {
       expect(link).toHaveAttribute('href', '/budget');
     }
-    expect(within(screen.getByRole('heading', { level: 2, name: /^Tapahtumat/ })).getByRole('link')).toHaveAttribute('href', '/events');
+    expect(within(screen.getByRole('heading', { level: 2, name: /^Keikat/ })).getByRole('link')).toHaveAttribute('href', '/gigs');
     expect(within(screen.getByRole('heading', { level: 2, name: /^Tunnit/ })).getByRole('link')).toHaveAttribute('href', '/hours');
     expect(within(screen.getByRole('heading', { level: 2, name: /^Budjetti/ })).getByRole('link')).toHaveAttribute('href', '/budget');
   });
@@ -186,7 +186,7 @@ describe('year page', () => {
     for (const n of [2, 3, 4, 5, 6]) addMockEvent({ startDate: daysFromToday(n * 10), venue: `Venue ${n}` });
 
     const { user } = renderApp('/');
-    const table = await screen.findByRole('table', { name: 'Tulevat tapahtumat' });
+    const table = await screen.findByRole('table', { name: 'Tulevat keikat' });
     const rows = within(table).getAllByRole('row').slice(1);
     const items = rows.map((row) => within(row).getByRole('link'));
     expect(items.map((a) => a.textContent)).toEqual(
@@ -194,7 +194,7 @@ describe('year page', () => {
     );
     // Template A events have unstaffed musician lines (BR-023).
     expect(within(rows[0]!).getByText('Miehitys kesken')).toBeInTheDocument();
-    expect(items[0]).toHaveAttribute('href', `/events/${first.id}`);
+    expect(items[0]).toHaveAttribute('href', `/gigs/${first.id}`);
 
     await user.click(items[0]!);
     expect(await screen.findByRole('heading', { level: 1, name: /Template A/ })).toBeInTheDocument();
@@ -206,13 +206,13 @@ describe('year page', () => {
     addMockEvent();
     addMockEvent({ startDate: daysFromToday(3), venue: 'Venue Soon' });
     const { user } = renderApp('/');
-    await screen.findByText('Myytyjen tapahtumien summa');
-    expect(tileValue('Tapahtumia')).toBe('1');
+    await screen.findByText('Myytyjen keikkojen summa');
+    expect(tileValue('Keikkoja')).toBe('1');
     expect(screen.getByText(/Venue Soon/)).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Edellinen vuosi' }));
     expect(await screen.findByRole('heading', { name: `Vuosi ${TEST_YEAR - 1}` })).toBeInTheDocument();
-    await waitFor(() => expect(tileValue('Tapahtumia')).toBe('0'));
+    await waitFor(() => expect(tileValue('Keikkoja')).toBe('0'));
     expect(screen.getByText(/Venue Soon/)).toBeInTheDocument();
   });
 
@@ -220,10 +220,10 @@ describe('year page', () => {
     signInFor(2040);
     db.events.events = [];
     renderApp('/');
-    await screen.findByText('Myytyjen tapahtumien summa');
-    expect(tileValue('Tapahtumia')).toBe('0');
+    await screen.findByText('Myytyjen keikkojen summa');
+    expect(tileValue('Keikkoja')).toBe('0');
     expect(tileValue('Peruttuja')).toBe('0');
-    for (const label of ['Myytyjen tapahtumien summa', 'Kulut, budjetti', 'Kulut, toteuma', 'Kate, budjetti', 'Kate, toteuma', 'Vuoden tulos']) {
+    for (const label of ['Myytyjen keikkojen summa', 'Kulut, budjetti', 'Kulut, toteuma', 'Kate, budjetti', 'Kate, toteuma', 'Vuoden tulos']) {
       expect(tileValue(label)).toBe(fiMoney(0));
     }
     for (const label of ['Partner A', 'Partner B', 'Partner C', 'Yhteensä']) {
@@ -231,7 +231,7 @@ describe('year page', () => {
     }
     expect(rowText(/Kulut/)).toBe(`Kulut${fiMoney(0)}${fiMoney(0)}`);
     expect(rowText(/Tuotot/)).toBe(`Tuotot${fiMoney(0)}${fiMoney(0)}`);
-    expect(screen.getByText('Ei tulevia tapahtumia.')).toBeInTheDocument();
+    expect(screen.getByText('Ei tulevia keikkoja.')).toBeInTheDocument();
   });
 
   it('is the page at / after sign-in', async () => {
@@ -239,18 +239,18 @@ describe('year page', () => {
     const { user } = renderApp('/login');
     await user.type(await screen.findByLabelText('Sähköposti'), PARTNER_A_EMAIL);
     await user.click(screen.getByRole('button', { name: 'Kirjaudu' }));
-    expect(await screen.findByText('Myytyjen tapahtumien summa')).toBeInTheDocument();
+    expect(await screen.findByText('Myytyjen keikkojen summa')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /^Vuosi \d{4}$/ })).toBeInTheDocument();
   });
 
   it('shows English texts', async () => {
     signInMock('partner.b@example.com');
     renderApp('/');
-    expect(await screen.findByText('Sold events sum')).toBeInTheDocument();
+    expect(await screen.findByText('Sold gigs sum')).toBeInTheDocument();
     for (const text of ['Cancelled', 'Costs, budget', 'Margin, actual', 'Year result', 'Expenses', 'Income']) {
       expect(screen.getByText(text)).toBeInTheDocument();
     }
-    expect(screen.getByRole('link', { name: /^Upcoming events/ })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /^Upcoming gigs/ })).toBeInTheDocument();
   });
 
   it('shows a translated error, never the server message, and can retry', async () => {
@@ -261,6 +261,6 @@ describe('year page', () => {
     expect(alert).toHaveTextContent('Sinulla ei ole oikeutta tähän toimintoon.');
     expect(alert).not.toHaveTextContent('Internal server text');
     await user.click(within(alert).getByRole('button', { name: 'Yritä uudelleen' }));
-    expect(await screen.findByText('Myytyjen tapahtumien summa')).toBeInTheDocument();
+    expect(await screen.findByText('Myytyjen keikkojen summa')).toBeInTheDocument();
   });
 });

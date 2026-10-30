@@ -12,14 +12,14 @@ const partnerC = () => db.partners[2]!;
 /** A convertible offer (BR-109): accepted, dated in TEST_YEAR (future). */
 const addMockOffer = (overrides: Parameters<typeof addAnyOffer>[0]) =>
   addAnyOffer({ disposition: 'WON', ...overrides });
-const dialog = () => screen.getByRole('dialog', { name: 'Muuta tapahtumaksi' });
+const dialog = () => screen.getByRole('dialog', { name: 'Muuta keikaksi' });
 const optionNames = (name: string) =>
   within(within(dialog()).getByRole('combobox', { name })).getAllByRole('option').map((o) => o.textContent);
 
 /** Offer page → open the convert modal and wait for the prefilled form. */
 async function openConvert(offerId: string) {
   const app = renderApp(`/offers/${offerId}`);
-  await app.user.click(await screen.findByRole('button', { name: /^Muuta tapahtumaksi:/ }));
+  await app.user.click(await screen.findByRole('button', { name: /^Muuta keikaksi:/ }));
   await within(dialog()).findByRole('textbox', { name: 'Paikka' });
   return app;
 }
@@ -79,9 +79,9 @@ describe('convert offer to event in a modal (UC-031, BR-105)', () => {
     const price = d.getByRole('textbox', { name: 'Hinta (alv 0 %)' });
     await user.clear(price);
     await user.type(price, '2000');
-    await user.dblClick(d.getByRole('button', { name: 'Muuta tapahtumaksi' }));
+    await user.dblClick(d.getByRole('button', { name: 'Muuta keikaksi' }));
 
-    expect(await screen.findByText(/Tapahtuma luotu\./)).toBeInTheDocument();
+    expect(await screen.findByText(/Keikka luotu\./)).toBeInTheDocument();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     server.events.removeAllListeners();
     const events = db.events.events.filter((g) => g.offerId === offer.id);
@@ -94,7 +94,7 @@ describe('convert offer to event in a modal (UC-031, BR-105)', () => {
       priceCents: 200000,
       clientId: null,
     });
-    expect(screen.getByRole('link', { name: 'Avaa tapahtuma' })).toHaveAttribute('href', `/events/${events[0]!.id}`);
+    expect(screen.getByRole('link', { name: 'Avaa keikka' })).toHaveAttribute('href', `/gigs/${events[0]!.id}`);
     expect(offer).toMatchObject({ eventId: events[0]!.id, disposition: 'WON' });
     await waitFor(() => expect(requests).toHaveLength(1));
     expect(requests[0]).toMatchObject({ startDate: offer.eventDate, venue: 'Venue Q', priceCents: 200000 });
@@ -106,7 +106,7 @@ describe('convert offer to event in a modal (UC-031, BR-105)', () => {
     const { user } = await openConvert(offer.id);
     await user.click(within(dialog()).getByRole('button', { name: 'Peruuta' }));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    const opener = screen.getByRole('button', { name: 'Muuta tapahtumaksi: Event 1' });
+    const opener = screen.getByRole('button', { name: 'Muuta keikaksi: Event 1' });
     expect(opener).toHaveFocus();
 
     await user.click(opener);
@@ -134,7 +134,7 @@ describe('convert offer to event in a modal (UC-031, BR-105)', () => {
     const d = within(dialog());
     await user.clear(d.getByRole('textbox', { name: 'Paikka' }));
     await user.clear(d.getByRole('textbox', { name: 'Kokoonpano' }));
-    await user.click(d.getByRole('button', { name: 'Muuta tapahtumaksi' }));
+    await user.click(d.getByRole('button', { name: 'Muuta keikaksi' }));
     expect(d.getByRole('textbox', { name: 'Paikka' })).toHaveAccessibleDescription('Pakollinen tieto.');
     expect(d.getByRole('textbox', { name: 'Kokoonpano' })).toHaveAccessibleDescription('Pakollinen tieto.');
     expect(offer.eventId).toBeNull();
@@ -149,70 +149,70 @@ describe('convert offer to event in a modal (UC-031, BR-105)', () => {
     );
     await user.type(d.getByRole('textbox', { name: 'Paikka' }), 'Venue X');
     await user.type(d.getByRole('textbox', { name: 'Kokoonpano' }), 'Event 1');
-    await user.click(d.getByRole('button', { name: 'Muuta tapahtumaksi' }));
+    await user.click(d.getByRole('button', { name: 'Muuta keikaksi' }));
     await waitFor(() =>
       expect(d.getByRole('textbox', { name: 'Hinta (alv 0 %)' })).toHaveAttribute('aria-invalid', 'true'),
     );
     expect(d.getByRole('textbox', { name: 'Paikka' })).not.toHaveAttribute('aria-invalid');
-    expect(d.getByRole('button', { name: 'Muuta tapahtumaksi' })).toBeEnabled();
+    expect(d.getByRole('button', { name: 'Muuta keikaksi' })).toBeEnabled();
   });
 
   it('409 ALREADY_CONVERTED on confirm shows the message and a link to the existing event (E1)', async () => {
     const offer = addMockOffer({ clientId, eventName: 'Event 1' });
     const { user } = await openConvert(offer.id);
     offer.eventId = '00000000-0000-4000-8000-00000000ffff'; // converted elsewhere meanwhile
-    await user.click(within(dialog()).getByRole('button', { name: 'Muuta tapahtumaksi' }));
+    await user.click(within(dialog()).getByRole('button', { name: 'Muuta keikaksi' }));
     const d = within(dialog());
-    expect(await d.findByText(/Tarjouksesta on jo tehty tapahtuma\./)).toBeInTheDocument();
-    expect(await d.findByRole('link', { name: 'Avaa tapahtuma' })).toHaveAttribute(
+    expect(await d.findByText(/Tarjouksesta on jo tehty keikka\./)).toBeInTheDocument();
+    expect(await d.findByRole('link', { name: 'Avaa keikka' })).toHaveAttribute(
       'href',
-      '/events/00000000-0000-4000-8000-00000000ffff',
+      '/gigs/00000000-0000-4000-8000-00000000ffff',
     );
-    expect(d.getByRole('button', { name: 'Muuta tapahtumaksi' })).toBeDisabled();
+    expect(d.getByRole('button', { name: 'Muuta keikaksi' })).toBeDisabled();
   });
 
   it('a stale page opening the modal for a converted offer shows the event link instead (E1)', async () => {
     const offer = addMockOffer({ clientId, eventName: 'Event 1' });
     const { user } = renderApp(`/offers/${offer.id}`);
-    const opener = await screen.findByRole('button', { name: 'Muuta tapahtumaksi: Event 1' });
+    const opener = await screen.findByRole('button', { name: 'Muuta keikaksi: Event 1' });
     offer.eventId = '00000000-0000-4000-8000-00000000ffff';
     await user.click(opener);
     const d = within(dialog());
-    expect(await d.findByText(/Tarjouksesta on jo tehty tapahtuma\./)).toBeInTheDocument();
-    expect(await d.findByRole('link', { name: 'Avaa tapahtuma' })).toHaveAttribute(
+    expect(await d.findByText(/Tarjouksesta on jo tehty keikka\./)).toBeInTheDocument();
+    expect(await d.findByRole('link', { name: 'Avaa keikka' })).toHaveAttribute(
       'href',
-      '/events/00000000-0000-4000-8000-00000000ffff',
+      '/gigs/00000000-0000-4000-8000-00000000ffff',
     );
-    expect(d.queryByRole('button', { name: 'Muuta tapahtumaksi' })).not.toBeInTheDocument();
+    expect(d.queryByRole('button', { name: 'Muuta keikaksi' })).not.toBeInTheDocument();
   });
 
   it('409 OFFER_NOT_CONVERTIBLE on confirm shows the message and refetches the offer (BR-109)', async () => {
     const offer = addMockOffer({ clientId, eventName: 'Event 1' });
     const { user } = await openConvert(offer.id);
     offer.disposition = 'LOST_PRICE'; // changed elsewhere meanwhile
-    await user.click(within(dialog()).getByRole('button', { name: 'Muuta tapahtumaksi' }));
+    await user.click(within(dialog()).getByRole('button', { name: 'Muuta keikaksi' }));
     const d = within(dialog());
     expect(
-      await d.findByText('Vain hyväksytyn tarjouksen, jonka päivä ei ole mennyt, voi muuttaa tapahtumaksi.'),
+      await d.findByText('Vain hyväksytyn tarjouksen, jonka päivä ei ole mennyt, voi muuttaa keikaksi.'),
     ).toBeInTheDocument();
-    expect(d.getByRole('button', { name: 'Muuta tapahtumaksi' })).toBeDisabled();
+    expect(d.getByRole('button', { name: 'Muuta keikaksi' })).toBeDisabled();
     expect(db.events.events.filter((g) => g.offerId === offer.id)).toHaveLength(0);
     await user.click(d.getByRole('button', { name: 'Peruuta' }));
     // The refetched offer is no longer accepted: the page shows no Convert action.
     await waitFor(() =>
-      expect(screen.queryByRole('button', { name: 'Muuta tapahtumaksi: Event 1' })).not.toBeInTheDocument(),
+      expect(screen.queryByRole('button', { name: 'Muuta keikaksi: Event 1' })).not.toBeInTheDocument(),
     );
   });
 
   it('a stale page opening the modal for an offer that is no longer convertible shows the message (BR-109)', async () => {
     const offer = addMockOffer({ clientId, eventName: 'Event 1' });
     const { user } = renderApp(`/offers/${offer.id}`);
-    const opener = await screen.findByRole('button', { name: 'Muuta tapahtumaksi: Event 1' });
+    const opener = await screen.findByRole('button', { name: 'Muuta keikaksi: Event 1' });
     offer.disposition = 'PENDING';
     await user.click(opener);
     const d = within(dialog());
     expect(
-      await d.findByText('Vain hyväksytyn tarjouksen, jonka päivä ei ole mennyt, voi muuttaa tapahtumaksi.'),
+      await d.findByText('Vain hyväksytyn tarjouksen, jonka päivä ei ole mennyt, voi muuttaa keikaksi.'),
     ).toBeInTheDocument();
     expect(d.queryByRole('textbox', { name: 'Paikka' })).not.toBeInTheDocument();
   });

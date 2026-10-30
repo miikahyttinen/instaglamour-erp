@@ -120,7 +120,7 @@ describe('InlineText', () => {
     const input = screen.getByRole('textbox', { name: 'Venue' });
     await user.type(input, '!');
     await user.tab();
-    expect(await screen.findByText('Tapahtuma on poistettu. Palauta se ensin.')).toBeInTheDocument();
+    expect(await screen.findByText('Keikka on poistettu. Palauta se ensin.')).toBeInTheDocument();
     expect(screen.queryByText('Server text')).not.toBeInTheDocument();
   });
 

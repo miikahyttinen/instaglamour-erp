@@ -26,7 +26,7 @@ test('event basic info and price are edited in place; Esc and invalid values are
   const renamedVenue = `${venue} B`;
   const event = await createEventViaApi(page, { startDate: '2026-11-21', venue, priceCents: 100000 });
 
-  await page.goto(`/events/${event.id}`);
+  await page.goto(`/gigs/${event.id}`);
   await expect(page.getByRole('heading', { level: 1, name: `${event.lineupName} · ${venue}` })).toBeVisible();
   await expectNoEditSaveButtons(page.getByRole('main'), 'event page');
 
@@ -74,7 +74,7 @@ test('edit price, move, cancel, uncancel, delete, restore — all in history', a
   const event = await createEventViaApi(page, { startDate, venue, priceCents: 100000 });
   const title = `${event.lineupName} · ${venue}`;
 
-  await page.goto(`/events/${event.id}`);
+  await page.goto(`/gigs/${event.id}`);
   await expect(page.getByRole('heading', { level: 1, name: title })).toBeVisible();
 
   // Edit price and additional sales in place (UC-007): each field saves on its own.
@@ -94,23 +94,23 @@ test('edit price, move, cancel, uncancel, delete, restore — all in history', a
 
   // Move (UC-009).
   await page.getByRole('group', { name: 'Toiminnot' }).getByRole('button', { name: 'Siirrä' }).click();
-  const moveDialog = page.getByRole('dialog', { name: 'Siirrä tapahtuma' });
+  const moveDialog = page.getByRole('dialog', { name: 'Siirrä keikka' });
   await moveDialog.getByLabel('Uusi alkupäivä').fill(movedTo);
   await moveDialog.getByLabel('Syy (valinnainen)').fill('Synthetic reason');
   await moveDialog.getByRole('button', { name: 'Siirrä' }).click();
   await expect(moveDialog).toBeHidden();
   await expect(page.locator('.event-header-date')).toHaveText(fiDate(movedTo));
-  await expect(page.getByRole('status').filter({ hasText: 'Tapahtuma siirretty.' })).toBeVisible();
+  await expect(page.getByRole('status').filter({ hasText: 'Keikka siirretty.' })).toBeVisible();
 
   // Cancel, then adjust the price as the reminder suggests (UC-010).
-  await page.getByRole('group', { name: 'Toiminnot' }).getByRole('button', { name: 'Peru tapahtuma' }).click();
-  const cancelDialog = page.getByRole('dialog', { name: 'Peru tapahtuma' });
-  await expect(cancelDialog.getByRole('button', { name: 'Peru tapahtuma' })).toBeDisabled();
+  await page.getByRole('group', { name: 'Toiminnot' }).getByRole('button', { name: 'Peru keikka' }).click();
+  const cancelDialog = page.getByRole('dialog', { name: 'Peru keikka' });
+  await expect(cancelDialog.getByRole('button', { name: 'Peru keikka' })).toBeDisabled();
   await cancelDialog.getByLabel('Syy').fill('Synthetic reason');
-  await cancelDialog.getByRole('button', { name: 'Peru tapahtuma' }).click();
+  await cancelDialog.getByRole('button', { name: 'Peru keikka' }).click();
   await expect(cancelDialog).toBeHidden();
   await expect(pageHead(page)).toContainText('Peruttu');
-  await expect(page.getByRole('status').filter({ hasText: 'Tapahtuma on peruttu.' })).toBeVisible();
+  await expect(page.getByRole('status').filter({ hasText: 'Keikka on peruttu.' })).toBeVisible();
   // Price stays editable in place on a cancelled event (UC-010).
   await expectNoEditSaveButtons(page.getByRole('main'), 'cancelled event');
   await editInline(page, price, fiInput(10000));
@@ -124,21 +124,21 @@ test('edit price, move, cancel, uncancel, delete, restore — all in history', a
 
   // Uncancel (UC-012).
   await page.getByRole('group', { name: 'Toiminnot' }).getByRole('button', { name: 'Palauta myydyksi' }).click();
-  const uncancelDialog = page.getByRole('dialog', { name: 'Palauta tapahtuma myydyksi' });
+  const uncancelDialog = page.getByRole('dialog', { name: 'Palauta keikka myydyksi' });
   await uncancelDialog.getByLabel('Syy').fill('Synthetic reason');
   await uncancelDialog.getByRole('button', { name: 'Palauta myydyksi' }).click();
   await expect(uncancelDialog).toBeHidden();
-  await expect(page.getByRole('status').filter({ hasText: 'Tapahtuma palautettu myydyksi.' })).toBeVisible();
+  await expect(page.getByRole('status').filter({ hasText: 'Keikka palautettu myydyksi.' })).toBeVisible();
   await expect(pageHead(page)).toContainText('Myyty');
   await expect(pageHead(page)).not.toContainText('Peruttu');
 
   // Delete (UC-025) → lands on the event list with a notice; the event is in the deleted view.
-  await page.getByRole('group', { name: 'Toiminnot' }).getByRole('button', { name: 'Poista tapahtuma' }).click();
-  const deleteDialog = page.getByRole('dialog', { name: 'Poista tapahtuma' });
+  await page.getByRole('group', { name: 'Toiminnot' }).getByRole('button', { name: 'Poista keikka' }).click();
+  const deleteDialog = page.getByRole('dialog', { name: 'Poista keikka' });
   await deleteDialog.getByLabel('Syy').fill('Synthetic reason');
-  await deleteDialog.getByRole('button', { name: 'Poista tapahtuma' }).click();
-  await expect(page).toHaveURL(/\/events$/);
-  await expect(page.getByRole('status').filter({ hasText: 'Tapahtuma poistettu.' })).toBeVisible();
+  await deleteDialog.getByRole('button', { name: 'Poista keikka' }).click();
+  await expect(page).toHaveURL(/\/gigs$/);
+  await expect(page.getByRole('status').filter({ hasText: 'Keikka poistettu.' })).toBeVisible();
   await expect(eventListRows(page).first()).toBeVisible(); // the list has loaded (table or cards)
   await expect(page.getByRole('link', { name: title })).toHaveCount(0);
 
@@ -147,11 +147,11 @@ test('edit price, move, cancel, uncancel, delete, restore — all in history', a
   await expect(deletedList.getByRole('link', { name: title })).toBeVisible();
   await expectNoHorizontalScroll(page, 'deleted events view');
   await deletedList.getByRole('button', { name: `Palauta: ${title}` }).click();
-  await expect(page.getByRole('status').filter({ hasText: 'Tapahtuma palautettu:' })).toBeVisible();
+  await expect(page.getByRole('status').filter({ hasText: 'Keikka palautettu:' })).toBeVisible();
   await expect(deletedList.getByRole('link', { name: title })).toHaveCount(0);
 
   // Back in the active list, then the history shows every event, newest first (UC-013).
-  await page.getByRole('button', { name: 'Tapahtumat', exact: true }).click();
+  await page.getByRole('button', { name: 'Keikat', exact: true }).click();
   await page.getByRole('link', { name: title }).click();
   await expect(page.getByRole('heading', { level: 1, name: title })).toBeVisible();
   // Inline editing sends one PATCH per field, so each saved field is its own "updated" event:
@@ -168,7 +168,7 @@ test('edit price, move, cancel, uncancel, delete, restore — all in history', a
     'Tietoja muutettu',
     'Tietoja muutettu',
     'Tietoja muutettu',
-    'Tapahtuma luotu',
+    'Keikka luotu',
   ]);
   const events = await api(page).get(`/events/${event.id}/history`);
   expect(events.map((e: { type: string }) => e.type)).toEqual([

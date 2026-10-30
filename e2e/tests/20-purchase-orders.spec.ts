@@ -165,7 +165,7 @@ test('freelancer link → create PO → mark paid → event lines paid and locke
   // Rows: upcoming not selectable; paid; the other-year PO's line "Ostotilaus <number>".
   await expect(feeRows(fp)).toHaveCount(5);
   const upcoming = feeRow(fp, venue(3), 'Laulu');
-  await expect(upcoming).toContainText('Tapahtuma on vielä tulossa');
+  await expect(upcoming).toContainText('Keikka on vielä tulossa');
   await expect(upcoming.getByRole('checkbox')).toHaveCount(0);
   await expect(feeRow(fp, venue(2), 'Taustalaulu')).toContainText('Maksettu');
   await expect(feeRow(fp, venue(2), 'Taustalaulu').getByRole('checkbox')).toHaveCount(0);
@@ -233,7 +233,7 @@ test('freelancer link → create PO → mark paid → event lines paid and locke
     expect(line.actualCents).toBe(amount);
     expect(line.purchaseOrder).toEqual({ id: paid.id, number: po.number, status: 'PAID' });
   }
-  await page.goto(`/events/${event1.id}`);
+  await page.goto(`/gigs/${event1.id}`);
   await expect(pageHead(page)).toBeVisible();
   const drums = costLine(page, 'Rummut');
   const tagLink = drums.getByRole('link', { name: `Ostotilaus ${po.number}` });
@@ -265,8 +265,8 @@ test('freelancer link → create PO → mark paid → event lines paid and locke
   await expect(page.getByRole('heading', { level: 1, name: po.number })).toBeVisible();
   await expect(pageHead(page).locator('.tag.tag-ok')).toHaveText(fiPaidLabel(paid.paidAt!));
   const lines = page.getByRole('table', { name: 'Ostotilauksen palkkiot' });
-  await expect(lines.getByRole('link', { name: `Avaa tapahtuma: ${venue(1)}` })).toHaveAttribute('href', `/events/${event1.id}`);
-  await expect(lines.getByRole('link', { name: `Avaa tapahtuma: ${venue(2)}` })).toHaveAttribute('href', `/events/${event2.id}`);
+  await expect(lines.getByRole('link', { name: `Avaa keikka: ${venue(1)}` })).toHaveAttribute('href', `/gigs/${event1.id}`);
+  await expect(lines.getByRole('link', { name: `Avaa keikka: ${venue(2)}` })).toHaveAttribute('href', `/gigs/${event2.id}`);
   await expect(lines).toContainText(fiMoney(70000));
 
   await page.getByRole('button', { name: 'Peru maksu', exact: true }).click();
@@ -368,13 +368,13 @@ test('event cancel with a line on an open PO → error shown, event unchanged', 
   const { lineId, sharePath, eventId } = await personWithPlayedFee(page, testInfo, 'PO Guard');
   const po = await createPoPublic(request, sharePath, [lineId]);
 
-  await page.goto(`/events/${eventId}`);
+  await page.goto(`/gigs/${eventId}`);
   await expect(pageHead(page)).toBeVisible();
-  await page.getByRole('group', { name: 'Toiminnot' }).getByRole('button', { name: 'Peru tapahtuma' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Peru tapahtuma' });
+  await page.getByRole('group', { name: 'Toiminnot' }).getByRole('button', { name: 'Peru keikka' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Peru keikka' });
   await dialog.getByLabel('Syy').fill('Synthetic reason');
   const res = page.waitForResponse((r) => r.request().method() === 'POST' && r.url().endsWith('/cancel'));
-  await dialog.getByRole('button', { name: 'Peru tapahtuma' }).click();
+  await dialog.getByRole('button', { name: 'Peru keikka' }).click();
   const cancelRes = await res;
   expect(cancelRes.status()).toBe(409);
   const err = (await cancelRes.json()).error;

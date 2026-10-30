@@ -4,7 +4,7 @@ import { PARTNER_A_EMAIL, renderApp } from '../test/renderApp';
 
 describe('sign-in page', () => {
   it('shows sign-in when there is no session, for any page', async () => {
-    renderApp('/events');
+    renderApp('/gigs');
     expect(await screen.findByRole('heading', { name: 'Kirjaudu sisään' })).toBeInTheDocument();
     const google = screen.getByRole('link', { name: 'Kirjaudu Googlella' });
     expect(google).toHaveAttribute('href', '/api/auth/google/start');
@@ -52,7 +52,7 @@ describe('sign-in page', () => {
     // Phone: the navigation is in the ☰ drawer.
     await user.click(screen.getByRole('button', { name: 'Valikko' }));
     const nav = screen.getByRole('navigation', { name: 'Päävalikko' });
-    for (const label of ['Vuosi', 'Tapahtumat', 'Henkilöt', 'Tehtävät', 'Tunnit', 'Budjetti']) {
+    for (const label of ['Vuosi', 'Keikat', 'Henkilöt', 'Tehtävät', 'Tunnit', 'Budjetti']) {
       expect(within(nav).getByRole('link', { name: label })).toBeInTheDocument();
     }
   });

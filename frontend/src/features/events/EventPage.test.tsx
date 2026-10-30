@@ -22,7 +22,7 @@ describe('event page (UC-004, UC-007)', () => {
       houseTechnician: true,
       notes: 'Stage left',
     });
-    const { user } = renderApp(`/events/${event.id}`);
+    const { user } = renderApp(`/gigs/${event.id}`);
     expect(await screen.findByRole('heading', { name: 'Template A · Venue X', level: 1 })).toBeInTheDocument();
     expect(screen.getByText('1.6.2030')).toBeInTheDocument();
     expect(screen.getByText('Myyty')).toBeInTheDocument();
@@ -48,7 +48,7 @@ describe('event page (UC-004, UC-007)', () => {
 
   it('has no Edit buttons: basic info and price are inline fields (NFR-8)', async () => {
     const event = addMockEvent();
-    renderApp(`/events/${event.id}`);
+    renderApp(`/gigs/${event.id}`);
     await screen.findByRole('heading', { name: 'Template A · Venue X', level: 1 });
     const basic = section('Perustiedot');
     const price = section('Hinta ja lisämyynti');
@@ -72,7 +72,7 @@ describe('event page (UC-004, UC-007)', () => {
     const event = addMockEvent();
     // A split production line held by Partner B stays where it is.
     addCostLine(db.events, event, { type: 'PRODUCTION', personId: partnerB().personId, description: null, budgetedCents: 1000 }, partnerA().id);
-    const { user } = renderApp(`/events/${event.id}`);
+    const { user } = renderApp(`/gigs/${event.id}`);
     await screen.findAllByRole('option', { name: 'Partner C' });
     const basic = section('Perustiedot');
 
@@ -133,7 +133,7 @@ describe('event page (UC-004, UC-007)', () => {
 
   it('edits price and additional sales in place; total, economics and history update (UC-007)', async () => {
     const event = addMockEvent();
-    const { user } = renderApp(`/events/${event.id}`);
+    const { user } = renderApp(`/gigs/${event.id}`);
     await screen.findByRole('heading', { name: 'Template A · Venue X', level: 1 });
     const form = section('Hinta ja lisämyynti');
     const totalTile = () => within(section('Talous')).getByRole('region', { name: 'Kokonaishinta' });
@@ -167,10 +167,10 @@ describe('event page (UC-004, UC-007)', () => {
 
   it('cancel requires a reason and reminds to adjust the price; uncancel keeps the history (UC-010, UC-012)', async () => {
     const event = addMockEvent();
-    const { user } = renderApp(`/events/${event.id}`);
-    await user.click(await screen.findByRole('button', { name: 'Peru tapahtuma' }));
-    const dialog = screen.getByRole('dialog', { name: 'Peru tapahtuma' });
-    const confirm = within(dialog).getByRole('button', { name: 'Peru tapahtuma' });
+    const { user } = renderApp(`/gigs/${event.id}`);
+    await user.click(await screen.findByRole('button', { name: 'Peru keikka' }));
+    const dialog = screen.getByRole('dialog', { name: 'Peru keikka' });
+    const confirm = within(dialog).getByRole('button', { name: 'Peru keikka' });
     expect(confirm).toBeDisabled();
     await user.type(within(dialog).getByRole('textbox', { name: 'Syy' }), '   ');
     expect(confirm).toBeDisabled();
@@ -188,10 +188,10 @@ describe('event page (UC-004, UC-007)', () => {
     await waitFor(() => expect(event.priceCents).toBe(10000));
 
     await user.click(screen.getByRole('button', { name: 'Palauta myydyksi' }));
-    const uncancel = screen.getByRole('dialog', { name: 'Palauta tapahtuma myydyksi' });
+    const uncancel = screen.getByRole('dialog', { name: 'Palauta keikka myydyksi' });
     await user.type(within(uncancel).getByRole('textbox', { name: 'Syy' }), 'Back on');
     await user.click(within(uncancel).getByRole('button', { name: 'Palauta myydyksi' }));
-    expect(await screen.findByText('Tapahtuma palautettu myydyksi.')).toBeInTheDocument();
+    expect(await screen.findByText('Keikka palautettu myydyksi.')).toBeInTheDocument();
 
     await waitFor(() => expect(historyItems()[0]).toHaveTextContent('Palautettu myydyksi'));
     expect(historyItems()[0]).toHaveTextContent('Syy: Back on');
@@ -205,9 +205,9 @@ describe('event page (UC-004, UC-007)', () => {
     staffMockEvent(other, ['Person 1']);
     const event = addMockEvent();
     staffMockEvent(event, ['Person 1', 'Person 2']);
-    const { user } = renderApp(`/events/${event.id}`);
+    const { user } = renderApp(`/gigs/${event.id}`);
     await user.click(await screen.findByRole('button', { name: 'Siirrä' }));
-    const dialog = screen.getByRole('dialog', { name: 'Siirrä tapahtuma' });
+    const dialog = screen.getByRole('dialog', { name: 'Siirrä keikka' });
     const start = within(dialog).getByLabelText('Uusi alkupäivä');
     await user.clear(start);
     await user.type(start, `${TEST_YEAR}-07-01`);
@@ -218,14 +218,14 @@ describe('event page (UC-004, UC-007)', () => {
     await user.type(within(dialog).getByRole('textbox', { name: 'Syy (valinnainen)' }), 'Venue asked');
     await user.click(within(dialog).getByRole('button', { name: 'Siirrä' }));
 
-    expect(await screen.findByText('Tapahtuma siirretty.')).toBeInTheDocument();
-    const warning = screen.getByText('Päällekkäinen tapahtuma').closest('[role="alert"]')!;
-    expect(warning).toHaveTextContent('Person 1 on samaan aikaan myös tapahtumassa (1.7.2030): Template B');
+    expect(await screen.findByText('Keikka siirretty.')).toBeInTheDocument();
+    const warning = screen.getByText('Päällekkäinen keikka').closest('[role="alert"]')!;
+    expect(warning).toHaveTextContent('Person 1 on samaan aikaan myös keikalla (1.7.2030): Template B');
     // Partner A is on both events' Sales/Production lines: internal lines never warn (BR-022).
     expect(warning).not.toHaveTextContent('Partner A');
     expect(within(warning as HTMLElement).getAllByRole('link', { name: 'Template B' })[0]).toHaveAttribute(
       'href',
-      `/events/${other.id}`,
+      `/gigs/${other.id}`,
     );
     expect(screen.getByText('1.7.2030', { selector: '.event-header-date' })).toBeInTheDocument();
     await waitFor(() => expect(historyItems()[0]).toHaveTextContent('Siirretty'));
@@ -237,19 +237,19 @@ describe('event page (UC-004, UC-007)', () => {
   it('deletes with a reason; the deleted event is read-only and can be restored (UC-025)', async () => {
     const event = addMockEvent({ venue: 'Venue Gone' });
     payCostLine(db.events, db.events.costLines.find((l) => l.eventId === event.id)!, 10000, partnerA().id);
-    const { user } = renderApp(`/events/${event.id}`);
-    await user.click(await screen.findByRole('button', { name: 'Poista tapahtuma' }));
-    const dialog = screen.getByRole('dialog', { name: 'Poista tapahtuma' });
-    expect(within(dialog).getByRole('button', { name: 'Poista tapahtuma' })).toBeDisabled();
+    const { user } = renderApp(`/gigs/${event.id}`);
+    await user.click(await screen.findByRole('button', { name: 'Poista keikka' }));
+    const dialog = screen.getByRole('dialog', { name: 'Poista keikka' });
+    expect(within(dialog).getByRole('button', { name: 'Poista keikka' })).toBeDisabled();
     await user.type(within(dialog).getByRole('textbox', { name: 'Syy' }), 'Duplicate');
-    await user.click(within(dialog).getByRole('button', { name: 'Poista tapahtuma' }));
+    await user.click(within(dialog).getByRole('button', { name: 'Poista keikka' }));
 
-    expect(await screen.findByText(/Tapahtuma poistettu/)).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: `Tapahtumat ${TEST_YEAR}` })).toBeInTheDocument();
+    expect(await screen.findByText(/Keikka poistettu/)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: `Keikat ${TEST_YEAR}` })).toBeInTheDocument();
     expect(event.deletedAt).not.toBeNull();
 
-    renderApp(`/events/${event.id}`);
-    expect(await screen.findAllByText(/Tapahtuma on poistettu/)).not.toHaveLength(0);
+    renderApp(`/gigs/${event.id}`);
+    expect(await screen.findAllByText(/Keikka on poistettu/)).not.toHaveLength(0);
     // The first render (event list after delete) is still mounted: check the latest event page.
     const last = (role: string, name: string) => screen.getAllByRole(role, { name }).at(-1)!;
     expect(last('textbox', 'Paikka')).toBeDisabled();
@@ -259,9 +259,9 @@ describe('event page (UC-004, UC-007)', () => {
     expect(last('combobox', 'Logistiikka')).toBeDisabled();
     expect(last('switch', 'Talon teknikko')).toBeDisabled();
     expect(screen.queryAllByRole('button', { name: 'Merkitse maksetuksi' })).toHaveLength(0);
-    const restore = screen.getAllByRole('button', { name: 'Palauta tapahtuma' }).at(-1)!;
+    const restore = screen.getAllByRole('button', { name: 'Palauta keikka' }).at(-1)!;
     await user.click(restore);
-    expect(await screen.findByText('Tapahtuma palautettu poistosta.')).toBeInTheDocument();
+    expect(await screen.findByText('Keikka palautettu poistosta.')).toBeInTheDocument();
     // All data is back, including the payment (AC-3).
     const paidAmounts = await screen.findAllByRole('textbox', { name: /^Maksettu summa: / });
     expect(paidAmounts.map((el) => (el as HTMLInputElement).value)).toContain('100,00');
@@ -271,7 +271,7 @@ describe('event page (UC-004, UC-007)', () => {
     const c = db.partners.find((p) => p.name === 'Partner C')!;
     c.active = false;
     const event = addMockEvent({ sellerId: c.id });
-    renderApp(`/events/${event.id}`);
+    renderApp(`/gigs/${event.id}`);
     await screen.findAllByRole('option', { name: 'Partner B' });
     const basic = section('Perustiedot');
     const names = (select: HTMLElement) =>
@@ -285,7 +285,7 @@ describe('event page (UC-004, UC-007)', () => {
   });
 
   it('shows not found for an unknown event', async () => {
-    renderApp('/events/00000000-0000-4000-8000-999999999999');
+    renderApp('/gigs/00000000-0000-4000-8000-999999999999');
     expect(await screen.findByRole('alert')).toHaveTextContent('Tietoa ei löytynyt.');
   });
 });

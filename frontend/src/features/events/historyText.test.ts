@@ -76,7 +76,7 @@ describe('history descriptions (UC-013)', () => {
 
   it('describes every entry in Finnish with old → new values', () => {
     expect(describeAll('fi')).toEqual([
-      'Tapahtuma luotu',
+      'Keikka luotu',
       'Tietoja muutettu | Hinta: 1 000,00 € → 2 000,00 € | Myyjä: Partner A → Partner B | Tekniikka: – → Setti A | Logistiikka: Oma paku → Vuokrapaku | Talon teknikko: ei → kyllä | Muistiinpanot: – → Note | Siirrettyjä Myynti- / Tuotanto-rivejä: 1',
       'Siirretty | 1.6.2030 → 1.7.2030–2.7.2030 | Syy: Venue asked',
       'Peruttu | Syy: Called off',

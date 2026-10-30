@@ -31,9 +31,9 @@ test('create an event with Set A, own van and house technician; edit each in pla
 
   // ---- New event form: two selects and a switch ----
   await page.goto('/');
-  await goNav(page, 'Tapahtumat');
-  await page.getByRole('link', { name: 'Uusi tapahtuma' }).first().click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Uusi tapahtuma' })).toBeVisible();
+  await goNav(page, 'Keikat');
+  await page.getByRole('link', { name: 'Uusi keikka' }).first().click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Uusi keikka' })).toBeVisible();
 
   const main = page.getByRole('main');
   const newTech = main.getByRole('combobox', { name: 'Tekniikka', exact: true });
@@ -61,7 +61,7 @@ test('create an event with Set A, own van and house technician; edit each in pla
   const created = page.waitForResponse(
     (res) => res.request().method() === 'POST' && new URL(res.url()).pathname === '/api/events',
   );
-  await page.getByRole('button', { name: 'Luo tapahtuma' }).click();
+  await page.getByRole('button', { name: 'Luo keikka' }).click();
   const createRes = await created;
   expect(createRes.status(), 'POST /api/events').toBe(201);
   expect(createRes.request().postDataJSON()).toMatchObject({
@@ -121,7 +121,7 @@ test('create an event with Set A, own van and house technician; edit each in pla
     'Tietoja muutettu',
     'Tietoja muutettu',
     'Tietoja muutettu',
-    'Tapahtuma luotu',
+    'Keikka luotu',
   ]);
   await expect(items.nth(0).locator('.history-line')).toHaveText(['Tekniikka: Setti B → –']);
   await expect(items.nth(1).locator('.history-line')).toHaveText(['Talon teknikko: kyllä → ei']);

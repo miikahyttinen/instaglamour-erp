@@ -9,7 +9,7 @@ import { BudgetPage } from './features/budget/BudgetPage';
 import { ClientsRoutes } from './features/clients/ClientsRoutes';
 import { DataImportPage } from './features/dataImport/DataImportPage';
 import { EventsRoutes } from './features/events/EventsRoutes';
-import { LegacyGigsRedirect } from './features/events/LegacyGigsRedirect';
+import { LegacyEventsRedirect } from './features/events/LegacyEventsRedirect';
 import { FreelancerPage } from './features/freelancer/FreelancerPage';
 import { HoursRoutes } from './features/hours/HoursRoutes';
 import { OffersRoutes } from './features/offers/OffersRoutes';
@@ -51,8 +51,8 @@ export function AppRoutes() {
         {/* Same order as the navigation (layout/navItems.ts). */}
         <Route path="offers/*" element={<OffersRoutes />} />
         <Route index element={<YearPage />} />
-        <Route path="events/*" element={<EventsRoutes />} />
-        <Route path="gigs/*" element={<LegacyGigsRedirect />} />
+        <Route path="gigs/*" element={<EventsRoutes />} />
+        <Route path="events/*" element={<LegacyEventsRedirect />} />
         <Route path="purchase-orders/*" element={<PurchaseOrdersRoutes />} />
         <Route path="clients/*" element={<ClientsRoutes />} />
         <Route path="people/*" element={<PeopleRoutes />} />

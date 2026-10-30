@@ -30,7 +30,7 @@ test('upload, download and remove a PDF attachment', async ({ page }, testInfo) 
   const pdf = syntheticPdf();
   const filename = `synthetic-contract-${tag}.pdf`;
 
-  await page.goto(`/events/${event.id}`);
+  await page.goto(`/gigs/${event.id}`);
   await expect(page.getByText('Ei liitteitä.')).toBeVisible();
 
   await page.getByLabel('Lisää tiedosto', { exact: true }).setInputFiles({
@@ -87,7 +87,7 @@ test('a fake PDF is refused by the server with a translated message', async ({ p
   await signIn(page);
   const venue = `Venue ${tagOf(testInfo)}-${suffix()}`;
   const event = await createEventViaApi(page, { startDate: '2026-11-28', venue });
-  await page.goto(`/events/${event.id}`);
+  await page.goto(`/gigs/${event.id}`);
   const [response] = await Promise.all([
     page.waitForResponse((r) => r.url().endsWith(`/api/events/${event.id}/attachments`)),
     page.getByLabel('Lisää tiedosto', { exact: true }).setInputFiles({

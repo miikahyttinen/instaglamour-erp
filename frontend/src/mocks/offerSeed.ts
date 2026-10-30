@@ -147,7 +147,7 @@ export function seedOffers(events: EventState, partners: Partner[], year = new D
       priceCents: 200000,
       source: 'EMAIL',
       eventType: 'PRIVATE',
-      // Won, not converted yet: shows "Muuta tapahtumaksi" in dev:mock (BR-109).
+      // Won, not converted yet: shows "Muuta keikaksi" in dev:mock (BR-109).
       disposition: 'WON',
     },
     a.id,

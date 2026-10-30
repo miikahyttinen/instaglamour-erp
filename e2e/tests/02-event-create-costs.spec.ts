@@ -30,9 +30,9 @@ test('create an event from a template, staff it, switch load-in, mark paid', asy
   const budgeted = 3 * fee + 3 * internal;
 
   await page.goto('/');
-  await goNav(page, 'Tapahtumat');
-  await page.getByRole('link', { name: 'Uusi tapahtuma' }).first().click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Uusi tapahtuma' })).toBeVisible();
+  await goNav(page, 'Keikat');
+  await page.getByRole('link', { name: 'Uusi keikka' }).first().click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Uusi keikka' })).toBeVisible();
   await expectNoHorizontalScroll(page, 'new event');
 
   await page.getByLabel('Alkupäivä').fill(startDate);
@@ -40,7 +40,7 @@ test('create an event from a template, staff it, switch load-in, mark paid', asy
   await page.getByLabel('Paikka').fill(venue);
   await page.getByLabel('Hinta (alv 0 %)').fill(fiInput(priceCents));
   await expect(totalPriceLine(page)).toContainText(fiMoney(priceCents));
-  await page.getByRole('button', { name: 'Luo tapahtuma' }).click();
+  await page.getByRole('button', { name: 'Luo keikka' }).click();
 
   // Event page with the template's cost lines (BR-020) plus office/sales/production (BR-021).
   await expect(page.getByRole('heading', { level: 1, name: `${SEED.templateB.name} · ${venue}` })).toBeVisible();
@@ -99,23 +99,23 @@ test('create an event from a template, staff it, switch load-in, mark paid', asy
   const history = page.getByRole('list', { name: 'Muutoshistoria' });
   await expect(history.getByText('Merkitty maksetuksi')).toBeVisible();
   await expect(history.getByText('Kuluriviä muutettu').first()).toBeVisible();
-  await expect(history.getByText('Tapahtuma luotu')).toBeVisible();
+  await expect(history.getByText('Keikka luotu')).toBeVisible();
   await expectNoHorizontalScroll(page, 'event page after edits');
 
   // Without a reload, the event list summary and the year page (both loaded earlier in this session)
   // show the new figures.
   const year = await api(page).get('/years/2026');
   expect(year.events.soldEventsSumCents).toBeGreaterThanOrEqual(priceCents);
-  await page.getByRole('main').getByRole('link', { name: 'Tapahtumat', exact: true }).click(); // back link
+  await page.getByRole('main').getByRole('link', { name: 'Keikat', exact: true }).click(); // back link
   const summary = page.getByRole('region', { name: 'Vuosi yhteensä' });
-  await expect(summary).toContainText(`Myytyjen tapahtumien summa${fiMoney(year.events.soldEventsSumCents)}`);
+  await expect(summary).toContainText(`Myytyjen keikkojen summa${fiMoney(year.events.soldEventsSumCents)}`);
   await expect(summary).toContainText(`Kulut, toteuma${fiMoney(year.events.actualCostsCents)}`);
   await expect(page.getByRole('link', { name: `${SEED.templateB.name} · ${venue}` })).toBeVisible();
   await goNav(page, 'Vuosi');
-  const eventsRegion = page.getByRole('region', { name: 'Tapahtumat' });
-  await expect(eventsRegion.getByRole('link', { name: `Tapahtumia ${year.events.eventCount}` })).toBeVisible();
+  const eventsRegion = page.getByRole('region', { name: 'Keikat' });
+  await expect(eventsRegion.getByRole('link', { name: `Keikkoja ${year.events.eventCount}` })).toBeVisible();
   await expect(
-    eventsRegion.getByRole('link', { name: `Myytyjen tapahtumien summa ${fiMoney(year.events.soldEventsSumCents)}` }),
+    eventsRegion.getByRole('link', { name: `Myytyjen keikkojen summa ${fiMoney(year.events.soldEventsSumCents)}` }),
   ).toBeVisible();
   // Actual costs are the secondary figure inside the budgeted-costs tile (a link to the list).
   await expect(
@@ -130,11 +130,11 @@ test('double booking shows a warning naming the other event', async ({ page }, t
   // The example seed has Person 1 on vocals at Venue X on 2026-10-17 (Template A).
   const event = await createEventViaApi(page, { startDate: '2026-10-17', venue });
 
-  await page.goto(`/events/${event.id}`);
+  await page.goto(`/gigs/${event.id}`);
   const guitar = costLine(page, 'Kitara');
   await guitar.getByLabel('Henkilö: Kitara').selectOption({ label: 'Person 1' });
-  const warning = page.getByRole('alert').filter({ hasText: 'Päällekkäinen tapahtuma' });
-  await expect(warning).toContainText('Person 1 on samaan aikaan myös tapahtumassa (17.10.2026):');
+  const warning = page.getByRole('alert').filter({ hasText: 'Päällekkäinen keikka' });
+  await expect(warning).toContainText('Person 1 on samaan aikaan myös keikalla (17.10.2026):');
   await expect(warning.getByRole('link', { name: 'Template A' })).toBeVisible();
   await expect(guitar.getByLabel('Henkilö: Kitara').locator('option:checked')).toHaveText('Person 1');
   await expectNoHorizontalScroll(page, 'event page with warning');
@@ -155,7 +155,7 @@ test('cost lines are edited in place; Esc and invalid amounts are not saved', as
   const note = 'Synthetic note';
   const event = await createEventViaApi(page, { startDate: '2026-11-28', venue });
 
-  await page.goto(`/events/${event.id}`);
+  await page.goto(`/gigs/${event.id}`);
   await expect(costLines(page)).toHaveCount(6);
   await expectNoEditSaveButtons(page.getByRole('table', { name: 'Kulut ja miehitys' }), 'cost lines');
 

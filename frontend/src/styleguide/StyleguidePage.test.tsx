@@ -79,7 +79,7 @@ describe('/styleguide (dev only)', () => {
     const single = container.querySelector<HTMLElement>('.sg-shell-single')!;
     await user.click(within(single).getByRole('button', { name: 'Pienennä valikko' }));
     expect(single).toHaveClass('is-collapsed');
-    expect(within(single).getByRole('link', { name: 'Tapahtumat' })).toHaveAttribute('data-tooltip', 'Tapahtumat');
+    expect(within(single).getByRole('link', { name: 'Keikat' })).toHaveAttribute('data-tooltip', 'Keikat');
 
     await user.click(screen.getByRole('button', { name: 'Open drawer (phone)' }));
     const drawer = screen.getByRole('dialog', { name: 'Päävalikko' });
