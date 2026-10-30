@@ -458,7 +458,7 @@ describe('<ExcelTable> on phones (< 600 px)', () => {
   });
 });
 
-// A second filter in one column's header (e.g. "Maksut" in the gig list "Laskutus" column).
+// A second filter in one column's header (generic option; currently unused by the app).
 const EXTRA_COLUMNS: ExcelColumn<Row>[] = [
   ...COLUMNS.map((c) => (c.key === 'city' ? { ...c, extraFilters: ['hasPrice'] } : c)),
   {

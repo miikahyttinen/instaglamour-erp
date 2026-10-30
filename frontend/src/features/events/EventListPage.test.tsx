@@ -277,7 +277,7 @@ describe('event list (UC-003)', () => {
     await waitFor(() => expect(venues()).toEqual(['Venue Y']));
   });
 
-  it('shows "Laskutus" as coverage (or rows to invoice) + payment tags on two lines, sorted, with Laskutus and Maksut filters', async () => {
+  it('shows "Laskutus" as one invoicing state tag, sorted, with one Laskutus filter', async () => {
     signInMock().selectedYear = 2020;
     // Default mock gig total: 1 000,00 €.
     const add = (day: string, venue: string, rows: [InvoiceRowStatus, number][], priceCents = 100000) => {
@@ -287,67 +287,76 @@ describe('event list (UC-003)', () => {
       }
       return e;
     };
-    add('01-05', 'Venue Paid', [['PAID', 120000]]);
-    add('01-04', 'Venue Partly', [['PAID', 40000]]);
-    add('01-03', 'Venue Open', [['PAID', 40000], ['SENT', 60000]]);
-    add('01-02', 'Venue Draft', [['READY', 100000]]);
+    add('01-06', 'Venue Paid', [['PAID', 120000]]);
+    add('01-05', 'Venue Partly', [['PAID', 40000]]);
+    add('01-04', 'Venue Open', [['PAID', 40000], ['SENT', 60000]]);
+    add('01-03', 'Venue Draft', [['SENT', 40000], ['READY', 60000]]);
+    add('01-02', 'Venue New', []);
     add('01-01', 'Venue Zero', [], 0);
     installMatchMedia({ [TABLET_QUERY]: true, [DESKTOP_QUERY]: true, [WIDE_QUERY]: true });
     const { user, url } = renderAppWithUrl(`/gigs`);
-    await waitFor(() => expect(venues()).toHaveLength(5));
+    await waitFor(() => expect(venues()).toHaveLength(6));
     const cell = (venue: string, label: string) => {
       const row = rows()[venues().indexOf(venue)]!;
       return within(row).getAllByRole('cell').find((c) => c.getAttribute('data-label') === label)!;
     };
-    /** [coverage line, payment line]: tag class + text, or '–'. */
-    const lines = (venue: string) =>
-      [...cell(venue, 'Laskutus').querySelectorAll('.invoicing-tags > span')].map((line) => {
-        const tag = line.querySelector('.tag');
-        return tag ? `${[...tag.classList].find((c) => c.startsWith('tag-'))} ${tag.textContent}` : line.textContent;
-      });
-    expect(lines('Venue Zero')).toEqual(['–', '–']);
-    // READY rows: "Laskutettavia rivejä" (blue) replaces the coverage tag in the table.
-    expect(lines('Venue Draft')).toEqual(['tag-info Laskutettavia rivejä', '–']);
-    expect(lines('Venue Open')).toEqual(['tag-ok Laskutettu kokonaan', 'tag-info Avoimia laskuja']);
-    expect(lines('Venue Partly')).toEqual(['tag-warn Laskuttamatta', 'tag-purple Osittain maksettu']);
-    expect(lines('Venue Paid')).toEqual(['tag-ok Laskutettu kokonaan', 'tag-ok-strong Maksettu kokonaan']);
+    /** The single tag of the Laskutus cell (tone class + text), or '–'. */
+    const tag = (venue: string) => {
+      const c = cell(venue, 'Laskutus');
+      const tags = c.querySelectorAll('.tag');
+      expect(tags.length).toBeLessThanOrEqual(1);
+      const t = tags[0];
+      return t ? `${[...t.classList].find((k) => k.startsWith('tag-'))} ${t.textContent}` : c.textContent;
+    };
+    expect(tag('Venue Zero')).toBe('–');
+    expect(tag('Venue New')).toBe('tag-danger Laskuttamatta');
+    expect(tag('Venue Draft')).toBe('tag-info Laskutettavia rivejä');
+    expect(tag('Venue Open')).toBe('tag-warn Avoimia laskuja');
+    expect(tag('Venue Partly')).toBe('tag-danger Laskuttamatta');
+    expect(tag('Venue Paid')).toBe('tag-ok-strong Maksettu');
     // Saldo = total − paid rows; negative in warn colour.
-    expect(cell('Venue Draft', 'Saldo')).toHaveTextContent(/1\s000,00\s€/);
+    expect(cell('Venue New', 'Saldo')).toHaveTextContent(/1\s000,00\s€/);
     expect(cell('Venue Open', 'Saldo')).toHaveTextContent(/600,00\s€/);
     expect(cell('Venue Paid', 'Saldo').querySelector('.event-balance-negative')).toHaveTextContent(/[-−]200,00\s€/);
 
     await user.click(within(table()).getByRole('button', { name: /^Laskutus/ }));
-    expect(venues()).toEqual(['Venue Zero', 'Venue Draft', 'Venue Partly', 'Venue Open', 'Venue Paid']);
+    expect(venues()).toEqual(['Venue Zero', 'Venue New', 'Venue Partly', 'Venue Draft', 'Venue Open', 'Venue Paid']);
 
-    // Two filter buttons in the Laskutus header; no separate Maksut column.
-    expect(within(table()).queryByRole('columnheader', { name: /Maksut/ })).not.toBeInTheDocument();
+    // One filter button in the Laskutus header; no Maksut filter.
+    expect(within(table()).queryByRole('button', { name: 'Suodata: Maksut' })).not.toBeInTheDocument();
     await user.click(within(table()).getByRole('button', { name: 'Suodata: Laskutus' }));
     let popover = screen.getByRole('dialog', { name: 'Suodata: Laskutus' });
     const options = () => within(popover).getAllByRole('checkbox').map((c) => c.closest('label')!.textContent);
-    expect(options()).toEqual(['–', 'Laskutettavia rivejä', 'Laskuttamatta', 'Laskutettu kokonaan']);
+    expect(options()).toEqual(['–', 'Laskuttamatta', 'Laskutettavia rivejä', 'Avoimia laskuja', 'Maksettu']);
     await user.click(within(popover).getByRole('button', { name: 'Tyhjennä' }));
     await user.click(within(popover).getByRole('checkbox', { name: 'Laskutettavia rivejä' }));
     await user.click(within(popover).getByRole('button', { name: 'OK' }));
     expect(venues()).toEqual(['Venue Draft']);
-    expect(url()).toContain('f.invoiceCoverage=ROWS_TO_INVOICE');
+    expect(url()).toContain('f.invoiceState=ROWS_TO_INVOICE');
 
     await user.click(within(table()).getByRole('button', { name: 'Suodata: Laskutus' }));
     popover = screen.getByRole('dialog', { name: 'Suodata: Laskutus' });
     await user.click(within(popover).getByRole('button', { name: 'Tyhjennä' }));
-    await user.click(within(popover).getByRole('checkbox', { name: 'Laskutettu kokonaan' }));
+    await user.click(within(popover).getByRole('checkbox', { name: 'Laskuttamatta' }));
+    await user.click(within(popover).getByRole('checkbox', { name: 'Maksettu' }));
     await user.click(within(popover).getByRole('button', { name: 'OK' }));
-    expect(venues().sort()).toEqual(['Venue Open', 'Venue Paid']);
-    expect(url()).toContain('f.invoiceCoverage=FULLY_INVOICED');
+    expect(venues().sort()).toEqual(['Venue New', 'Venue Paid', 'Venue Partly']);
+    expect(url()).toContain('f.invoiceState=NEEDS_INVOICES');
+    expect(url()).toContain('PAID');
+    expect(within(table()).getByRole('button', { name: 'Suodata: Laskutus' })).toHaveAccessibleDescription('Suodatin käytössä');
+  });
 
-    await user.click(within(table()).getByRole('button', { name: 'Suodata: Maksut' }));
-    popover = screen.getByRole('dialog', { name: 'Suodata: Maksut' });
-    // Values of the rows passing the other filters (Excel-like), in workflow order.
-    expect(options()).toEqual(['Avoimia laskuja', 'Maksettu kokonaan']);
-    await user.click(within(popover).getByRole('checkbox', { name: 'Avoimia laskuja' }));
-    await user.click(within(popover).getByRole('button', { name: 'OK' }));
-    expect(venues()).toEqual(['Venue Paid']);
-    expect(url()).toContain('f.paymentState=FULLY_PAID');
-    expect(within(table()).getByRole('button', { name: 'Suodata: Maksut' })).toHaveAccessibleDescription('Suodatin käytössä');
+  it('phone cards show the one invoicing state tag', async () => {
+    signInMock().selectedYear = 2020;
+    const e = addMockEvent({ startDate: '2020-02-01', venue: 'Venue Card', priceCents: 100000 });
+    addInvoiceRow(db.events, e, { description: 'Invoice', amountCents: 100000, status: 'SENT' }, partnerA().id);
+    installMatchMedia({});
+    renderApp('/gigs');
+    await waitFor(() => expect(venues()).toEqual(['Venue Card']));
+    const card = rows()[0]!;
+    const invoicing = within(card).getAllByRole('cell').find((c) => c.getAttribute('data-label') === 'Laskutus')!;
+    expect(invoicing.querySelectorAll('.tag')).toHaveLength(1);
+    expect(within(invoicing).getByText('Avoimia laskuja')).toHaveClass('tag', 'tag-warn');
   });
 
   it('sorts by any column header', async () => {
@@ -379,9 +388,10 @@ describe('event list (UC-003)', () => {
     expect(margin.querySelector('.event-margin-actual')).toHaveTextContent(/^tot\. \S+\s%$/);
     await user.click(screen.getByRole('button', { name: 'Suodattimet' }));
     const sheet = screen.getByRole('dialog', { name: 'Suodattimet' });
-    for (const column of ['Kokoonpano', 'Paikka', 'Asiakas', 'Tila', 'Laskutus', 'Maksut', 'Miehitys kesken', 'Myyjä', 'Tuottaja']) {
+    for (const column of ['Kokoonpano', 'Paikka', 'Asiakas', 'Tila', 'Laskutus', 'Miehitys kesken', 'Myyjä', 'Tuottaja']) {
       expect(within(sheet).getByRole('button', { name: column })).toBeInTheDocument();
     }
+    expect(within(sheet).queryByRole('button', { name: 'Maksut' })).not.toBeInTheDocument();
   });
 
   it('scrolls the first upcoming event into view once (UC-003 step 1)', async () => {

@@ -10,8 +10,7 @@ import type {
   EventHistoryType,
   EventStatus,
   InvoiceRowStatus,
-  InvoiceCoverage,
-  PaymentState,
+  InvoiceState,
   Logistics,
   TechnicalSetup,
 } from '../api/enums';
@@ -133,13 +132,12 @@ export interface InvoiceFigures {
   readyCents: number;
   openCents: number;
   balanceCents: number;
-  invoiceCoverage: InvoiceCoverage;
-  paymentState: PaymentState;
+  invoiceState: InvoiceState;
 }
 
 /**
- * Derived invoicing figures of a gig (api-contract "Invoice rows" and "Invoicing state: coverage +
- * payment"): invoiced = Σ SENT + PAID, paid = Σ PAID, open = Σ SENT, ready = Σ READY (drafts).
+ * Derived invoicing figures of a gig (api-contract "Invoice rows" and "Invoicing: one label"):
+ * invoiced = Σ SENT + PAID, paid = Σ PAID, open = Σ SENT, ready = Σ READY (drafts).
  */
 export function invoiceFigures(
   rows: Pick<InvoiceRow, 'status' | 'amountCents'>[],
@@ -152,19 +150,18 @@ export function invoiceFigures(
   const paidCents = sum(['PAID']);
   const openCents = sum(['SENT']);
   const readyCents = sum(['READY']);
-  const hasSentOrPaid = rows.some((r) => r.status === 'SENT' || r.status === 'PAID');
-  // NONE: total 0 and nothing sent / paid (no rows, or READY drafts only).
-  const invoiceCoverage: InvoiceCoverage =
-    total === 0 && !hasSentOrPaid ? 'NONE' : invoicedCents < total ? 'NEEDS_INVOICES' : 'FULLY_INVOICED';
-  // FULLY_PAID: open = 0, rows exist and paid ≥ total (total 0 included).
-  const paymentState: PaymentState = !hasSentOrPaid
-    ? 'NONE'
-    : openCents > 0
-      ? 'OPEN_INVOICES'
-      : paidCents > 0 && paidCents < total
-        ? 'PARTLY_PAID'
-        : 'FULLY_PAID';
-  return { invoicedCents, paidCents, readyCents, openCents, balanceCents: total - paidCents, invoiceCoverage, paymentState };
+  // Next invoicing action (api-contract "Invoicing: one label"); first match wins.
+  const invoiceState: InvoiceState =
+    paidCents > 0 && paidCents >= total
+      ? 'PAID'
+      : readyCents > 0
+        ? 'ROWS_TO_INVOICE'
+        : openCents > 0
+          ? 'OPEN_INVOICES'
+          : invoicedCents < total
+            ? 'NEEDS_INVOICES'
+            : 'NONE';
+  return { invoicedCents, paidCents, readyCents, openCents, balanceCents: total - paidCents, invoiceState };
 }
 
 export function toSummary(state: EventState, event: MockEvent, today = todayIso()): EventSummary {

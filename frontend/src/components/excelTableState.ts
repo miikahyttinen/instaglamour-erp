@@ -68,7 +68,7 @@ export interface ExcelColumn<T> {
   /** Order of the values in the popover (default: by label; blank is always last). */
   filterCompare?: (a: string, b: string) => number;
   /**
-   * A second filter on the data of a visible column (e.g. "Maksut" in the "Laskutus" column):
+   * A second filter on the data of a visible column (generic; currently unused by the app):
    * not rendered as a header, cell or card line; only its filter, whose button sits in the header
    * of the column listing this key in `extraFilters` (and in the phone filter sheet). Filters with
    * `filterValue` like any column; the URL key is `f.<key>`.
