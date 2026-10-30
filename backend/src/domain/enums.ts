@@ -5,6 +5,7 @@
 import type {
   CostType,
   EventType,
+  InvoiceStatus,
   Logistics,
   OfferDisposition,
   OfferSource,
@@ -50,6 +51,9 @@ export const COST_TYPES = [...MUSICIAN_ROLES, ...INTERNAL_ROLES, ...EXPENSE_CATE
 export const TECHNICAL_SETUPS = ['HOUSE_TECH', 'SET_A', 'SET_B', 'SET_C'] as const satisfies readonly TechnicalSetup[];
 
 /** Single choice (domain-model.md "Logistics"); an event may also have none (null). */
+/** Invoice status of an event, set by hand (api-contract "Invoice status, prepayment and balance"). */
+export const INVOICE_STATUSES = ['NONE', 'READY', 'PREPAYMENT_PAID', 'INVOICED', 'PAID'] as const satisfies readonly InvoiceStatus[];
+
 export const LOGISTICS = ['OWN_VAN', 'RENTAL_VAN', 'TAXI', 'OTHER'] as const satisfies readonly Logistics[];
 
 export type MusicianRole = (typeof MUSICIAN_ROLES)[number];

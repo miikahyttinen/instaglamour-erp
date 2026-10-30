@@ -11,6 +11,7 @@ import {
   COST_TYPES,
   DESCRIPTION_REQUIRED_TYPES,
   EVENT_TYPES,
+  INVOICE_STATUSES,
   convertLegacyRole,
   isLegacyRole,
   isMusicianRole,
@@ -70,6 +71,9 @@ const event = z.strictObject({
   additionalSalesDescription: z.string().max(500).optional(),
   notes: z.string().max(5000).optional(),
   client: name.optional(),
+  // TASK-045: optional invoice status and prepayment (default NONE / 0).
+  invoiceStatus: z.enum(INVOICE_STATUSES).default('NONE'),
+  prepaymentCents: cents.default(0),
   costLines: z.array(costLine).optional(),
 });
 
