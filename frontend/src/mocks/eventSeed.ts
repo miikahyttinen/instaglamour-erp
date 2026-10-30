@@ -96,7 +96,7 @@ export function seedEventState(
     });
   };
 
-  // 1. Fully staffed, everything paid.
+  // 1. Fully staffed, everything paid, ready to be invoiced.
   const g1 = createEvent(
     state,
     { ...base, startDate: `${year}-02-14`, clientId: CLIENT_IDS.a, priceCents: 200000, technicalSetup: 'HOUSE_TECH', houseTechnician: true },
@@ -105,6 +105,9 @@ export function seedEventState(
   );
   staff(g1.id, PERSON_IDS.slice(0, 4));
   linesOf(state, g1.id).forEach((line) => payCostLine(state, line, line.budgetedCents, a.id));
+  g1.readyForInvoiceAt = nowTs();
+  g1.readyForInvoiceBy = a.id;
+  logEvent(state, g1.id, 'READY_FOR_INVOICE', a.id);
 
   // 2. Two-day event with additional sales; keys not staffed.
   const g2 = createEvent(

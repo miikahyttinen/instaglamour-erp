@@ -6,8 +6,8 @@ import { EVENT_STATUS_TONE } from './eventStatusTone';
 
 describe('EventStatusTag', () => {
   it.each([
-    ['SOLD', 'Myyty', 'tag-info'],
-    ['PLAYED', 'Soitettu', 'tag-info'],
+    ['SOLD', 'Tuleva', 'tag-info'],
+    ['PLAYED', 'Soitettu', 'tag-ok'],
     ['CANCELLED', 'Peruttu', 'tag-danger'],
   ] as const)('%s is a %s status tag (%s)', (status, label, toneClass) => {
     render(<EventStatusTag status={status} />);

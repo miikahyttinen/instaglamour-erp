@@ -405,6 +405,39 @@ export const eventHandlers = [
     return HttpResponse.json(toDetail(db.events, event));
   }),
 
+  // "Valmis laskutukseen" (api-contract 2026-10-31): set / clear by hand; both are no-ops when
+  // nothing changes. Cancelled → 409 INVALID_STATUS_TRANSITION (set only), deleted → 409.
+  http.post('/api/events/:id/ready-for-invoice', ({ params }) => {
+    const me = currentPartner();
+    if (!me) return unauthenticated();
+    const event = findEvent(params.id);
+    if (!event) return notFound();
+    if (event.deletedAt) return eventDeleted();
+    if (event.status !== 'SOLD') return badTransition();
+    if (event.readyForInvoiceAt === null) {
+      event.readyForInvoiceAt = nowTs();
+      event.readyForInvoiceBy = me.id;
+      touch(event);
+      logEvent(db.events, event.id, 'READY_FOR_INVOICE', me.id);
+    }
+    return HttpResponse.json(toDetail(db.events, event));
+  }),
+
+  http.delete('/api/events/:id/ready-for-invoice', ({ params }) => {
+    const me = currentPartner();
+    if (!me) return unauthenticated();
+    const event = findEvent(params.id);
+    if (!event) return notFound();
+    if (event.deletedAt) return eventDeleted();
+    if (event.readyForInvoiceAt !== null) {
+      event.readyForInvoiceAt = null;
+      event.readyForInvoiceBy = null;
+      touch(event);
+      logEvent(db.events, event.id, 'READY_FOR_INVOICE_CLEARED', me.id);
+    }
+    return HttpResponse.json(toDetail(db.events, event));
+  }),
+
   http.get('/api/events/:id/history', ({ params }) => {
     if (!currentPartner()) return unauthenticated();
     if (!findEvent(params.id)) return notFound();

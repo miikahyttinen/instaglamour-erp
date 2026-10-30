@@ -23,11 +23,11 @@ import { PageYearSelector } from '../../components/PageYearSelector';
 import { SectionLabel } from '../../components/SectionLabel';
 import { StatGrid, StatTile } from '../../components/StatTile';
 import { StatusTag } from '../../components/StatusTag';
-import { apiErrorMessage, eventDisplayStatus } from '../../i18n/labels';
+import { apiErrorMessage, eventDisplayStatus, isReadyForInvoice } from '../../i18n/labels';
 import { useLang } from '../../i18n/useLang';
 import { formatDate, formatDateRange, formatMoney, formatPercent, todayIso } from '../../lib/format';
 import { useReference } from '../../reference/useReference';
-import { EventStatusTag } from './EventStatusTag';
+import { EventStatusTag, ReadyForInvoiceMark } from './EventStatusTag';
 import { useApplyEvent, useEventList } from './queries';
 import './eventList.css';
 
@@ -326,8 +326,8 @@ function TableDateRange({ start, end, lang }: { start: string; end: string | nul
  * Excel-style table (UC-003 change 2026-10-14, design.md "Excel-style tables"), the same component
  * and look as the offer list: every column sortable, filter icons on the coded / text columns. From
  * 600 px it fills the width without scrolling sideways; columns with priority 2 / 3 are hidden on
- * narrower tables (TASK-147: 1 lineup, date, venue, status, total, margin · 2 client, seller,
- * staffing · 3 producer, budgeted, actual costs). Phones (< 600 px):
+ * narrower tables (TASK-147: 1 lineup, date, venue, status, total, margin · 2 client, ready to be
+ * invoiced, seller, staffing · 3 producer, budgeted, actual costs). Phones (< 600 px):
  * one card per event + the "Suodattimet" sheet. Scrolls the first upcoming visible event into view.
  */
 function EventTable({ events, partners, lang, tableState }: EventTableProps) {
@@ -393,6 +393,17 @@ function EventTable({ events, partners, lang, tableState }: EventTableProps) {
       filterLabel: (v) => statusLabel(v as EventDisplayStatus),
       filterCompare: byCodeOrder(EVENT_DISPLAY_STATUSES),
       cell: (g) => <EventStatusTag status={eventDisplayStatus(g)} />,
+    },
+    {
+      key: 'readyForInvoice',
+      label: t('events.columns.readyForInvoice'),
+      priority: 2,
+      className: 'event-col-ready',
+      sortValue: (g) => (isReadyForInvoice(g) ? 0 : 1),
+      filterValue: (g) => (isReadyForInvoice(g) ? 'yes' : 'no'),
+      filterLabel: (v) => t(v === 'yes' ? 'events.staffingFilter.yes' : 'events.staffingFilter.no'),
+      filterCompare: byCodeOrder(['yes', 'no']),
+      cell: (g) => (isReadyForInvoice(g) ? <ReadyForInvoiceMark /> : <span aria-hidden="true">–</span>),
     },
     {
       key: 'staffing',

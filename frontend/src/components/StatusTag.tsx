@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 
 /**
- * info: Sold / Played · ok: Done / Paid · warn: Overdue / Not fully staffed / contract warnings ·
+ * info: Upcoming gig / Open · ok: Played gig / Done / Paid / Ready to be invoiced · warn: Overdue / Not fully staffed / contract warnings ·
  * danger: Cancelled / Deleted · muted: inactive, neutral facts.
  */
 export type StatusTone = 'info' | 'ok' | 'warn' | 'danger' | 'muted';

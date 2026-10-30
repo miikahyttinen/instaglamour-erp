@@ -147,6 +147,12 @@ export const eventsApi = {
   delete: (id: Id, body: ReasonRequest) =>
     apiRequest<void>(`/events/${id}/delete`, { method: 'POST', body }),
   restore: (id: Id) => apiRequest<EventDetail>(`/events/${id}/restore`, { method: 'POST' }),
+  /** "Valmis laskutukseen" on (already set → no-op). */
+  markReadyForInvoice: (id: Id) =>
+    apiRequest<EventDetail>(`/events/${id}/ready-for-invoice`, { method: 'POST' }),
+  /** "Valmis laskutukseen" off (not set → no-op). */
+  clearReadyForInvoice: (id: Id) =>
+    apiRequest<EventDetail>(`/events/${id}/ready-for-invoice`, { method: 'DELETE' }),
   history: (id: Id) => apiRequest<EventHistoryEntry[]>(`/events/${id}/history`),
 };
 

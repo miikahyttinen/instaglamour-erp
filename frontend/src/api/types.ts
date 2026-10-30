@@ -124,6 +124,10 @@ export interface EventSummary {
   clientName: string | null;
   /** Offer the event was converted from (UC-031), or null. */
   offerId: Id | null;
+  /** Set by hand on the gig page ("Valmis laskutukseen"); cancelled gigs show "–" anyway. */
+  readyForInvoiceAt: IsoTimestamp | null;
+  /** Partner who set the flag. */
+  readyForInvoiceBy: Id | null;
   deletedAt: IsoTimestamp | null;
   createdAt: IsoTimestamp;
   updatedAt: IsoTimestamp;
@@ -193,7 +197,10 @@ export type EventHistoryEntry =
   | EventHistoryEntryBase<'CREATED', EmptyDetails>
   | EventHistoryEntryBase<'UPDATED', { changes: FieldChange[]; movedCostLineIds: Id[] }>
   | EventHistoryEntryBase<'MOVED', { from: DateRange; to: DateRange }>
-  | EventHistoryEntryBase<'CANCELLED' | 'UNCANCELLED' | 'DELETED' | 'RESTORED', EmptyDetails>
+  | EventHistoryEntryBase<
+      'CANCELLED' | 'UNCANCELLED' | 'DELETED' | 'RESTORED' | 'READY_FOR_INVOICE' | 'READY_FOR_INVOICE_CLEARED',
+      EmptyDetails
+    >
   | EventHistoryEntryBase<
       'COST_ADDED' | 'COST_REMOVED',
       { costLineId: Id; type: HistoryCostType; personId: Id | null; budgetedCents: Cents }

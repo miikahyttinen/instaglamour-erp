@@ -43,6 +43,8 @@ export interface MockEvent {
   notes: string | null;
   clientId: Id | null;
   offerId: Id | null;
+  readyForInvoiceAt: string | null;
+  readyForInvoiceBy: Id | null;
   deletedAt: string | null;
   createdAt: string;
   updatedAt: string;
@@ -151,6 +153,8 @@ export function toSummary(state: EventState, event: MockEvent, today = todayIso(
     clientId: event.clientId,
     clientName: state.clients.find((c) => c.id === event.clientId)?.name ?? null,
     offerId: event.offerId,
+    readyForInvoiceAt: event.readyForInvoiceAt,
+    readyForInvoiceBy: event.readyForInvoiceBy,
     deletedAt: event.deletedAt,
     createdAt: event.createdAt,
     updatedAt: event.updatedAt,
@@ -326,6 +330,8 @@ export function createEvent(
     notes: input.notes,
     clientId: input.clientId ?? null,
     offerId: null,
+    readyForInvoiceAt: null,
+    readyForInvoiceBy: null,
     deletedAt: null,
     createdAt: ts,
     updatedAt: ts,

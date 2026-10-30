@@ -1,10 +1,10 @@
 import type { EventDisplayStatus } from '../../api/enums';
 import type { StatusTone } from '../../components/StatusTag';
 
-/** Status tag tones (docs/design.md): Sold/Played = info, Cancelled = danger. */
+/** Status tag tones (owner decision 2026-10-31): Upcoming = info (blue), Played = ok (green), Cancelled = danger (red). */
 export const EVENT_STATUS_TONE: Record<EventDisplayStatus, StatusTone> = {
   SOLD: 'info',
-  PLAYED: 'info',
+  PLAYED: 'ok',
   CANCELLED: 'danger',
 };
 

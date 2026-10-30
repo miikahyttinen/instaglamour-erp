@@ -79,8 +79,8 @@ describe('translations', () => {
   });
 
   it('uses glossary terms for event statuses', () => {
-    expect(fi.eventStatus).toEqual({ SOLD: 'Myyty', PLAYED: 'Soitettu', CANCELLED: 'Peruttu' });
-    expect(en.eventStatus).toEqual({ SOLD: 'Sold', PLAYED: 'Played', CANCELLED: 'Cancelled' });
+    expect(fi.eventStatus).toEqual({ SOLD: 'Tuleva', PLAYED: 'Soitettu', CANCELLED: 'Peruttu' });
+    expect(en.eventStatus).toEqual({ SOLD: 'Upcoming', PLAYED: 'Played', CANCELLED: 'Cancelled' });
     expect(fi.costType.OFFICE).toBe('Toimisto');
     expect(fi.costType.SALES).toBe('Myynti');
     expect(fi.costType.PRODUCTION).toBe('Tuotanto');
