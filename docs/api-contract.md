@@ -535,7 +535,16 @@ For exceptions, partners can create a PO for one person by hand.
 - **Removed:** `invoiceStatus`, `invoiceStatusAt`, `invoiceStatusBy`, `prepaymentCents` (fields, PATCH keys, `?invoiceStatus=` filter). Migration converts existing data into rows: `prepayment_cents > 0` → PAID row "Ennakkomaksu" (that amount); then by old status: READY → READY row "Lasku" for the balance; INVOICED → SENT row for the balance; PAID → PAID row for the balance; PREPAYMENT_PAID / NONE → nothing more. Rows only when the amount > 0. Old history entries keep their texts.
 - Seed/import: optional `invoiceRows: [{ description, amountCents, status }]` per gig; legacy `invoiceStatus`/`prepaymentCents` accepted and converted the same way.
 
+## Invoicing state: coverage + payment (owner decision 2026-10-31) — replaces `invoiceState`
+The single `invoiceState` can't express the owner's five states (they overlap), so it is split into **two derived values**, shown as two tags in the Laskutus cell (two lines) and on the gig page.
+Definitions: `total = totalPriceCents`; `invoiced = Σ SENT + PAID rows`; `paid = Σ PAID rows`; `open = Σ SENT rows` (sent, not paid). READY rows are drafts (not yet invoiced).
+- `invoiceCoverage`: `NONE` (total = 0 and no rows) · `NEEDS_INVOICES` (invoiced < total) · `FULLY_INVOICED` (invoiced ≥ total). Labels: "–", "Laskuttamatta / Needs invoices", "Laskutettu kokonaan / Fully invoiced".
+- `paymentState`: `NONE` (no SENT/PAID rows) · `OPEN_INVOICES` (open > 0) · `PARTLY_PAID` (open = 0 and 0 < paid < total) · `FULLY_PAID` (open = 0 and paid ≥ total > 0). Labels: "–", "Avoimia laskuja / Open invoices", "Osittain maksettu / Partly paid", "Maksettu kokonaan / Fully paid".
+- Colours: Needs invoices = warn (amber); Fully invoiced = ok (light green); Open invoices = info (blue); Partly paid = accent (purple tag, new); Fully paid = ok-strong (dark green). "–" plain.
+- `EventSummary`/`EventDetail`: `invoiceState` is **removed**; add `invoiceCoverage`, `paymentState` (keep `invoicedCents`, `paidCents`, `balanceCents`; add `openCents`). Filters `?invoiceCoverage=` and `?paymentState=` (repeatable) replace `?invoiceState=`.
+
 ## Change log
+- 2026-10-31 – invoiceState split into invoiceCoverage + paymentState (owner states, colours) (PM)
 - 2026-10-31 – Invoice rows per gig (READY/SENT/PAID), balance from paid rows, derived invoiceState; gig invoice status + prepayment removed (PM)
 - 2026-10-31 – Invoice status (NONE/READY/PREPAYMENT_PAID/INVOICED/PAID), prepayment and balance replace the ready-for-invoice flag (PM)
 - 2026-10-31 – Gig status labels Tuleva/Soitettu/Peruttu; manual "ready to be invoiced" flag + endpoints (PM)
