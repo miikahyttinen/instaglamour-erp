@@ -43,14 +43,11 @@ enum CostType {
   KEYS
   PIANO
   MIX
-  HORN_1
-  HORN_2
   SAX
   TRUMPET
   TROMBONE
   VIOLIN
   DJ
-  TECHNICIAN
   OTHER_ROLE
   // Internal roles
   OFFICE

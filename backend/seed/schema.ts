@@ -11,6 +11,8 @@ import {
   COST_TYPES,
   DESCRIPTION_REQUIRED_TYPES,
   EVENT_TYPES,
+  convertLegacyRole,
+  isLegacyRole,
   isMusicianRole,
   LANGUAGES,
   LEGACY_OFFER_SETTING_KEYS,
@@ -241,10 +243,60 @@ function normalizeLegacyKeys(input: unknown): { input: unknown; errors: string[]
   return { input: { ...rest, events: legacy }, errors: [] };
 }
 
+const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
+const records = (v: unknown): Record<string, unknown>[] => (Array.isArray(v) ? v.filter(isRecord) : []);
+
+/**
+ * Removed roles (TASK-041): HORN_1, HORN_2 and TECHNICIAN in person roles, template roles and cost
+ * line types are converted before validation, the same way the migration
+ * 20261030120000_remove_legacy_roles converted stored data (`convertLegacyRole`). HORN_2 is decided
+ * by the person's roles in the file (cost lines: the line's person; no person or no roles →
+ * TROMBONE). A person's converted roles are de-duplicated (e.g. HORN_1 + TRUMPET → TRUMPET) unless
+ * the file's list already repeats a code, which stays an error. Returns a converted copy; anything
+ * that isn't in the expected shape is left for the schema to report.
+ */
+function convertLegacyRoles(input: unknown): unknown {
+  if (!isRecord(input)) return input;
+  const rolesByName = new Map<string, unknown[]>();
+  for (const p of [...records(input.partners), ...records(input.people)]) {
+    if (typeof p.name === 'string' && Array.isArray(p.roles) && !rolesByName.has(p.name.trim())) {
+      rolesByName.set(p.name.trim(), p.roles);
+    }
+  }
+  const convertPerson = (p: unknown): unknown => {
+    if (!isRecord(p) || !Array.isArray(p.roles) || !p.roles.some(isLegacyRole)) return p;
+    const roles: unknown[] = p.roles;
+    const converted = roles.map((r) => (isLegacyRole(r) ? convertLegacyRole(r, roles) : r));
+    const hadDuplicates = new Set(roles).size !== roles.length;
+    return { ...p, roles: hadDuplicates ? converted : [...new Set(converted)] };
+  };
+  const convertTemplate = (t: unknown): unknown => {
+    if (!isRecord(t) || !Array.isArray(t.roles)) return t;
+    return {
+      ...t,
+      roles: t.roles.map((r: unknown) => (isRecord(r) && isLegacyRole(r.role) ? { ...r, role: convertLegacyRole(r.role) } : r)),
+    };
+  };
+  const convertLine = (c: unknown): unknown => {
+    if (!isRecord(c) || !isLegacyRole(c.type)) return c;
+    const personRoles = typeof c.person === 'string' ? (rolesByName.get(c.person.trim()) ?? []) : [];
+    return { ...c, type: convertLegacyRole(c.type, personRoles) };
+  };
+  const convertEvent = (e: unknown): unknown =>
+    isRecord(e) && Array.isArray(e.costLines) ? { ...e, costLines: e.costLines.map(convertLine) } : e;
+
+  const out: Record<string, unknown> = { ...input };
+  if (Array.isArray(input.partners)) out.partners = input.partners.map(convertPerson);
+  if (Array.isArray(input.people)) out.people = input.people.map(convertPerson);
+  if (Array.isArray(input.lineupTemplates)) out.lineupTemplates = input.lineupTemplates.map(convertTemplate);
+  if (Array.isArray(input.events)) out.events = input.events.map(convertEvent);
+  return out;
+}
+
 export function validateSeed(rawInput: unknown): ValidationResult {
   const normalized = normalizeLegacyKeys(rawInput);
   if (normalized.errors.length > 0) return { ok: false, errors: normalized.errors };
-  const parsed = seedSchema.safeParse(normalized.input);
+  const parsed = seedSchema.safeParse(convertLegacyRoles(normalized.input));
   if (!parsed.success) {
     return {
       ok: false,
