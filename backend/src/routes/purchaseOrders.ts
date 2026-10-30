@@ -6,7 +6,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import type { AppDeps } from '../app.js';
 import type { Prisma } from '../generated/prisma/client.js';
-import { AppError, notFound, parseInput, validationError } from '../http/errors.js';
+import { AppError, notFound, parseInput } from '../http/errors.js';
 import { requiredText, SHORT_TEXT_MAX, yearString } from '../events/schemas.js';
 import { isUuid } from '../events/store.js';
 import {
@@ -56,8 +56,7 @@ export function purchaseOrderRoutes(app: FastifyInstance, deps: AppDeps): void {
   app.get('/api/purchase-orders', async (request) => {
     const query = parseInput(listQuery, request.query);
     const q = query.q?.trim() ?? '';
-    // With a search term every year is searched and `year` is ignored (BR-119).
-    if (q === '' && query.year === undefined) throw validationError({ year: 'REQUIRED' });
+    // With a search term every year is searched and `year` is ignored (BR-119); without `year`, all years.
     const where: Prisma.PurchaseOrderWhereInput = {
       ...(q !== ''
         ? {
@@ -66,7 +65,9 @@ export function purchaseOrderRoutes(app: FastifyInstance, deps: AppDeps): void {
               { person: { name: { contains: q, mode: 'insensitive' } } },
             ],
           }
-        : { createdAt: helsinkiYearRange(query.year!) }),
+        : query.year !== undefined
+          ? { createdAt: helsinkiYearRange(query.year) }
+          : {}),
       ...(query.status && { status: query.status }),
     };
     const purchaseOrders = await db.purchaseOrder.findMany({ where, include: purchaseOrderInclude, orderBy: newestFirst });

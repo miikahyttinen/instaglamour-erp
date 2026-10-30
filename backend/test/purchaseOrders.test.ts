@@ -515,7 +515,7 @@ describe('POST /api/public/freelancers/{token}/purchase-orders (BR-114…BR-116)
 
 // ======================================================================== partner list
 describe('GET /api/purchase-orders (UC-034)', () => {
-  it('year (by creation, Helsinki) is required unless q; q searches number and name in all years; status filter', async () => {
+  it('year (by creation, Helsinki) is optional; q searches number and name in all years; status filter', async () => {
     const g = await eventWithPeople(PAST);
     const g2 = await eventWithPeople(PAST_2);
     const a = await createPo(await tokenOf(s.world.p1.id), [lineOf(g, 'VOC').id]);
@@ -535,6 +535,9 @@ describe('GET /api/purchase-orders (UC-034)', () => {
     expect(await list(`?year=${currentYear()}`)).toEqual([c.number, b.number]);
     expect(await list(`?year=${last}`)).toEqual([a.number]);
     expect(await list(`?year=${currentYear() + 1}`)).toEqual([]);
+    // No year: all years, newest first
+    expect(await list('')).toEqual([c.number, b.number, a.number]);
+    expect(await list('?q=')).toEqual([c.number, b.number, a.number]);
     // q ignores year
     expect(await list(`?year=${currentYear() + 1}&q=person-1`)).toEqual([c.number, a.number]);
     expect(await list(`?q=${a.number.slice(-4)}`)).toEqual([a.number]);
@@ -547,18 +550,17 @@ describe('GET /api/purchase-orders (UC-034)', () => {
     expect(await list(`?year=${currentYear()}&status=OPEN`)).toEqual([b.number]);
     expect(await list('?q=person&status=OPEN')).toEqual([b.number, a.number]);
     expect(await list(`?year=${currentYear()}&status=CANCELLED`)).toEqual([]);
+    expect(await list('?status=OPEN')).toEqual([b.number, a.number]);
   });
 
-  it('400 for missing or bad year and bad status', async () => {
+  it('400 for a bad year and bad status', async () => {
     const expectField = async (qs: string, field: string, code: string) => {
       const res = await call(s, 'GET', `/api/purchase-orders${qs}`);
       expect(res.statusCode).toBe(400);
       expect(res.json().error.fields).toEqual({ [field]: code });
     };
-    await expectField('', 'year', 'REQUIRED');
-    await expectField('?q=', 'year', 'REQUIRED');
-    await expectField('?q=%20', 'year', 'REQUIRED');
     await expectField('?year=26', 'year', 'INVALID_VALUE');
+    await expectField('?year=', 'year', 'INVALID_VALUE');
     await expectField('?year=2026&status=DONE', 'status', 'INVALID_VALUE');
   });
 });

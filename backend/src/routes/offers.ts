@@ -122,7 +122,7 @@ const UPDATE_FIELDS = [
 const OFFER_STATUS_FILTERS = ['OPEN', 'ACCEPTED', 'REJECTED', 'EXPIRED'] as const;
 
 const listQuery = z.object({
-  year: yearString,
+  year: yearString.optional(),
   q: z.string().max(SHORT_TEXT_MAX).optional(),
   status: z.enum(OFFER_STATUS_FILTERS, { message: 'INVALID_VALUE' }).optional(),
   sellerId: z.string().refine(isUuid, { message: 'INVALID_VALUE' }).optional(),
@@ -156,12 +156,16 @@ export function offerRoutes(app: FastifyInstance, deps: AppDeps): void {
   app.get('/api/offers', async (request) => {
     const query = parseInput(listQuery, request.query);
     const today = todayIso();
+    // With a year: that year's offers by event date (BR-106). Without: all years, newest created first.
     const offers = await db.offer.findMany({
-      where: { eventDate: yearDateRange(query.year) },
+      where: query.year === undefined ? {} : { eventDate: yearDateRange(query.year) },
       include: offerInclude,
-      orderBy: [{ eventDate: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
+      orderBy:
+        query.year === undefined
+          ? [{ createdAt: 'desc' }, { id: 'desc' }]
+          : [{ eventDate: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
     });
-    // The summary ignores every filter except the year (BR-106).
+    // The summary ignores every filter except the year (BR-106); without a year it covers all years.
     const summary = offerYearSummary(
       offers.filter((o) => o.deletedAt === null),
       today,
@@ -184,15 +188,17 @@ export function offerRoutes(app: FastifyInstance, deps: AppDeps): void {
 
   // ---------------------------------------------------------------- KPI card statistics (BR-122)
   app.get('/api/offers/stats', async (request) => {
-    // Contract: a missing or invalid year is INVALID_VALUE (not REQUIRED).
-    const year = (request.query as Record<string, unknown> | undefined)?.year;
-    if (typeof year !== 'string' || !/^\d{4}$/.test(year)) throw validationError({ year: 'INVALID_VALUE' });
+    // `year` is optional (default: current Helsinki year); an invalid one is 400 INVALID_VALUE.
+    const raw = (request.query as Record<string, unknown> | undefined)?.year;
+    if (raw !== undefined && (typeof raw !== 'string' || !/^\d{4}$/.test(raw)))
+      throw validationError({ year: 'INVALID_VALUE' });
+    const year = raw === undefined ? Number(todayIso().slice(0, 4)) : Number(raw);
     // All years, non-deleted; only the columns the figures need.
     const rows = await db.offer.findMany({
       where: { deletedAt: null },
       select: { disposition: true, eventDate: true, priceCents: true, eventType: true, createdAt: true },
     });
-    return computeOfferStats(rows, Number(year));
+    return computeOfferStats(rows, year);
   });
 
   // ---------------------------------------------------------------- create

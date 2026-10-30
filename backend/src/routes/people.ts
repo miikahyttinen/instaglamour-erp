@@ -33,7 +33,7 @@ const updateBody = z.object({
   active: z.boolean().optional(),
   roles: rolesInput.optional(),
 });
-const costLinesQuery = z.object({ year: yearString });
+const costLinesQuery = z.object({ year: yearString.optional() });
 const partnerBody = z.object({ email: requiredText() });
 
 type PersonWarning = { code: 'DUPLICATE_NAME' };
@@ -120,20 +120,27 @@ export function peopleRoutes(app: FastifyInstance, deps: AppDeps): void {
     return toPersonDtoWithCount(db, await requirePerson(request.params.id));
   });
 
-  /** The person's cost lines on non-deleted events of the year (UC-014 A2), in event order. */
+  /**
+   * The person's cost lines on non-deleted events (UC-014 A2). With `year`: that year, in event order.
+   * Without: all years, newest event first (lines within an event keep their usual order).
+   */
   app.get<IdParams>('/api/people/:id/cost-lines', async (request) => {
     const { year } = parseInput(costLinesQuery, request.query);
     const person = await requirePerson(request.params.id);
     const lines = await db.costLine.findMany({
-      where: { personId: person.id, event: { deletedAt: null, startDate: yearDateRange(year) } },
+      where: {
+        personId: person.id,
+        event: { deletedAt: null, ...(year !== undefined && { startDate: yearDateRange(year) }) },
+      },
       include: { event: true, ...costLinePurchaseOrderInclude },
     });
+    const eventDir = year === undefined ? -1 : 1;
     lines.sort(
       (a, b) =>
-        a.event.startDate.getTime() - b.event.startDate.getTime() ||
-        a.event.createdAt.getTime() - b.event.createdAt.getTime() ||
-        (a.event.id < b.event.id ? -1 : a.event.id > b.event.id ? 1 : 0) ||
-        compareCostLines(a, b),
+        eventDir *
+          (a.event.startDate.getTime() - b.event.startDate.getTime() ||
+            a.event.createdAt.getTime() - b.event.createdAt.getTime() ||
+            (a.event.id < b.event.id ? -1 : a.event.id > b.event.id ? 1 : 0)) || compareCostLines(a, b),
     );
 
     // Same rules as the event economics: budgeted = Σ budgeted (BR-001), actual = Σ actual of paid lines (BR-002).
