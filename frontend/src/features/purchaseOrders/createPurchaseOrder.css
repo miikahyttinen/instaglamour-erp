@@ -25,13 +25,8 @@
   cursor: pointer;
 }
 .po-create-line-text {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0 var(--space-2);
   min-width: 0;
-}
-.po-create-line-date {
-  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
 }
 .po-create-line-amount {
   font-variant-numeric: tabular-nums;

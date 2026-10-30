@@ -179,10 +179,12 @@ export function CreatePurchaseOrderDialog({ candidates, eventId, searchable, onC
                           onChange={() => toggle(line)}
                         />
                         <span className="po-create-line-text">
-                          <span className="po-create-line-date">{formatDate(line.eventStartDate, lang)}</span>
-                          <span>{line.eventVenue}</span>
-                          <span>{line.description ? `${role} (${line.description})` : role}</span>
-                        </span>
+                          {[
+                            formatDate(line.eventStartDate, lang),
+                            line.eventVenue,
+                            line.description ? `${role} (${line.description})` : role,
+                          ].join(' · ')}
+                        </span>{' '}
                         <span className="po-create-line-amount">{formatMoney(line.amountCents, lang)}</span>
                       </label>
                     </li>
