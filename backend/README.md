@@ -54,7 +54,7 @@ outside local development.**
 | `AUTH_ALLOWED_DOMAIN` | Only verified Google accounts in this domain may sign in (BR-070) |
 | `DEV_LOGIN_ENABLED` | `true` registers `POST /api/auth/dev-login` (otherwise 404) |
 | `FRONTEND_URL` | Where the Google callback redirects (`/` or `/login?error=…`), e.g. `http://localhost:5173` |
-| `UPLOAD_DIR` | Attachment and reference photo storage, outside the repository (created on first upload; tests use a temp dir; `npm run db:seed` copies seed photos here) |
+| `UPLOAD_DIR` | Reference photo storage (old event attachment files stay there unused), outside the repository (created on first upload; tests use a temp dir; `npm run db:seed` copies seed photos here) |
 
 ## Sign-in
 
@@ -241,7 +241,7 @@ src/partners/      partner status grant/revoke (UC-032): advisory-locked transac
 src/references/    references/testimonials (routes/references.ts, BR-108): serializer, active list for
                    PublicOffer, photo responses (private; ?v=imageVersion cached a year, else no-cache + ETag;
                    errors no-store; nosniff)
-src/fileStore/     UPLOAD_DIR files (attachments, reference photos): streamed upload with size limit,
+src/fileStore/     UPLOAD_DIR files (reference photos): streamed upload with size limit,
                    content sniffing (PNG/JPG/WebP), random UUID file names
 src/budget/        budget rows + loadBudget (single source for /api/budget and the year page); rows are
                    partner-managed (routes/budgetCategories.ts), removed = active false, values kept

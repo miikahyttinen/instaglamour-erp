@@ -59,7 +59,6 @@ database that `npm run e2e` creates.
 | `01-login-year` | Dev login → year page figures match `GET /api/years/{year}`; sign out; ended session → sign-in with notice; unknown email refused |
 | `02-event-create-costs` | New event from a template → cost lines → assign a person → load-in switch → mark paid → economics; event list summary and year page updated without reload; double-booking warning; cost lines edited in place (budget, description, paid amount), Esc, invalid amounts |
 | `03-event-lifecycle` | Event info and price edited in place (Esc, invalid values, no Edit/Save buttons); edit price and additional sales; move; cancel and adjust price; uncancel; delete; restore from the deleted view; history lists all events |
-| `04-attachments` | Upload a synthetic PDF, download it, remove it; a fake PDF is refused (415) with a translated message |
 | `05-people` | Add, rename in place, deactivate with the switch; Esc / empty name; the person page shows their lines; reactivate from the list |
 | `06-tasks` | Add, mark done, reopen; edit title / description / owner / due date in place, Esc, empty title; delete |
 | `07-hours` | Add own entry; totals table (total row, filtered by me) and year page updated; edit hours / comment in place, Esc, invalid hours |
