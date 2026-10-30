@@ -48,6 +48,7 @@ const MONEY_FIELDS = new Set([
   'budgetedCents',
   'actualCents',
   'loadInDeductionAppliedCents',
+  'prepaymentCents',
 ]);
 const PARTNER_FIELDS = new Set(['sellerId', 'producerId', 'paidBy']);
 
@@ -86,6 +87,9 @@ export function formatValue(
             defaultValue: t(`legacyTechnicalSetup.${code}`, { defaultValue: code }),
           });
     return codes.map(label).join(', ');
+  }
+  if (field === 'invoiceStatus' && typeof value === 'string') {
+    return t(`invoiceStatus.${value}`, { defaultValue: value });
   }
   if (typeof value === 'boolean') return value ? t('history.yes') : t('history.no');
   return String(value);

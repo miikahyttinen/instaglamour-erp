@@ -200,47 +200,81 @@ describe('event page (UC-004, UC-007)', () => {
     expect(historyItems()[2]).toHaveTextContent('Syy: Client called off');
   });
 
-  it('marks a gig ready to be invoiced by hand and undoes it with a confirmation (2026-10-31)', async () => {
+  it('Laskutus card under the price card: status select, prepayment and balance save inline (TASK-172)', async () => {
     const event = addMockEvent();
     const { user } = renderApp(`/gigs/${event.id}`);
-    // Upcoming gigs can be marked too; the status tag is blue "Tuleva".
-    expect(await screen.findByText('Tuleva', { selector: '.tag' })).toHaveClass('tag-info');
-    await user.click(await screen.findByRole('button', { name: 'Valmis laskutukseen' }));
-
-    const tag = await screen.findByText('Valmis laskutukseen', { selector: '.tag' });
-    expect(tag).toHaveClass('tag-ok');
-    expect(event.readyForInvoiceBy).toBe(partnerA().id);
-    expect(screen.getByText(new RegExp(`^${partnerA().name} \\d+\\.\\d+\\.\\d{4} klo `))).toBeInTheDocument();
+    await screen.findByRole('heading', { name: 'Template A · Venue X', level: 1 });
+    // Directly after the price section.
+    const sections = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
+    expect(sections.indexOf('Laskutus')).toBe(sections.indexOf('Hinta ja lisämyynti') + 1);
+    const card = within(section('Laskutus'));
+    // The price card itself is unchanged: no prepayment / balance there.
+    expect(within(section('Hinta ja lisämyynti')).queryByText('Saldo')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Valmis laskutukseen' })).not.toBeInTheDocument();
-    await waitFor(() => expect(historyItems()[0]).toHaveTextContent('Merkitty valmiiksi laskutukseen'));
 
-    await user.click(screen.getByRole('button', { name: 'Peru' }));
-    const dialog = screen.getByRole('dialog', { name: 'Peru valmis laskutukseen -merkintä' });
-    await user.click(within(dialog).getByRole('button', { name: 'Peru merkintä' }));
-    expect(await screen.findByRole('button', { name: 'Valmis laskutukseen' })).toBeInTheDocument();
-    expect(event.readyForInvoiceAt).toBeNull();
-    await waitFor(() => expect(historyItems()[0]).toHaveTextContent('Valmis laskutukseen -merkintä peruttu'));
+    const select = card.getByRole('combobox', { name: 'Laskutus' });
+    expect(select).toHaveDisplayValue('–');
+    expect(within(select).getAllByRole('option').map((o) => o.textContent)).toEqual([
+      '–',
+      'Valmis laskutukseen',
+      'Ennakko maksettu',
+      'Laskutettu',
+      'Maksettu',
+    ]);
+    expect(card.queryByText(/ klo /)).not.toBeInTheDocument();
+    expect(card.getByRole('group', { name: 'Saldo' })).toHaveTextContent(/1\s000,00\s€/);
+
+    await user.selectOptions(select, 'Ennakko maksettu');
+    await waitFor(() => expect(event.invoiceStatus).toBe('PREPAYMENT_PAID'));
+    expect(event.invoiceStatusBy).toBe(partnerA().id);
+    expect(await card.findByText(new RegExp(`^${partnerA().name} \\d+\\.\\d+\\.\\d{4} klo `))).toBeInTheDocument();
+    await waitFor(() => expect(historyItems()[0]).toHaveTextContent('Laskutus: – → Ennakko maksettu'));
+
+    const prepayment = card.getByRole('textbox', { name: 'Ennakkomaksu' });
+    await user.clear(prepayment);
+    await user.type(prepayment, '400{Enter}');
+    await waitFor(() => expect(event.prepaymentCents).toBe(40000));
+    await waitFor(() => expect(card.getByRole('group', { name: 'Saldo' })).toHaveTextContent(/600,00\s€/));
+    expect(card.queryByRole('note')).not.toBeInTheDocument();
+    await waitFor(() => expect(historyItems()[0]).toHaveTextContent(/Ennakkomaksu: 0,00\s€ → 400,00\s€/));
+
+    // Prepayment above the total: negative balance in warn colour with a note.
+    await user.clear(prepayment);
+    await user.type(prepayment, '1200{Enter}');
+    await waitFor(() => expect(card.getByRole('group', { name: 'Saldo' })).toHaveTextContent(/[-−]200,00\s€/));
+    expect(card.getByRole('group', { name: 'Saldo' })).toHaveClass('event-balance-negative');
+    expect(card.getByRole('note')).toHaveTextContent('Ennakkomaksu on suurempi kuin kokonaishinta.');
+
+    // Negative prepayment is blocked client-side.
+    await user.clear(prepayment);
+    await user.type(prepayment, '-5{Enter}');
+    await waitFor(() => expect(prepayment).toHaveAttribute('aria-invalid', 'true'));
+    expect(event.prepaymentCents).toBe(120000);
   });
 
-  it('offers no ready-to-be-invoiced action on a cancelled or deleted gig', async () => {
+  it('invoicing stays editable on a cancelled gig (cancellation fee)', async () => {
     const cancelled = addMockEvent({ venue: 'Venue Gone' });
     cancelled.status = 'CANCELLED';
-    cancelled.readyForInvoiceAt = '2030-06-02T10:00:00Z';
-    cancelled.readyForInvoiceBy = partnerA().id;
-    renderApp(`/gigs/${cancelled.id}`);
+    const { user } = renderApp(`/gigs/${cancelled.id}`);
     expect(await screen.findByText('Peruttu', { selector: '.tag' })).toHaveClass('tag-danger');
-    expect(screen.queryByRole('button', { name: 'Valmis laskutukseen' })).not.toBeInTheDocument();
-    expect(screen.queryByText('Valmis laskutukseen')).not.toBeInTheDocument();
+    const select = within(section('Laskutus')).getByRole('combobox', { name: 'Laskutus' });
+    expect(select).toBeEnabled();
+    await user.selectOptions(select, 'Laskutettu');
+    await waitFor(() => expect(cancelled.invoiceStatus).toBe('INVOICED'));
   });
 
-  it('deleted gigs: no mark button, a set flag is shown read-only', async () => {
+  it('deleted gigs show the invoicing fields read-only', async () => {
     const deleted = addMockEvent({ venue: 'Venue Del' });
     deleted.deletedAt = '2030-06-03T10:00:00Z';
-    deleted.readyForInvoiceAt = '2030-06-02T10:00:00Z';
-    deleted.readyForInvoiceBy = partnerA().id;
+    deleted.invoiceStatus = 'PAID';
+    deleted.invoiceStatusAt = '2030-06-02T10:00:00Z';
+    deleted.invoiceStatusBy = partnerA().id;
     renderApp(`/gigs/${deleted.id}`);
-    expect(await screen.findByText('Valmis laskutukseen', { selector: '.tag' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Peru' })).not.toBeInTheDocument();
+    const select = await screen.findByRole('combobox', { name: 'Laskutus' });
+    expect(select).toHaveDisplayValue('Maksettu');
+    expect(select).toBeDisabled();
+    expect(screen.getByRole('textbox', { name: 'Ennakkomaksu' })).toBeDisabled();
+    expect(within(section('Laskutus')).getByText(new RegExp(`^${partnerA().name} 2\\.6\\.2030 klo `))).toBeInTheDocument();
   });
 
   it('moves an event, shows overlap warnings and logs old and new dates (UC-009)', async () => {

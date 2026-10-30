@@ -247,36 +247,44 @@ describe('event mocks', () => {
     });
   });
 
-  it('sets and clears "ready to be invoiced" by hand, with no-ops and 409s (2026-10-31)', async () => {
+  it('PATCHes invoice status and prepayment; logs UPDATED and the last status change (TASK-172)', async () => {
     const event = await eventsApi.create(eventInput());
-    expect(event.readyForInvoiceAt).toBeNull();
-    expect(event.readyForInvoiceBy).toBeNull();
-    const set = await eventsApi.markReadyForInvoice(event.id);
-    expect(set.readyForInvoiceAt).not.toBeNull();
-    expect(set.readyForInvoiceBy).toBe(partnerA().id);
-    // Already set → no-op (same timestamp, no new history entry).
-    expect((await eventsApi.markReadyForInvoice(event.id)).readyForInvoiceAt).toBe(set.readyForInvoiceAt);
+    expect(event).toMatchObject({
+      invoiceStatus: 'NONE',
+      invoiceStatusAt: null,
+      invoiceStatusBy: null,
+      prepaymentCents: 0,
+      balanceCents: event.totalPriceCents,
+    });
+    const { event: ready } = await eventsApi.update(event.id, { invoiceStatus: 'READY' });
+    expect(ready.invoiceStatus).toBe('READY');
+    expect(ready.invoiceStatusAt).not.toBeNull();
+    expect(ready.invoiceStatusBy).toBe(partnerA().id);
+    const { event: paid } = await eventsApi.update(event.id, { prepaymentCents: event.totalPriceCents + 100 });
+    expect(paid.balanceCents).toBe(-100);
+    // A prepayment change alone keeps the status timestamp.
+    expect(paid.invoiceStatusAt).toBe(ready.invoiceStatusAt);
     const listed = (await eventsApi.list({ year: YEAR })).events.find((g) => g.id === event.id)!;
-    expect(listed.readyForInvoiceAt).toBe(set.readyForInvoiceAt);
-    const cleared = await eventsApi.clearReadyForInvoice(event.id);
-    expect(cleared.readyForInvoiceAt).toBeNull();
-    expect(cleared.readyForInvoiceBy).toBeNull();
-    await eventsApi.clearReadyForInvoice(event.id);
-    const types = (await eventsApi.history(event.id)).map((h) => h.type);
-    expect(types.filter((t) => t.startsWith('READY_FOR_INVOICE'))).toEqual([
-      'READY_FOR_INVOICE_CLEARED',
-      'READY_FOR_INVOICE',
+    expect(listed).toMatchObject({ invoiceStatus: 'READY', balanceCents: -100 });
+    const updates = (await eventsApi.history(event.id)).filter((h) => h.type === 'UPDATED');
+    expect(updates.map((h) => (h.details as { changes: { field: string }[] }).changes[0]!.field)).toEqual([
+      'prepaymentCents',
+      'invoiceStatus',
     ]);
 
-    await eventsApi.markReadyForInvoice(event.id);
+    expect((await expectError(eventsApi.update(event.id, { prepaymentCents: -1 }))).fields).toEqual({
+      prepaymentCents: 'INVALID_VALUE',
+    });
+    expect(
+      (await expectError(eventsApi.update(event.id, { invoiceStatus: 'NOPE' as never }))).fields,
+    ).toEqual({ invoiceStatus: 'INVALID_VALUE' });
+
+    // Allowed on cancelled gigs; deleted → 409.
     await eventsApi.cancel(event.id, { reason: 'Called off' });
-    // Cancelling keeps the values.
-    expect((await eventsApi.get(event.id)).readyForInvoiceAt).not.toBeNull();
-    expect((await expectError(eventsApi.markReadyForInvoice(event.id))).code).toBe('INVALID_STATUS_TRANSITION');
+    expect((await eventsApi.update(event.id, { invoiceStatus: 'INVOICED' })).event.invoiceStatus).toBe('INVOICED');
     await eventsApi.uncancel(event.id, { reason: 'Back on' });
     await eventsApi.delete(event.id, { reason: 'Duplicate' });
-    expect((await expectError(eventsApi.markReadyForInvoice(event.id))).code).toBe('EVENT_DELETED');
-    expect((await expectError(eventsApi.clearReadyForInvoice(event.id))).code).toBe('EVENT_DELETED');
+    expect((await expectError(eventsApi.update(event.id, { invoiceStatus: 'PAID' }))).code).toBe('EVENT_DELETED');
   });
 
   it('enforces status transitions, deletion and restore', async () => {

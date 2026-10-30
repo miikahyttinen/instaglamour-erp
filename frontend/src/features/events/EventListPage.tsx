@@ -3,7 +3,7 @@ import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } f
 import { useTranslation } from 'react-i18next';
 import { Plus, RotateCcw, Search } from 'lucide-react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
-import type { EventDisplayStatus } from '../../api/enums';
+import { INVOICE_STATUSES, type EventDisplayStatus, type InvoiceStatus } from '../../api/enums';
 import { eventsApi } from '../../api/endpoints';
 import type { EventListQuery, EventSummary, Partner, YearEventTotals } from '../../api/types';
 import { useSelectedYear } from '../../auth/SignedInContext';
@@ -23,11 +23,11 @@ import { PageYearSelector } from '../../components/PageYearSelector';
 import { SectionLabel } from '../../components/SectionLabel';
 import { StatGrid, StatTile } from '../../components/StatTile';
 import { StatusTag } from '../../components/StatusTag';
-import { apiErrorMessage, eventDisplayStatus, isReadyForInvoice } from '../../i18n/labels';
+import { apiErrorMessage, eventDisplayStatus, invoiceStatusLabel } from '../../i18n/labels';
 import { useLang } from '../../i18n/useLang';
 import { formatDate, formatDateRange, formatMoney, formatPercent, todayIso } from '../../lib/format';
 import { useReference } from '../../reference/useReference';
-import { EventStatusTag, ReadyForInvoiceMark } from './EventStatusTag';
+import { EventStatusTag, InvoiceStatusTag } from './EventStatusTag';
 import { useApplyEvent, useEventList } from './queries';
 import './eventList.css';
 
@@ -326,8 +326,8 @@ function TableDateRange({ start, end, lang }: { start: string; end: string | nul
  * Excel-style table (UC-003 change 2026-10-14, design.md "Excel-style tables"), the same component
  * and look as the offer list: every column sortable, filter icons on the coded / text columns. From
  * 600 px it fills the width without scrolling sideways; columns with priority 2 / 3 are hidden on
- * narrower tables (TASK-147: 1 lineup, date, venue, status, total, margin · 2 client, ready to be
- * invoiced, seller, staffing · 3 producer, budgeted, actual costs). Phones (< 600 px):
+ * narrower tables (TASK-147: 1 lineup, date, venue, status, total, margin · 2 client, invoicing,
+ * seller, staffing · 3 producer, balance, budgeted, actual costs). Phones (< 600 px):
  * one card per event + the "Suodattimet" sheet. Scrolls the first upcoming visible event into view.
  */
 function EventTable({ events, partners, lang, tableState }: EventTableProps) {
@@ -395,15 +395,15 @@ function EventTable({ events, partners, lang, tableState }: EventTableProps) {
       cell: (g) => <EventStatusTag status={eventDisplayStatus(g)} />,
     },
     {
-      key: 'readyForInvoice',
-      label: t('events.columns.readyForInvoice'),
+      key: 'invoiceStatus',
+      label: t('events.columns.invoiceStatus'),
       priority: 2,
-      className: 'event-col-ready',
-      sortValue: (g) => (isReadyForInvoice(g) ? 0 : 1),
-      filterValue: (g) => (isReadyForInvoice(g) ? 'yes' : 'no'),
-      filterLabel: (v) => t(v === 'yes' ? 'events.staffingFilter.yes' : 'events.staffingFilter.no'),
-      filterCompare: byCodeOrder(['yes', 'no']),
-      cell: (g) => (isReadyForInvoice(g) ? <ReadyForInvoiceMark /> : <span aria-hidden="true">–</span>),
+      className: 'event-col-invoice excel-col-fit',
+      sortValue: (g) => INVOICE_STATUSES.indexOf(g.invoiceStatus),
+      filterValue: (g) => g.invoiceStatus,
+      filterLabel: (v) => invoiceStatusLabel(t, v as InvoiceStatus),
+      filterCompare: byCodeOrder(INVOICE_STATUSES),
+      cell: (g) => <InvoiceStatusTag status={g.invoiceStatus} />,
     },
     {
       key: 'staffing',
@@ -442,6 +442,19 @@ function EventTable({ events, partners, lang, tableState }: EventTableProps) {
       className: 'event-col-total excel-col-fit',
       sortValue: (g) => g.totalPriceCents,
       cell: (g) => formatMoney(g.totalPriceCents, lang),
+    },
+    {
+      key: 'balance',
+      label: t('events.columns.balance'),
+      priority: 3,
+      numeric: true,
+      className: 'event-col-balance excel-col-fit',
+      sortValue: (g) => g.balanceCents,
+      cell: (g) => (
+        <span className={g.balanceCents < 0 ? 'event-balance-negative' : undefined}>
+          {formatMoney(g.balanceCents, lang)}
+        </span>
+      ),
     },
     {
       key: 'budgeted',

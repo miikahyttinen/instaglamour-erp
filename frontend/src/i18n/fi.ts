@@ -174,6 +174,13 @@ const fi = {
     PLAYED: 'Soitettu',
     CANCELLED: 'Peruttu',
   },
+  invoiceStatus: {
+    NONE: '–',
+    READY: 'Valmis laskutukseen',
+    PREPAYMENT_PAID: 'Ennakko maksettu',
+    INVOICED: 'Laskutettu',
+    PAID: 'Maksettu',
+  },
   taskStatus: {
     OPEN: 'Avoin',
     DONE: 'Tehty',
@@ -281,7 +288,8 @@ const fi = {
       lineup: 'Kokoonpano',
       venue: 'Paikka',
       status: 'Tila',
-      readyForInvoice: 'Valmis laskutukseen',
+      invoiceStatus: 'Laskutus',
+      balance: 'Saldo',
     },
     staffingFilter: {
       yes: 'Kyllä',
@@ -324,14 +332,12 @@ const fi = {
     back: 'Keikat',
     restore: 'Palauta keikka',
     deletedBanner: 'Keikka on poistettu. Tiedot näytetään vain luettavina.',
-    readyForInvoice: {
-      label: 'Valmis laskutukseen',
-      mark: 'Valmis laskutukseen',
+    invoicing: {
+      status: 'Laskutus',
       by: '{{name}} {{date}} klo {{time}}',
-      undo: 'Peru',
-      undoTitle: 'Peru valmis laskutukseen -merkintä',
-      undoIntro: 'Keikka ei enää näy valmiina laskutukseen. Merkinnän voi tehdä uudelleen.',
-      confirmUndo: 'Peru merkintä',
+      prepayment: 'Ennakkomaksu',
+      balance: 'Saldo',
+      negativeBalance: 'Ennakkomaksu on suurempi kuin kokonaishinta.',
     },
     actions: {
       label: 'Toiminnot',
@@ -373,6 +379,7 @@ const fi = {
     sections: {
       basic: 'Perustiedot',
       price: 'Hinta ja lisämyynti',
+      invoicing: 'Laskutus',
       economics: 'Talous',
       costs: 'Kulut ja miehitys',
       attachments: 'Liitteet',
@@ -479,6 +486,8 @@ const fi = {
     budgetedCents: 'Budjetti',
     joinsLoadIn: 'Roudaus ja soundcheck',
     actualCents: 'Toteuma',
+    invoiceStatus: 'Laskutus',
+    prepaymentCents: 'Ennakkomaksu',
   },
   ...offerPreviewFi,
   ...offersFi,

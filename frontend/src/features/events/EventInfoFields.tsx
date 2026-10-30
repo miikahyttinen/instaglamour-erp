@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import type { Logistics, TechnicalSetup } from '../../api/enums';
+import { INVOICE_STATUSES, type InvoiceStatus, type Logistics, type TechnicalSetup } from '../../api/enums';
 import { eventsApi } from '../../api/endpoints';
 import type { EventDetail, EventUpdate, EventUpdateResponse } from '../../api/types';
 import {
@@ -13,9 +13,10 @@ import {
 import { Card } from '../../components/Card';
 import { FieldList } from '../../components/FieldList';
 import { useLang } from '../../i18n/useLang';
-import { formatMoney } from '../../lib/format';
+import { invoiceStatusLabel } from '../../i18n/labels';
+import { formatDate, formatMoney, formatTime } from '../../lib/format';
 import { partnerOptions } from '../../reference/partners';
-import { useReference } from '../../reference/useReference';
+import { usePartner, useReference } from '../../reference/useReference';
 import { InlineClientSelect } from '../clients/ClientSelect';
 import { NONE_LABEL, useLogisticsOptions, useTechnicalSetupOptions } from './eventOptions';
 import { useApplyEvent } from './queries';
@@ -185,6 +186,64 @@ export function EventPriceFields({ event, readOnly }: Props) {
         <div className="event-fields-total" role="group" aria-label={t('eventForm.totalPrice')}>
           <span className="event-fields-total-label">{t('eventForm.totalPrice')}</span>
           <strong className="event-fields-total-value">{formatMoney(event.totalPriceCents, lang)}</strong>
+        </div>
+      </FieldList>
+    </Card>
+  );
+}
+
+/**
+ * "Laskutus" card under the price card (api-contract "Invoice status, prepayment and balance",
+ * TASK-172): invoice status select (who / when of the last change), prepayment, and the balance
+ * (= total − prepayment; warns when negative). Editable on upcoming, played and cancelled gigs.
+ */
+export function EventInvoicingFields({ event, readOnly }: Props) {
+  const { t } = useTranslation();
+  const lang = useLang();
+  const patch = useEventPatch(event);
+  const statusBy = usePartner(event.invoiceStatusBy);
+  const statusOptions = INVOICE_STATUSES.map((value) => ({ value, label: invoiceStatusLabel(t, value) }));
+  const negative = event.balanceCents < 0;
+  return (
+    <Card as="div" className="event-fields event-invoicing">
+      <FieldList>
+        <InlineSelect<InvoiceStatus>
+          label={t('event.invoicing.status')}
+          value={event.invoiceStatus}
+          field="invoiceStatus"
+          disabled={readOnly}
+          options={withCurrent(statusOptions, event.invoiceStatus)}
+          onSave={(invoiceStatus) => patch({ invoiceStatus })}
+        />
+        {event.invoiceStatusAt !== null && (
+          <p className="meta small event-fields-note event-invoice-status-by">
+            {t('event.invoicing.by', {
+              name: statusBy?.name ?? '–',
+              date: formatDate(event.invoiceStatusAt, lang),
+              time: formatTime(event.invoiceStatusAt, lang),
+            })}
+          </p>
+        )}
+        <InlineMoney
+          label={t('event.invoicing.prepayment')}
+          required
+          value={event.prepaymentCents}
+          field="prepaymentCents"
+          disabled={readOnly}
+          onSave={(prepaymentCents) => patch({ prepaymentCents })}
+        />
+        <div
+          className={`event-fields-total event-balance${negative ? ' event-balance-negative' : ''}`}
+          role="group"
+          aria-label={t('event.invoicing.balance')}
+        >
+          <span className="event-fields-total-label">{t('event.invoicing.balance')}</span>
+          <strong className="event-fields-total-value">{formatMoney(event.balanceCents, lang)}</strong>
+          {negative && (
+            <p className="event-balance-warning" role="note">
+              {t('event.invoicing.negativeBalance')}
+            </p>
+          )}
         </div>
       </FieldList>
     </Card>

@@ -64,6 +64,10 @@ export type EventStatus = (typeof EVENT_STATUSES)[number];
 export const EVENT_DISPLAY_STATUSES = ['SOLD', 'PLAYED', 'CANCELLED'] as const;
 export type EventDisplayStatus = (typeof EVENT_DISPLAY_STATUSES)[number];
 
+/** Invoicing status of a gig, in workflow order (api-contract "Invoice status, prepayment and balance"). */
+export const INVOICE_STATUSES = ['NONE', 'READY', 'PREPAYMENT_PAID', 'INVOICED', 'PAID'] as const;
+export type InvoiceStatus = (typeof INVOICE_STATUSES)[number];
+
 export const TASK_STATUSES = ['OPEN', 'DONE'] as const;
 export type TaskStatus = (typeof TASK_STATUSES)[number];
 
