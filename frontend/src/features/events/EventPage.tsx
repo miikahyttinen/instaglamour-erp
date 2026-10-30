@@ -14,10 +14,11 @@ import { formatDate, formatDateRange, formatMoney, formatPercent } from '../../l
 import { Attachments } from './Attachments';
 import { CostList } from './CostList';
 import { EventActions } from './EventActions';
-import { EventBasicFields, EventInvoicingFields, EventPriceFields } from './EventInfoFields';
+import { EventBasicFields, EventPriceFields } from './EventInfoFields';
 import { EventDeletedTag, EventStatusTag } from './EventStatusTag';
 import { EventOfferLink } from './EventOfferLink';
 import { History } from './History';
+import { EventInvoicing } from './InvoiceRows';
 import { personName, useEvent, usePeople } from './queries';
 import './eventPage.css';
 
@@ -170,7 +171,7 @@ export function EventPage() {
         </Section>
 
         <Section title={t('event.sections.invoicing')} className="event-section-invoicing">
-          <EventInvoicingFields event={event} readOnly={readOnly} />
+          <EventInvoicing event={event} readOnly={readOnly} />
         </Section>
 
         <Section title={t('event.sections.economics')} wide>

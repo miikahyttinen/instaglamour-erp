@@ -7,7 +7,8 @@ import { createQueryClient } from '../../queryClient';
 import { formatMoney } from '../../lib/format';
 import { DESKTOP_QUERY, TABLET_QUERY, WIDE_QUERY } from '../../lib/useMediaQuery';
 import { db } from '../../mocks/data';
-import { logEvent, type MockEvent } from '../../mocks/eventStore';
+import { addInvoiceRow, logEvent } from '../../mocks/eventStore';
+import type { InvoiceRowStatus } from '../../api/enums';
 import { addMockClient, addMockEvent, partnerA, partnerB, staffMockEvent, TEST_YEAR } from '../../test/eventFixtures';
 import { installMatchMedia } from '../../test/matchMedia';
 import { renderApp, signInMock } from '../../test/renderApp';
@@ -276,19 +277,21 @@ describe('event list (UC-003)', () => {
     await waitFor(() => expect(venues()).toEqual(['Venue Y']));
   });
 
-  it('shows "Laskutus" as a colour tag per status, sortable in workflow order and filterable (TASK-172)', async () => {
+  it('shows "Laskutus" as the derived invoice state tag, sortable in workflow order and filterable (TASK-173)', async () => {
     signInMock().selectedYear = 2020;
-    const add = (day: string, venue: string, status: MockEvent['invoiceStatus']) => {
+    // Default mock gig total: 1 000,00 €.
+    const add = (day: string, venue: string, rows: [InvoiceRowStatus, number][]) => {
       const e = addMockEvent({ startDate: `2020-${day}`, venue });
-      e.invoiceStatus = status;
+      for (const [status, amountCents] of rows) {
+        addInvoiceRow(db.events, e, { description: 'Invoice', amountCents, status }, partnerA().id);
+      }
       return e;
     };
-    add('01-05', 'Venue Paid', 'PAID');
-    add('01-04', 'Venue Invoiced', 'INVOICED');
-    const pre = add('01-03', 'Venue Pre', 'PREPAYMENT_PAID');
-    pre.prepaymentCents = 200000;
-    add('01-02', 'Venue Ready', 'READY');
-    add('01-01', 'Venue None', 'NONE');
+    add('01-05', 'Venue Paid', [['PAID', 120000]]);
+    add('01-04', 'Venue Partly', [['PAID', 40000]]);
+    add('01-03', 'Venue Sent', [['PAID', 40000], ['SENT', 60000]]);
+    add('01-02', 'Venue Ready', [['READY', 100000]]);
+    add('01-01', 'Venue None', []);
     installMatchMedia({ [TABLET_QUERY]: true, [DESKTOP_QUERY]: true, [WIDE_QUERY]: true });
     const { user } = renderApp(`/gigs`);
     await waitFor(() => expect(venues()).toHaveLength(5));
@@ -301,31 +304,34 @@ describe('event list (UC-003)', () => {
     expect(cell('Venue None', 'Laskutus')).toHaveTextContent('–');
     expect(tagOf('Venue Ready')).toHaveClass('tag-ok');
     expect(tagOf('Venue Ready')).toHaveTextContent('Valmis laskutukseen');
-    expect(tagOf('Venue Pre')).toHaveClass('tag-info');
-    expect(tagOf('Venue Invoiced')).toHaveClass('tag-warn');
+    expect(tagOf('Venue Sent')).toHaveClass('tag-warn');
+    expect(tagOf('Venue Sent')).toHaveTextContent('Laskutettu');
+    expect(tagOf('Venue Partly')).toHaveClass('tag-info');
+    expect(tagOf('Venue Partly')).toHaveTextContent('Osittain maksettu');
     expect(tagOf('Venue Paid')).toHaveClass('tag-ok-strong');
     expect(tagOf('Venue Paid')).toHaveTextContent('Maksettu');
-    // Saldo = total − prepayment; negative in warn colour.
+    // Saldo = total − paid rows; negative in warn colour.
     expect(cell('Venue Ready', 'Saldo')).toHaveTextContent(/1\s000,00\s€/);
-    expect(cell('Venue Pre', 'Saldo').querySelector('.event-balance-negative')).toHaveTextContent(/[-−]1\s000,00\s€/);
+    expect(cell('Venue Sent', 'Saldo')).toHaveTextContent(/600,00\s€/);
+    expect(cell('Venue Paid', 'Saldo').querySelector('.event-balance-negative')).toHaveTextContent(/[-−]200,00\s€/);
 
     await user.click(within(table()).getByRole('button', { name: /^Laskutus/ }));
-    expect(venues()).toEqual(['Venue None', 'Venue Ready', 'Venue Pre', 'Venue Invoiced', 'Venue Paid']);
+    expect(venues()).toEqual(['Venue None', 'Venue Ready', 'Venue Sent', 'Venue Partly', 'Venue Paid']);
 
     await user.click(within(table()).getByRole('button', { name: 'Suodata: Laskutus' }));
     const popover = screen.getByRole('dialog', { name: 'Suodata: Laskutus' });
     expect(within(popover).getAllByRole('checkbox').map((c) => c.closest('label')!.textContent)).toEqual([
       '–',
       'Valmis laskutukseen',
-      'Ennakko maksettu',
       'Laskutettu',
+      'Osittain maksettu',
       'Maksettu',
     ]);
     await user.click(within(popover).getByRole('button', { name: 'Tyhjennä' }));
-    await user.click(within(popover).getByRole('checkbox', { name: 'Laskutettu' }));
+    await user.click(within(popover).getByRole('checkbox', { name: 'Osittain maksettu' }));
     await user.click(within(popover).getByRole('checkbox', { name: 'Maksettu' }));
     await user.click(within(popover).getByRole('button', { name: 'OK' }));
-    expect(venues().sort()).toEqual(['Venue Invoiced', 'Venue Paid']);
+    expect(venues().sort()).toEqual(['Venue Paid', 'Venue Partly']);
   });
 
   it('sorts by any column header', async () => {

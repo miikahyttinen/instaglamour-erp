@@ -3,7 +3,8 @@ import type { ApiError } from '../api/client';
 import type {
   CostType,
   FieldCode,
-  InvoiceStatus,
+  InvoiceRowStatus,
+  InvoiceState,
   EventDisplayStatus,
   EventHistoryType,
   Language,
@@ -41,7 +42,8 @@ export const fieldErrorLabel = (t: TFunction, code: FieldCode) => t(`fields.${co
 export const signInErrorLabel = (t: TFunction, code: SignInErrorCode) =>
   t(`signIn.errors.${code}`);
 
-export const invoiceStatusLabel = (t: TFunction, code: InvoiceStatus) => t(`invoiceStatus.${code}`);
+export const invoiceRowStatusLabel = (t: TFunction, code: InvoiceRowStatus) => t(`invoiceRowStatus.${code}`);
+export const invoiceStateLabel = (t: TFunction, code: InvoiceState) => t(`invoiceState.${code}`);
 
 /** Display status of an event: SOLD with a past date is shown as PLAYED (BR-010). */
 export function eventDisplayStatus(event: Pick<EventSummary, 'status' | 'played'>): EventDisplayStatus {

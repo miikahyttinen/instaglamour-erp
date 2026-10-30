@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from '../../mocks/data';
-import { addCostLine, payCostLine } from '../../mocks/eventStore';
+import { addCostLine, addInvoiceRow, payCostLine } from '../../mocks/eventStore';
 import { addMockEvent, partnerA, partnerB, staffMockEvent, TEST_YEAR } from '../../test/eventFixtures';
 import { renderApp, signInMock } from '../../test/renderApp';
 
@@ -200,81 +200,104 @@ describe('event page (UC-004, UC-007)', () => {
     expect(historyItems()[2]).toHaveTextContent('Syy: Client called off');
   });
 
-  it('Laskutus card under the price card: status select, prepayment and balance save inline (TASK-172)', async () => {
+  it('Laskutus card under the price card: add, edit and remove invoice rows; totals and balance (TASK-173)', async () => {
     const event = addMockEvent();
     const { user } = renderApp(`/gigs/${event.id}`);
     await screen.findByRole('heading', { name: 'Template A · Venue X', level: 1 });
-    // Directly after the price section.
+    // Directly after the price section; the old status select and prepayment field are gone.
     const sections = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
     expect(sections.indexOf('Laskutus')).toBe(sections.indexOf('Hinta ja lisämyynti') + 1);
     const card = within(section('Laskutus'));
-    // The price card itself is unchanged: no prepayment / balance there.
-    expect(within(section('Hinta ja lisämyynti')).queryByText('Saldo')).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Valmis laskutukseen' })).not.toBeInTheDocument();
-
-    const select = card.getByRole('combobox', { name: 'Laskutus' });
-    expect(select).toHaveDisplayValue('–');
-    expect(within(select).getAllByRole('option').map((o) => o.textContent)).toEqual([
-      '–',
-      'Valmis laskutukseen',
-      'Ennakko maksettu',
-      'Laskutettu',
-      'Maksettu',
-    ]);
-    expect(card.queryByText(/ klo /)).not.toBeInTheDocument();
+    expect(card.queryByRole('combobox', { name: 'Laskutus' })).not.toBeInTheDocument();
+    expect(card.queryByRole('textbox', { name: 'Ennakkomaksu' })).not.toBeInTheDocument();
+    expect(card.getByText('Ei laskurivejä.')).toBeInTheDocument();
+    const total = (name: string) => card.getByText(name, { selector: 'dt' }).nextElementSibling!;
+    expect(total('Laskutettu')).toHaveTextContent(/0,00\s€/);
+    expect(total('Maksettu')).toHaveTextContent(/0,00\s€/);
     expect(card.getByRole('group', { name: 'Saldo' })).toHaveTextContent(/1\s000,00\s€/);
 
-    await user.selectOptions(select, 'Ennakko maksettu');
-    await waitFor(() => expect(event.invoiceStatus).toBe('PREPAYMENT_PAID'));
-    expect(event.invoiceStatusBy).toBe(partnerA().id);
-    expect(await card.findByText(new RegExp(`^${partnerA().name} \\d+\\.\\d+\\.\\d{4} klo `))).toBeInTheDocument();
-    await waitFor(() => expect(historyItems()[0]).toHaveTextContent('Laskutus: – → Ennakko maksettu'));
+    // Add: required fields checked client-side; status defaults to "Valmis laskutukseen".
+    await user.click(card.getByRole('button', { name: '+ Lisää laskurivi' }));
+    const form = within(card.getByRole('form', { name: 'Lisää laskurivi' }));
+    expect(form.getByRole('combobox', { name: 'Tila' })).toHaveDisplayValue('Valmis laskutukseen');
+    await user.click(form.getByRole('button', { name: 'Lisää laskurivi' }));
+    expect(form.getAllByText('Pakollinen tieto.').length).toBe(2);
+    await user.type(form.getByRole('textbox', { name: 'Kuvaus' }), 'Ennakko');
+    await user.type(form.getByRole('textbox', { name: 'Summa' }), '400');
+    await user.click(form.getByRole('button', { name: 'Lisää laskurivi' }));
 
-    const prepayment = card.getByRole('textbox', { name: 'Ennakkomaksu' });
-    await user.clear(prepayment);
-    await user.type(prepayment, '400{Enter}');
-    await waitFor(() => expect(event.prepaymentCents).toBe(40000));
-    await waitFor(() => expect(card.getByRole('group', { name: 'Saldo' })).toHaveTextContent(/600,00\s€/));
-    expect(card.queryByRole('note')).not.toBeInTheDocument();
-    await waitFor(() => expect(historyItems()[0]).toHaveTextContent(/Ennakkomaksu: 0,00\s€ → 400,00\s€/));
+    const row = await card.findByRole('row', { name: /Ennakko/ });
+    expect(card.queryByRole('form')).not.toBeInTheDocument();
+    const status = within(row).getByRole('combobox', { name: 'Tila: Ennakko' });
+    expect(status).toHaveDisplayValue('Valmis laskutukseen');
+    expect(within(row).getAllByRole('option').map((o) => o.textContent)).toEqual([
+      'Valmis laskutukseen',
+      'Lähetetty',
+      'Maksettu',
+    ]);
+    expect(status.closest('.inline-field')).toHaveClass('tone-ok');
+    expect(within(row).getByText(new RegExp(`^${partnerA().name} \\d+\\.\\d+\\.\\d{4} klo `))).toBeInTheDocument();
+    await waitFor(() => expect(historyItems()[0]).toHaveTextContent(/Laskurivi lisätty.*Ennakko · 400,00\s€ · Valmis laskutukseen/));
 
-    // Prepayment above the total: negative balance in warn colour with a note.
-    await user.clear(prepayment);
-    await user.type(prepayment, '1200{Enter}');
+    // Status → Maksettu: dark green, paid and invoiced totals follow, balance = total − paid.
+    await user.selectOptions(status, 'Maksettu');
+    await waitFor(() => expect(total('Maksettu')).toHaveTextContent(/400,00\s€/));
+    expect(total('Laskutettu')).toHaveTextContent(/400,00\s€/);
+    expect(card.getByRole('group', { name: 'Saldo' })).toHaveTextContent(/600,00\s€/);
+    expect(status.closest('.inline-field')).toHaveClass('tone-ok-strong');
+    await waitFor(() => expect(historyItems()[0]).toHaveTextContent('Ennakko: Tila: Valmis laskutukseen → Maksettu'));
+
+    // Amount and description edit inline; more paid than the total → negative balance warning.
+    const amount = within(row).getByRole('textbox', { name: 'Summa: Ennakko' });
+    await user.clear(amount);
+    await user.type(amount, '1200{Enter}');
     await waitFor(() => expect(card.getByRole('group', { name: 'Saldo' })).toHaveTextContent(/[-−]200,00\s€/));
     expect(card.getByRole('group', { name: 'Saldo' })).toHaveClass('event-balance-negative');
-    expect(card.getByRole('note')).toHaveTextContent('Ennakkomaksu on suurempi kuin kokonaishinta.');
+    expect(card.getByRole('note')).toHaveTextContent('Maksettu enemmän kuin kokonaishinta.');
+    // Zero is blocked client-side.
+    await user.clear(amount);
+    await user.type(amount, '0{Enter}');
+    await waitFor(() => expect(amount).toHaveAttribute('aria-invalid', 'true'));
+    expect(db.events.invoiceRows.find((r) => r.eventId === event.id)!.amountCents).toBe(120000);
+    await user.keyboard('{Escape}');
 
-    // Negative prepayment is blocked client-side.
-    await user.clear(prepayment);
-    await user.type(prepayment, '-5{Enter}');
-    await waitFor(() => expect(prepayment).toHaveAttribute('aria-invalid', 'true'));
-    expect(event.prepaymentCents).toBe(120000);
+    // Remove with a confirmation.
+    await user.click(within(row).getByRole('button', { name: 'Poista: Ennakko' }));
+    const dialog = screen.getByRole('dialog', { name: 'Poista laskurivi' });
+    expect(dialog).toHaveTextContent(/Poistetaanko laskurivi Ennakko · 1\s200,00\s€ · Maksettu\?/);
+    await user.click(within(dialog).getByRole('button', { name: 'Poista' }));
+    expect(await card.findByText('Ei laskurivejä.')).toBeInTheDocument();
+    expect(card.getByRole('group', { name: 'Saldo' })).toHaveTextContent(/1\s000,00\s€/);
+    await waitFor(() => expect(historyItems()[0]).toHaveTextContent('Laskurivi poistettu'));
   });
 
-  it('invoicing stays editable on a cancelled gig (cancellation fee)', async () => {
+  it('invoice rows stay editable on a cancelled gig (cancellation fee)', async () => {
     const cancelled = addMockEvent({ venue: 'Venue Gone' });
     cancelled.status = 'CANCELLED';
+    const fee = addInvoiceRow(db.events, cancelled, { description: 'Cancellation fee', amountCents: 30000 }, partnerA().id);
     const { user } = renderApp(`/gigs/${cancelled.id}`);
     expect(await screen.findByText('Peruttu', { selector: '.tag' })).toHaveClass('tag-danger');
-    const select = within(section('Laskutus')).getByRole('combobox', { name: 'Laskutus' });
-    expect(select).toBeEnabled();
-    await user.selectOptions(select, 'Laskutettu');
-    await waitFor(() => expect(cancelled.invoiceStatus).toBe('INVOICED'));
+    const status = within(section('Laskutus')).getByRole('combobox', { name: 'Tila: Cancellation fee' });
+    expect(status).toBeEnabled();
+    await user.selectOptions(status, 'Lähetetty');
+    await waitFor(() => expect(fee.status).toBe('SENT'));
+    expect(status.closest('.inline-field')).toHaveClass('tone-warn');
   });
 
-  it('deleted gigs show the invoicing fields read-only', async () => {
+  it('deleted gigs show invoice rows read-only', async () => {
     const deleted = addMockEvent({ venue: 'Venue Del' });
+    const paid = addInvoiceRow(db.events, deleted, { description: 'Invoice', amountCents: 100000, status: 'PAID' }, partnerA().id);
+    paid.statusAt = '2030-06-02T10:00:00Z';
     deleted.deletedAt = '2030-06-03T10:00:00Z';
-    deleted.invoiceStatus = 'PAID';
-    deleted.invoiceStatusAt = '2030-06-02T10:00:00Z';
-    deleted.invoiceStatusBy = partnerA().id;
     renderApp(`/gigs/${deleted.id}`);
-    const select = await screen.findByRole('combobox', { name: 'Laskutus' });
-    expect(select).toHaveDisplayValue('Maksettu');
-    expect(select).toBeDisabled();
-    expect(screen.getByRole('textbox', { name: 'Ennakkomaksu' })).toBeDisabled();
-    expect(within(section('Laskutus')).getByText(new RegExp(`^${partnerA().name} 2\\.6\\.2030 klo `))).toBeInTheDocument();
+    const row = await screen.findByRole('row', { name: /Invoice/ });
+    const card = within(section('Laskutus'));
+    expect(within(row).getByText('Maksettu', { selector: '.tag' })).toHaveClass('tag-ok-strong');
+    expect(within(row).queryByRole('combobox')).not.toBeInTheDocument();
+    expect(within(row).queryByRole('button')).not.toBeInTheDocument();
+    expect(within(row).getByText(new RegExp(`^${partnerA().name} 2\\.6\\.2030 klo `))).toBeInTheDocument();
+    expect(card.queryByRole('button', { name: '+ Lisää laskurivi' })).not.toBeInTheDocument();
+    expect(card.getByRole('group', { name: 'Saldo' })).toHaveTextContent(/0,00\s€/);
   });
 
   it('moves an event, shows overlap warnings and logs old and new dates (UC-009)', async () => {
