@@ -1,0 +1,17 @@
+{
+  "name": "instaglamour-erp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Single-service build: the backend serves the built frontend (see README, Deploy to Railway).",
+  "engines": {
+    "node": "24.x"
+  },
+  "scripts": {
+    "build": "npm run build:install && npm run build:frontend && npm run build:backend",
+    "build:install": "npm ci --prefix backend --include=dev && npm ci --prefix frontend --include=dev",
+    "build:frontend": "VITE_USE_MOCKS=false VITE_DEV_LOGIN=false npm run build --prefix frontend",
+    "build:backend": "npm run build --prefix backend",
+    "start": "npm start --prefix backend",
+    "db:migrate": "npm run db:migrate --prefix backend"
+  }
+}
