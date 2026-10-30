@@ -113,6 +113,8 @@ export function toEventSummaryDto(event: EventWithLines, today: string) {
     offerId: event.offerId,
     ...eventEconomics(event),
     notFullyStaffed: isNotFullyStaffed(event.costLines),
+    readyForInvoiceAt: event.readyForInvoiceAt?.toISOString() ?? null,
+    readyForInvoiceBy: event.readyForInvoiceById,
     deletedAt: event.deletedAt?.toISOString() ?? null,
     createdAt: event.createdAt.toISOString(),
     updatedAt: event.updatedAt.toISOString(),

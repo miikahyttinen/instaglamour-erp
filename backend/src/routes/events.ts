@@ -291,6 +291,39 @@ export function eventRoutes(app: FastifyInstance, deps: AppDeps): void {
   statusChange('/api/events/:id/cancel', 'SOLD', 'CANCELLED');
   statusChange('/api/events/:id/uncancel', 'CANCELLED', 'SOLD');
 
+  // ---------------------------------------------------------------- ready to be invoiced (2026-10-31)
+  // Set by hand; allowed for upcoming and played SOLD events. Already set / not set → 200 no-op.
+  app.post<IdParams>('/api/events/:id/ready-for-invoice', async (request) => {
+    const me = request.requirePartner();
+    const event = await requireEventDetail(db, request.params.id);
+    assertNotDeleted(event);
+    if (event.status !== 'SOLD') {
+      throw new AppError('INVALID_STATUS_TRANSITION', `Event is ${event.status}, expected SOLD`);
+    }
+    if (event.readyForInvoiceAt) return detail(event.id);
+    await inTransaction(db, async (tx) => {
+      await tx.event.update({
+        where: { id: event.id },
+        data: { readyForInvoiceAt: new Date(), readyForInvoiceById: me.id },
+      });
+      await logHistory(tx, { eventId: event.id, type: 'READY_FOR_INVOICE', partnerId: me.id });
+    });
+    return detail(event.id);
+  });
+
+  // Clearing is allowed whatever the status (a cancelled event keeps its values until cleared).
+  app.delete<IdParams>('/api/events/:id/ready-for-invoice', async (request) => {
+    const me = request.requirePartner();
+    const event = await requireEventDetail(db, request.params.id);
+    assertNotDeleted(event);
+    if (!event.readyForInvoiceAt) return detail(event.id);
+    await inTransaction(db, async (tx) => {
+      await tx.event.update({ where: { id: event.id }, data: { readyForInvoiceAt: null, readyForInvoiceById: null } });
+      await logHistory(tx, { eventId: event.id, type: 'READY_FOR_INVOICE_CLEARED', partnerId: me.id });
+    });
+    return detail(event.id);
+  });
+
   // ---------------------------------------------------------------- delete / restore (soft, BR-018)
   app.post<IdParams>('/api/events/:id/delete', async (request, reply) => {
     const me = request.requirePartner();
