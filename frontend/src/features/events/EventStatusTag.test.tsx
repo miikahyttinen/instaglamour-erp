@@ -22,7 +22,7 @@ describe('EventStatusTag', () => {
     ['PAID', 'Maksettu', 'tag-ok-strong'],
     ['ROWS_TO_INVOICE', 'Laskutettavia rivejä', 'tag-info'],
     ['OPEN_INVOICES', 'Avoimia laskuja', 'tag-warn'],
-    ['NEEDS_INVOICES', 'Laskuttamatta', 'tag-muted'],
+    ['NEEDS_INVOICES', 'Laskuttamatta', 'tag-yellow'],
   ] as const)('invoicing state %s is one "%s" tag (%s)', (state, label, toneClass) => {
     const { container } = render(<InvoiceStateTag state={state} />);
     expect(screen.getByText(label)).toHaveClass('tag', toneClass);

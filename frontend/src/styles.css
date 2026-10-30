@@ -801,6 +801,11 @@ label.switch.inline-switch {
   background: var(--warn-bg);
   border-color: var(--warn-border);
 }
+.tag-yellow {
+  color: var(--yellow-fg);
+  background: var(--yellow-bg);
+  border-color: var(--yellow-border);
+}
 .tag-danger {
   color: var(--danger-fg);
   background: var(--danger-bg);

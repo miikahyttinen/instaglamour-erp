@@ -138,10 +138,13 @@ export interface InvoiceFigures {
 /**
  * Derived invoicing figures of a gig (api-contract "Invoice rows" and "Invoicing: one label"):
  * invoiced = Σ SENT + PAID, paid = Σ PAID, open = Σ SENT, ready = Σ READY (drafts).
+ * `played` = SOLD and the start date has passed; only played gigs can be NEEDS_INVOICES
+ * (upcoming and cancelled gigs fall to NONE).
  */
 export function invoiceFigures(
   rows: Pick<InvoiceRow, 'status' | 'amountCents'>[],
   totalPriceCents: number,
+  played: boolean,
 ): InvoiceFigures {
   const sum = (statuses: InvoiceRowStatus[]) =>
     rows.filter((r) => statuses.includes(r.status)).reduce((s, r) => s + r.amountCents, 0);
@@ -158,7 +161,7 @@ export function invoiceFigures(
         ? 'ROWS_TO_INVOICE'
         : openCents > 0
           ? 'OPEN_INVOICES'
-          : invoicedCents < total
+          : played && invoicedCents < total
             ? 'NEEDS_INVOICES'
             : 'NONE';
   return { invoicedCents, paidCents, readyCents, openCents, balanceCents: total - paidCents, invoiceState };
@@ -174,13 +177,14 @@ export function toSummary(state: EventState, event: MockEvent, today = todayIso(
   );
   const marginBudgetCents = totalPriceCents - budgetedCostsCents;
   const marginActualCents = totalPriceCents - actualCostsCents;
+  const played = event.status === 'SOLD' && event.startDate < today;
   return {
     id: event.id,
     startDate: event.startDate,
     endDate: event.endDate,
     year: Number(event.startDate.slice(0, 4)),
     status: event.status,
-    played: event.status === 'SOLD' && event.startDate < today,
+    played,
     lineupTemplateId: event.lineupTemplateId,
     lineupName: event.lineupName,
     venue: event.venue,
@@ -204,7 +208,7 @@ export function toSummary(state: EventState, event: MockEvent, today = todayIso(
     clientId: event.clientId,
     clientName: state.clients.find((c) => c.id === event.clientId)?.name ?? null,
     offerId: event.offerId,
-    ...invoiceFigures(invoiceRowsOf(state, event.id), totalPriceCents),
+    ...invoiceFigures(invoiceRowsOf(state, event.id), totalPriceCents, played),
     deletedAt: event.deletedAt,
     createdAt: event.createdAt,
     updatedAt: event.updatedAt,

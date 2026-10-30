@@ -247,6 +247,27 @@ describe('event mocks', () => {
     });
   });
 
+  it('NEEDS_INVOICES only for played gigs: upcoming and cancelled gigs are NONE', async () => {
+    const pastYear = 2020;
+    const played = await eventsApi.create(eventInput({ startDate: `${pastYear}-03-01` }));
+    expect(played).toMatchObject({ played: true, invoiceState: 'NEEDS_INVOICES' });
+    // Part paid, nothing open → still needs invoices.
+    const part = await invoiceRowsApi.create(played.id, { description: 'Part', amountCents: 1000, status: 'PAID' });
+    expect(part.invoiceState).toBe('NEEDS_INVOICES');
+
+    const upcoming = await eventsApi.create(eventInput());
+    expect(upcoming).toMatchObject({ played: false, invoiceState: 'NONE' });
+
+    const cancelled = await eventsApi.create(eventInput({ startDate: `${pastYear}-04-01` }));
+    await eventsApi.cancel(cancelled.id, { reason: 'Called off' });
+    expect((await eventsApi.get(cancelled.id)).invoiceState).toBe('NONE');
+
+    const res = await fetch(`/api/events?year=${pastYear}&invoiceState=NEEDS_INVOICES&status=ALL`);
+    const ids = ((await res.json()) as { events: { id: string }[] }).events.map((g) => g.id);
+    expect(ids).toContain(played.id);
+    expect(ids).not.toContain(cancelled.id);
+  });
+
   it('invoice rows: add / patch / remove, derived figures and state, history, 409 when deleted (TASK-173)', async () => {
     const event = await eventsApi.create(eventInput());
     const total = event.totalPriceCents;
@@ -256,7 +277,8 @@ describe('event mocks', () => {
       paidCents: 0,
       balanceCents: total,
       openCents: 0,
-      invoiceState: 'NEEDS_INVOICES',
+      // Upcoming gig: nothing to invoice yet (NEEDS_INVOICES is for played gigs only).
+      invoiceState: 'NONE',
     });
 
     // Default status READY; who / when set; creation order kept.
@@ -294,11 +316,11 @@ describe('event mocks', () => {
     });
     const paidAll = await invoiceRowsApi.update(rowB.id, { status: 'PAID' });
     expect(paidAll).toMatchObject({ paidCents: total, balanceCents: 0, openCents: 0, invoiceState: 'PAID' });
-    // Only some paid, nothing open → needs invoices; overpaid → negative balance, paid.
+    // Only some paid, nothing open → NONE on an upcoming gig; overpaid → negative balance, paid.
     const partly = await invoiceRowsApi.remove(rowB.id);
     expect(partly).toMatchObject({
       invoiceRows: [expect.objectContaining({ id: rowA.id })],
-      invoiceState: 'NEEDS_INVOICES',
+      invoiceState: 'NONE',
     });
     const over = await invoiceRowsApi.update(rowA.id, { amountCents: total + 500, description: 'All' });
     expect(over).toMatchObject({ balanceCents: -500, invoiceState: 'PAID' });

@@ -3,9 +3,10 @@ import type { ReactNode } from 'react';
 /**
  * info: Upcoming gig / Open / Rows to be invoiced · ok: Played gig / Done ·
  * ok-strong (solid dark green): Paid · warn: Overdue / Not fully staffed / Open invoices / contract warnings ·
- * purple: currently unused (token kept) · danger: Cancelled / Deleted · muted: inactive, Needs invoices, neutral facts.
+ * yellow: Needs invoices ("Laskuttamatta", distinct from the amber warn) ·
+ * purple: currently unused (token kept) · danger: Cancelled / Deleted · muted: inactive, neutral facts.
  */
-export type StatusTone = 'info' | 'ok' | 'ok-strong' | 'warn' | 'purple' | 'danger' | 'muted';
+export type StatusTone = 'info' | 'ok' | 'ok-strong' | 'warn' | 'yellow' | 'purple' | 'danger' | 'muted';
 
 export interface StatusTagProps {
   tone?: StatusTone;

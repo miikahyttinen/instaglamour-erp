@@ -227,8 +227,9 @@ test('Kate-%: the actual percentage is always on a second line', async ({ page }
 // "Valmis laskutukseen" blue, "Lähetetty" amber, "Maksettu" dark green), an add form, and
 // Laskutettu / Avoimet / Maksettu / Saldo (= total − paid; warning when negative). Invoicing state
 // (api-contract "Invoicing: one label"): ONE tag = the next action, first match wins — Maksettu
-// (dark green) · Laskutettavia rivejä (blue) · Avoimia laskuja (amber) · Laskuttamatta (gray) · "–";
-// on the gig card and in the list "Laskutus" cell (one line), with one filter (f.invoiceState).
+// (dark green) · Laskutettavia rivejä (blue) · Avoimia laskuja (amber) · Laskuttamatta (yellow, played
+// gigs only; upcoming and cancelled gigs fall to "–") · "–"; on the gig card and in the list
+// "Laskutus" cell (one line), with one filter (f.invoiceState).
 test('gig statuses and "Laskutus": invoice rows, one invoicing state tag on the gig page and in the list, one filter', async ({ page }, testInfo) => {
   const { year, north } = await setup(page, testInfo);
   const venue = `Hall ${tagOf(testInfo)}${suffix()} Ready`;
@@ -242,11 +243,12 @@ test('gig statuses and "Laskutus": invoice rows, one invoicing state tag on the 
   const card = page.locator('details.event-section-invoicing');
   await expect(card.getByRole('heading', { name: 'Laskutus', level: 2 })).toBeVisible();
   await expect(card.getByText('Ei laskurivejä.')).toBeVisible();
-  const stateTag = card.getByRole('group', { name: 'Laskutuksen tila' }).locator('.tag');
-  await expect(stateTag).toHaveCount(1);
-  await expect(stateTag).toHaveText('Laskuttamatta');
-  await expect(stateTag).toHaveClass(/tag-muted/);
-  expect((await apiGig()).invoiceState).toBe('NEEDS_INVOICES');
+  const stateGroup = card.getByRole('group', { name: 'Laskutuksen tila' });
+  const stateTag = stateGroup.locator('.tag');
+  // Upcoming gig, no rows → "–" (Laskuttamatta is for played gigs only).
+  await expect(stateTag).toHaveCount(0);
+  await expect(stateGroup).toHaveText('–');
+  expect((await apiGig()).invoiceState).toBe('NONE');
 
   // Add a row: status defaults to "Valmis laskutukseen" (blue), who / when shown → "Laskutettavia rivejä".
   await card.getByRole('button', { name: '+ Lisää laskurivi' }).click();
@@ -318,19 +320,37 @@ test('gig statuses and "Laskutus": invoice rows, one invoicing state tag on the 
   await expect(card.getByText('Ei laskurivejä.')).toBeVisible();
   await expect(card.getByRole('note')).toHaveCount(0);
   await expect.poll(async () => (await apiGig()).balanceCents).toBe(total);
-  await expect(stateTag).toHaveText('Laskuttamatta');
+  await expect(stateTag).toHaveCount(0);
+  await expect(stateGroup).toHaveText('–');
 
   // Cancelled = red "Peruttu".
   await openList(page, year, '?f.status=CANCELLED');
   await expect(eventListRows(page).first().getByText('Peruttu', { exact: true })).toHaveClass(/tag-danger/);
 
-  // Part paid, nothing open → still "Laskuttamatta" (gray).
+  // Upcoming gig, part paid, nothing open → still "–".
   const half = Math.floor(total / 2);
   await api(page).post(`/events/${gig.id}/invoice-rows`, { description: 'Invoice 2', amountCents: half, status: 'PAID' });
   await page.goto(`/gigs/${gig.id}`);
+  await expect(stateTag).toHaveCount(0);
+  await expect(stateGroup).toHaveText('–');
+  expect((await apiGig()).invoiceState).toBe('NONE');
+
+  // Played gig (past date): no rows / part paid → yellow "Laskuttamatta"; a cancelled past gig → "–".
+  const pastDay = `2021-0${tagOf(testInfo) === 'M' ? 2 : 3}-01`;
+  const played = await createEventViaApi(page, { startDate: pastDay, venue: `${venue} Played` });
+  const playedGig = async () => (await api(page).get(`/events/${played.id}`)) as Record<string, unknown>;
+  expect((await playedGig()).invoiceState).toBe('NEEDS_INVOICES');
+  await api(page).post(`/events/${played.id}/invoice-rows`, { description: 'Part', amountCents: 1000, status: 'PAID' });
+  await page.goto(`/gigs/${played.id}`);
+  await expect(pageHead(page).getByText('Soitettu', { exact: true })).toHaveClass(/tag-ok/);
+  await expect(stateTag).toHaveCount(1);
   await expect(stateTag).toHaveText('Laskuttamatta');
-  await expect(stateTag).toHaveClass(/tag-muted/);
-  expect((await apiGig()).invoiceState).toBe('NEEDS_INVOICES');
+  await expect(stateTag).toHaveClass(/tag-yellow/);
+  expect((await playedGig()).invoiceState).toBe('NEEDS_INVOICES');
+  const pastCancelled = await createEventViaApi(page, { startDate: pastDay, venue: `${venue} Called off` });
+  await api(page).post(`/events/${pastCancelled.id}/cancel`, { reason: 'Synthetic cancel' });
+  expect(((await api(page).get(`/events/${pastCancelled.id}`)) as Record<string, unknown>).invoiceState).toBe('NONE');
+  await page.goto(`/gigs/${gig.id}`);
 
   // Fully paid = solid dark green "Maksettu"; the columns fit without sideways scroll
   // (table rows from 600 px; phones are cards).
