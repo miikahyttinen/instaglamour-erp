@@ -127,7 +127,7 @@ describe('PATCH /api/people/{id} roles', () => {
 
   it('rejects duplicates, non-musician codes and non-lists with roles: INVALID_VALUE', async () => {
     const id = s.world.p1.id;
-    for (const roles of [['VOC', 'VOC'], ['OFFICE'], ['FUEL'], ['NOPE'], 'VOC', null, [1], [null]]) {
+    for (const roles of [['VOC', 'VOC'], ['OFFICE'], ['FUEL'], ['NOPE'], ['HORN_1'], ['VOC', 'HORN_2'], ['TECHNICIAN'], 'VOC', null, [1], [null]]) {
       const res = await call(s, 'PATCH', `/api/people/${id}`, { roles });
       expect(res.statusCode, JSON.stringify(roles)).toBe(400);
       expect(res.json().error).toMatchObject({ code: 'VALIDATION_ERROR', fields: { roles: 'INVALID_VALUE' } });
@@ -164,7 +164,7 @@ describe('GET /api/people?role=', () => {
   });
 
   it('rejects an unknown or non-musician role code', async () => {
-    for (const role of ['NOPE', 'OFFICE', 'FUEL', 'voc']) {
+    for (const role of ['NOPE', 'OFFICE', 'FUEL', 'voc', 'HORN_1', 'HORN_2', 'TECHNICIAN']) {
       const res = await call(s, 'GET', `/api/people?role=${role}`);
       expect(res.statusCode).toBe(400);
       expect(res.json().error).toMatchObject({ code: 'VALIDATION_ERROR', fields: { role: 'INVALID_VALUE' } });

@@ -66,6 +66,11 @@ describe('GET /api/reference', () => {
       expenseCategories: [...EXPENSE_CATEGORIES],
     });
     expect(body.costTypes.musicianRoles).toContain('VOC');
+    // TASK-041: removed roles
+    for (const removed of ['HORN_1', 'HORN_2', 'TECHNICIAN']) expect(body.costTypes.musicianRoles).not.toContain(removed);
+    expect(body.costTypes.musicianRoles).toEqual(
+      ['VOC', 'BACKING_VOC', 'BASS', 'GUITAR', 'DRUMS', 'KEYS', 'PIANO', 'MIX', 'SAX', 'TRUMPET', 'TROMBONE', 'VIOLIN', 'DJ', 'OTHER_ROLE'],
+    );
     expect(INTERNAL_ROLES).toHaveLength(3);
     expect(body.costTypes.expenseCategories[0]).toBe('FUEL');
     expect(body.technicalSetups).toEqual(['HOUSE_TECH', 'SET_A', 'SET_B', 'SET_C']);

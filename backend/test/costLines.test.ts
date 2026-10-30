@@ -77,6 +77,10 @@ describe('POST /api/events/{id}/cost-lines', () => {
   it.each([
     [{ budgetedCents: 10000 }, { type: 'REQUIRED' }],
     [{ type: 'CATERING', budgetedCents: 10000 }, { type: 'INVALID_VALUE' }],
+    // Removed roles (TASK-041)
+    [{ type: 'HORN_1', budgetedCents: 10000 }, { type: 'INVALID_VALUE' }],
+    [{ type: 'HORN_2', budgetedCents: 10000 }, { type: 'INVALID_VALUE' }],
+    [{ type: 'TECHNICIAN', budgetedCents: 10000 }, { type: 'INVALID_VALUE' }],
     [{ type: 'VOC' }, { budgetedCents: 'REQUIRED' }],
     [{ type: 'VOC', budgetedCents: -10000 }, { budgetedCents: 'NEGATIVE_AMOUNT' }],
     [{ type: 'OTHER', budgetedCents: 10000 }, { description: 'DESCRIPTION_REQUIRED' }],
