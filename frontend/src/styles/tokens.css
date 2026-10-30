@@ -131,6 +131,10 @@
   --ok-fg: #34d399;
   --ok-bg: #0b251c;
   --ok-border: #0c533b;
+  /* Solid dark green ("Maksettu" / invoice paid): ecfdf5 on 065f46 = 7.3:1 */
+  --ok-strong-fg: #ecfdf5;
+  --ok-strong-bg: #065f46;
+  --ok-strong-border: #047857;
   --warn-fg: #fbbf24;
   --warn-bg: #2a2210;
   --warn-border: #5c4a14;
@@ -160,6 +164,10 @@
   --ok-fg: #047857;
   --ok-bg: #e7f6ef;
   --ok-border: #a7dcc4;
+  /* Solid dark green ("Maksettu" / invoice paid): ffffff on 047857 = 5.5:1 */
+  --ok-strong-fg: #ffffff;
+  --ok-strong-bg: #047857;
+  --ok-strong-border: #065f46;
   --warn-fg: #a16207;
   --warn-bg: #fdf6e3;
   --warn-border: #ecd9a3;

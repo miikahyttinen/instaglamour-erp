@@ -1,10 +1,11 @@
 import type { ReactNode } from 'react';
 
 /**
- * info: Upcoming gig / Open · ok: Played gig / Done / Paid / Ready to be invoiced · warn: Overdue / Not fully staffed / contract warnings ·
+ * info: Upcoming gig / Open / Prepayment paid · ok: Played gig / Done / Paid / Ready to be invoiced ·
+ * ok-strong (solid dark green): Invoice paid · warn: Overdue / Not fully staffed / Invoiced / contract warnings ·
  * danger: Cancelled / Deleted · muted: inactive, neutral facts.
  */
-export type StatusTone = 'info' | 'ok' | 'warn' | 'danger' | 'muted';
+export type StatusTone = 'info' | 'ok' | 'ok-strong' | 'warn' | 'danger' | 'muted';
 
 export interface StatusTagProps {
   tone?: StatusTone;
