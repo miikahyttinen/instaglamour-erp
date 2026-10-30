@@ -25,7 +25,7 @@ test('changing the seller moves the unpaid Sales line and the UI names it (BR-02
   const ref = await reference(page);
   const partnerB = ref.partners.find((p) => p.name === 'Partner B');
 
-  await page.goto(`/events/${event.id}`);
+  await page.goto(`/gigs/${event.id}`);
   await expectNoEditSaveButtons(page.getByRole('main'), 'event page');
   // The hint is shown next to the seller / producer selects before anything is changed.
   await expect(page.getByText('Vanhan myyjän / tuottajan maksamattomat')).toBeVisible();
@@ -73,7 +73,7 @@ test('year page of an empty year still lists upcoming events (contract: regardle
   const data = await api(page).get('/years/2040');
   expect(data.events.eventCount).toBe(0);
   expect(data.upcomingEvents.length).toBeGreaterThan(0);
-  const upcoming = page.getByRole('region', { name: 'Tulevat tapahtumat' });
+  const upcoming = page.getByRole('region', { name: 'Tulevat keikat' });
   await expect(upcoming.getByRole('link')).toHaveCount(data.upcomingEvents.length + 1); // + section heading link
 });
 
@@ -100,8 +100,8 @@ test('hours saved for another year show a notice and are not added to this year'
 
 test('event list search and the Tila filter: cancelled events only after ticking "Peruttu"', async ({ page }) => {
   await signIn(page);
-  await page.goto('/events');
-  const rows = eventListRows(page); // one table "Tapahtumalista"; cards below 600 px
+  await page.goto('/gigs');
+  const rows = eventListRows(page); // one table "Keikkalista"; cards below 600 px
   // "Näytä myös perutut" is gone: the Tila column filter replaces it (TASK-144).
   await expect(page.getByLabel('Näytä myös perutut')).toHaveCount(0);
   await tickColumnValues(page, 'Tila', ['Peruttu']);
@@ -115,8 +115,8 @@ test('event list search and the Tila filter: cancelled events only after ticking
   expect(viaApi.events.map((g: { venue: string; status: string }) => [g.venue, g.status])).toEqual([['Venue Z', 'CANCELLED']]);
 
   // A fresh visit with the same search: the default Tila filter (Myyty + Soitettu) hides it.
-  await page.goto('/events?q=venue%20z');
-  await expect(page.getByText('Ei suodattimia vastaavia tapahtumia.')).toBeVisible();
+  await page.goto('/gigs?q=venue%20z');
+  await expect(page.getByText('Ei suodattimia vastaavia keikkoja.')).toBeVisible();
   await expect(rows).toHaveCount(0);
   await clearFiltersButton(page).click();
   await expect(rows).toHaveCount(1);

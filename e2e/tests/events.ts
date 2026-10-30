@@ -116,11 +116,11 @@ export function costField(page: Page, field: 'Budjetti' | 'Kuvaus' | 'Maksettu s
 }
 
 /**
- * The event list (TASK-144): one Excel-style table "Tapahtumalista" at every width; below 600 px the
+ * The event list (TASK-144): one Excel-style table "Keikkalista" at every width; below 600 px the
  * same table is laid out as cards (CSS), so rows are always table rows.
  */
 export function eventTable(page: Page): Locator {
-  return page.getByRole('table', { name: 'Tapahtumalista', exact: true });
+  return page.getByRole('table', { name: 'Keikkalista', exact: true });
 }
 
 /** Data rows of the event list (cards on phones are the same rows). */
