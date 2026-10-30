@@ -29,11 +29,12 @@ export interface Invoicing {
  * 1. PAID — paid > 0 and paid ≥ total
  * 2. ROWS_TO_INVOICE — readyCents > 0
  * 3. OPEN_INVOICES — openCents > 0
- * 4. NEEDS_INVOICES — invoiced < total
- * 5. NONE — otherwise (e.g. total 0 and no rows)
+ * 4. NEEDS_INVOICES — the event is played (BR-010: SOLD, start date before today in Helsinki;
+ *    `isPlayed()`) and invoiced < total
+ * 5. NONE — otherwise (e.g. total 0 and no rows; upcoming or cancelled with nothing to act on)
  * So an overpaid event with READY rows is PAID; a total-0 event with only READY/SENT rows is not.
  */
-export function invoicing(totalPriceCents: number, rows: readonly InvoicingRow[]): Invoicing {
+export function invoicing(totalPriceCents: number, rows: readonly InvoicingRow[], played: boolean): Invoicing {
   let paidCents = 0;
   let openCents = 0;
   let readyCents = 0;
@@ -50,18 +51,19 @@ export function invoicing(totalPriceCents: number, rows: readonly InvoicingRow[]
     paidCents,
     openCents,
     readyCents,
-    invoiceState: invoiceState(totalPriceCents, { paidCents, readyCents, openCents, invoicedCents }),
+    invoiceState: invoiceState(totalPriceCents, { paidCents, readyCents, openCents, invoicedCents }, played),
   };
 }
 
 function invoiceState(
   totalPriceCents: number,
   sums: { paidCents: number; readyCents: number; openCents: number; invoicedCents: number },
+  played: boolean,
 ): InvoiceState {
   if (sums.paidCents > 0 && sums.paidCents >= totalPriceCents) return 'PAID';
   if (sums.readyCents > 0) return 'ROWS_TO_INVOICE';
   if (sums.openCents > 0) return 'OPEN_INVOICES';
-  if (sums.invoicedCents < totalPriceCents) return 'NEEDS_INVOICES';
+  if (played && sums.invoicedCents < totalPriceCents) return 'NEEDS_INVOICES';
   return 'NONE';
 }
 

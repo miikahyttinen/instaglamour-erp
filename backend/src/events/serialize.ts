@@ -126,13 +126,14 @@ export type EventWithDetail = Omit<EventWithLines, 'costLines'> & {
 export function toEventSummaryDto(event: EventWithLines, today: string) {
   const startDate = isoFromDate(event.startDate);
   const economics = eventEconomics(event);
+  const played = isPlayed(event.status, startDate, today);
   return {
     id: event.id,
     startDate,
     endDate: event.endDate ? isoFromDate(event.endDate) : null,
     year: event.startDate.getUTCFullYear(),
     status: event.status,
-    played: isPlayed(event.status, startDate, today),
+    played,
     lineupTemplateId: event.lineupTemplateId,
     lineupName: event.lineupName,
     venue: event.venue,
@@ -152,7 +153,7 @@ export function toEventSummaryDto(event: EventWithLines, today: string) {
     notFullyStaffed: isNotFullyStaffed(event.costLines),
     // balanceCents (may be negative), invoicedCents, paidCents, openCents, readyCents, invoiceState
     // (api-contract "Invoicing: one label").
-    ...invoicing(economics.totalPriceCents, event.invoiceRows),
+    ...invoicing(economics.totalPriceCents, event.invoiceRows, played),
     deletedAt: event.deletedAt?.toISOString() ?? null,
     createdAt: event.createdAt.toISOString(),
     updatedAt: event.updatedAt.toISOString(),
