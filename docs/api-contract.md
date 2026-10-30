@@ -501,7 +501,17 @@ For exceptions, partners can create a PO for one person by hand.
 - The freelancer link keeps its played-only rule (BR-114).
 - Details: allowed for inactive persons and partners too (exception tool); unknown/malformed person on GET → 404; unknown/malformed `eventId` → `[]`; `personId` missing → REQUIRED, non-string → INVALID_VALUE.
 
+## Gig status labels and "Ready to be invoiced" (owner decision 2026-10-31)
+- UI statuses: **Tuleva / Upcoming** (blue) = SOLD and not played; **Soitettu / Played** (green) = SOLD and played; **Peruttu / Cancelled** (red). API status codes unchanged (`SOLD`, `CANCELLED` + `played`).
+- **Ready to be invoiced** is set **by hand** on the gig page.
+  - `EventSummary`/`EventDetail` gain `readyForInvoiceAt: datetime|null` and `readyForInvoiceBy: partnerId|null`.
+  - `POST /api/events/{id}/ready-for-invoice` → 200 `EventDetail`; sets now/me; history `READY_FOR_INVOICE`. Already set → 200 no-op. Cancelled or deleted gig → 409 `INVALID_STATUS_TRANSITION` / `EVENT_DELETED`.
+  - `DELETE /api/events/{id}/ready-for-invoice` → 200 `EventDetail`; clears both fields; history `READY_FOR_INVOICE_CLEARED`. Not set → 200 no-op.
+  - Allowed for upcoming and played SOLD gigs. Cancelling a gig keeps the values but the UI shows "–" for cancelled gigs.
+- Keikat list column **"Valmis laskutukseen / Ready to be invoiced"**: green box when `readyForInvoiceAt` is set (and not cancelled), else "–".
+
 ## Change log
+- 2026-10-31 – Gig status labels Tuleva/Soitettu/Peruttu; manual "ready to be invoiced" flag + endpoints (PM)
 - 2026-10-31 – Partners can create POs by hand (POST /api/purchase-orders, eligible-lines endpoint) (PM)
 - 2026-10-30 – Year no longer global: optional year on offers / purchase orders / person cost lines; offer stats ranges year−3…year+2 (PM)
 - 2026-10-30 – Remove HORN_1/HORN_2/TECHNICIAN roles (converted to TRUMPET/SAX|TROMBONE/MIX); MIX = "Miksaus" (PM)
