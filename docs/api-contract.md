@@ -493,7 +493,15 @@ The year selector leaves the top bar. Pages that need a year have their **own ye
 - `GET /api/offers/stats`: `year` **optional**, default = current year in the organisation time zone (Europe/Helsinki). Series ranges change to **year−3 … year+2** (6 items) for `averageByCreatedYear`, `byEventYear` and `openValueByEventYear`. `createdByMonth` (6 completed months), `openByEventType` (all open offers) and `winRate` (all time) are unchanged. The UI shows each year card's big figure for the current year by default; clicking a bar selects another year.
 - Endpoints that take a required `year` today for the four year pages keep it.
 
+## Purchase orders created by partners (owner request 2026-10-31)
+For exceptions, partners can create a PO for one person by hand.
+- `GET /api/people/{id}/po-eligible-lines?eventId=` → 200 `[FreelancerLine-like rows: { costLineId, eventId, eventStartDate, eventVenue, eventLineupName, type, description|null, amountCents }]` — that person's lines with `budgetedCents > 0`, unpaid, not on an OPEN/PAID PO, on non-deleted **SOLD** events (played **or upcoming**; cancelled excluded; `FUEL` excluded). Optional `eventId` limits to one gig. Newest gig first.
+- `POST /api/purchase-orders` `{ personId, costLineIds: [id] }` (1…200, unique) → 201 `PurchaseOrder`. Same numbering, snapshot amounts, locks and all-or-nothing rules as the freelancer link (BR-115/116/118), but the eligibility is the one above (no "played" requirement). Any id not eligible or not that person's → 409 `COST_LINE_NOT_ELIGIBLE` with `details.costLineIds`. Unknown person → 400 `personId: UNKNOWN_REFERENCE`.
+- The `CREATED` PurchaseOrderEvent gets the creating partner's id (`partnerId`), so the log shows who created it (the freelancer-link path keeps `partnerId: null` = "Freelancer").
+- The freelancer link keeps its played-only rule (BR-114).
+
 ## Change log
+- 2026-10-31 – Partners can create POs by hand (POST /api/purchase-orders, eligible-lines endpoint) (PM)
 - 2026-10-30 – Year no longer global: optional year on offers / purchase orders / person cost lines; offer stats ranges year−3…year+2 (PM)
 - 2026-10-30 – Remove HORN_1/HORN_2/TECHNICIAN roles (converted to TRUMPET/SAX|TROMBONE/MIX); MIX = "Miksaus" (PM)
 - 2026-10-27 – Rename Gig → Event across API, data and UI (SaaS phase 1) (PM)
