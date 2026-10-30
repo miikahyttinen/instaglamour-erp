@@ -508,6 +508,7 @@ For exceptions, partners can create a PO for one person by hand.
   - `POST /api/events/{id}/ready-for-invoice` → 200 `EventDetail`; sets now/me; history `READY_FOR_INVOICE`. Already set → 200 no-op. Cancelled or deleted gig → 409 `INVALID_STATUS_TRANSITION` / `EVENT_DELETED`.
   - `DELETE /api/events/{id}/ready-for-invoice` → 200 `EventDetail`; clears both fields; history `READY_FOR_INVOICE_CLEARED`. Not set → 200 no-op.
   - Allowed for upcoming and played SOLD gigs. Cancelling a gig keeps the values but the UI shows "–" for cancelled gigs.
+- DELETE also works on cancelled gigs (to clear a leftover flag); deleted gig → 409 `EVENT_DELETED` for both methods (wins over cancelled). Not part of seed/import.
 - Keikat list column **"Valmis laskutukseen / Ready to be invoiced"**: green box when `readyForInvoiceAt` is set (and not cancelled), else "–".
 
 ## Change log
