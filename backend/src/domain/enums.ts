@@ -54,9 +54,13 @@ export const TECHNICAL_SETUPS = ['HOUSE_TECH', 'SET_A', 'SET_B', 'SET_C'] as con
 export const INVOICE_ROW_STATUSES = ['READY', 'SENT', 'PAID'] as const satisfies readonly InvoiceRowStatus[];
 export type InvoiceRowStatusCode = (typeof INVOICE_ROW_STATUSES)[number];
 
-/** Derived invoicing state of an event (api-contract "Invoice rows"); not stored. */
-export const INVOICE_STATES = ['NONE', 'READY', 'SENT', 'PARTLY_PAID', 'PAID'] as const;
-export type InvoiceState = (typeof INVOICE_STATES)[number];
+/** Derived invoicing coverage of an event (api-contract "Invoicing state: coverage + payment"); not stored. */
+export const INVOICE_COVERAGES = ['NONE', 'NEEDS_INVOICES', 'FULLY_INVOICED'] as const;
+export type InvoiceCoverage = (typeof INVOICE_COVERAGES)[number];
+
+/** Derived payment state of an event (api-contract "Invoicing state: coverage + payment"); not stored. */
+export const PAYMENT_STATES = ['NONE', 'OPEN_INVOICES', 'PARTLY_PAID', 'FULLY_PAID'] as const;
+export type PaymentState = (typeof PAYMENT_STATES)[number];
 
 /** Single choice (domain-model.md "Logistics"); an event may also have none (null). */
 export const LOGISTICS = ['OWN_VAN', 'RENTAL_VAN', 'TAXI', 'OTHER'] as const satisfies readonly Logistics[];
