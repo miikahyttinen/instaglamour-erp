@@ -521,7 +521,21 @@ For exceptions, partners can create a PO for one person by hand.
 - `GET /api/events` gains filter `?invoiceStatus=` (repeatable) — the UI filters client-side anyway.
 - Seed/import: optional `invoiceStatus` and `prepaymentCents` per gig (default NONE / 0).
 
+## Invoice rows (owner decision 2026-10-31) — replaces gig invoice status and prepayment
+- `InvoiceRow = { id, eventId, description, amountCents (> 0), status: "READY"|"SENT"|"PAID", statusAt, statusBy: partnerId|null, createdAt, createdBy }`. FI/EN status labels: "Valmis laskutukseen / Ready to be invoiced", "Lähetetty / Invoice sent", "Maksettu / Paid".
+- `EventDetail` gains `invoiceRows: [InvoiceRow]` (creation order). `EventSummary`/`EventDetail` keep `balanceCents` = `totalPriceCents − Σ amountCents of PAID rows`, and gain `invoicedCents` (Σ SENT+PAID rows), `paidCents` (Σ PAID) and derived **`invoiceState`**:
+  `NONE` (no rows) · `READY` (some row READY, none SENT) · `SENT` (some row SENT) · `PARTLY_PAID` (no READY/SENT rows, some PAID, balance > 0) · `PAID` (rows exist and balance ≤ 0). Labels: "–", "Valmis laskutukseen", "Laskutettu", "Osittain maksettu", "Maksettu".
+- Endpoints (return 200 `EventDetail`, logged as history `INVOICE_ROW_ADDED` / `INVOICE_ROW_UPDATED {changes}` / `INVOICE_ROW_REMOVED`):
+  - `POST /api/events/{id}/invoice-rows` `{ description (1–500), amountCents (int > 0), status? (default READY) }`
+  - `PATCH /api/invoice-rows/{id}` `{ description?, amountCents?, status? }` (any status → any status; sets statusAt/By on change)
+  - `DELETE /api/invoice-rows/{id}`
+  - Allowed on SOLD and CANCELLED gigs; deleted gig → 409 `EVENT_DELETED`. Validation 400 `REQUIRED` / `INVALID_VALUE` / `TOO_LONG`.
+- `GET /api/events?invoiceState=` (repeatable) filter.
+- **Removed:** `invoiceStatus`, `invoiceStatusAt`, `invoiceStatusBy`, `prepaymentCents` (fields, PATCH keys, `?invoiceStatus=` filter). Migration converts existing data into rows: `prepayment_cents > 0` → PAID row "Ennakkomaksu" (that amount); then by old status: READY → READY row "Lasku" for the balance; INVOICED → SENT row for the balance; PAID → PAID row for the balance; PREPAYMENT_PAID / NONE → nothing more. Rows only when the amount > 0. Old history entries keep their texts.
+- Seed/import: optional `invoiceRows: [{ description, amountCents, status }]` per gig; legacy `invoiceStatus`/`prepaymentCents` accepted and converted the same way.
+
 ## Change log
+- 2026-10-31 – Invoice rows per gig (READY/SENT/PAID), balance from paid rows, derived invoiceState; gig invoice status + prepayment removed (PM)
 - 2026-10-31 – Invoice status (NONE/READY/PREPAYMENT_PAID/INVOICED/PAID), prepayment and balance replace the ready-for-invoice flag (PM)
 - 2026-10-31 – Gig status labels Tuleva/Soitettu/Peruttu; manual "ready to be invoiced" flag + endpoints (PM)
 - 2026-10-31 – Partners can create POs by hand (POST /api/purchase-orders, eligible-lines endpoint) (PM)
