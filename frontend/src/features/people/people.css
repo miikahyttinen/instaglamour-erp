@@ -118,38 +118,17 @@
   max-width: 60ch;
 }
 
-/* People table: inline name + open link, active switch (NFR-8). */
-.people-page .people-name {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  min-width: 0;
-}
-.people-page .people-name-field {
-  flex: 1 1 auto;
-  /* Keeps the name readable when the roles column takes space (table auto layout). */
-  min-width: calc(var(--label-w) * 0.6);
-  max-width: var(--people-name-w);
-}
-.people-page .people-open {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  gap: var(--space-1);
-  /* 44 px touch target on phones, 36 px desktop: rows stay at the table row height. */
-  min-height: var(--control-h);
-  font-family: var(--font-mono);
-  font-size: var(--fs-meta);
-  letter-spacing: var(--ls-label);
-  text-transform: uppercase;
-  color: var(--text-muted);
-  text-decoration: none;
-}
-.people-page .people-open:hover {
+/* People table (read-only, TASK-169): the name links to the person page. */
+.people-page .people-name-link {
   color: var(--text);
+  font-weight: var(--fw-bold);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+.people-page .people-name-link:hover {
   text-decoration: underline;
 }
-.people-page .people-table tr.is-inactive .people-name-field input {
+.people-page .people-table tr.is-inactive .people-name-link {
   color: var(--text-muted);
 }
 .people-page .people-table .people-active-cell {
@@ -191,25 +170,14 @@
 }
 
 @media (max-width: 599px) {
-  /* Cards: the name field fills the card title row next to the open link. */
-  .people-page .people-table .people-name-field {
-    max-width: none;
-  }
   .people-page .people-table .people-active-cell {
     width: auto;
   }
 }
 
-/* 600–1199 px (table next to the sidebar): the open link is the chevron only (its accessible
-   name stays), so name, roles, event count, partner and active fit without sideways scrolling. */
+/* 600–1199 px (table next to the sidebar): tighter cells so name, roles, event count, partner
+   and active fit without sideways scrolling. */
 @media (min-width: 600px) and (max-width: 1199px) {
-  .people-page .people-table .people-open-text {
-    display: none;
-  }
-  .people-page .people-table .people-open {
-    min-width: var(--control-h);
-    justify-content: center;
-  }
   .people-page .people-table {
     --cell-pad-x: var(--space-2);
   }

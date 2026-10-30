@@ -120,6 +120,41 @@ describe('person page (UC-014 A2)', () => {
     expect(db.events.people.some((p) => p.name === 'Person 19' && p.active)).toBe(true);
   });
 
+  it('empty name shows "required", sends nothing and Esc restores the name', async () => {
+    const patches: unknown[] = [];
+    server.events.on('request:start', ({ request }) => {
+      if (request.method === 'PATCH') patches.push('x');
+    });
+    const { user } = renderApp(`/people/${person('Person 2').id}`);
+    const name = await screen.findByLabelText('Nimi');
+    await user.clear(name);
+    await user.click(document.body);
+    expect(await screen.findByText('Pakollinen tieto.')).toBeInTheDocument();
+    expect(name).toHaveAttribute('aria-invalid', 'true');
+    expect(patches).toHaveLength(0);
+    await user.click(name);
+    await user.keyboard('{Escape}');
+    expect(name).toHaveValue('Person 2');
+    server.events.removeAllListeners();
+  });
+
+  it('translates a server error on rename under the field', async () => {
+    server.use(
+      http.patch('/api/people/:id', () =>
+        HttpResponse.json(
+          { error: { code: 'VALIDATION_ERROR', message: 'Server says no', fields: { name: 'TOO_LONG' } } },
+          { status: 400 },
+        ),
+      ),
+    );
+    const { user } = renderApp(`/people/${person('Person 2').id}`);
+    const name = await screen.findByLabelText('Nimi');
+    await user.type(name, 'x{Enter}');
+    expect(await screen.findByText('Teksti on liian pitkä.')).toBeInTheDocument();
+    expect(name).toHaveValue('Person 2x');
+    expect(screen.queryByText(/Server says no/)).not.toBeInTheDocument();
+  });
+
   it('a duplicate name on the person page saves and shows the warning', async () => {
     const { user } = renderApp(`/people/${person('Person 9').id}`);
     const name = await screen.findByLabelText('Nimi');
@@ -157,6 +192,15 @@ describe('person page (UC-014 A2)', () => {
     expect(patches).toEqual([{ roles: ['VOC', 'BASS'] }, { roles: ['VOC'] }]);
     expect(screen.queryByRole('button', { name: /Tallenna/ })).not.toBeInTheDocument();
     server.events.removeAllListeners();
+  });
+
+  it('roles: removed roles are not offered; MIX is "Miksaus" (Role cleanup)', async () => {
+    renderApp(`/people/${person('Person 6').id}`);
+    const roles = await screen.findByRole('group', { name: 'Roolit' });
+    const labels = within(roles).getAllByRole('checkbox').map((c) => c.getAttribute('aria-label') ?? c.closest('label')?.textContent);
+    expect(labels).toContain('Miksaus');
+    expect(labels.join(' ')).not.toMatch(/Puhallin|Teknikko/);
+    expect(within(roles).getByRole('checkbox', { name: 'Miksaus' })).toBeChecked();
   });
 
   it('roles: a failed save shows the error; Esc restores the saved roles', async () => {
