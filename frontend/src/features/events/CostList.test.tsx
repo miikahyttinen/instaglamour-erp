@@ -18,7 +18,7 @@ const historyItems = () =>
   within(screen.getByRole('list', { name: 'Muutoshistoria' })).getAllByRole('listitem');
 
 async function openEvent(eventId: string) {
-  const app = renderApp(`/events/${eventId}`);
+  const app = renderApp(`/gigs/${eventId}`);
   await screen.findByRole('table', { name: 'Kulut ja miehitys' });
   await within(line('Laulu')).findByRole('option', { name: 'Person 1' });
   return app;

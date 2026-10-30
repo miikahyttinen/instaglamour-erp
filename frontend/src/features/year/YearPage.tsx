@@ -141,13 +141,13 @@ function EventsSection({ data }: { data: YearPageData }) {
   const actual = t('year.budget.actual');
   return (
     <section className="year-section year-events" aria-labelledby="year-events">
-      <SectionHead id="year-events" title={t('year.events.title')} to="/events" />
+      <SectionHead id="year-events" title={t('year.events.title')} to="/gigs" />
       <div className="stat-grid year-tiles">
-        <LinkTile to="/events" label={t('year.events.eventCount')} value={g.eventCount}>
+        <LinkTile to="/gigs" label={t('year.events.eventCount')} value={g.eventCount}>
           <Secondary label={t('year.events.cancelledCount')} value={g.cancelledCount} />
         </LinkTile>
-        <LinkTile to="/events" label={t('year.events.soldEventsSum')} value={formatMoney(g.soldEventsSumCents, lang)} />
-        <LinkTile to="/events" label={t('year.events.budgetedCosts')} value={formatMoney(g.budgetedCostsCents, lang)}>
+        <LinkTile to="/gigs" label={t('year.events.soldEventsSum')} value={formatMoney(g.soldEventsSumCents, lang)} />
+        <LinkTile to="/gigs" label={t('year.events.budgetedCosts')} value={formatMoney(g.budgetedCostsCents, lang)}>
           <Secondary label={t('year.events.actualCosts')} value={formatMoney(g.actualCostsCents, lang)} />
           <div className="stat-tile-bars">
             <MiniBars
@@ -157,7 +157,7 @@ function EventsSection({ data }: { data: YearPageData }) {
             />
           </div>
         </LinkTile>
-        <LinkTile to="/events" label={t('year.events.marginBudget')} value={formatMoney(g.marginBudgetCents, lang)}>
+        <LinkTile to="/gigs" label={t('year.events.marginBudget')} value={formatMoney(g.marginBudgetCents, lang)}>
           <Secondary label={t('year.events.marginActual')} value={formatMoney(g.marginActualCents, lang)} />
           <div className="stat-tile-bars">
             <MiniBars
@@ -272,7 +272,7 @@ function UpcomingSection({ data }: { data: YearPageData }) {
       label: t('year.upcoming.event'),
       primary: true,
       cell: (event) => (
-        <Link to={`/events/${event.id}`} className="year-upcoming-link">
+        <Link to={`/gigs/${event.id}`} className="year-upcoming-link">
           {event.lineupName} · {event.venue}
         </Link>
       ),
@@ -286,7 +286,7 @@ function UpcomingSection({ data }: { data: YearPageData }) {
   ];
   return (
     <section className="year-section year-upcoming" aria-labelledby="year-upcoming">
-      <SectionHead id="year-upcoming" title={t('year.upcoming.title')} to="/events" />
+      <SectionHead id="year-upcoming" title={t('year.upcoming.title')} to="/gigs" />
       <DataTable
         columns={columns}
         rows={data.upcomingEvents}

@@ -100,7 +100,7 @@ describe('data import (UC-035)', () => {
     expect(rowsOf('Tarkistus: mitä tuonti tekisi')).toHaveLength(IMPORT_DATA_TYPES.length + 1); // + total row
     expect(row('Tarkistus: mitä tuonti tekisi', 'Osakkaat')).toEqual(['Osakkaat', '1', '0', '0']);
     expect(row('Tarkistus: mitä tuonti tekisi', 'Henkilöt')).toEqual(['Henkilöt', '2', '0', '0']);
-    expect(row('Tarkistus: mitä tuonti tekisi', 'Tapahtumat')).toEqual(['Tapahtumat', '1', '0', '0']);
+    expect(row('Tarkistus: mitä tuonti tekisi', 'Keikat')).toEqual(['Keikat', '1', '0', '0']);
     expect(row('Tarkistus: mitä tuonti tekisi', 'Yhteensä')).toEqual(['Yhteensä', '5', '0', '0']);
 
     expect(posts).toHaveLength(1);
@@ -253,7 +253,7 @@ describe('data import (UC-035)', () => {
     const details = within(body[0]!).getByRole('list');
     expect(within(details).getAllByRole('listitem').map((li) => li.textContent)).toEqual([
       'Henkilöt: luotu 1, päivitetty 2, ohitettu 0',
-      'Tapahtumat: luotu 3, päivitetty 0, ohitettu 1',
+      'Keikat: luotu 3, päivitetty 0, ohitettu 1',
     ]);
   });
 

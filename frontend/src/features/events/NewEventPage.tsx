@@ -107,7 +107,7 @@ export function NewEventPage() {
     mutationFn: (body: EventCreate) => eventsApi.create(body),
     onSuccess: (event) => {
       applyEvent(event, event.id);
-      void navigate(`/events/${event.id}`);
+      void navigate(`/gigs/${event.id}`);
     },
     onError: (error) => {
       submitting.current = false;
@@ -171,7 +171,7 @@ export function NewEventPage() {
     <section className="page new-event-page">
       <PageHead title={t('eventForm.title')}>
         <p className="new-event-back">
-          <Link to="/events">
+          <Link to="/gigs">
             <ArrowLeft />
             {t('event.back')}
           </Link>
@@ -365,7 +365,7 @@ export function NewEventPage() {
           <Button type="submit" variant="primary" disabled={create.isPending}>
             {create.isPending ? t('eventForm.creating') : t('eventForm.create')}
           </Button>
-          <Link to="/events" className={buttonClass()}>
+          <Link to="/gigs" className={buttonClass()}>
             {t('common.cancel')}
           </Link>
         </div>

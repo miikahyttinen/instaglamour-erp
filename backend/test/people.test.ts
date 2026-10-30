@@ -132,7 +132,7 @@ describe('GET /api/people/{id}/cost-lines', () => {
     const juneBass = await assign(june, 'BASS', p1);
     const cancelledVoc = await assign(cancelled, 'VOC', p1);
     await assign(deleted, 'VOC', p1);
-    await assign(otherYear, 'VOC', p1);
+    const otherYearVoc = await assign(otherYear, 'VOC', p1);
     // A second line for the same person on the same event (BR-024)
     const extra = await call(s, 'POST', `/api/events/${may.id}/cost-lines`, { type: 'TRAVEL', personId: p1, budgetedCents: 10000 });
     const mayTravel = extra.json().event.costLines.at(-1).id;
@@ -156,6 +156,19 @@ describe('GET /api/people/{id}/cost-lines', () => {
     expect(body.lines[3].eventStatus).toBe('CANCELLED');
     // budgeted: VOC 30000 + TRAVEL 10000 + BASS 20000 + VOC 30000; actual: paid VOC only
     expect(body.totals).toEqual({ budgetedCents: 90000, actualCents: 20000 });
+
+    // Without year: all years, newest event first (lines within an event keep their order); totals over all.
+    const all = await call(s, 'GET', `/api/people/${p1}/cost-lines`);
+    expect(all.statusCode).toBe(200);
+    const allBody = all.json();
+    expect(allBody.lines.map((l: { costLine: { id: string } }) => l.costLine.id)).toEqual([
+      otherYearVoc,
+      cancelledVoc,
+      juneBass,
+      mayVoc,
+      mayTravel,
+    ]);
+    expect(allBody.totals).toEqual({ budgetedCents: 120000, actualCents: 20000 });
   });
 
   it('returns an empty list with zero totals', async () => {
@@ -163,10 +176,12 @@ describe('GET /api/people/{id}/cost-lines', () => {
     expect(res.json()).toEqual({ lines: [], totals: { budgetedCents: 0, actualCents: 0 } });
   });
 
-  it('requires a valid year, then an existing person', async () => {
+  it('validates an optional year, then needs an existing person', async () => {
     const missing = await call(s, 'GET', `/api/people/${UNKNOWN_ID}/cost-lines`);
-    expect(missing.statusCode).toBe(400);
-    expect(missing.json().error.fields).toEqual({ year: 'REQUIRED' });
+    expect(missing.statusCode).toBe(404);
+    const empty = await call(s, 'GET', `/api/people/${UNKNOWN_ID}/cost-lines?year=`);
+    expect(empty.statusCode).toBe(400);
+    expect(empty.json().error.fields).toEqual({ year: 'INVALID_VALUE' });
     const bad = await call(s, 'GET', `/api/people/${s.world.p1.id}/cost-lines?year=26`);
     expect(bad.json().error.fields).toEqual({ year: 'INVALID_VALUE' });
     const unknown = await call(s, 'GET', `/api/people/${UNKNOWN_ID}/cost-lines?year=2026`);

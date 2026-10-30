@@ -49,7 +49,7 @@ describe('FreelancerPage /f/:token (UC-033)', () => {
     expect(rows).toHaveLength(5); // cancelled, deleted and zero-amount lines are not shown
     const texts = rows.map((r) => norm(r.textContent));
     expect(texts[0]).toContain('Venue Z');
-    expect(texts[0]).toContain('Tapahtuma on vielä tulossa');
+    expect(texts[0]).toContain('Keikka on vielä tulossa');
     expect(texts.some((t) => t.includes('Role Q') && t.includes(fi(5000)))).toBe(true);
     expect(texts[4]).toContain('Venue W');
     expect(texts[4]).toContain('Maksettu');
@@ -172,7 +172,7 @@ describe('FreelancerPage /f/:token (UC-033)', () => {
     for (const line of [fx.lines.played1, fx.lines.played2, fx.lines.other]) line.paidAt = new Date().toISOString();
     renderApp(`/f/${fx.token}`);
     await screen.findByRole('heading', { level: 1, name: 'Person 5' });
-    expect(screen.getByText('Ei maksamattomia palkkioita soitetuista tapahtumista.')).toBeInTheDocument();
+    expect(screen.getByText('Ei maksamattomia palkkioita soitetuista keikoista.')).toBeInTheDocument();
     expect(createButton()).toBeDisabled();
   });
 

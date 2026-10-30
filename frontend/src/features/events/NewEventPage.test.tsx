@@ -16,7 +16,7 @@ describe('new event (UC-002)', () => {
   });
 
   it('creates an event from a template with template, Office, Sales and Production lines', async () => {
-    const { user } = renderApp('/events/new');
+    const { user } = renderApp('/gigs/new');
     await screen.findByRole('option', { name: 'Template A' });
     expect(screen.getByRole('combobox', { name: 'Myyjä' })).toHaveValue(partnerA().id);
     expect(screen.getByRole('combobox', { name: 'Tuottaja' })).toHaveValue(partnerA().id);
@@ -44,7 +44,7 @@ describe('new event (UC-002)', () => {
     await user.type(screen.getByRole('textbox', { name: 'Hinta (alv 0 %)' }), '1000');
     await user.type(screen.getByRole('textbox', { name: 'Lisämyynti' }), '100');
     expect(screen.getByText(/Kokonaishinta:/)).toHaveTextContent(/1\s100,00\s€/);
-    await user.click(screen.getByRole('button', { name: 'Luo tapahtuma' }));
+    await user.click(screen.getByRole('button', { name: 'Luo keikka' }));
 
     expect(await screen.findByRole('heading', { name: 'Template A · Venue X' })).toBeInTheDocument();
     expect(lines().map((li) => li.getAttribute('aria-label'))).toEqual([
@@ -62,22 +62,22 @@ describe('new event (UC-002)', () => {
     expect(await within(lines()[5]!).findByDisplayValue('Partner A')).toBeInTheDocument();
     expect(within(lines()[6]!).getByDisplayValue('Partner B')).toBeInTheDocument();
     // No customer fields exist (AC-6); CREATED is logged (AC-5).
-    expect(await screen.findByText('Tapahtuma luotu')).toBeInTheDocument();
+    expect(await screen.findByText('Keikka luotu')).toBeInTheDocument();
   });
 
   it('custom lineup needs a name and gets only Office, Sales and Production', async () => {
-    const { user } = renderApp('/events/new');
+    const { user } = renderApp('/gigs/new');
     await screen.findByRole('option', { name: 'Template A' });
     await user.type(screen.getByLabelText('Alkupäivä'), `${TEST_YEAR}-06-01`);
     await user.selectOptions(screen.getByRole('combobox', { name: 'Kokoonpano' }), 'Oma kokoonpano');
     await user.type(screen.getByRole('textbox', { name: 'Paikka' }), 'Venue X');
     await user.type(screen.getByRole('textbox', { name: 'Hinta (alv 0 %)' }), '1000');
-    await user.click(screen.getByRole('button', { name: 'Luo tapahtuma' }));
+    await user.click(screen.getByRole('button', { name: 'Luo keikka' }));
     expect(screen.getByRole('textbox', { name: 'Kokoonpanon nimi' })).toHaveAccessibleDescription(
       'Pakollinen tieto.',
     );
     await user.type(screen.getByRole('textbox', { name: 'Kokoonpanon nimi' }), 'Lineup Z');
-    await user.click(screen.getByRole('button', { name: 'Luo tapahtuma' }));
+    await user.click(screen.getByRole('button', { name: 'Luo keikka' }));
     expect(await screen.findByRole('heading', { name: 'Lineup Z · Venue X' })).toBeInTheDocument();
     expect(lines().map((li) => li.getAttribute('aria-label'))).toEqual(['Toimisto', 'Myynti', 'Tuotanto']);
     // Nothing chosen: technical setup and logistics are sent as null, house technician as false.
@@ -86,12 +86,12 @@ describe('new event (UC-002)', () => {
 
   it('shows localized field errors, keeps the input and saves nothing', async () => {
     const before = eventCount();
-    const { user } = renderApp('/events/new');
+    const { user } = renderApp('/gigs/new');
     await screen.findByRole('option', { name: 'Template A' });
     await user.type(screen.getByLabelText('Alkupäivä'), `${TEST_YEAR}-06-02`);
     await user.type(screen.getByLabelText('Loppupäivä'), `${TEST_YEAR}-06-01`);
     await user.type(screen.getByRole('textbox', { name: 'Hinta (alv 0 %)' }), '-10');
-    await user.click(screen.getByRole('button', { name: 'Luo tapahtuma' }));
+    await user.click(screen.getByRole('button', { name: 'Luo keikka' }));
 
     expect(screen.getByLabelText('Loppupäivä')).toHaveAccessibleDescription(
       expect.stringContaining('Loppupäivä ei voi olla ennen alkupäivää.'),
@@ -114,13 +114,13 @@ describe('new event (UC-002)', () => {
         }),
       ),
     );
-    const { user } = renderApp('/events/new');
+    const { user } = renderApp('/gigs/new');
     await screen.findByRole('option', { name: 'Template A' });
     await user.type(screen.getByLabelText('Alkupäivä'), `${TEST_YEAR}-06-01`);
     await user.selectOptions(screen.getByRole('combobox', { name: 'Kokoonpano' }), 'Template A');
     await user.type(screen.getByRole('textbox', { name: 'Paikka' }), 'Venue X');
     await user.type(screen.getByRole('textbox', { name: 'Hinta (alv 0 %)' }), '1000');
-    await user.click(screen.getByRole('button', { name: 'Luo tapahtuma' }));
+    await user.click(screen.getByRole('button', { name: 'Luo keikka' }));
 
     expect(await screen.findByText('Teksti on liian pitkä.')).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: 'Kokoonpano' })).toHaveAccessibleDescription(
@@ -132,7 +132,7 @@ describe('new event (UC-002)', () => {
 
   it('seller and producer offer only active partners (BR-111)', async () => {
     db.partners.find((p) => p.name === 'Partner C')!.active = false;
-    renderApp('/events/new');
+    renderApp('/gigs/new');
     await screen.findByRole('option', { name: 'Template A' });
     for (const name of ['Myyjä', 'Tuottaja']) {
       const select = screen.getByRole('combobox', { name });

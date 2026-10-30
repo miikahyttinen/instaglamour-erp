@@ -111,7 +111,7 @@ export function EventListPage() {
   const filtered = Boolean(q);
 
   const newEventLink = (
-    <Link to="/events/new" className={buttonClass({ className: 'event-new-link' })}>
+    <Link to="/gigs/new" className={buttonClass({ className: 'event-new-link' })}>
       <Plus className="btn-icon" />
       {t('events.newEvent')}
     </Link>
@@ -165,7 +165,7 @@ export function EventListPage() {
       {deletedView && restore.isSuccess && (
         <Notice tone="ok" role="status">
           {t('events.restored')}{' '}
-          <Link to={`/events/${restore.data.id}`}>
+          <Link to={`/gigs/${restore.data.id}`}>
             {restore.data.lineupName} · {restore.data.venue}
           </Link>
         </Notice>
@@ -347,7 +347,7 @@ function EventTable({ events, partners, lang, tableState }: EventTableProps) {
       sortValue: (g) => g.lineupName,
       filterValue: (g) => g.lineupName,
       cell: (g) => (
-        <Link to={`/events/${g.id}`} className="event-link">
+        <Link to={`/gigs/${g.id}`} className="event-link">
           {g.lineupName}{' '}
           {/* The venue has its own column; the link name stays "Lineup · Venue" (unique per event). */}
           <span className="visually-hidden">· {g.venue}</span>
@@ -518,7 +518,7 @@ function DeletedList({
         <li key={event.id} className="event-deleted-row">
           <span className="event-date">{formatDateRange(event.startDate, event.endDate, lang)}</span>
           <span className="event-main">
-            <Link to={`/events/${event.id}`} className="event-link">
+            <Link to={`/gigs/${event.id}`} className="event-link">
               {event.lineupName} · {event.venue}
             </Link>
             <span className="event-deleted-meta">

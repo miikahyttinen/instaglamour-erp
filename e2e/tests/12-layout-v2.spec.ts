@@ -21,12 +21,12 @@ import { busyIds, MAIN_PAGE_NAMES, mainPages, openLoaded, type BusyIds } from '.
 // on phones, the event list as one Excel-style table (TASK-144), compact cost rows by container width.
 // Read-only flows: nothing here changes the shared database.
 
-// Ten items: Asiakkaat after Tapahtumat (TASK-015…139); Vuosi first, then Tarjoukset (TASK-142);
-// Ostotilaukset after Tapahtumat (TASK-152); Tietojen tuonti last (TASK-154).
+// Ten items: Asiakkaat after Keikat (TASK-015…139); Vuosi first, then Tarjoukset (TASK-142);
+// Ostotilaukset after Keikat (TASK-152); Tietojen tuonti last (TASK-154).
 const NAV: { label: string; path: string }[] = [
   { label: 'Vuosi', path: '/' },
   { label: 'Tarjoukset', path: '/offers' },
-  { label: 'Tapahtumat', path: '/events' },
+  { label: 'Keikat', path: '/gigs' },
   { label: 'Ostotilaukset', path: '/purchase-orders' },
   { label: 'Asiakkaat', path: '/clients' },
   { label: 'Henkilöt', path: '/people' },
@@ -79,7 +79,7 @@ test.describe('desktop sidebar', () => {
     await expect(page.getByRole('heading', { level: 1, name: `Vuosi ${CURRENT_YEAR}` })).toBeVisible();
     // Default: expanded, labels visible; no phone controls.
     await expectExpanded(page);
-    await expect(sidebarNav(page).getByText('Tapahtumat', { exact: true })).toBeVisible();
+    await expect(sidebarNav(page).getByText('Keikat', { exact: true })).toBeVisible();
     await expect(menuButton(page)).toHaveCount(0);
     await expect(navDrawer(page)).toHaveCount(0);
 
@@ -93,8 +93,8 @@ test.describe('desktop sidebar', () => {
 
     // Same browser, another tab: also collapsed.
     const other = await context.newPage();
-    await other.goto('/events');
-    await expect(other.getByRole('heading', { level: 1, name: `Tapahtumat ${CURRENT_YEAR}` })).toBeVisible();
+    await other.goto('/gigs');
+    await expect(other.getByRole('heading', { level: 1, name: `Keikat ${CURRENT_YEAR}` })).toBeVisible();
     await expectCollapsed(other);
     await other.close();
 
@@ -175,14 +175,14 @@ test.describe('desktop sidebar', () => {
     await expect(third).toHaveAccessibleName(NAV[2]!.label);
   });
 
-  test('event list: one Excel-style table "Tapahtumalista" at every desktop width (1199, 1200, 1440 px)', async ({ page }) => {
+  test('event list: one Excel-style table "Keikkalista" at every desktop width (1199, 1200, 1440 px)', async ({ page }) => {
     // TASK-144: no separate card list any more; below 600 px the same table is laid out as cards.
     for (const w of [1199, 1200, 1440]) {
       await page.setViewportSize({ width: w, height: 800 });
-      await openLoaded(page, '/events');
+      await openLoaded(page, '/gigs');
       const table = eventTable(page);
       await expect(table, `${w} px: table`).toBeVisible();
-      await expect(page.getByRole('list', { name: 'Tapahtumalista' }), `${w} px: no card list`).toHaveCount(0);
+      await expect(page.getByRole('list', { name: 'Keikkalista' }), `${w} px: no card list`).toHaveCount(0);
       for (const column of EVENT_ALWAYS_COLUMNS) {
         await expect(table.getByRole('button', { name: column, exact: true }), `${w} px: "${column}" header`).toBeVisible();
       }
@@ -205,7 +205,7 @@ test.describe('desktop sidebar', () => {
       [1440, false],
     ] as const) {
       await page.setViewportSize({ width: w, height: 800 });
-      await openLoaded(page, `/events/${eventId}`);
+      await openLoaded(page, `/gigs/${eventId}`);
       await expectExpanded(page);
       await expect(table).toBeVisible();
       expect(await costLines(page).count(), `${w} px: cost lines are named rowgroups`).toBeGreaterThan(0);
@@ -215,9 +215,9 @@ test.describe('desktop sidebar', () => {
     }
   });
 
-  // F-006-style check after TASK-147 (responsive Excel tables): Tapahtumat and Tarjoukset use the full
+  // F-006-style check after TASK-147 (responsive Excel tables): Keikat and Tarjoukset use the full
   // content width and never scroll sideways; lower-priority columns are hidden instead.
-  test('Tapahtumat and Tarjoukset: no page or table horizontal overflow at 1200 / 1440 / 1920 px, the table fills the width', async ({ page }) => {
+  test('Keikat and Tarjoukset: no page or table horizontal overflow at 1200 / 1440 / 1920 px, the table fills the width', async ({ page }) => {
     const tableBox = () =>
       page.evaluate(() => {
         const wrap = document.querySelector<HTMLElement>('main .table-wrap');
@@ -236,7 +236,7 @@ test.describe('desktop sidebar', () => {
     for (const mode of ['expanded', 'collapsed'] as const) {
       await page.addInitScript(([key, value]) => window.localStorage.setItem(key, value), [SIDEBAR_KEY, mode]);
       for (const [name, path] of [
-        ['Tapahtumat', '/events?f.allStatuses=1'],
+        ['Keikat', '/gigs?f.allStatuses=1'],
         ['Tarjoukset', '/offers'],
       ] as const) {
         for (const w of [1200, 1440, 1920]) {

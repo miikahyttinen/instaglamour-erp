@@ -198,7 +198,7 @@ function LinesTable({ po }: { po: PurchaseOrder }) {
       key: 'event',
       label: t('purchaseOrders.lines.event'),
       cell: (l) => (
-        <Link to={`/events/${l.eventId}`} aria-label={`${t('purchaseOrders.lines.openEvent')}: ${l.eventVenue}`}>
+        <Link to={`/gigs/${l.eventId}`} aria-label={`${t('purchaseOrders.lines.openEvent')}: ${l.eventVenue}`}>
           {t('purchaseOrders.lines.openEvent')}
         </Link>
       ),

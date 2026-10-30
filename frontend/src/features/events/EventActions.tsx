@@ -127,7 +127,7 @@ export function EventActions({ event, onCancelled, onUncancelled, onMoved, onRes
           onClose={close}
           onDone={() => {
             applyEvent(null, event.id);
-            void navigate('/events', { state: { notice: 'deleted' } });
+            void navigate('/gigs', { state: { notice: 'deleted' } });
           }}
         />
       )}

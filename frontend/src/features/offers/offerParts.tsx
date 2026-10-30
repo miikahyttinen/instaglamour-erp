@@ -140,7 +140,7 @@ export function EventCell({
   if (offer.eventId) {
     return (
       <Link
-        to={`/events/${offer.eventId}`}
+        to={`/gigs/${offer.eventId}`}
         className={size === 'md' ? buttonClass() : 'offer-event-link'}
         aria-label={t('convert.eventLinkLabel', { event: offer.eventName })}
       >

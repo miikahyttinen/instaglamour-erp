@@ -141,7 +141,7 @@ function ConvertBlocked({ offerId, code }: { offerId: Id; code: BlockingCode }) 
         {eventId && (
           <>
             {' '}
-            <Link to={`/events/${eventId}`}>{t('convert.openEvent')}</Link>
+            <Link to={`/gigs/${eventId}`}>{t('convert.openEvent')}</Link>
           </>
         )}
       </p>

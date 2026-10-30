@@ -3,7 +3,7 @@ import { EventListPage } from './EventListPage';
 import { EventPage } from './EventPage';
 import { NewEventPage } from './NewEventPage';
 
-/** /events, /events/new, /events/:id */
+/** /gigs, /gigs/new, /gigs/:id (UI route; the API and code say `event`) */
 export function EventsRoutes() {
   return (
     <Routes>

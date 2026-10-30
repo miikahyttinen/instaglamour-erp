@@ -27,13 +27,13 @@ describe('client page (UC-027)', () => {
     expect(screen.getByRole('textbox', { name: 'Nimi' })).toHaveValue('Client X');
     expect(screen.getByRole('textbox', { name: 'Muistiinpanot' })).toHaveValue('Synthetic note');
 
-    const rows = bodyRows('Asiakkaan tapahtumat');
+    const rows = bodyRows('Asiakkaan keikat');
     expect(rows).toHaveLength(2);
-    expect(within(rows[0]!).getByRole('link')).toHaveAttribute('href', `/events/${newer.id}`);
+    expect(within(rows[0]!).getByRole('link')).toHaveAttribute('href', `/gigs/${newer.id}`);
     expect(rows[0]).toHaveTextContent('Venue New');
     expect(rows[0]).toHaveTextContent('Peruttu');
     expect(rows[0]!.textContent!.replace(/\s/g, ' ')).toContain(fi(200000));
-    expect(within(rows[1]!).getByRole('link', { name: `1.3.${TEST_YEAR - 1}` })).toHaveAttribute('href', `/events/${old.id}`);
+    expect(within(rows[1]!).getByRole('link', { name: `1.3.${TEST_YEAR - 1}` })).toHaveAttribute('href', `/gigs/${old.id}`);
     expect(screen.queryByText('Venue Other')).not.toBeInTheDocument();
 
     expect(screen.getByRole('heading', { name: 'Tarjoukset', level: 2 })).toBeInTheDocument();
@@ -97,7 +97,7 @@ describe('client page (UC-027)', () => {
     await waitFor(() => expect(x.notes).toBe('Note 1'));
 
     // The event shows the new client name.
-    await user.click(within(screen.getByRole('table', { name: 'Asiakkaan tapahtumat' })).getByRole('link'));
+    await user.click(within(screen.getByRole('table', { name: 'Asiakkaan keikat' })).getByRole('link'));
     expect(await screen.findByRole('combobox', { name: 'Asiakas' })).toHaveDisplayValue('Client Y');
     expect(event.clientId).toBe(x.id);
   });
@@ -129,7 +129,7 @@ describe('client page (UC-027)', () => {
     const dialog = screen.getByRole('dialog', { name: 'Poista asiakas' });
     await user.click(within(dialog).getByRole('button', { name: 'Poista asiakas' }));
     expect(await within(dialog).findByRole('alert')).toHaveTextContent(
-      'Asiakasta ei voi poistaa, koska siihen on liitetty tapahtumia tai tarjouksia.',
+      'Asiakasta ei voi poistaa, koska siihen on liitetty keikkoja tai tarjouksia.',
     );
     expect(within(dialog).getByRole('button', { name: 'Poista asiakas' })).toBeDisabled();
     expect(x.deletedAt).toBeNull();

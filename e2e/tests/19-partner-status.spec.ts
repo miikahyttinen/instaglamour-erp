@@ -247,7 +247,7 @@ test('removing a partner ends their session and sign-in; the name stays on their
     await page.goto(`/offers/${offer.id}`);
     await expect(page.getByRole('heading', { level: 1, name: offer.eventName })).toBeVisible();
     await expect(page.getByRole('main').getByLabel('Myyjä', { exact: true }).locator('option:checked')).toHaveText(name);
-    await page.goto(`/events/${event.id}`);
+    await page.goto(`/gigs/${event.id}`);
     await expect(page.getByRole('main').getByLabel('Myyjä', { exact: true }).locator('option:checked')).toHaveText(name);
     await expect(page.getByRole('main').getByLabel('Tuottaja', { exact: true }).locator('option:checked')).toHaveText(name);
     await page.goto('/tasks');

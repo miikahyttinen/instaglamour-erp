@@ -132,7 +132,7 @@ test('client page: name and notes edited in place; lists the events and offers o
   await expect(notesField).toHaveValue('First notes.');
 
   // Events: all years, newest first; each links to its event.
-  const events = page.getByRole('table', { name: 'Asiakkaan tapahtumat' });
+  const events = page.getByRole('table', { name: 'Asiakkaan keikat' });
   const eventRows = events.getByRole('row').filter({ has: page.getByRole('cell') });
   await expect(eventRows).toHaveCount(3);
   await expect(eventRows.nth(0)).toContainText(`Venue ${tag}-late`);
@@ -178,7 +178,7 @@ test('client page: name and notes edited in place; lists the events and offers o
 
   // Links open the event and the offer.
   await eventRows.nth(0).getByRole('link').first().click();
-  await expect(page).toHaveURL(new RegExp(`/events/${late.id}$`));
+  await expect(page).toHaveURL(new RegExp(`/gigs/${late.id}$`));
   await expect(page.getByRole('heading', { level: 1, name: `${SEED.templateB.name} · Venue ${tag}-late` })).toBeVisible();
   await page.goBack();
   await offerRows.first().getByRole('link', { name: offer.eventName }).click();
@@ -195,7 +195,7 @@ test('attach a client to an event: event page select, "New client…", new event
   const event = await createEventViaApi(page, { startDate: `${year}-04-10`, venue: `Venue ${tag}-${sfx}-a` });
 
   // Event page: the inline select saves on change (one PATCH), "–" clears.
-  await page.goto(`/events/${event.id}`);
+  await page.goto(`/gigs/${event.id}`);
   const select = page.getByRole('main').getByLabel('Asiakas', { exact: true });
   await expect(select.locator('option:checked')).toHaveText('–');
   expect(await selectInline(page, select, existing.name)).toEqual({ clientId: existing.id });
@@ -228,8 +228,8 @@ test('attach a client to an event: event page select, "New client…", new event
   // New event form: "New client…" there too; the created event carries the client.
   const formClient = `Client ${tag}-${sfx}-form`;
   const venue = `Venue ${tag}-${sfx}-b`;
-  await page.goto('/events/new');
-  await expect(page.getByRole('heading', { level: 1, name: 'Uusi tapahtuma' })).toBeVisible();
+  await page.goto('/gigs/new');
+  await expect(page.getByRole('heading', { level: 1, name: 'Uusi keikka' })).toBeVisible();
   await page.getByLabel('Alkupäivä').fill(`${year}-04-11`);
   await page.getByLabel('Kokoonpano', { exact: true }).selectOption({ label: SEED.templateB.name });
   await page.getByLabel('Paikka').fill(venue);
@@ -240,7 +240,7 @@ test('attach a client to an event: event page select, "New client…", new event
   await page.getByRole('button', { name: 'Lisää asiakas', exact: true }).click();
   await expect(formSelect.locator('option:checked')).toHaveText(formClient);
   const createEvent = page.waitForResponse((r) => r.request().method() === 'POST' && r.url().endsWith('/api/events'));
-  await page.getByRole('button', { name: 'Luo tapahtuma' }).click();
+  await page.getByRole('button', { name: 'Luo keikka' }).click();
   const eventRes = await createEvent;
   expect(eventRes.status()).toBe(201);
   const formClientId = (await clientByName(page, formClient)).id;
@@ -251,8 +251,8 @@ test('attach a client to an event: event page select, "New client…", new event
   await expect(page.getByRole('main').getByLabel('Asiakas', { exact: true }).locator('option:checked')).toHaveText(formClient);
 
   // Event list: the client column (a card line on phones; may be hidden on narrow tables, TASK-147), linking to the client; search by client.
-  await page.goto('/events');
-  await expect(page.getByRole('heading', { level: 1, name: `Tapahtumat ${year}` })).toBeVisible();
+  await page.goto('/gigs');
+  await expect(page.getByRole('heading', { level: 1, name: `Keikat ${year}` })).toBeVisible();
   const rows = eventListRows(page);
   const rowA = rows.filter({ hasText: `Venue ${tag}-${sfx}-a` });
   const rowB = rows.filter({ hasText: venue });
@@ -270,7 +270,7 @@ test('attach a client to an event: event page select, "New client…", new event
 
   // The client page lists the event.
   await page.goto(`/clients/${formClientId}`);
-  await expect(page.getByRole('table', { name: 'Asiakkaan tapahtumat' })).toContainText(venue);
+  await expect(page.getByRole('table', { name: 'Asiakkaan keikat' })).toContainText(venue);
 });
 
 test('delete a client: refused while events or offers link to it (CLIENT_IN_USE), allowed when unlinked', async ({ page }, testInfo) => {
@@ -305,7 +305,7 @@ test('delete a client: refused while events or offers link to it (CLIENT_IN_USE)
   expect(delRes.status()).toBe(409);
   expect((await delRes.json()).error.code).toBe('CLIENT_IN_USE');
   await expect(dialog.getByRole('alert')).toHaveText(
-    'Asiakasta ei voi poistaa, koska siihen on liitetty tapahtumia tai tarjouksia.',
+    'Asiakasta ei voi poistaa, koska siihen on liitetty keikkoja tai tarjouksia.',
   );
   await expect(dialog.getByRole('button', { name: 'Poista asiakas' })).toBeDisabled();
   await dialog.getByRole('button', { name: 'Peruuta' }).click();

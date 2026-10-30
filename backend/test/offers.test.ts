@@ -333,10 +333,11 @@ describe('derived status (BR-102)', () => {
 });
 
 describe('GET /api/offers', () => {
-  it('needs a 4-digit year; malformed filters are 400', async () => {
+  it('year, when given, is 4 digits; malformed filters are 400', async () => {
     for (const [query, field, code] of [
-      ['', 'year', 'REQUIRED'],
+      ['year=', 'year', 'INVALID_VALUE'],
       ['year=26', 'year', 'INVALID_VALUE'],
+      ['status=MAYBE', 'status', 'INVALID_VALUE'],
       [`year=${YEAR}&status=MAYBE`, 'status', 'INVALID_VALUE'],
       [`year=${YEAR}&sellerId=nope`, 'sellerId', 'INVALID_VALUE'],
       [`year=${YEAR}&disposition=WHATEVER`, 'disposition', 'INVALID_VALUE'],
@@ -392,6 +393,38 @@ describe('GET /api/offers', () => {
         'eventType', 'disposition', 'status', 'expired', 'eventId', 'createdAt', 'updatedAt', 'deletedAt',
       ].sort(),
     );
+  });
+
+  it('without year: all years, newest created first; filters and summary still apply', async () => {
+    const at = (iso: string) => new Date(`${iso}T10:00:00.000Z`);
+    const old = await createOffer({ eventName: 'Old', eventDate: `${YEAR - 2}-05-01`, priceCents: 100000 });
+    const next = await createOffer({ eventName: 'Next', eventDate: `${YEAR + 1}-01-01`, sellerId: s.world.b.id });
+    const mid = await createOffer({ eventName: 'Mid', eventDate: `${YEAR}-06-01` });
+    const deleted = await createOffer({ eventName: 'Deleted', eventDate: `${YEAR}-05-01` });
+    await action(deleted.id, 'delete');
+    await patch(old.id, { disposition: 'WON' });
+    // Creation order differs from event-date order.
+    for (const [id, createdAt] of [
+      [old.id, at(`${YEAR - 1}-01-01`)],
+      [next.id, at(`${YEAR - 1}-02-01`)],
+      [mid.id, at(`${YEAR - 1}-03-01`)],
+      [deleted.id, at(`${YEAR - 1}-04-01`)],
+    ] as const) {
+      await testDb().offer.update({ where: { id }, data: { createdAt } });
+    }
+
+    const ids = async (query: string): Promise<string[]> =>
+      (await list(query)).json<{ offers: { id: string }[] }>().offers.map((o) => o.id);
+    expect(await ids('')).toEqual([mid.id, next.id, old.id]);
+    expect(await ids('deleted=true')).toEqual([deleted.id]);
+    expect(await ids(`sellerId=${s.world.b.id}`)).toEqual([next.id]);
+    expect(await ids('status=ACCEPTED')).toEqual([old.id]);
+    expect(await ids('q=mid')).toEqual([mid.id]);
+    // With a year the old behaviour stands: that year only, by event date.
+    expect(await ids(`year=${YEAR}`)).toEqual([mid.id]);
+
+    // Summary over all years (non-deleted): 1 won of 1 decided.
+    expect((await list('')).json().summary).toMatchObject({ winRatePct: 100, wonCount: 1, decidedCount: 1 });
   });
 
   it('status=EXPIRED lists only open offers whose date has passed', async () => {

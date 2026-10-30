@@ -31,15 +31,15 @@ describe('client list (UC-027)', () => {
     const nav = await screen.findByRole('navigation', { name: 'Päävalikko' });
     const labels = within(nav).getAllByRole('link').map((l) => l.textContent);
     // Purchase orders (TASK-152) sits between Events and Clients.
-    expect(labels.indexOf('Ostotilaukset')).toBe(labels.indexOf('Tapahtumat') + 1);
-    expect(labels.indexOf('Asiakkaat')).toBe(labels.indexOf('Tapahtumat') + 2);
+    expect(labels.indexOf('Ostotilaukset')).toBe(labels.indexOf('Keikat') + 1);
+    expect(labels.indexOf('Asiakkaat')).toBe(labels.indexOf('Keikat') + 2);
     await user.click(within(nav).getByRole('link', { name: 'Asiakkaat' }));
 
     expect(await screen.findByRole('heading', { name: 'Asiakkaat', level: 1 })).toBeInTheDocument();
     await screen.findByRole('table', { name: 'Asiakkaat' });
     expect(within(table()).getAllByRole('columnheader').map((h) => h.textContent)).toEqual([
       'Nimi',
-      'Tapahtumat',
+      'Keikat',
       'Tarjoukset',
     ]);
     // Seed: Client A has two events this year, Client B one, Client C none; offers per offerSeed.ts
@@ -103,7 +103,7 @@ describe('client list (UC-027)', () => {
     renderApp('/clients');
     expect(await screen.findByRole('heading', { name: 'Clients', level: 1 })).toBeInTheDocument();
     const t = await screen.findByRole('table', { name: 'Clients' });
-    expect(within(t).getAllByRole('columnheader').map((h) => h.textContent)).toEqual(['Name', 'Events', 'Offers']);
+    expect(within(t).getAllByRole('columnheader').map((h) => h.textContent)).toEqual(['Name', 'Gigs', 'Offers']);
     expect(screen.getByRole('button', { name: 'Add' })).toBeInTheDocument();
   });
 });

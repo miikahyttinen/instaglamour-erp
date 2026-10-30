@@ -341,7 +341,7 @@ Duplicate = case-insensitive exact name match with another person.
 
 | Method & path | Request | Response |
 |---|---|---|
-| `GET /api/offers` | `year` (required), `q`, `status`, `sellerId`, `disposition`, `eventType`, `source`, `deleted=true` | 200 `{ offers: [OfferSummary], summary: { openValueCents, winRatePct|null, wonCount, decidedCount } }` — summary ignores filters except year (BR-106) |
+| `GET /api/offers` | `year` (optional since 2026-10-30; without it all years, newest created first), `q`, `status`, `sellerId`, `disposition`, `eventType`, `source`, `deleted=true` | 200 `{ offers: [OfferSummary], summary: { openValueCents, winRatePct|null, wonCount, decidedCount } }` — summary ignores filters except year (BR-106) |
 | `POST /api/offers` | `{ clientId, eventName, eventDate, venue, city?, lineup?, includesText?, showReferences?, priceCents?, sellerId?, source?, eventType? }` | 201 `OfferDetail` (defaults from settings; seller default me) |
 | `GET /api/offers/{id}` | — | 200 `OfferDetail` |
 | `PATCH /api/offers/{id}` | any editable field incl. `disposition` | 200 `OfferDetail`; logged |
@@ -394,7 +394,7 @@ Duplicate = case-insensitive exact name match with another person.
 **Partner endpoints (signed in)**
 | Method & path | Request | Response |
 |---|---|---|
-| `GET /api/purchase-orders` | `year` (required unless `q`), `q` (substring of number or person name, case-insensitive; **when `q` is given, `year` is ignored and all years are searched**), `status` | 200 `{ purchaseOrders: [PurchaseOrder] }` newest first. Year = year of `createdAt`. |
+| `GET /api/purchase-orders` | `year` (optional since 2026-10-30), `q` (substring of number or person name, case-insensitive; **when `q` is given, `year` is ignored and all years are searched**), `status` | 200 `{ purchaseOrders: [PurchaseOrder] }` newest first. Year = year of `createdAt`. |
 | `GET /api/purchase-orders/{id}` | — | 200 `PurchaseOrder` |
 | `POST /api/purchase-orders/{id}/pay` | — | 200 `PurchaseOrder` — OPEN → PAID; every line's cost line: `actualCents` = line `amountCents`, `paidAt` = now, `paidBy` = me, GigEvent `COST_PAID` with `details.purchaseOrderNumber`. Not OPEN → 409 `INVALID_STATUS_TRANSITION`. |
 | `POST /api/purchase-orders/{id}/unpay` | — | 200 `PurchaseOrder` — PAID → OPEN; lines unpaid, GigEvent `COST_UNPAID` with `details.purchaseOrderNumber`. Not PAID → 409 `INVALID_STATUS_TRANSITION`. |
@@ -442,7 +442,7 @@ Duplicate = case-insensitive exact name match with another person.
 - Seed/import: `people[]` and `partners[]` accept optional `roles: MusicianRole[]`. On (re)load a person's roles are set from the file **only when the person has no roles yet** (never overwrites app edits); counted as `updated`.
 
 ## Offer statistics (owner request 2026-10-20, like the offer prototype's KPI cards)
-`GET /api/offers/stats?year=<selected year>` → 200 `OfferStats`. All non-deleted offers, **all years** (not only the selected one). "Value" = `priceCents` (offers without a price count in counts but add 0 to values and are left out of averages). "Open" = disposition PENDING and event date ≥ today (not expired). Months/years of `createdAt` in Europe/Helsinki.
+`GET /api/offers/stats?year=<optional, default current year>` → 200 `OfferStats`. All non-deleted offers, **all years** (not only the selected one). "Value" = `priceCents` (offers without a price count in counts but add 0 to values and are left out of averages). "Open" = disposition PENDING and event date ≥ today (not expired). Months/years of `createdAt` in Europe/Helsinki.
 ```
 OfferStats = {
   createdByMonth: [{ month: "YYYY-MM", count, valueCents }],        // the 6 most recent COMPLETED months, oldest first
@@ -455,7 +455,7 @@ OfferStats = {
 }
 ```
 Details: `averageByCreatedYear[].count` = priced offers in the average, `averageCents` rounded to a cent; `openByEventType` lists only types with open offers (may be `[]`), ties by count, null last; `createdByMonth` counts back from today (ignores `year`); win `pct` 1 decimal, untyped decided offers count only in the overall rate; open offers beyond year+3 are only in `openByEventType`.
-`year` missing/invalid → 400 `INVALID_VALUE`. The existing `GET /api/offers` `summary` stays (unused by the new cards).
+`year` invalid → 400 `INVALID_VALUE` (missing = current year; ranges per "Year is no longer global"). The existing `GET /api/offers` `summary` stays (unused by the new cards).
 
 ## Rename Gig → Event (owner decision 2026-10-27, SaaS phase 1)
 **Everything called "gig" in this document is now "event".** Behaviour is unchanged; only names change. Mapping (old → new):
@@ -487,7 +487,7 @@ No compatibility aliases for old API paths (no external clients). The UI renames
 
 ## Year is no longer global (owner decision 2026-10-30)
 The year selector leaves the top bar. Pages that need a year have their **own year selector**: **Vuosi**, **Budjetti**, **Tunnit**, **Keikat** (default = current year; the chosen year is still remembered in `Me.selectedYear` and shared by these pages). Every other page shows **all years**.
-- `GET /api/offers`: `year` becomes **optional**; without it all non-deleted offers (or `deleted=true`) are returned. The UI sends no year; default sort newest created first. `summary` is computed over the returned set (unused by the UI).
+- `GET /api/offers`: `year` becomes **optional**; without it all non-deleted offers (or `deleted=true`) are returned. The UI sends no year; default sort newest created first. `summary` follows BR-106 (all non-deleted offers in scope — that year or all years — ignoring other filters; unused by the UI). With a `year`, sort stays event date ascending.
 - `GET /api/purchase-orders`: `year` **optional** (without it: all years, newest first).
 - `GET /api/people/{id}/cost-lines`: `year` **optional** (without it: all years, newest gig first; totals over all).
 - `GET /api/offers/stats`: `year` **optional**, default = current year in the organisation time zone (Europe/Helsinki). Series ranges change to **year−3 … year+2** (6 items) for `averageByCreatedYear`, `byEventYear` and `openValueByEventYear`. `createdByMonth` (6 completed months), `openByEventType` (all open offers) and `winRate` (all time) are unchanged. The UI shows each year card's big figure for the current year by default; clicking a bar selects another year.

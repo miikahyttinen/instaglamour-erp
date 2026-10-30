@@ -68,9 +68,9 @@ export function computeOfferStats(rows: readonly OfferStatsRow[], year: number, 
   const months = completedMonths(today, 6);
   const byMonth = new Map(months.map((month) => [month, { month, count: 0, valueCents: 0 }]));
 
-  const avgYears = new Map(range(year - 5, year).map((y) => [y, { year: y, sum: 0, count: 0 }]));
+  const avgYears = new Map(range(year - 3, year + 2).map((y) => [y, { year: y, sum: 0, count: 0 }]));
   const eventYears = new Map(range(year - 3, year + 2).map((y) => [y, { year: y, count: 0, valueCents: 0 }]));
-  const openYears = new Map(range(year, year + 3).map((y) => [y, { year: y, valueCents: 0, count: 0 }]));
+  const openYears = new Map(range(year - 3, year + 2).map((y) => [y, { year: y, valueCents: 0, count: 0 }]));
   const openTypes = new Map<EventType | null, { eventType: EventType | null; count: number; valueCents: number }>();
   const winByType = new Map(EVENT_TYPES.map((t) => [t, { eventType: t, won: 0, decided: 0 }]));
   let won = 0;

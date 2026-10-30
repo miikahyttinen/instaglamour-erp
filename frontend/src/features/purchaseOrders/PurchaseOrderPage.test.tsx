@@ -31,19 +31,19 @@ describe('purchase order page (UC-034)', () => {
 
     const lines = screen.getByRole('table', { name: 'Ostotilauksen palkkiot' });
     expect(within(lines).getAllByRole('columnheader').map((h) => h.textContent)).toEqual([
-      'Tapahtuman päivä',
+      'Keikan päivä',
       'Paikka',
       'Kokoonpano',
       'Rooli',
       'Summa',
-      'Tapahtuma',
+      'Keikka',
     ]);
     const row = within(lines).getAllByRole('row').find((r) => r.closest('tbody'))!;
     expect(text(row)).toContain(`1.6.${TEST_YEAR}`);
     expect(text(row)).toContain('Venue X');
     expect(text(row)).toContain('Template A');
     expect(text(row)).toContain('Laulu');
-    expect(within(row).getByRole('link', { name: 'Avaa tapahtuma: Venue X' })).toHaveAttribute('href', `/events/${event.id}`);
+    expect(within(row).getByRole('link', { name: 'Avaa keikka: Venue X' })).toHaveAttribute('href', `/gigs/${event.id}`);
 
     const history = await screen.findByRole('table', { name: 'Historia' });
     expect(text(history)).toContain('Luotu freelancerin linkillä');

@@ -145,7 +145,7 @@ function CostLines({ personId }: { personId: Id }) {
       label: t('people.lines.date'),
       primary: true,
       className: 'person-lines-date',
-      cell: (line) => <Link to={`/events/${line.eventId}`}>{formatDate(line.eventStartDate, lang)}</Link>,
+      cell: (line) => <Link to={`/gigs/${line.eventId}`}>{formatDate(line.eventStartDate, lang)}</Link>,
     },
     {
       key: 'lineup',

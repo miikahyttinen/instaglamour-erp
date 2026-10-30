@@ -276,7 +276,7 @@ function ListNotice({ notice, onDismiss }: { notice: PageNotice; onDismiss: () =
   if (notice.kind === 'converted') {
     content = (
       <p>
-        {t('convert.done', { event: notice.event })} <Link to={`/events/${notice.eventId}`}>{t('convert.openEvent')}</Link>
+        {t('convert.done', { event: notice.event })} <Link to={`/gigs/${notice.eventId}`}>{t('convert.openEvent')}</Link>
       </p>
     );
   } else if (notice.kind === 'deleted') {
