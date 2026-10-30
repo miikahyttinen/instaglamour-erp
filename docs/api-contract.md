@@ -547,7 +547,7 @@ Definitions: `total = totalPriceCents`; `invoiced = Σ SENT + PAID rows`; `paid 
 
 ## Invoicing: one label (owner decision 2026-10-31) — replaces `invoiceCoverage` + `paymentState`
 One derived value **`invoiceState`** = the next invoicing action; first match wins (total = totalPriceCents, paid/ready/open as before):
-1. `PAID` — rows exist and paid ≥ total → "Maksettu / Paid" (ok-strong, dark green)
+1. `PAID` — paid > 0 and paid ≥ total → "Maksettu / Paid" (ok-strong, dark green)
 2. `ROWS_TO_INVOICE` — readyCents > 0 → "Laskutettavia rivejä / Rows to be invoiced" (info, blue)
 3. `OPEN_INVOICES` — openCents > 0 → "Avoimia laskuja / Open invoices" (warn, amber)
 4. `NEEDS_INVOICES` — invoiced < total → "Laskuttamatta / Needs invoices" (danger, red)
