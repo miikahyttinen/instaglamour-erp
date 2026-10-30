@@ -406,7 +406,7 @@ function EventTable({ events, partners, lang, tableState }: EventTableProps) {
       key: 'invoiceCoverage',
       label: t('events.columns.invoiceCoverage'),
       priority: 2,
-      className: 'event-col-invoice excel-col-fit',
+      className: 'event-col-invoice',
       sortValue: (g) =>
         INVOICE_COVERAGES.indexOf(g.invoiceCoverage) * PAYMENT_STATES.length + PAYMENT_STATES.indexOf(g.paymentState),
       filterValue: (g) => g.invoiceCoverage,

@@ -129,6 +129,22 @@
 .event-list-page .event-table td.event-col-invoice {
   color: var(--text-muted);
 }
+/* Not a fit column: with room the tags stay on one line each; when the table is tight a long
+   tag ("Laskutettu kokonaan") may wrap inside itself instead of widening the table. */
+.event-list-page .event-table td.event-col-invoice .invoicing-tags > span,
+.event-list-page .event-table td.event-col-invoice .tag {
+  white-space: normal;
+}
+/* Every column shown (from 1600 px of table width): the longest one-word label
+   ("Laskuttamatta") is the column's minimum, so its tags get a tighter letter spacing and padding
+   to keep the table inside its container. */
+@container excel-table (min-width: 1600px) {
+  .event-list-page .event-table td.event-col-invoice .tag {
+    letter-spacing: 0.06em;
+    padding-left: var(--space-1);
+    padding-right: var(--space-1);
+  }
+}
 .event-list-page .event-balance-negative {
   color: var(--warn-fg);
 }
