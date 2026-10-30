@@ -1,4 +1,4 @@
-/** Event data access shared by the event, cost line and attachment routes (and the year page). */
+/** Event data access shared by the event, cost line and invoice row routes (and the year page). */
 import type { Db } from '../db.js';
 import { dateFromIso, isoFromDate } from '../domain/dates.js';
 import { isMusicianRole, MUSICIAN_ROLES } from '../domain/enums.js';
@@ -25,7 +25,6 @@ export const eventSummaryInclude = {
 export const eventDetailInclude = {
   ...eventSummaryInclude,
   costLines: { include: costLinePurchaseOrderInclude },
-  attachments: { where: { deletedAt: null } },
 } as const satisfies Prisma.EventInclude;
 
 export async function loadEventDetail(db: Tx, id: string): Promise<EventWithDetail | null> {

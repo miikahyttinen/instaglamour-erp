@@ -1,9 +1,8 @@
-/** Event rows → contract JSON (docs/api-contract.md: EventSummary, EventDetail, CostLine, Attachment, EventHistoryEntry). */
+/** Event rows → contract JSON (docs/api-contract.md: EventSummary, EventDetail, CostLine, EventHistoryEntry). */
 import { isoFromDate } from '../domain/dates.js';
 import { eventEconomics, isNotFullyStaffed, isPlayed } from '../domain/eventEconomics.js';
 import { invoicing } from '../domain/invoicing.js';
 import type {
-  Attachment,
   CostLine,
   Event,
   EventHistory,
@@ -60,28 +59,6 @@ export function toCostLineDto(line: CostLineWithPurchaseOrder): CostLineDto {
   };
 }
 
-export interface AttachmentDto {
-  id: string;
-  eventId: string;
-  filename: string;
-  contentType: string;
-  sizeBytes: number;
-  uploadedBy: string;
-  uploadedAt: string;
-}
-
-export function toAttachmentDto(a: Attachment): AttachmentDto {
-  return {
-    id: a.id,
-    eventId: a.eventId,
-    filename: a.filename,
-    contentType: a.contentType,
-    sizeBytes: a.sizeBytes,
-    uploadedBy: a.uploadedById,
-    uploadedAt: a.uploadedAt.toISOString(),
-  };
-}
-
 export function toInvoiceRowDto(row: InvoiceRow) {
   return {
     id: row.id,
@@ -120,7 +97,6 @@ export type EventWithLines = Event & {
 };
 export type EventWithDetail = Omit<EventWithLines, 'costLines'> & {
   costLines: CostLineWithPurchaseOrder[];
-  attachments: Attachment[];
 };
 
 export function toEventSummaryDto(event: EventWithLines, today: string) {
@@ -167,10 +143,6 @@ export function toEventDetailDto(event: EventWithDetail, today: string) {
     ...toEventSummaryDto(event, today),
     costLines: [...event.costLines].sort(compareCostLines).map(toCostLineDto),
     invoiceRows: [...event.invoiceRows].sort(compareInvoiceRows).map(toInvoiceRowDto),
-    attachments: event.attachments
-      .filter((a) => a.deletedAt === null)
-      .sort((a, b) => b.uploadedAt.getTime() - a.uploadedAt.getTime() || (a.id < b.id ? 1 : -1))
-      .map(toAttachmentDto),
   };
 }
 
