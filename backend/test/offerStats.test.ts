@@ -46,9 +46,9 @@ describe('computeOfferStats', () => {
         count: 0,
         valueCents: 0,
       })),
-      averageByCreatedYear: [2021, 2022, 2023, 2024, 2025, 2026].map((year) => ({ year, averageCents: null, count: 0 })),
+      averageByCreatedYear: [2023, 2024, 2025, 2026, 2027, 2028].map((year) => ({ year, averageCents: null, count: 0 })),
       byEventYear: [2023, 2024, 2025, 2026, 2027, 2028].map((year) => ({ year, count: 0, valueCents: 0 })),
-      openValueByEventYear: [2026, 2027, 2028, 2029].map((year) => ({ year, valueCents: 0, count: 0 })),
+      openValueByEventYear: [2023, 2024, 2025, 2026, 2027, 2028].map((year) => ({ year, valueCents: 0, count: 0 })),
       openByEventType: [],
       winRate: {
         pct: null,
@@ -90,26 +90,28 @@ describe('computeOfferStats', () => {
     expect(computeOfferStats(rows, 2020, NOW).createdByMonth).toEqual(computeOfferStats(rows, 2026, NOW).createdByMonth);
   });
 
-  it('averageByCreatedYear: year-5…year by Helsinki creation year, priced offers only, rounded', () => {
+  it('averageByCreatedYear: year-3…year+2 by Helsinki creation year, priced offers only, rounded', () => {
     const stats = computeOfferStats(
       [
         row({ createdAt: new Date('2025-12-31T22:30:00.000Z'), priceCents: 10000 }), // 2026 in Helsinki
         row({ createdAt: new Date('2026-02-01T10:00:00.000Z'), priceCents: 20001 }),
         row({ createdAt: new Date('2026-02-01T10:00:00.000Z'), priceCents: null }), // ignored in average
-        row({ createdAt: new Date('2021-01-01T10:00:00.000Z'), priceCents: 50000 }),
-        row({ createdAt: new Date('2020-12-31T10:00:00.000Z'), priceCents: 90000 }), // year-6 → outside
+        row({ createdAt: new Date('2023-01-01T10:00:00.000Z'), priceCents: 50000 }),
+        row({ createdAt: new Date('2022-12-31T10:00:00.000Z'), priceCents: 90000 }), // year-4 → outside
         row({ createdAt: new Date('2024-05-01T10:00:00.000Z'), priceCents: null }),
+        row({ createdAt: new Date('2028-06-01T10:00:00.000Z'), priceCents: 30000 }), // year+2 (synthetic future)
+        row({ createdAt: new Date('2029-01-01T10:00:00.000Z'), priceCents: 70000 }), // year+3 → outside
       ],
       2026,
       NOW,
     );
     expect(stats.averageByCreatedYear).toEqual([
-      { year: 2021, averageCents: 50000, count: 1 },
-      { year: 2022, averageCents: null, count: 0 },
-      { year: 2023, averageCents: null, count: 0 },
+      { year: 2023, averageCents: 50000, count: 1 },
       { year: 2024, averageCents: null, count: 0 },
       { year: 2025, averageCents: null, count: 0 },
       { year: 2026, averageCents: 15001, count: 2 }, // (10000 + 20001) / 2 = 15000.5 → 15001
+      { year: 2027, averageCents: null, count: 0 },
+      { year: 2028, averageCents: 30000, count: 1 },
     ]);
   });
 
@@ -142,15 +144,17 @@ describe('computeOfferStats', () => {
       row({ eventDate: '2026-10-20', priceCents: 20000 }), // today → open
       row({ eventDate: '2026-12-01', priceCents: 30000, disposition: 'WON' }),
       row({ eventDate: '2027-06-01', priceCents: null, eventType: null }),
-      row({ eventDate: '2029-12-31', priceCents: 40000, eventType: 'WEDDING' }),
-      row({ eventDate: '2030-01-01', priceCents: 50000, eventType: 'WEDDING' }), // year+4: not in series, still open
+      row({ eventDate: '2028-12-31', priceCents: 40000, eventType: 'WEDDING' }),
+      row({ eventDate: '2029-01-01', priceCents: 50000, eventType: 'WEDDING' }), // year+3: not in series, still open
     ];
     const stats = computeOfferStats(rows, 2026, NOW);
     expect(stats.openValueByEventYear).toEqual([
+      { year: 2023, valueCents: 0, count: 0 },
+      { year: 2024, valueCents: 0, count: 0 },
+      { year: 2025, valueCents: 0, count: 0 },
       { year: 2026, valueCents: 20000, count: 1 },
       { year: 2027, valueCents: 0, count: 1 },
-      { year: 2028, valueCents: 0, count: 0 },
-      { year: 2029, valueCents: 40000, count: 1 },
+      { year: 2028, valueCents: 40000, count: 1 },
     ]);
     expect(stats.openByEventType).toEqual([
       { eventType: 'WEDDING', count: 2, valueCents: 90000 },
@@ -163,10 +167,10 @@ describe('computeOfferStats', () => {
     expect(late.openByEventType).toEqual([]);
   });
 
-  it('openValueByEventYear starts at the selected year', () => {
+  it('openValueByEventYear covers year-3…year+2 around the selected year', () => {
     const stats = computeOfferStats([row({ eventDate: '2027-01-05', priceCents: 10000 })], 2027, NOW);
-    expect(stats.openValueByEventYear.map((y) => y.year)).toEqual([2027, 2028, 2029, 2030]);
-    expect(stats.openValueByEventYear[0]).toEqual({ year: 2027, valueCents: 10000, count: 1 });
+    expect(stats.openValueByEventYear.map((y) => y.year)).toEqual([2024, 2025, 2026, 2027, 2028, 2029]);
+    expect(stats.openValueByEventYear[3]).toEqual({ year: 2027, valueCents: 10000, count: 1 });
   });
 
   it('openByEventType ties: more offers first, then EVENT_TYPES order, no type last', () => {
@@ -269,14 +273,25 @@ describe('GET /api/offers/stats', () => {
     }
   });
 
-  it('missing or invalid year → 400 INVALID_VALUE', async () => {
-    for (const query of ['', '?year=', '?year=26', '?year=abcd', '?year=20266', '?year=2026&year=2027']) {
+  it('invalid year → 400 INVALID_VALUE', async () => {
+    for (const query of ['?year=', '?year=26', '?year=abcd', '?year=20266', '?year=2026&year=2027']) {
       const res = await stats(query);
       expect(res.statusCode, query).toBe(400);
       expect(res.json()).toEqual({
         error: { code: 'VALIDATION_ERROR', message: expect.any(String), fields: { year: 'INVALID_VALUE' } },
       });
     }
+  });
+
+  it('without year: defaults to the current Helsinki year', async () => {
+    const year = Number(todayIso().slice(0, 4));
+    await insert({ eventDate: `${year}-12-31`, priceCents: 100000, disposition: 'WON' });
+    const res = await stats('');
+    expect(res.statusCode).toBe(200);
+    const body: Json = res.json();
+    expect(body).toEqual((await stats(`?year=${year}`)).json());
+    expect(body.byEventYear.map((y: { year: number }) => y.year)).toEqual([year - 3, year - 2, year - 1, year, year + 1, year + 2]);
+    expect(body.byEventYear[3]).toEqual({ year, count: 1, valueCents: 100000 });
   });
 
   it('aggregates all years of non-deleted offers per contract', async () => {
@@ -314,14 +329,22 @@ describe('GET /api/offers/stats', () => {
     expect(body.byEventYear[2]).toEqual({ year: year - 1, count: 1, valueCents: 70000 });
     expect(body.byEventYear[4]).toEqual({ year: year + 1, count: 2, valueCents: 200000 });
 
-    expect(body.averageByCreatedYear).toHaveLength(6);
-    expect(body.averageByCreatedYear[0].year).toBe(year - 5);
+    expect(body.averageByCreatedYear.map((y: { year: number }) => y.year)).toEqual([
+      year - 3,
+      year - 2,
+      year - 1,
+      year,
+      year + 1,
+      year + 2,
+    ]);
 
     expect(body.openValueByEventYear).toEqual([
+      { year: year - 3, valueCents: 0, count: 0 },
+      { year: year - 2, valueCents: 0, count: 0 },
+      { year: year - 1, valueCents: 0, count: 0 },
       { year, valueCents: 0, count: 0 },
       { year: year + 1, valueCents: 200000, count: 2 },
       { year: year + 2, valueCents: 0, count: 0 },
-      { year: year + 3, valueCents: 0, count: 0 },
     ]);
     expect(body.openByEventType).toEqual([
       { eventType: 'CORPORATE', count: 1, valueCents: 200000 },
