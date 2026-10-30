@@ -27,6 +27,15 @@ enum EventStatus {
   CANCELLED
 }
 
+/// Invoicing state of an event, set by hand (api-contract "Invoice status, prepayment and balance").
+enum InvoiceStatus {
+  NONE
+  READY
+  PREPAYMENT_PAID
+  INVOICED
+  PAID
+}
+
 enum TaskStatus {
   OPEN
   DONE
@@ -203,7 +212,7 @@ model Partner {
   soldEvents              Event[]              @relation("EventSeller")
   producedEvents          Event[]              @relation("EventProducer")
   deletedEvents           Event[]              @relation("EventDeletedBy")
-  readyForInvoiceEvents   Event[]              @relation("EventReadyForInvoiceBy")
+  invoiceStatusEvents     Event[]              @relation("EventInvoiceStatusBy")
   paidCostLines           CostLine[]           @relation("CostLinePaidBy")
   uploadedAttachments     Attachment[]
   eventHistory            EventHistory[]
@@ -306,9 +315,13 @@ model Event {
   offerId                    String?         @unique @map("offer_id") @db.Uuid
   deletedAt                  DateTime?       @map("deleted_at")
   deletedById                String?         @map("deleted_by") @db.Uuid
-  /// Set by hand on the gig page ("Ready to be invoiced", api-contract 2026-10-31); both null = not set.
-  readyForInvoiceAt          DateTime?       @map("ready_for_invoice_at")
-  readyForInvoiceById        String?         @map("ready_for_invoice_by") @db.Uuid
+  /// Set by hand on the gig page (api-contract "Invoice status, prepayment and balance");
+  /// at/by = last status change, both null = never changed.
+  invoiceStatus              InvoiceStatus   @default(NONE) @map("invoice_status")
+  invoiceStatusAt            DateTime?       @map("invoice_status_at")
+  invoiceStatusById          String?         @map("invoice_status_by") @db.Uuid
+  /// Prepayment received (≥ 0, DB check); balance = total price − prepayment (derived).
+  prepaymentCents            Int             @default(0) @map("prepayment_cents")
   createdAt                  DateTime        @default(now()) @map("created_at")
   updatedAt                  DateTime        @updatedAt @map("updated_at")
 
@@ -316,7 +329,7 @@ model Event {
   seller             Partner             @relation("EventSeller", fields: [sellerId], references: [id])
   producer           Partner             @relation("EventProducer", fields: [producerId], references: [id])
   deletedBy          Partner?            @relation("EventDeletedBy", fields: [deletedById], references: [id])
-  readyForInvoiceBy  Partner?            @relation("EventReadyForInvoiceBy", fields: [readyForInvoiceById], references: [id])
+  invoiceStatusBy    Partner?            @relation("EventInvoiceStatusBy", fields: [invoiceStatusById], references: [id], onDelete: SetNull)
   client             Client?             @relation(fields: [clientId], references: [id], onDelete: Restrict)
   offer              Offer?              @relation(fields: [offerId], references: [id], onDelete: Restrict)
   costLines          CostLine[]
