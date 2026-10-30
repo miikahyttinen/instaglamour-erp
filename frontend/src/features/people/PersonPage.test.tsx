@@ -58,21 +58,21 @@ describe('person page (UC-014 A2)', () => {
     expect(rows).toHaveLength(3);
 
     const [paid, other, onCancelled] = rows as [HTMLElement, HTMLElement, HTMLElement];
-    expect(within(paid).getByRole('link', { name: `1.3.${TEST_YEAR}` })).toHaveAttribute('href', `/events/${g1.id}`);
+    expect(within(paid).getByRole('link', { name: `1.3.${TEST_YEAR}` })).toHaveAttribute('href', `/gigs/${g1.id}`);
     expect(paid).toHaveTextContent('Template A');
     expect(paid).toHaveTextContent('Venue X');
     expect(paid).toHaveTextContent('Laulu');
     expect(cellTexts(paid).filter((c) => c === fi(10000))).toHaveLength(2); // budget + actual
     expect(paid).not.toHaveTextContent('Maksamatta');
 
-    expect(within(other).getByRole('link')).toHaveAttribute('href', `/events/${g2.id}`);
+    expect(within(other).getByRole('link')).toHaveAttribute('href', `/gigs/${g2.id}`);
     expect(other).toHaveTextContent('Custom lineup');
     expect(other).toHaveTextContent('Venue Y');
     expect(other).toHaveTextContent('Muu kulu: Expense 1');
     expect(cellTexts(other)).toContain(fi(10000));
     expect(other).toHaveTextContent('Maksamatta');
 
-    expect(within(onCancelled).getByRole('link')).toHaveAttribute('href', `/events/${cancelled.id}`);
+    expect(within(onCancelled).getByRole('link')).toHaveAttribute('href', `/gigs/${cancelled.id}`);
     expect(onCancelled).toHaveTextContent('Peruttu');
 
     const total = within(table()).getByRole('rowheader', { name: 'Yhteensä' }).closest('tr')!;
@@ -171,7 +171,7 @@ describe('person page (UC-014 A2)', () => {
     const future = addMockEvent({ startDate: `${TEST_YEAR}-03-01` });
     staffMockEvent(future, ['Person 20']);
     renderApp(`/people/${person('Person 20').id}`);
-    const group = await screen.findByRole('group', { name: 'Tapahtumia' });
+    const group = await screen.findByRole('group', { name: 'Keikkoja' });
     expect(within(group).getByText('1')).toBeInTheDocument();
   });
 

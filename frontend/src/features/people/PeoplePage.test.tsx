@@ -197,7 +197,7 @@ describe('people register (UC-014)', () => {
     db.events.people.find((p) => p.name === 'Person 5')!.roles = ['KEYS', 'PIANO'];
     await openPeople();
     const head = within(list()).getAllByRole('columnheader').map((th) => th.textContent);
-    expect(head).toEqual(expect.arrayContaining(['Roolit', 'Tapahtumia', 'Osakas']));
+    expect(head).toEqual(expect.arrayContaining(['Roolit', 'Keikkoja', 'Osakas']));
     const tags = within(row('Person 5')).getAllByText(/Koskettimet|Piano/);
     expect(tags.map((t) => t.textContent)).toEqual(['Koskettimet', 'Piano']);
     tags.forEach((tag) => expect(tag).toHaveClass('tag'));
@@ -292,7 +292,7 @@ describe('people register (UC-014)', () => {
       await openPeople();
       expect(names()).toEqual(['Person A', 'person b', 'Zeta Z', 'Ärrä Y', 'Örjan X']);
       expect(sortHeader('Nimi')).toHaveAttribute('aria-sort', 'ascending');
-      expect(sortHeader('Tapahtumia')).toHaveAttribute('aria-sort', 'none');
+      expect(sortHeader('Keikkoja')).toHaveAttribute('aria-sort', 'none');
       expect(sortHeader('Osakas')).toHaveAttribute('aria-sort', 'none');
     });
 
@@ -300,18 +300,18 @@ describe('people register (UC-014)', () => {
       setPeople(synthetic);
       const { user } = await openPeopleWithUrl('/people?role=DJ&active=all');
       // The role filter is applied by the API; the overridden handler returns these rows anyway.
-      await user.click(within(sortHeader('Tapahtumia')).getByRole('button'));
+      await user.click(within(sortHeader('Keikkoja')).getByRole('button'));
       await waitFor(() => expect(names()).toEqual(['Person A', 'Zeta Z', 'Örjan X', 'person b', 'Ärrä Y']));
-      expect(sortHeader('Tapahtumia')).toHaveAttribute('aria-sort', 'ascending');
+      expect(sortHeader('Keikkoja')).toHaveAttribute('aria-sort', 'ascending');
       expect(sortHeader('Nimi')).toHaveAttribute('aria-sort', 'none');
       expect(url().get('sort')).toBe('eventCount');
       expect(url().get('dir')).toBe('asc');
       expect(url().get('role')).toBe('DJ');
       expect(url().get('active')).toBe('all');
 
-      await user.click(within(sortHeader('Tapahtumia')).getByRole('button'));
+      await user.click(within(sortHeader('Keikkoja')).getByRole('button'));
       await waitFor(() => expect(names()).toEqual(['person b', 'Ärrä Y', 'Örjan X', 'Zeta Z', 'Person A']));
-      expect(sortHeader('Tapahtumia')).toHaveAttribute('aria-sort', 'descending');
+      expect(sortHeader('Keikkoja')).toHaveAttribute('aria-sort', 'descending');
       expect(url().get('dir')).toBe('desc');
     });
 
@@ -337,7 +337,7 @@ describe('people register (UC-014)', () => {
       setPeople(synthetic);
       const first = await openPeople('/people?sort=eventCount&dir=desc');
       expect(names()).toEqual(['person b', 'Ärrä Y', 'Örjan X', 'Zeta Z', 'Person A']);
-      expect(sortHeader('Tapahtumia')).toHaveAttribute('aria-sort', 'descending');
+      expect(sortHeader('Keikkoja')).toHaveAttribute('aria-sort', 'descending');
       first.unmount();
       await openPeople('/people?sort=bogus&dir=desc');
       expect(names()).toEqual(['Person A', 'person b', 'Zeta Z', 'Ärrä Y', 'Örjan X']);
@@ -349,11 +349,11 @@ describe('people register (UC-014)', () => {
       const { user } = await openPeopleWithUrl();
       const key = screen.getByRole('combobox', { name: 'Järjestys' });
       const dir = screen.getByRole('combobox', { name: 'Suunta' });
-      expect(within(key).getAllByRole('option').map((o) => o.textContent)).toEqual(['Nimi', 'Tapahtumia', 'Osakas']);
+      expect(within(key).getAllByRole('option').map((o) => o.textContent)).toEqual(['Nimi', 'Keikkoja', 'Osakas']);
       expect(key).toHaveDisplayValue('Nimi');
       expect(dir).toHaveDisplayValue('Nouseva');
 
-      await user.selectOptions(key, 'Tapahtumia');
+      await user.selectOptions(key, 'Keikkoja');
       await user.selectOptions(dir, 'Laskeva');
       await waitFor(() => expect(names()).toEqual(['person b', 'Ärrä Y', 'Örjan X', 'Zeta Z', 'Person A']));
       expect(url().get('sort')).toBe('eventCount');

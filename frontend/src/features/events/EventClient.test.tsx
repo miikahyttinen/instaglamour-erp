@@ -14,7 +14,7 @@ describe('event client', () => {
 
   it('sets, changes and clears the client in place on the event page; history names it', async () => {
     const event = addMockEvent({ venue: 'Venue X' });
-    const { user } = renderApp(`/events/${event.id}`);
+    const { user } = renderApp(`/gigs/${event.id}`);
     const select = await screen.findByRole('combobox', { name: 'Asiakas' });
     await waitFor(() =>
       expect(within(select).getAllByRole('option').map((o) => o.textContent)).toEqual([
@@ -37,7 +37,7 @@ describe('event client', () => {
 
   it('creates a new client inline and saves it on the event', async () => {
     const event = addMockEvent({ venue: 'Venue X' });
-    const { user } = renderApp(`/events/${event.id}`);
+    const { user } = renderApp(`/gigs/${event.id}`);
     const select = await screen.findByRole('combobox', { name: 'Asiakas' });
     await screen.findByRole('option', { name: 'Client A' });
 
@@ -64,14 +64,14 @@ describe('event client', () => {
     const x = addMockClient('Client X');
     const event = addMockEvent({ clientId: x.id });
     event.deletedAt = new Date().toISOString();
-    renderApp(`/events/${event.id}`);
+    renderApp(`/gigs/${event.id}`);
     const select = await screen.findByRole('combobox', { name: 'Asiakas' });
     expect(select).toBeDisabled();
     await waitFor(() => expect(select).toHaveDisplayValue('Client X'));
   });
 
   it('new event form: picks a client or creates one', async () => {
-    const { user } = renderApp('/events/new');
+    const { user } = renderApp('/gigs/new');
     await screen.findByRole('option', { name: 'Template A' });
     await user.type(screen.getByLabelText('Alkupäivä'), `${TEST_YEAR}-06-01`);
     await user.selectOptions(screen.getByRole('combobox', { name: 'Kokoonpano' }), 'Template A');
@@ -84,21 +84,21 @@ describe('event client', () => {
     await user.type(screen.getByRole('textbox', { name: 'Uuden asiakkaan nimi' }), 'Client New{Enter}');
     await waitFor(() => expect(select).toHaveDisplayValue('Client New'));
 
-    await user.click(screen.getByRole('button', { name: 'Luo tapahtuma' }));
+    await user.click(screen.getByRole('button', { name: 'Luo keikka' }));
     expect(await screen.findByRole('heading', { name: 'Template A · Venue X' })).toBeInTheDocument();
     const created = db.events.clients.find((c) => c.name === 'Client New')!;
     expect(db.events.events.at(-1)!.clientId).toBe(created.id);
   });
 
   it('new event form: no client by default', async () => {
-    const { user } = renderApp('/events/new');
+    const { user } = renderApp('/gigs/new');
     await screen.findByRole('option', { name: 'Template A' });
     expect(screen.getByRole('combobox', { name: 'Asiakas' })).toHaveDisplayValue('–');
     await user.type(screen.getByLabelText('Alkupäivä'), `${TEST_YEAR}-06-01`);
     await user.selectOptions(screen.getByRole('combobox', { name: 'Kokoonpano' }), 'Template A');
     await user.type(screen.getByRole('textbox', { name: 'Paikka' }), 'Venue X');
     await user.type(screen.getByRole('textbox', { name: 'Hinta (alv 0 %)' }), '1000');
-    await user.click(screen.getByRole('button', { name: 'Luo tapahtuma' }));
+    await user.click(screen.getByRole('button', { name: 'Luo keikka' }));
     await screen.findByRole('heading', { name: 'Template A · Venue X' });
     expect(db.events.events.at(-1)!.clientId).toBeNull();
   });
@@ -109,9 +109,9 @@ describe('event client', () => {
     addMockEvent({ startDate: `${TEST_YEAR}-04-01`, venue: 'Venue Y' });
 
     // Cards (phones, < 600 px): the client is a labelled line of the card.
-    const first = renderApp('/events');
+    const first = renderApp('/gigs');
     const cardRows = () =>
-      within(screen.getByRole('table', { name: 'Tapahtumalista' }))
+      within(screen.getByRole('table', { name: 'Keikkalista' }))
         .getAllByRole('row')
         .filter((r) => r.closest('tbody'));
     const clientCell = (row: HTMLElement) => row.querySelector('td[data-label="Asiakas"]');
@@ -122,8 +122,8 @@ describe('event client', () => {
 
     // Table (from 600 px).
     installMatchMedia({ [TABLET_QUERY]: true, [DESKTOP_QUERY]: true, [WIDE_QUERY]: true });
-    const { user } = renderApp('/events');
-    const table = await screen.findByRole('table', { name: 'Tapahtumalista' });
+    const { user } = renderApp('/gigs');
+    const table = await screen.findByRole('table', { name: 'Keikkalista' });
     const rows = () => within(table).getAllByRole('row').filter((r) => r.closest('tbody'));
     await waitFor(() => expect(rows()).toHaveLength(2));
     expect(within(rows()[0]!).getByRole('link', { name: 'Client X' })).toHaveAttribute('href', `/clients/${x.id}`);

@@ -34,7 +34,7 @@ describe('attachments (UC-008)', () => {
 
   it('uploads a file, lists it with uploader and logs it; removal asks first', async () => {
     const event = addMockEvent();
-    const { user } = renderApp(`/events/${event.id}`);
+    const { user } = renderApp(`/gigs/${event.id}`);
     expect(await screen.findByText('Ei liitteitä.')).toBeInTheDocument();
     // Phone camera input is offered next to the file picker.
     expect(screen.getByLabelText('Ota kuva', { selector: 'input' })).toHaveAttribute('capture', 'environment');
@@ -61,7 +61,7 @@ describe('attachments (UC-008)', () => {
 
   it('rejects wrong types and too large files before uploading', async () => {
     const event = addMockEvent();
-    const { user } = renderApp(`/events/${event.id}`);
+    const { user } = renderApp(`/gigs/${event.id}`);
     await screen.findByText('Ei liitteitä.');
     const input = screen.getByLabelText('Lisää tiedosto', { selector: 'input' });
     await user.upload(input, testFile('big.pdf', 'application/pdf', 21 * 1024 * 1024));
@@ -76,7 +76,7 @@ describe('attachments (UC-008)', () => {
       ),
     );
     const event = addMockEvent();
-    const { user } = renderApp(`/events/${event.id}`);
+    const { user } = renderApp(`/gigs/${event.id}`);
     await screen.findByText('Ei liitteitä.');
     await user.upload(
       screen.getByLabelText('Lisää tiedosto', { selector: 'input' }),
