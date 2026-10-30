@@ -14,11 +14,10 @@ import { formatDate, formatDateRange, formatMoney, formatPercent } from '../../l
 import { Attachments } from './Attachments';
 import { CostList } from './CostList';
 import { EventActions } from './EventActions';
-import { EventBasicFields, EventPriceFields } from './EventInfoFields';
+import { EventBasicFields, EventInvoicingFields, EventPriceFields } from './EventInfoFields';
 import { EventDeletedTag, EventStatusTag } from './EventStatusTag';
 import { EventOfferLink } from './EventOfferLink';
 import { History } from './History';
-import { ReadyForInvoice } from './ReadyForInvoice';
 import { personName, useEvent, usePeople } from './queries';
 import './eventPage.css';
 
@@ -27,9 +26,19 @@ type Notice =
   | { kind: 'moved' | 'uncancelled' | 'restored' }
   | { kind: 'cancelled' };
 
-function Section({ title, wide, children }: { title: string; wide?: boolean; children: ReactNode }) {
+function Section({
+  title,
+  wide,
+  className,
+  children,
+}: {
+  title: string;
+  wide?: boolean;
+  className?: string;
+  children: ReactNode;
+}) {
   return (
-    <details className={`event-section${wide ? ' event-section-wide' : ''}`} open>
+    <details className={['event-section', wide && 'event-section-wide', className].filter(Boolean).join(' ')} open>
       <summary>
         <ChevronDown className="event-section-chevron" />
         <h2>{title}</h2>
@@ -110,8 +119,6 @@ export function EventPage() {
         }
       />
 
-      <ReadyForInvoice event={event} />
-
       {event.offerId && <EventOfferLink offerId={event.offerId} />}
 
       {readOnly && (
@@ -154,12 +161,16 @@ export function EventPage() {
       <WarningList warnings={warnings} people={people} onDismiss={() => setWarnings([])} />
 
       <div className="event-sections">
-        <Section title={t('event.sections.basic')}>
+        <Section title={t('event.sections.basic')} className="event-section-basic">
           <EventBasicFields event={event} readOnly={readOnly} onPartnerSaved={onPartnerSaved} />
         </Section>
 
         <Section title={t('event.sections.price')}>
           <EventPriceFields event={event} readOnly={readOnly} />
+        </Section>
+
+        <Section title={t('event.sections.invoicing')} className="event-section-invoicing">
+          <EventInvoicingFields event={event} readOnly={readOnly} />
         </Section>
 
         <Section title={t('event.sections.economics')} wide>

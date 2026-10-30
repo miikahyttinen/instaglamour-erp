@@ -786,6 +786,11 @@ label.switch.inline-switch {
   background: var(--ok-bg);
   border-color: var(--ok-border);
 }
+.tag-ok-strong {
+  color: var(--ok-strong-fg);
+  background: var(--ok-strong-bg);
+  border-color: var(--ok-strong-border);
+}
 .tag-warn {
   color: var(--warn-fg);
   background: var(--warn-bg);

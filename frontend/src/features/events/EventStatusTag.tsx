@@ -1,9 +1,8 @@
-import { Check } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import type { EventDisplayStatus } from '../../api/enums';
+import type { EventDisplayStatus, InvoiceStatus } from '../../api/enums';
 import { StatusTag } from '../../components/StatusTag';
-import { eventStatusLabel } from '../../i18n/labels';
-import { EVENT_DELETED_TONE, EVENT_STATUS_TONE } from './eventStatusTone';
+import { eventStatusLabel, invoiceStatusLabel } from '../../i18n/labels';
+import { EVENT_DELETED_TONE, EVENT_STATUS_TONE, INVOICE_STATUS_TONE } from './eventStatusTone';
 
 /** Event status (Upcoming / Played / Cancelled) as a shared `StatusTag`. */
 export function EventStatusTag({ status }: { status: EventDisplayStatus }) {
@@ -11,16 +10,13 @@ export function EventStatusTag({ status }: { status: EventDisplayStatus }) {
   return <StatusTag tone={EVENT_STATUS_TONE[status]}>{eventStatusLabel(t, status)}</StatusTag>;
 }
 
-/**
- * "Valmis laskutukseen" in the Keikat list: a small green box with a check; the accessible text is
- * "Kyllä" / "Yes" (the column header names the meaning).
- */
-export function ReadyForInvoiceMark() {
+/** Invoice status as a colour tag; NONE is a plain dash (accessible text "–"). */
+export function InvoiceStatusTag({ status }: { status: InvoiceStatus }) {
   const { t } = useTranslation();
+  if (status === 'NONE') return <span className="invoice-status-none">–</span>;
   return (
-    <StatusTag tone="ok" className="ready-for-invoice-mark" title={t('event.readyForInvoice.label')}>
-      <Check aria-hidden="true" />
-      <span className="visually-hidden">{t('events.staffingFilter.yes')}</span>
+    <StatusTag tone={INVOICE_STATUS_TONE[status]} className="invoice-status-tag">
+      {invoiceStatusLabel(t, status)}
     </StatusTag>
   );
 }

@@ -161,6 +161,33 @@ describe('history descriptions (UC-013)', () => {
     expect(en(removed)).toMatch(/^Horn 2 · /);
   });
 
+  it('describes invoice status and prepayment changes (TASK-172)', () => {
+    const entry: EventHistoryEntry = {
+      ...base,
+      type: 'UPDATED',
+      details: {
+        changes: [
+          { field: 'invoiceStatus', from: 'NONE', to: 'READY' },
+          { field: 'invoiceStatus', from: 'INVOICED', to: 'PAID' },
+          { field: 'prepaymentCents', from: 0, to: 50000 },
+        ],
+        movedCostLineIds: [],
+      },
+    };
+    const lines = (lang: 'fi' | 'en') =>
+      describeEntry(i18n.getFixedT(lang), lang, entry, ctx).lines.map((l) => l.replace(/\s/g, ' '));
+    expect(lines('fi')).toEqual([
+      'Laskutus: – → Valmis laskutukseen',
+      'Laskutus: Laskutettu → Maksettu',
+      'Ennakkomaksu: 0,00 € → 500,00 €',
+    ]);
+    expect(lines('en')).toEqual([
+      'Invoicing: – → Ready to be invoiced',
+      'Invoicing: Invoiced → Invoice paid',
+      'Prepayment: €0.00 → €500.00',
+    ]);
+  });
+
   it('filters by category', () => {
     const types = (filter: Parameters<typeof matchesFilter>[1]) =>
       entries.filter((e) => matchesFilter(e, filter)).map((e) => e.type);

@@ -5,7 +5,7 @@
 // BR-022 double booking, BR-026 load-in switch, BR-027 seller/producer change, history events.
 // Synthetic data only (BR-090). This file does not import mocks/data.ts (no import cycle):
 // callers pass in the settings and templates they need.
-import type { CostType, EventHistoryType, EventStatus, Logistics, TechnicalSetup } from '../api/enums';
+import type { CostType, EventHistoryType, EventStatus, InvoiceStatus, Logistics, TechnicalSetup } from '../api/enums';
 import { isMusicianRole } from '../api/enums';
 import type {
   Attachment,
@@ -43,8 +43,10 @@ export interface MockEvent {
   notes: string | null;
   clientId: Id | null;
   offerId: Id | null;
-  readyForInvoiceAt: string | null;
-  readyForInvoiceBy: Id | null;
+  invoiceStatus: InvoiceStatus;
+  invoiceStatusAt: string | null;
+  invoiceStatusBy: Id | null;
+  prepaymentCents: number;
   deletedAt: string | null;
   createdAt: string;
   updatedAt: string;
@@ -153,8 +155,11 @@ export function toSummary(state: EventState, event: MockEvent, today = todayIso(
     clientId: event.clientId,
     clientName: state.clients.find((c) => c.id === event.clientId)?.name ?? null,
     offerId: event.offerId,
-    readyForInvoiceAt: event.readyForInvoiceAt,
-    readyForInvoiceBy: event.readyForInvoiceBy,
+    invoiceStatus: event.invoiceStatus,
+    invoiceStatusAt: event.invoiceStatusAt,
+    invoiceStatusBy: event.invoiceStatusBy,
+    prepaymentCents: event.prepaymentCents,
+    balanceCents: totalPriceCents - event.prepaymentCents,
     deletedAt: event.deletedAt,
     createdAt: event.createdAt,
     updatedAt: event.updatedAt,
@@ -330,8 +335,10 @@ export function createEvent(
     notes: input.notes,
     clientId: input.clientId ?? null,
     offerId: null,
-    readyForInvoiceAt: null,
-    readyForInvoiceBy: null,
+    invoiceStatus: 'NONE',
+    invoiceStatusAt: null,
+    invoiceStatusBy: null,
+    prepaymentCents: 0,
     deletedAt: null,
     createdAt: ts,
     updatedAt: ts,
@@ -471,7 +478,9 @@ export type EventPatchField =
   | 'additionalSalesCents'
   | 'additionalSalesDescription'
   | 'notes'
-  | 'clientId';
+  | 'clientId'
+  | 'invoiceStatus'
+  | 'prepaymentCents';
 
 export const EVENT_PATCH_FIELDS: EventPatchField[] = [
   'lineupName',
@@ -486,6 +495,8 @@ export const EVENT_PATCH_FIELDS: EventPatchField[] = [
   'additionalSalesDescription',
   'notes',
   'clientId',
+  'invoiceStatus',
+  'prepaymentCents',
 ];
 
 function sameValue(a: unknown, b: unknown): boolean {
@@ -524,6 +535,11 @@ export function updateEvent(
       movedCostLineIds.push(line.id);
     }
   };
+  // Invoice status changes record who / when (api-contract "Invoice status, prepayment and balance").
+  if (changes.some((c) => c.field === 'invoiceStatus')) {
+    event.invoiceStatusAt = nowTs();
+    event.invoiceStatusBy = actorId;
+  }
   moveLines('SALES', oldSeller, event.sellerId);
   moveLines('PRODUCTION', oldProducer, event.producerId);
   if (changes.length > 0) {

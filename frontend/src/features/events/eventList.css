@@ -125,18 +125,12 @@
 .event-list-page .event-table td.event-col-staffing {
   color: var(--text-muted);
 }
-/* "Valmis laskutukseen": a small green box with a check (the text is for screen readers). */
-.event-list-page .ready-for-invoice-mark {
-  padding: 1px 3px;
-  line-height: 1;
-}
-.event-list-page .ready-for-invoice-mark svg {
-  width: 1.1em;
-  height: 1.1em;
-  stroke-width: 3;
-}
-.event-list-page .event-table td.event-col-ready {
+/* "Laskutus": colour tag per invoice status; NONE is a muted dash. */
+.event-list-page .event-table td.event-col-invoice {
   color: var(--text-muted);
+}
+.event-list-page .event-balance-negative {
+  color: var(--warn-fg);
 }
 .event-list-page .event-table tr.status-cancelled td {
   color: var(--text-muted);

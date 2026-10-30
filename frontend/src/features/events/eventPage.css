@@ -742,6 +742,11 @@
   .event-page .event-section-wide {
     grid-column: 1 / -1;
   }
+  /* Two columns: basic info on the left spans the price and invoicing cards on the right, so
+     "Laskutus" sits directly under the price card (owner request, TASK-172). */
+  .event-page .event-section-basic {
+    grid-row: span 2;
+  }
   .event-page .event-section:nth-child(2) {
     border-top: 0;
   }
@@ -759,15 +764,18 @@
   color: var(--label);
 }
 
-/* "Valmis laskutukseen" (api-contract 2026-10-31): button, or green tag + who / when + Peru. */
-.event-page .event-ready-for-invoice {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2) var(--space-3);
-  margin: 0 0 var(--space-5);
+/* "Laskutus" card (TASK-172): negative balance in warn colour with a note under it. */
+.event-page .event-balance-negative .event-fields-total-value {
+  color: var(--warn-fg);
 }
-.event-page .event-ready-for-invoice > .notice {
+.event-page .event-balance-warning {
+  grid-column: 1 / -1;
   flex-basis: 100%;
   margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border: var(--hairline) solid var(--warn-border);
+  border-radius: var(--radius);
+  background: var(--warn-bg);
+  color: var(--warn-fg);
+  font-size: var(--fs-meta);
 }

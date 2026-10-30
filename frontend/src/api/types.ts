@@ -9,6 +9,7 @@ import type {
   EventHistoryType,
   EventStatus,
   InternalRole,
+  InvoiceStatus,
   Language,
   MusicianRole,
   ExpenseCategory,
@@ -124,10 +125,15 @@ export interface EventSummary {
   clientName: string | null;
   /** Offer the event was converted from (UC-031), or null. */
   offerId: Id | null;
-  /** Set by hand on the gig page ("Valmis laskutukseen"); cancelled gigs show "–" anyway. */
-  readyForInvoiceAt: IsoTimestamp | null;
-  /** Partner who set the flag. */
-  readyForInvoiceBy: Id | null;
+  /** Invoicing status, set by hand on the gig page ("Laskutus"). */
+  invoiceStatus: InvoiceStatus;
+  /** Last invoice status change: when and by which partner. */
+  invoiceStatusAt: IsoTimestamp | null;
+  invoiceStatusBy: Id | null;
+  /** Prepayment received (≥ 0). */
+  prepaymentCents: Cents;
+  /** totalPriceCents − prepaymentCents; negative if the prepayment exceeds the total. */
+  balanceCents: Cents;
   deletedAt: IsoTimestamp | null;
   createdAt: IsoTimestamp;
   updatedAt: IsoTimestamp;
@@ -415,6 +421,9 @@ export interface EventUpdate {
   notes?: string | null;
   /** null clears the client. */
   clientId?: Id | null;
+  invoiceStatus?: InvoiceStatus;
+  /** Integer ≥ 0. */
+  prepaymentCents?: Cents;
 }
 
 export interface EventUpdateResponse {

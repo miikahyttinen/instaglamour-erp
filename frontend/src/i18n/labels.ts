@@ -3,6 +3,7 @@ import type { ApiError } from '../api/client';
 import type {
   CostType,
   FieldCode,
+  InvoiceStatus,
   EventDisplayStatus,
   EventHistoryType,
   Language,
@@ -40,10 +41,7 @@ export const fieldErrorLabel = (t: TFunction, code: FieldCode) => t(`fields.${co
 export const signInErrorLabel = (t: TFunction, code: SignInErrorCode) =>
   t(`signIn.errors.${code}`);
 
-/** "Valmis laskutukseen": set by hand on the gig page; a cancelled gig never shows it. */
-export function isReadyForInvoice(event: Pick<EventSummary, 'status' | 'readyForInvoiceAt'>): boolean {
-  return event.readyForInvoiceAt !== null && event.status !== 'CANCELLED';
-}
+export const invoiceStatusLabel = (t: TFunction, code: InvoiceStatus) => t(`invoiceStatus.${code}`);
 
 /** Display status of an event: SOLD with a past date is shown as PLAYED (BR-010). */
 export function eventDisplayStatus(event: Pick<EventSummary, 'status' | 'played'>): EventDisplayStatus {

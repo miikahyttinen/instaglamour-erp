@@ -172,6 +172,13 @@ const en: Resources = {
     PLAYED: 'Played',
     CANCELLED: 'Cancelled',
   },
+  invoiceStatus: {
+    NONE: '–',
+    READY: 'Ready to be invoiced',
+    PREPAYMENT_PAID: 'Prepayment paid',
+    INVOICED: 'Invoiced',
+    PAID: 'Invoice paid',
+  },
   taskStatus: {
     OPEN: 'Open',
     DONE: 'Done',
@@ -278,7 +285,8 @@ const en: Resources = {
       lineup: 'Lineup',
       venue: 'Venue',
       status: 'Status',
-      readyForInvoice: 'Ready to be invoiced',
+      invoiceStatus: 'Invoicing',
+      balance: 'Balance',
     },
     staffingFilter: {
       yes: 'Yes',
@@ -321,14 +329,12 @@ const en: Resources = {
     back: 'Gigs',
     restore: 'Restore gig',
     deletedBanner: 'This gig is deleted. Its data is shown read-only.',
-    readyForInvoice: {
-      label: 'Ready to be invoiced',
-      mark: 'Ready to be invoiced',
+    invoicing: {
+      status: 'Invoicing',
       by: '{{name}} {{date}} at {{time}}',
-      undo: 'Undo',
-      undoTitle: 'Undo ready to be invoiced',
-      undoIntro: 'The gig is no longer shown as ready to be invoiced. You can mark it again.',
-      confirmUndo: 'Undo',
+      prepayment: 'Prepayment',
+      balance: 'Balance',
+      negativeBalance: 'The prepayment is larger than the total price.',
     },
     actions: {
       label: 'Actions',
@@ -370,6 +376,7 @@ const en: Resources = {
     sections: {
       basic: 'Basic info',
       price: 'Price and additional sales',
+      invoicing: 'Invoicing',
       economics: 'Economics',
       costs: 'Costs and staffing',
       attachments: 'Attachments',
@@ -476,6 +483,8 @@ const en: Resources = {
     budgetedCents: 'Budget',
     joinsLoadIn: 'Load-in & soundcheck',
     actualCents: 'Actual',
+    invoiceStatus: 'Invoicing',
+    prepaymentCents: 'Prepayment',
   },
   ...offerPreviewEn,
   ...offersEn,

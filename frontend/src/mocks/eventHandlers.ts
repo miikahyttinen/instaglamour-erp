@@ -2,7 +2,7 @@
 // Business logic lives in eventStore.ts.
 import { http, HttpResponse } from 'msw';
 import type { CostType, FieldCode, Logistics, TechnicalSetup } from '../api/enums';
-import { COST_TYPES, isMusicianRole, LOGISTICS, TECHNICAL_SETUPS } from '../api/enums';
+import { COST_TYPES, INVOICE_STATUSES, isMusicianRole, LOGISTICS, TECHNICAL_SETUPS } from '../api/enums';
 import type {
   CostLine,
   CostLineCreate,
@@ -243,6 +243,11 @@ export const eventHandlers = [
     const notFullyStaffed = params.get('notFullyStaffed') === 'true';
     const deleted = params.get('deleted') === 'true';
     const q = (params.get('q') ?? '').trim().toLowerCase();
+    // Repeatable ?invoiceStatus= (any of); an unknown value → 400 (the UI filters client-side).
+    const invoiceStatuses = params.getAll('invoiceStatus');
+    if (invoiceStatuses.some((v) => !(INVOICE_STATUSES as readonly string[]).includes(v))) {
+      return validationError({ invoiceStatus: 'INVALID_VALUE' });
+    }
     const today = todayIso();
 
     const events = db.events.events
@@ -252,6 +257,7 @@ export const eventHandlers = [
       .filter((g) => when === 'all' || (when === 'upcoming' ? g.startDate >= today : g.startDate < today))
       .filter((g) => !sellerId || g.sellerId === sellerId)
       .filter((g) => !producerId || g.producerId === producerId)
+      .filter((g) => invoiceStatuses.length === 0 || invoiceStatuses.includes(g.invoiceStatus))
       .filter((g) => {
         if (!q) return true;
         const clientName = db.events.clients.find((c) => c.id === g.clientId)?.name ?? '';
@@ -304,6 +310,15 @@ export const eventHandlers = [
     checkString(fields, 'additionalSalesDescription', body.additionalSalesDescription, false);
     checkString(fields, 'notes', body.notes, false, MAX_TEXT);
     checkClient(fields, body.clientId);
+    if (body.invoiceStatus !== undefined && !(INVOICE_STATUSES as readonly unknown[]).includes(body.invoiceStatus)) {
+      fields.invoiceStatus = 'INVALID_VALUE';
+    }
+    if (
+      body.prepaymentCents !== undefined &&
+      (typeof body.prepaymentCents !== 'number' || !Number.isInteger(body.prepaymentCents) || body.prepaymentCents < 0)
+    ) {
+      fields.prepaymentCents = 'INVALID_VALUE';
+    }
     if (Object.keys(fields).length > 0) return validationError(fields);
 
     const patch: Record<string, unknown> = {};
@@ -402,39 +417,6 @@ export const eventHandlers = [
     event.deletedAt = null;
     touch(event);
     logEvent(db.events, event.id, 'RESTORED', me.id);
-    return HttpResponse.json(toDetail(db.events, event));
-  }),
-
-  // "Valmis laskutukseen" (api-contract 2026-10-31): set / clear by hand; both are no-ops when
-  // nothing changes. Cancelled → 409 INVALID_STATUS_TRANSITION (set only), deleted → 409.
-  http.post('/api/events/:id/ready-for-invoice', ({ params }) => {
-    const me = currentPartner();
-    if (!me) return unauthenticated();
-    const event = findEvent(params.id);
-    if (!event) return notFound();
-    if (event.deletedAt) return eventDeleted();
-    if (event.status !== 'SOLD') return badTransition();
-    if (event.readyForInvoiceAt === null) {
-      event.readyForInvoiceAt = nowTs();
-      event.readyForInvoiceBy = me.id;
-      touch(event);
-      logEvent(db.events, event.id, 'READY_FOR_INVOICE', me.id);
-    }
-    return HttpResponse.json(toDetail(db.events, event));
-  }),
-
-  http.delete('/api/events/:id/ready-for-invoice', ({ params }) => {
-    const me = currentPartner();
-    if (!me) return unauthenticated();
-    const event = findEvent(params.id);
-    if (!event) return notFound();
-    if (event.deletedAt) return eventDeleted();
-    if (event.readyForInvoiceAt !== null) {
-      event.readyForInvoiceAt = null;
-      event.readyForInvoiceBy = null;
-      touch(event);
-      logEvent(db.events, event.id, 'READY_FOR_INVOICE_CLEARED', me.id);
-    }
     return HttpResponse.json(toDetail(db.events, event));
   }),
 

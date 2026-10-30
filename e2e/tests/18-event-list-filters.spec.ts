@@ -221,39 +221,55 @@ test('Kate-%: the actual percentage is always on a second line', async ({ page }
   }
 });
 
-// Gig statuses and "Valmis laskutukseen" (owner decision 2026-10-31): Tuleva = blue (info),
-// Soitettu = green (ok), Peruttu = red (danger); the ready flag is set by hand on the gig page,
-// shown as a green check box in the list (accessible text "Kyllä"), filterable (f.readyForInvoice).
-test('gig statuses and "Valmis laskutukseen": mark on the gig page, list column + filter, undo', async ({ page }, testInfo) => {
+// Gig statuses (owner decision 2026-10-31): Tuleva = blue (info), Soitettu = green (ok), Peruttu =
+// red (danger). Invoice status (TASK-172): a "Laskutus" card under the price card on the gig page
+// (select saves on change, who / when, Ennakkomaksu, Saldo = total − prepayment, warning when
+// negative); the list column "Laskutus" shows a colour tag per status, filterable (f.invoiceStatus).
+test('gig statuses and "Laskutus": status + prepayment on the gig page, list column + filter', async ({ page }, testInfo) => {
   const { year, north } = await setup(page, testInfo);
   const venue = `Hall ${tagOf(testInfo)}${suffix()} Ready`;
   const gig = await createEventViaApi(page, { startDate: `${year}-08-01`, venue });
 
   await page.goto(`/gigs/${gig.id}`);
   await expect(pageHead(page).getByText('Tuleva', { exact: true })).toHaveClass(/tag-info/);
-  await page.getByRole('button', { name: 'Valmis laskutukseen', exact: true }).click();
-  const tag = page.locator('.event-ready-for-invoice .tag');
-  await expect(tag).toHaveText('Valmis laskutukseen');
-  await expect(tag).toHaveClass(/tag-ok/);
-  await expect(page.locator('.event-ready-for-invoice')).toContainText(/Partner A \d+\.\d+\.\d{4} klo /);
-  expect((await api(page).get(`/events/${gig.id}`)).readyForInvoiceAt).not.toBeNull();
+  const card = page.locator('details.event-section-invoicing');
+  await expect(card.getByRole('heading', { name: 'Laskutus', level: 2 })).toBeVisible();
+  const select = card.getByRole('combobox', { name: 'Laskutus' });
+  await expect(select).toHaveValue('NONE');
+  await select.selectOption({ label: 'Valmis laskutukseen' });
+  await expect(card.locator('.event-invoice-status-by')).toContainText(/Partner A \d+\.\d+\.\d{4} klo /);
+  await expect.poll(async () => (await api(page).get(`/events/${gig.id}`)).invoiceStatus).toBe('READY');
 
-  // List: the filter "Kyllä" leaves only this gig; its cell has the green box.
-  await openList(page, year, '?f.readyForInvoice=yes');
+  // Prepayment above the total → negative balance with a warning; back to a normal value.
+  const total = (await api(page).get(`/events/${gig.id}`)).totalPriceCents as number;
+  const prepayment = card.getByRole('textbox', { name: 'Ennakkomaksu' });
+  await prepayment.fill(String(total / 100 + 10));
+  await prepayment.press('Enter');
+  await expect(card.getByRole('note')).toHaveText('Ennakkomaksu on suurempi kuin kokonaishinta.');
+  await expect(card.locator('.event-balance')).toHaveClass(/event-balance-negative/);
+  await prepayment.fill('0');
+  await prepayment.press('Enter');
+  await expect(card.getByRole('note')).toHaveCount(0);
+  await expect.poll(async () => (await api(page).get(`/events/${gig.id}`)).balanceCents).toBe(total);
+
+  // List: the filter "Valmis laskutukseen" leaves only this gig; its cell has the light green tag.
+  await openList(page, year, '?f.invoiceStatus=READY');
   await expect(eventListRows(page)).toHaveCount(1);
   const row = eventListRows(page).first();
   await expect(row).toContainText(venue);
-  await expect(row.locator('td.event-col-ready .tag')).toHaveClass(/tag-ok/);
-  await expect(row.locator('td.event-col-ready')).toContainText('Kyllä');
+  await expect(row.locator('td.event-col-invoice .tag')).toHaveClass(/tag-ok/);
+  await expect(row.locator('td.event-col-invoice')).toContainText('Valmis laskutukseen');
   await expect(row.getByText('Tuleva', { exact: true })).toHaveClass(/tag-info/);
-  await openList(page, year, '?f.readyForInvoice=no');
+  await openList(page, year, '?f.invoiceStatus=NONE');
   await expect.poll(() => rowVenues(page, [north, venue])).not.toContain(venue);
 
   // Cancelled = red "Peruttu".
   await openList(page, year, '?f.status=CANCELLED');
   await expect(eventListRows(page).first().getByText('Peruttu', { exact: true })).toHaveClass(/tag-danger/);
 
-  // The new column fits without sideways scroll (table rows from 600 px; phones are cards).
+  // Paid = solid dark green; the columns fit without sideways scroll (table rows from 600 px;
+  // phones are cards).
+  await api(page).patch(`/events/${gig.id}`, { invoiceStatus: 'PAID' });
   const widths = tagOf(testInfo) === 'M' ? [375] : [600, 900, 1100, 1280, 1440, 1600, 1920];
   for (const w of widths) {
     await page.setViewportSize({ width: w, height: 800 });
@@ -264,13 +280,5 @@ test('gig statuses and "Valmis laskutukseen": mark on the gig page, list column 
       .evaluate((table) => table.scrollWidth - table.parentElement!.clientWidth);
     expect(overflow, `${w} px: table wider than its container`).toBeLessThanOrEqual(1);
   }
-
-  // Undo with a confirmation.
-  await page.goto(`/gigs/${gig.id}`);
-  await page.getByRole('button', { name: 'Peru', exact: true }).click();
-  const dialog = page.getByRole('dialog', { name: 'Peru valmis laskutukseen -merkintä' });
-  await dialog.getByRole('button', { name: 'Peru merkintä', exact: true }).click();
-  await expect(dialog).toBeHidden();
-  await expect(page.getByRole('button', { name: 'Valmis laskutukseen', exact: true })).toBeVisible();
-  expect((await api(page).get(`/events/${gig.id}`)).readyForInvoiceAt).toBeNull();
+  await expect(eventListRows(page).filter({ hasText: venue }).locator('.tag-ok-strong')).toHaveText('Maksettu');
 });

@@ -7,7 +7,7 @@ import { createQueryClient } from '../../queryClient';
 import { formatMoney } from '../../lib/format';
 import { DESKTOP_QUERY, TABLET_QUERY, WIDE_QUERY } from '../../lib/useMediaQuery';
 import { db } from '../../mocks/data';
-import { logEvent } from '../../mocks/eventStore';
+import { logEvent, type MockEvent } from '../../mocks/eventStore';
 import { addMockClient, addMockEvent, partnerA, partnerB, staffMockEvent, TEST_YEAR } from '../../test/eventFixtures';
 import { installMatchMedia } from '../../test/matchMedia';
 import { renderApp, signInMock } from '../../test/renderApp';
@@ -63,21 +63,22 @@ describe('event list (UC-003)', () => {
       'Paikka',
       'Asiakas',
       'Tila',
-      'Valmis laskutukseen',
+      'Laskutus',
       'Miehitys kesken',
       'Myyjä',
       'Tuottaja',
       'Kokonaishinta',
+      'Saldo',
       'Kulut, budjetti',
       'Kulut, toteuma',
       'Kate-%',
     ]);
     // Column priorities (TASK-147): 2 hidden below 1100 px, 3 below 1400 px of table width.
     expect(within(table()).getAllByRole('columnheader').map((h) => h.getAttribute('data-priority'))).toEqual([
-      '1', '1', '1', '2', '1', '2', '2', '2', '3', '1', '3', '3', '1',
+      '1', '1', '1', '2', '1', '2', '2', '2', '3', '1', '3', '3', '3', '1',
     ]);
     expect(within(rows()[0]!).getAllByRole('cell').map((c) => c.getAttribute('data-priority'))).toEqual([
-      '1', '1', '1', '2', '1', '2', '2', '2', '3', '1', '3', '3', '1',
+      '1', '1', '1', '2', '1', '2', '2', '2', '3', '1', '3', '3', '3', '1',
     ]);
     expect(within(table()).getByRole('columnheader', { name: /Päivä/ })).toHaveAttribute('aria-sort', 'ascending');
     expect(rows()[0]).toHaveTextContent(fi(110000));
@@ -275,41 +276,56 @@ describe('event list (UC-003)', () => {
     await waitFor(() => expect(venues()).toEqual(['Venue Y']));
   });
 
-  it('shows "Valmis laskutukseen" as a green check box, sortable and filterable (Kyllä / Ei)', async () => {
+  it('shows "Laskutus" as a colour tag per status, sortable in workflow order and filterable (TASK-172)', async () => {
     signInMock().selectedYear = 2020;
-    const ready = addMockEvent({ startDate: '2020-02-01', venue: 'Venue Ready' });
-    ready.readyForInvoiceAt = '2020-02-02T10:00:00Z';
-    ready.readyForInvoiceBy = partnerA().id;
-    addMockEvent({ startDate: '2020-01-01', venue: 'Venue Played' });
-    // A cancelled gig keeps the stored value but shows "–".
-    const cancelled = addMockEvent({ startDate: '2020-03-01', venue: 'Venue Gone' });
-    cancelled.status = 'CANCELLED';
-    cancelled.readyForInvoiceAt = '2020-03-02T10:00:00Z';
-    cancelled.readyForInvoiceBy = partnerA().id;
+    const add = (day: string, venue: string, status: MockEvent['invoiceStatus']) => {
+      const e = addMockEvent({ startDate: `2020-${day}`, venue });
+      e.invoiceStatus = status;
+      return e;
+    };
+    add('01-05', 'Venue Paid', 'PAID');
+    add('01-04', 'Venue Invoiced', 'INVOICED');
+    const pre = add('01-03', 'Venue Pre', 'PREPAYMENT_PAID');
+    pre.prepaymentCents = 200000;
+    add('01-02', 'Venue Ready', 'READY');
+    add('01-01', 'Venue None', 'NONE');
     installMatchMedia({ [TABLET_QUERY]: true, [DESKTOP_QUERY]: true, [WIDE_QUERY]: true });
-    const { user } = renderApp(`/gigs?f.allStatuses=1`);
-    await waitFor(() => expect(venues()).toEqual(['Venue Played', 'Venue Ready', 'Venue Gone']));
-    const readyCell = (i: number) =>
-      within(rows()[i]!).getAllByRole('cell').find((c) => c.getAttribute('data-label') === 'Valmis laskutukseen')!;
-    const mark = within(readyCell(1)).getByText('Kyllä').closest('.tag');
-    expect(mark).toHaveClass('tag-ok', 'ready-for-invoice-mark');
-    expect(readyCell(0)).toHaveTextContent('–');
-    expect(readyCell(2)).toHaveTextContent('–');
-    expect(within(readyCell(2)).queryByText('Kyllä')).not.toBeInTheDocument();
+    const { user } = renderApp(`/gigs`);
+    await waitFor(() => expect(venues()).toHaveLength(5));
+    const cell = (venue: string, label: string) => {
+      const row = rows()[venues().indexOf(venue)]!;
+      return within(row).getAllByRole('cell').find((c) => c.getAttribute('data-label') === label)!;
+    };
+    const tagOf = (venue: string) => cell(venue, 'Laskutus').querySelector('.tag');
+    expect(tagOf('Venue None')).toBeNull();
+    expect(cell('Venue None', 'Laskutus')).toHaveTextContent('–');
+    expect(tagOf('Venue Ready')).toHaveClass('tag-ok');
+    expect(tagOf('Venue Ready')).toHaveTextContent('Valmis laskutukseen');
+    expect(tagOf('Venue Pre')).toHaveClass('tag-info');
+    expect(tagOf('Venue Invoiced')).toHaveClass('tag-warn');
+    expect(tagOf('Venue Paid')).toHaveClass('tag-ok-strong');
+    expect(tagOf('Venue Paid')).toHaveTextContent('Maksettu');
+    // Saldo = total − prepayment; negative in warn colour.
+    expect(cell('Venue Ready', 'Saldo')).toHaveTextContent(/1\s000,00\s€/);
+    expect(cell('Venue Pre', 'Saldo').querySelector('.event-balance-negative')).toHaveTextContent(/[-−]1\s000,00\s€/);
 
-    await user.click(within(table()).getByRole('button', { name: /^Valmis laskutukseen/ }));
-    expect(venues()[0]).toBe('Venue Ready');
+    await user.click(within(table()).getByRole('button', { name: /^Laskutus/ }));
+    expect(venues()).toEqual(['Venue None', 'Venue Ready', 'Venue Pre', 'Venue Invoiced', 'Venue Paid']);
 
-    await user.click(within(table()).getByRole('button', { name: 'Suodata: Valmis laskutukseen' }));
-    const popover = screen.getByRole('dialog', { name: 'Suodata: Valmis laskutukseen' });
+    await user.click(within(table()).getByRole('button', { name: 'Suodata: Laskutus' }));
+    const popover = screen.getByRole('dialog', { name: 'Suodata: Laskutus' });
     expect(within(popover).getAllByRole('checkbox').map((c) => c.closest('label')!.textContent)).toEqual([
-      'Kyllä',
-      'Ei',
+      '–',
+      'Valmis laskutukseen',
+      'Ennakko maksettu',
+      'Laskutettu',
+      'Maksettu',
     ]);
     await user.click(within(popover).getByRole('button', { name: 'Tyhjennä' }));
-    await user.click(within(popover).getByRole('checkbox', { name: 'Ei' }));
+    await user.click(within(popover).getByRole('checkbox', { name: 'Laskutettu' }));
+    await user.click(within(popover).getByRole('checkbox', { name: 'Maksettu' }));
     await user.click(within(popover).getByRole('button', { name: 'OK' }));
-    expect(venues().sort()).toEqual(['Venue Gone', 'Venue Played']);
+    expect(venues().sort()).toEqual(['Venue Invoiced', 'Venue Paid']);
   });
 
   it('sorts by any column header', async () => {
@@ -333,7 +349,7 @@ describe('event list (UC-003)', () => {
     expect(rows()[0]).toHaveTextContent('Template A · Venue X');
     // Every column is a labelled line of the card (economics included).
     expect(within(rows()[0]!).getAllByRole('cell').map((c) => c.getAttribute('data-label'))).toEqual(
-      expect.arrayContaining(['Kate-%', 'Valmis laskutukseen']),
+      expect.arrayContaining(['Kate-%', 'Laskutus', 'Saldo']),
     );
     // Kate-%: budget and actual ("tot. x %") are separate lines (block elements, eventList.css).
     const margin = within(rows()[0]!).getAllByRole('cell').find((c) => c.getAttribute('data-label') === 'Kate-%')!;
@@ -341,7 +357,7 @@ describe('event list (UC-003)', () => {
     expect(margin.querySelector('.event-margin-actual')).toHaveTextContent(/^tot\. \S+\s%$/);
     await user.click(screen.getByRole('button', { name: 'Suodattimet' }));
     const sheet = screen.getByRole('dialog', { name: 'Suodattimet' });
-    for (const column of ['Kokoonpano', 'Paikka', 'Asiakas', 'Tila', 'Valmis laskutukseen', 'Miehitys kesken', 'Myyjä', 'Tuottaja']) {
+    for (const column of ['Kokoonpano', 'Paikka', 'Asiakas', 'Tila', 'Laskutus', 'Miehitys kesken', 'Myyjä', 'Tuottaja']) {
       expect(within(sheet).getByRole('button', { name: column })).toBeInTheDocument();
     }
   });
