@@ -2,10 +2,10 @@
 // `db.freelancer` (freelancerStore.ts: purchaseOrders, events, nextSeq; creation is there). The
 // cost lines live in `db.events`; `CostLine.purchaseOrder` is kept in sync (pay / unpay keep it,
 // cancel clears it). Synthetic data only (BR-090). Does not import mocks/data.ts.
-import type { Id, LineupTemplate, Partner, PurchaseOrder, Settings } from '../api/types';
-import type { FeeLine, FreelancerState } from './freelancerStore';
-import { logPurchaseOrderEvent, newPurchaseOrder } from './freelancerStore';
-import type { EventState } from './eventStore';
+import type { Id, LineupTemplate, Partner, PoEligibleLine, PurchaseOrder, Settings } from '../api/types';
+import type { CreateResult, FeeLine, FreelancerState } from './freelancerStore';
+import { activePurchaseOrderOf, feeLines, logPurchaseOrderEvent, newPurchaseOrder } from './freelancerStore';
+import type { EventState, MockPerson } from './eventStore';
 import { createEvent, linesOf, logEvent, nowTs } from './eventStore';
 
 /** A copy as the API returns it. */
@@ -34,6 +34,65 @@ export function addPurchaseOrder(
     return { line, event };
   });
   return newPurchaseOrder(state, person, fees, (f) => f.line.budgetedCents, createdAt);
+}
+
+/**
+ * Fees a partner can put on a PO by hand (contract "Purchase orders created by partners"): the
+ * person's lines with an amount > 0, unpaid, not on an OPEN/PAID PO, on non-deleted SOLD events
+ * (played or upcoming), no FUEL. Optional `eventId` limits to one event. Newest event first.
+ */
+function eligibleFees(state: FreelancerState, events: EventState, personId: Id, eventId?: Id): FeeLine[] {
+  return feeLines(events, personId).filter(
+    ({ line, event }) =>
+      line.type !== 'FUEL' &&
+      line.paidAt === null &&
+      !activePurchaseOrderOf(state, line.id) &&
+      (!eventId || event.id === eventId),
+  );
+}
+
+export function poEligibleLines(
+  state: FreelancerState,
+  events: EventState,
+  personId: Id,
+  eventId?: Id,
+): PoEligibleLine[] {
+  return eligibleFees(state, events, personId, eventId).map(({ line, event }) => ({
+    costLineId: line.id,
+    eventId: event.id,
+    eventStartDate: event.startDate,
+    eventVenue: event.venue,
+    eventLineupName: event.lineupName,
+    type: line.type,
+    description: line.description,
+    amountCents: line.budgetedCents,
+  }));
+}
+
+/**
+ * `POST /api/purchase-orders`: all-or-nothing PO for the person's eligible fees (no "played" rule),
+ * snapshot of the budgets; the CREATED event carries the partner's id.
+ */
+export function createPurchaseOrderByHand(
+  state: FreelancerState,
+  events: EventState,
+  person: MockPerson,
+  costLineIds: Id[],
+  actorId: Id,
+): CreateResult {
+  const fees = eligibleFees(state, events, person.id);
+  const chosen: FeeLine[] = [];
+  const notEligible: Id[] = [];
+  for (const id of costLineIds) {
+    const fee = fees.find((f) => f.line.id === id);
+    if (fee) chosen.push(fee);
+    else notEligible.push(id);
+  }
+  if (notEligible.length > 0) return { ok: false, notEligible };
+  return {
+    ok: true,
+    purchaseOrder: newPurchaseOrder(state, person, chosen, (f) => f.line.budgetedCents, nowTs(), actorId),
+  };
 }
 
 function costLinesOf(events: EventState, po: PurchaseOrder) {

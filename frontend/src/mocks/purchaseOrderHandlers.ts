@@ -7,13 +7,24 @@ import type { PurchaseOrder, PurchaseOrderListResponse, ReasonRequest } from '..
 import { db } from './data';
 import {
   cancelPurchaseOrder,
+  createPurchaseOrderByHand,
   payPurchaseOrder,
+  poEligibleLines,
   toPurchaseOrder,
   unpayPurchaseOrder,
 } from './purchaseOrderStore';
 import { currentPartner, errorResponse, unauthenticated, validationError } from './util';
 
 const MAX_REASON = 500;
+const MAX_IDS = 200;
+
+/** 1…200 unique non-empty strings, else null. */
+function checkIds(value: unknown): string[] | null {
+  if (!Array.isArray(value) || value.length < 1 || value.length > MAX_IDS) return null;
+  if (!value.every((id) => typeof id === 'string' && id.length > 0)) return null;
+  if (new Set(value).size !== value.length) return null;
+  return value as string[];
+}
 
 const notFound = () => errorResponse(404, 'NOT_FOUND', 'Not found');
 const badTransition = () =>
@@ -60,6 +71,33 @@ export const purchaseOrderHandlers = [
       .map(toPurchaseOrder);
     const body: PurchaseOrderListResponse = { purchaseOrders: orders };
     return HttpResponse.json(body);
+  }),
+
+  // By hand (contract "Purchase orders created by partners").
+  http.post('/api/purchase-orders', async ({ request }) => {
+    const me = currentPartner();
+    if (!me) return unauthenticated();
+    const body = (await request.json().catch(() => null)) as { personId?: unknown; costLineIds?: unknown } | null;
+    const ids = checkIds(body?.costLineIds);
+    if (typeof body?.personId !== 'string' || !body.personId) return validationError({ personId: 'REQUIRED' });
+    if (!ids) return validationError({ costLineIds: 'INVALID_VALUE' });
+    const person = db.events.people.find((p) => p.id === body.personId);
+    if (!person) return validationError({ personId: 'UNKNOWN_REFERENCE' });
+    const result = createPurchaseOrderByHand(db.freelancer, db.events, person, ids, me.id);
+    if (!result.ok) {
+      return errorResponse(409, 'COST_LINE_NOT_ELIGIBLE', 'Some cost lines are not eligible', undefined, {
+        costLineIds: result.notEligible,
+      });
+    }
+    return HttpResponse.json(toPurchaseOrder(result.purchaseOrder), { status: 201 });
+  }),
+
+  http.get('/api/people/:id/po-eligible-lines', ({ params, request }) => {
+    if (!currentPartner()) return unauthenticated();
+    const person = db.events.people.find((p) => p.id === params.id);
+    if (!person) return notFound();
+    const eventId = new URL(request.url).searchParams.get('eventId') || undefined;
+    return HttpResponse.json(poEligibleLines(db.freelancer, db.events, person.id, eventId));
   }),
 
   // Before /:id so "events" is not taken for an id.
