@@ -110,8 +110,8 @@ spoof it and bypass the limit).
 - **Pay / unpay** update the cost lines and write event history entries `COST_PAID` / `COST_UNPAID` with
   `details.purchaseOrderNumber`. Every PO change appends a `purchase_order_event` (CREATED has
   `partner_id` null = the freelancer).
-- **List year** = year of `created_at` in Europe/Helsinki; `q` (number or current person name,
-  case-insensitive) searches all years.
+- **List year** = year of `created_at` in Europe/Helsinki and optional (without it: all years, newest
+  first); `q` (number or current person name, case-insensitive) searches all years.
 
 ## Data import (UC-035)
 
@@ -180,7 +180,12 @@ src/offers/        offers (routes/offers.ts): derived status/expired (BR-102), y
                    (32 CSPRNG bytes, base64url; looked up by SHA-256, BR-104)
                    KPI card figures for GET /api/offers/stats (stats.ts, BR-122): one scan over the
                    non-deleted offers of all years (5 columns); months/years of createdAt and "today"
-                   in Europe/Helsinki; open = PENDING and event date >= today
+                   in Europe/Helsinki; open = PENDING and event date >= today; `year` optional (default
+                   = current Helsinki year), year series cover year-3 … year+2
+                   Optional year (2026-10-30, "Year is no longer global"): GET /api/offers without `year`
+                   lists all years newest created first (summary over all non-deleted offers); with
+                   `year` the old per-year list by event date. GET /api/people/{id}/cost-lines without
+                   `year` = all years, newest event first, totals over all.
 src/routes/publicOffers.ts  GET /api/public/offers/{token} and its token-scoped reference photos
                    (BR-108): the only non-auth routes besides /api/auth/*; noindex, 60 requests/min per IP
                    each (in-memory, 429 RATE_LIMITED); every photo miss is the same 404
