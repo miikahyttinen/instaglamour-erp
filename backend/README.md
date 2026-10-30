@@ -176,7 +176,7 @@ Replace the TASK-045 event invoice status and prepayment (and, before that, the 
 - `EventDetail.invoiceRows` (creation order). EventSummary/EventDetail derive (`src/domain/invoicing.ts`,
   api-contract "Invoicing state: coverage + payment"; `invoiceState` was removed):
   `balanceCents = totalPriceCents − Σ PAID`, `invoicedCents = Σ SENT + PAID`, `paidCents = Σ PAID`,
-  `openCents = Σ SENT` (READY rows are drafts) and two states:
+  `openCents = Σ SENT`, `readyCents = Σ READY` (READY rows are drafts, not invoiced) and two states:
   - `invoiceCoverage`: NONE (total 0 and no SENT/PAID rows — READY drafts don't count) · NEEDS_INVOICES
     (invoiced < total) · FULLY_INVOICED (invoiced ≥ total).
   - `paymentState`: NONE (no SENT/PAID rows) · OPEN_INVOICES (open > 0) · PARTLY_PAID (open 0, 0 < paid < total)

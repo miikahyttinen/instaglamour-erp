@@ -19,6 +19,8 @@ export interface Invoicing {
   paidCents: number;
   /** Σ SENT rows (sent, not paid). */
   openCents: number;
+  /** Σ READY rows (drafts, not yet invoiced). */
+  readyCents: number;
   invoiceCoverage: InvoiceCoverage;
   paymentState: PaymentState;
 }
@@ -35,7 +37,9 @@ export interface Invoicing {
 export function invoicing(totalPriceCents: number, rows: readonly InvoicingRow[]): Invoicing {
   let paidCents = 0;
   let openCents = 0;
+  let readyCents = 0;
   for (const row of rows) {
+    if (row.status === 'READY') readyCents += row.amountCents;
     if (row.status === 'SENT') openCents += row.amountCents;
     if (row.status === 'PAID') paidCents += row.amountCents;
   }
@@ -55,7 +59,7 @@ export function invoicing(totalPriceCents: number, rows: readonly InvoicingRow[]
   else if (paidCents < totalPriceCents) paymentState = 'PARTLY_PAID';
   else paymentState = 'FULLY_PAID';
 
-  return { balanceCents, invoicedCents, paidCents, openCents, invoiceCoverage, paymentState };
+  return { balanceCents, invoicedCents, paidCents, openCents, readyCents, invoiceCoverage, paymentState };
 }
 
 /** The invoice status of TASK-045 (no longer stored; still accepted by the seed/import). */

@@ -45,6 +45,7 @@ describe('EventSummary / EventDetail fields', () => {
       invoicedCents: 0,
       paidCents: 0,
       openCents: 0,
+      readyCents: 0,
       invoiceCoverage: 'NEEDS_INVOICES',
       paymentState: 'NONE',
     };
@@ -74,13 +75,16 @@ describe('EventSummary / EventDetail fields', () => {
     let e = await added(event.id, { description: 'Ennakkomaksu', amountCents: 30000, status: 'PAID' });
     expect(e).toMatchObject({ balanceCents: 90000, invoicedCents: 30000, paidCents: 30000, openCents: 0, ...partly });
     e = await added(event.id, { description: 'Lasku', amountCents: 90000 }); // READY = draft
-    expect(e).toMatchObject({ balanceCents: 90000, invoicedCents: 30000, paidCents: 30000, openCents: 0, ...partly });
+    expect(e).toMatchObject({ balanceCents: 90000, invoicedCents: 30000, paidCents: 30000, openCents: 0, readyCents: 90000, ...partly });
+    const listed = (await call(s, 'GET', '/api/events?year=2026')).json().events[0];
+    expect(listed).toMatchObject({ readyCents: 90000, openCents: 0 });
     e = (await patchRow(lastRow(e).id, { status: 'SENT' })).json();
     expect(e).toMatchObject({
       balanceCents: 90000,
       invoicedCents: 120000,
       paidCents: 30000,
       openCents: 90000,
+      readyCents: 0,
       invoiceCoverage: 'FULLY_INVOICED',
       paymentState: 'OPEN_INVOICES',
     });
