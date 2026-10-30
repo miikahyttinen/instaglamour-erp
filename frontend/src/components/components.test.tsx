@@ -59,7 +59,7 @@ describe('Button', () => {
 });
 
 describe('StatusTag', () => {
-  it.each(['info', 'ok', 'warn', 'danger', 'muted'] as const)('tone %s', (tone) => {
+  it.each(['info', 'ok', 'warn', 'yellow', 'danger', 'muted'] as const)('tone %s', (tone) => {
     render(<StatusTag tone={tone}>Label</StatusTag>);
     expect(screen.getByText('Label')).toHaveClass('tag', `tag-${tone}`);
   });

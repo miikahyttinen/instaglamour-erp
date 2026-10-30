@@ -201,7 +201,8 @@ describe('event page (UC-004, UC-007)', () => {
   });
 
   it('Laskutus card under the price card: add, edit and remove invoice rows; totals and balance (TASK-173)', async () => {
-    const event = addMockEvent();
+    // A played gig (past date): "Laskuttamatta" applies to played gigs only.
+    const event = addMockEvent({ startDate: '2020-06-01' });
     const { user } = renderApp(`/gigs/${event.id}`);
     await screen.findByRole('heading', { name: 'Template A · Venue X', level: 1 });
     // Directly after the price section; the old status select and prepayment field are gone.
@@ -223,7 +224,7 @@ describe('event page (UC-004, UC-007)', () => {
       expect(stateGroup().querySelectorAll('.tag')).toHaveLength(1);
       expect(state().getByText(label)).toHaveClass('tag', toneClass);
     };
-    expectState('Laskuttamatta', 'tag-muted');
+    expectState('Laskuttamatta', 'tag-yellow');
 
     // Add: required fields checked client-side; status defaults to "Valmis laskutukseen".
     await user.click(card.getByRole('button', { name: '+ Lisää laskurivi' }));
@@ -256,7 +257,7 @@ describe('event page (UC-004, UC-007)', () => {
     await user.selectOptions(status, 'Maksettu');
     await waitFor(() => expect(total('Maksettu')).toHaveTextContent(/400,00\s€/));
     expect(total('Avoimet')).toHaveTextContent(/0,00\s€/);
-    expectState('Laskuttamatta', 'tag-muted');
+    expectState('Laskuttamatta', 'tag-yellow');
     expect(total('Laskutettu')).toHaveTextContent(/400,00\s€/);
     expect(card.getByRole('group', { name: 'Saldo' })).toHaveTextContent(/600,00\s€/);
     expect(status.closest('.inline-field')).toHaveClass('tone-ok-strong');
@@ -285,6 +286,14 @@ describe('event page (UC-004, UC-007)', () => {
     expect(await card.findByText('Ei laskurivejä.')).toBeInTheDocument();
     expect(card.getByRole('group', { name: 'Saldo' })).toHaveTextContent(/1\s000,00\s€/);
     await waitFor(() => expect(historyItems()[0]).toHaveTextContent('Laskurivi poistettu'));
+  });
+
+  it('upcoming gig with no invoice rows shows "–", not "Laskuttamatta" (played gigs only)', async () => {
+    const upcoming = addMockEvent({ venue: 'Venue Soon' });
+    renderApp(`/gigs/${upcoming.id}`);
+    const group = await within(await waitFor(() => section('Laskutus'))).findByRole('group', { name: 'Laskutuksen tila' });
+    expect(group.querySelector('.tag')).toBeNull();
+    expect(group).toHaveTextContent('–');
   });
 
   it('invoice rows stay editable on a cancelled gig (cancellation fee)', async () => {

@@ -51,12 +51,13 @@ const COLOR_TOKENS = [
   ['--accent', 'primary, current bar'],
   ['--accent-contrast', 'text on accent'],
 ] as const;
-const STATUS_TOKENS = ['info', 'ok', 'warn', 'purple', 'danger'] as const;
+const STATUS_TOKENS = ['info', 'ok', 'ok-strong', 'warn', 'yellow', 'purple', 'danger'] as const;
 const SPACING = [1, 2, 3, 4, 5, 6, 7] as const;
 const TONES: { tone: StatusTone; text: string; use: string }[] = [
   { tone: 'info', text: 'Upcoming', use: 'Upcoming gig / Open' },
   { tone: 'ok', text: 'Played', use: 'Played gig / Done / Paid / Ready to be invoiced' },
-  { tone: 'warn', text: 'Not fully staffed', use: 'Overdue / staffing / contract warnings' },
+  { tone: 'warn', text: 'Not fully staffed', use: 'Overdue / staffing / contract warnings / Open invoices' },
+  { tone: 'yellow', text: 'Needs invoices', use: 'Needs invoices (played gig not fully invoiced)' },
   { tone: 'purple', text: 'Purple', use: 'currently unused (token kept)' },
   { tone: 'danger', text: 'Cancelled', use: 'Cancelled / Deleted' },
   { tone: 'muted', text: 'Inactive', use: 'neutral facts' },

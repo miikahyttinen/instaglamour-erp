@@ -24,11 +24,11 @@ export const INVOICE_ROW_STATUS_TONE: Record<InvoiceRowStatus, StatusTone> = {
 /**
  * Gig invoicing state tones (api-contract "Invoicing: one label"): Paid = dark green (solid
  * `ok-strong`), Rows to be invoiced = blue (info), Open invoices = amber (warn), Needs invoices =
- * gray (muted, owner 2026-10-31). NONE is a plain dash, no tag.
+ * yellow (played gigs only; owner 2026-10-31, distinct from the amber warn). NONE is a plain dash, no tag.
  */
 export const INVOICE_STATE_TONE: Record<Exclude<InvoiceState, 'NONE'>, StatusTone> = {
   PAID: 'ok-strong',
   ROWS_TO_INVOICE: 'info',
   OPEN_INVOICES: 'warn',
-  NEEDS_INVOICES: 'muted',
+  NEEDS_INVOICES: 'yellow',
 };

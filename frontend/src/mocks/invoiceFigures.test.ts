@@ -8,7 +8,7 @@ const rows = (...list: [InvoiceRowStatus, number][]) => list.map(([status, amoun
 
 describe('invoiceFigures', () => {
   it.each([
-    // [case, total, rows, state]
+    // [case, total, rows, state] — a played gig
     ['total 0, no rows', 0, rows(), 'NONE'],
     ['no rows', 100000, rows(), 'NEEDS_INVOICES'],
     ['READY drafts only', 100000, rows(['READY', 100000]), 'ROWS_TO_INVOICE'],
@@ -24,12 +24,24 @@ describe('invoiceFigures', () => {
     ['total 0, paid row', 0, rows(['PAID', 5000]), 'PAID'],
     ['total 0, sent row (nothing paid → not PAID)', 0, rows(['SENT', 5000]), 'OPEN_INVOICES'],
     ['total 0, READY draft only', 0, rows(['READY', 5000]), 'ROWS_TO_INVOICE'],
-  ] as const)('%s → %s', (_case, total, list, state) => {
-    expect(invoiceFigures(list, total).invoiceState).toBe(state);
+  ] as const)('played: %s → %s', (_case, total, list, state) => {
+    expect(invoiceFigures(list, total, true).invoiceState).toBe(state);
+  });
+
+  // Upcoming / cancelled gigs (not played) never get NEEDS_INVOICES; the other steps are unchanged.
+  it.each([
+    ['no rows', 100000, rows(), 'NONE'],
+    ['part paid, nothing open', 100000, rows(['PAID', 40000]), 'NONE'],
+    ['total 0, no rows', 0, rows(), 'NONE'],
+    ['READY drafts only', 100000, rows(['READY', 100000]), 'ROWS_TO_INVOICE'],
+    ['part sent', 100000, rows(['SENT', 40000]), 'OPEN_INVOICES'],
+    ['all paid', 100000, rows(['PAID', 100000]), 'PAID'],
+  ] as const)('not played: %s → %s', (_case, total, list, state) => {
+    expect(invoiceFigures(list, total, false).invoiceState).toBe(state);
   });
 
   it('sums invoiced (SENT + PAID), paid, ready (READY), open (SENT) and balance (total − paid)', () => {
-    expect(invoiceFigures(rows(['READY', 1000], ['SENT', 2000], ['PAID', 3000]), 10000)).toEqual({
+    expect(invoiceFigures(rows(['READY', 1000], ['SENT', 2000], ['PAID', 3000]), 10000, true)).toEqual({
       invoicedCents: 5000,
       paidCents: 3000,
       readyCents: 1000,
