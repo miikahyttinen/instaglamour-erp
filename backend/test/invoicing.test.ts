@@ -11,14 +11,21 @@ describe('invoicing()', () => {
       invoicedCents: 0,
       paidCents: 0,
       openCents: 0,
+      readyCents: 0,
       invoiceCoverage: 'NEEDS_INVOICES',
       paymentState: 'NONE',
     });
   });
 
-  it('sums: invoiced = SENT + PAID, paid = PAID, open = SENT, balance = total − paid (READY = draft)', () => {
-    const rows = [row('READY', 10000), row('SENT', 20000), row('SENT', 5000), row('PAID', 30000), row('PAID', 1000)];
-    expect(invoicing(100000, rows)).toMatchObject({ invoicedCents: 56000, paidCents: 31000, openCents: 25000, balanceCents: 69000 });
+  it('sums: invoiced = SENT + PAID, paid = PAID, open = SENT, ready = READY, balance = total − paid', () => {
+    const rows = [row('READY', 10000), row('READY', 2500), row('SENT', 20000), row('SENT', 5000), row('PAID', 30000), row('PAID', 1000)];
+    expect(invoicing(100000, rows)).toMatchObject({
+      invoicedCents: 56000,
+      paidCents: 31000,
+      openCents: 25000,
+      readyCents: 12500,
+      balanceCents: 69000,
+    });
   });
 
   // [name, total, rows, invoiceCoverage, paymentState]
