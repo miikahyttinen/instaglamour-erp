@@ -166,15 +166,22 @@ template roles (no person → `TROMBONE`) and person roles (de-duplicated, `MUSI
 still load and are converted the same way (`seed/README.md`, `convertLegacyRole` in
 `src/domain/enums.ts`).
 
-## Ready to be invoiced (TASK-044)
+## Invoice status, prepayment and balance (TASK-045)
 
-- Set by hand: `POST /api/events/{id}/ready-for-invoice` stores `event.ready_for_invoice_at` (now) and
-  `ready_for_invoice_by` (the signed-in partner) and logs `READY_FOR_INVOICE`; `DELETE` clears both and logs
-  `READY_FOR_INVOICE_CLEARED`. Both return `EventDetail`; already set / not set → 200 no-op without history.
-- Order of checks: 404 → deleted (409 `EVENT_DELETED`) → POST on a CANCELLED event (409
-  `INVALID_STATUS_TRANSITION`). Upcoming and played SOLD events are allowed. Cancelling keeps the values
-  (the UI hides them); DELETE may clear them on a cancelled event.
-- `readyForInvoiceAt` / `readyForInvoiceBy` are in every EventSummary/EventDetail. Not in seed/import.
+Replaces the TASK-044 "Ready to be invoiced" flag (its endpoints and `readyForInvoiceAt/By` are gone).
+
+- Columns `event.invoice_status` (enum `InvoiceStatus`: NONE default, READY, PREPAYMENT_PAID, INVOICED,
+  PAID), `invoice_status_at` / `invoice_status_by` (last status change) and `prepayment_cents`
+  (default 0, DB check ≥ 0). EventSummary/EventDetail also return the derived
+  `balanceCents = totalPriceCents − prepaymentCents` (negative when the prepayment exceeds the total).
+- Set with `PATCH /api/events/{id}`: `invoiceStatus` (any value → any value) and `prepaymentCents`
+  (integer ≥ 0, else 400 `INVALID_VALUE`). Changes are logged as normal `UPDATED` field changes; a status
+  change (also back to NONE) sets at/by = now/me. Allowed on SOLD and CANCELLED events; deleted → 409
+  `EVENT_DELETED`.
+- `GET /api/events?invoiceStatus=READY&invoiceStatus=INVOICED` (repeatable) keeps events with any of them.
+- Migration `20261031130000_event_invoice_status` copies `ready_for_invoice_at/by` into READY with the same
+  at/by, then drops the two old columns. Old `READY_FOR_INVOICE[_CLEARED]` history entries stay.
+- Seed/import: optional `invoiceStatus` / `prepaymentCents` per event (default NONE / 0; at/by stay null).
 
 ## Layout
 
