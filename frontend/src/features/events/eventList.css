@@ -125,7 +125,7 @@
 .event-list-page .event-table td.event-col-staffing {
   color: var(--text-muted);
 }
-/* "Laskutus": colour tag per invoice status; NONE is a muted dash. */
+/* "Laskutus": coverage + payment tags on two lines; NONE is a muted dash. */
 .event-list-page .event-table td.event-col-invoice {
   color: var(--text-muted);
 }

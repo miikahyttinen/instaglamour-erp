@@ -67,6 +67,15 @@ export interface ExcelColumn<T> {
   filterLabel?: (value: string) => string;
   /** Order of the values in the popover (default: by label; blank is always last). */
   filterCompare?: (a: string, b: string) => number;
+  /**
+   * A second filter on the data of a visible column (e.g. "Maksut" in the "Laskutus" column):
+   * not rendered as a header, cell or card line; only its filter, whose button sits in the header
+   * of the column listing this key in `extraFilters` (and in the phone filter sheet). Filters with
+   * `filterValue` like any column; the URL key is `f.<key>`.
+   */
+  filterOnly?: boolean;
+  /** Keys of `filterOnly` columns whose filter buttons are shown in this column's header. */
+  extraFilters?: readonly string[];
 }
 
 const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });

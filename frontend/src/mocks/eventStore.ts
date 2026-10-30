@@ -10,7 +10,8 @@ import type {
   EventHistoryType,
   EventStatus,
   InvoiceRowStatus,
-  InvoiceState,
+  InvoiceCoverage,
+  PaymentState,
   Logistics,
   TechnicalSetup,
 } from '../api/enums';
@@ -126,27 +127,41 @@ export function invoiceRowsOf(state: EventState, eventId: Id): InvoiceRow[] {
   return state.invoiceRows.filter((r) => r.eventId === eventId);
 }
 
-/** Derived invoicing figures of a gig (api-contract "Invoice rows"). */
+export interface InvoiceFigures {
+  invoicedCents: number;
+  paidCents: number;
+  openCents: number;
+  balanceCents: number;
+  invoiceCoverage: InvoiceCoverage;
+  paymentState: PaymentState;
+}
+
+/**
+ * Derived invoicing figures of a gig (api-contract "Invoice rows" and "Invoicing state: coverage +
+ * payment"): invoiced = Σ SENT + PAID, paid = Σ PAID, open = Σ SENT; READY rows are drafts.
+ */
 export function invoiceFigures(
-  rows: InvoiceRow[],
+  rows: Pick<InvoiceRow, 'status' | 'amountCents'>[],
   totalPriceCents: number,
-): { invoicedCents: number; paidCents: number; balanceCents: number; invoiceState: InvoiceState } {
+): InvoiceFigures {
   const sum = (statuses: InvoiceRowStatus[]) =>
     rows.filter((r) => statuses.includes(r.status)).reduce((s, r) => s + r.amountCents, 0);
+  const total = totalPriceCents;
+  const invoicedCents = sum(['SENT', 'PAID']);
   const paidCents = sum(['PAID']);
-  const balanceCents = totalPriceCents - paidCents;
-  const has = (status: InvoiceRowStatus) => rows.some((r) => r.status === status);
-  const invoiceState: InvoiceState =
-    rows.length === 0
-      ? 'NONE'
-      : has('SENT')
-        ? 'SENT'
-        : has('READY')
-          ? 'READY'
-          : balanceCents > 0
-            ? 'PARTLY_PAID'
-            : 'PAID';
-  return { invoicedCents: sum(['SENT', 'PAID']), paidCents, balanceCents, invoiceState };
+  const openCents = sum(['SENT']);
+  const invoiceCoverage: InvoiceCoverage =
+    total === 0 && rows.length === 0 ? 'NONE' : invoicedCents < total ? 'NEEDS_INVOICES' : 'FULLY_INVOICED';
+  const hasSentOrPaid = rows.some((r) => r.status === 'SENT' || r.status === 'PAID');
+  // Not covered by the contract: open = 0, paid > 0 and total = 0 → FULLY_PAID (paid ≥ total).
+  const paymentState: PaymentState = !hasSentOrPaid
+    ? 'NONE'
+    : openCents > 0
+      ? 'OPEN_INVOICES'
+      : paidCents > 0 && paidCents < total
+        ? 'PARTLY_PAID'
+        : 'FULLY_PAID';
+  return { invoicedCents, paidCents, openCents, balanceCents: total - paidCents, invoiceCoverage, paymentState };
 }
 
 export function toSummary(state: EventState, event: MockEvent, today = todayIso()): EventSummary {

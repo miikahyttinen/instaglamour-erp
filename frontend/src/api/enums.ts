@@ -75,9 +75,16 @@ export type LegacyInvoiceStatus = (typeof LEGACY_INVOICE_STATUSES)[number];
 export const INVOICE_ROW_STATUSES = ['READY', 'SENT', 'PAID'] as const;
 export type InvoiceRowStatus = (typeof INVOICE_ROW_STATUSES)[number];
 
-/** Gig invoicing state derived from its rows, in workflow order (api-contract "Invoice rows"). */
-export const INVOICE_STATES = ['NONE', 'READY', 'SENT', 'PARTLY_PAID', 'PAID'] as const;
-export type InvoiceState = (typeof INVOICE_STATES)[number];
+/**
+ * How much of a gig's total has been invoiced (SENT + PAID rows), derived; in workflow order
+ * (api-contract "Invoicing state: coverage + payment").
+ */
+export const INVOICE_COVERAGES = ['NONE', 'NEEDS_INVOICES', 'FULLY_INVOICED'] as const;
+export type InvoiceCoverage = (typeof INVOICE_COVERAGES)[number];
+
+/** Payment state of a gig's sent invoices, derived; in workflow order (same contract section). */
+export const PAYMENT_STATES = ['NONE', 'OPEN_INVOICES', 'PARTLY_PAID', 'FULLY_PAID'] as const;
+export type PaymentState = (typeof PAYMENT_STATES)[number];
 
 export const TASK_STATUSES = ['OPEN', 'DONE'] as const;
 export type TaskStatus = (typeof TASK_STATUSES)[number];

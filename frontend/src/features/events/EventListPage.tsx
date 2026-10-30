@@ -3,7 +3,13 @@ import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } f
 import { useTranslation } from 'react-i18next';
 import { Plus, RotateCcw, Search } from 'lucide-react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
-import { INVOICE_STATES, type EventDisplayStatus, type InvoiceState } from '../../api/enums';
+import {
+  INVOICE_COVERAGES,
+  PAYMENT_STATES,
+  type EventDisplayStatus,
+  type InvoiceCoverage,
+  type PaymentState,
+} from '../../api/enums';
 import { eventsApi } from '../../api/endpoints';
 import type { EventListQuery, EventSummary, Partner, YearEventTotals } from '../../api/types';
 import { useSelectedYear } from '../../auth/SignedInContext';
@@ -23,11 +29,11 @@ import { PageYearSelector } from '../../components/PageYearSelector';
 import { SectionLabel } from '../../components/SectionLabel';
 import { StatGrid, StatTile } from '../../components/StatTile';
 import { StatusTag } from '../../components/StatusTag';
-import { apiErrorMessage, eventDisplayStatus, invoiceStateLabel } from '../../i18n/labels';
+import { apiErrorMessage, eventDisplayStatus, invoiceCoverageLabel, paymentStateLabel } from '../../i18n/labels';
 import { useLang } from '../../i18n/useLang';
 import { formatDate, formatDateRange, formatMoney, formatPercent, todayIso } from '../../lib/format';
 import { useReference } from '../../reference/useReference';
-import { EventStatusTag, InvoiceStateTag } from './EventStatusTag';
+import { EventStatusTag, InvoicingTags } from './EventStatusTag';
 import { useApplyEvent, useEventList } from './queries';
 import './eventList.css';
 
@@ -395,15 +401,28 @@ function EventTable({ events, partners, lang, tableState }: EventTableProps) {
       cell: (g) => <EventStatusTag status={eventDisplayStatus(g)} />,
     },
     {
-      key: 'invoiceState',
-      label: t('events.columns.invoiceState'),
+      // "Laskutus": coverage tag on line 1, payment tag on line 2; sorted by coverage, then
+      // payment. Two filters in its header: Laskutus (coverage) and Maksut (payment state).
+      key: 'invoiceCoverage',
+      label: t('events.columns.invoiceCoverage'),
       priority: 2,
       className: 'event-col-invoice excel-col-fit',
-      sortValue: (g) => INVOICE_STATES.indexOf(g.invoiceState),
-      filterValue: (g) => g.invoiceState,
-      filterLabel: (v) => invoiceStateLabel(t, v as InvoiceState),
-      filterCompare: byCodeOrder(INVOICE_STATES),
-      cell: (g) => <InvoiceStateTag state={g.invoiceState} />,
+      sortValue: (g) =>
+        INVOICE_COVERAGES.indexOf(g.invoiceCoverage) * PAYMENT_STATES.length + PAYMENT_STATES.indexOf(g.paymentState),
+      filterValue: (g) => g.invoiceCoverage,
+      filterLabel: (v) => invoiceCoverageLabel(t, v as InvoiceCoverage),
+      filterCompare: byCodeOrder(INVOICE_COVERAGES),
+      extraFilters: ['paymentState'],
+      cell: (g) => <InvoicingTags coverage={g.invoiceCoverage} payment={g.paymentState} />,
+    },
+    {
+      key: 'paymentState',
+      label: t('events.columns.paymentState'),
+      filterOnly: true,
+      filterValue: (g) => g.paymentState,
+      filterLabel: (v) => paymentStateLabel(t, v as PaymentState),
+      filterCompare: byCodeOrder(PAYMENT_STATES),
+      cell: () => null,
     },
     {
       key: 'staffing',

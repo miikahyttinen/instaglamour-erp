@@ -187,12 +187,16 @@ const fi = {
     SENT: 'Lähetetty',
     PAID: 'Maksettu',
   },
-  invoiceState: {
+  invoiceCoverage: {
     NONE: '–',
-    READY: 'Valmis laskutukseen',
-    SENT: 'Laskutettu',
+    NEEDS_INVOICES: 'Laskuttamatta',
+    FULLY_INVOICED: 'Laskutettu kokonaan',
+  },
+  paymentState: {
+    NONE: '–',
+    OPEN_INVOICES: 'Avoimia laskuja',
     PARTLY_PAID: 'Osittain maksettu',
-    PAID: 'Maksettu',
+    FULLY_PAID: 'Maksettu kokonaan',
   },
   taskStatus: {
     OPEN: 'Avoin',
@@ -304,7 +308,8 @@ const fi = {
       lineup: 'Kokoonpano',
       venue: 'Paikka',
       status: 'Tila',
-      invoiceState: 'Laskutus',
+      invoiceCoverage: 'Laskutus',
+      paymentState: 'Maksut',
       balance: 'Saldo',
     },
     staffingFilter: {
@@ -359,6 +364,8 @@ const fi = {
       add: 'Lisää laskurivi',
       invoiced: 'Laskutettu',
       paid: 'Maksettu',
+      open: 'Avoimet',
+      state: 'Laskutuksen tila',
       balance: 'Saldo',
       negativeBalance: 'Maksettu enemmän kuin kokonaishinta.',
       removeTitle: 'Poista laskurivi',
