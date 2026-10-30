@@ -29,6 +29,7 @@ import path from 'node:path';
 import type { Db } from '../src/db.js';
 import { dateFromIso } from '../src/domain/dates.js';
 import { defaultCostLines } from '../src/domain/costLines.js';
+import { legacyInvoiceRows } from '../src/domain/invoicing.js';
 import {
   isMusicianRole,
   LEGACY_OFFER_SETTING_KEYS,
@@ -115,6 +116,12 @@ export function readSeedFile(file: string): unknown {
 }
 
 /** Delete all application data (keeps the schema). Order respects foreign keys. */
+/** An event's invoice rows from the file: `invoiceRows`, or the legacy status + prepayment converted (TASK-046). */
+function invoiceRowsOf(g: SeedData['events'][number]) {
+  if (g.invoiceRows) return g.invoiceRows;
+  return legacyInvoiceRows(g.priceCents + g.additionalSalesCents, g.invoiceStatus ?? 'NONE', g.prepaymentCents ?? 0);
+}
+
 export async function emptyDatabase(tx: Tx): Promise<void> {
   await tx.session.deleteMany();
   await tx.importRun.deleteMany();
@@ -125,6 +132,7 @@ export async function emptyDatabase(tx: Tx): Promise<void> {
   await tx.offerEvent.deleteMany();
   await tx.eventHistory.deleteMany();
   await tx.attachment.deleteMany();
+  await tx.invoiceRow.deleteMany();
   await tx.costLine.deleteMany();
   await tx.eventTechnicalSetupLegacy.deleteMany();
   await tx.event.deleteMany();
@@ -481,9 +489,16 @@ async function applySeed(
         additionalSalesDescription: g.additionalSalesDescription ?? null,
         notes: g.notes ?? null,
         clientId: g.client ? clientIdByKey.get(clientNameKey(g.client))! : null,
-        // From the file, not a change made in the app: invoiceStatusAt/By stay null.
-        invoiceStatus: g.invoiceStatus,
-        prepaymentCents: g.prepaymentCents,
+        // From the file, not a change made in the app: created/status by stay null. Rows keep file order.
+        invoiceRows: {
+          createMany: {
+            data: invoiceRowsOf(g).map((r, i) => ({
+              ...r,
+              createdAt: new Date(createdBase + i),
+              statusAt: new Date(createdBase + i),
+            })),
+          },
+        },
         // Cost lines are shown in creation order: give them strictly increasing timestamps.
         costLines: { createMany: { data: lines.map((l, i) => ({ ...l, createdAt: new Date(createdBase + i)})) } },
       },
