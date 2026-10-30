@@ -166,6 +166,16 @@ template roles (no person → `TROMBONE`) and person roles (de-duplicated, `MUSI
 still load and are converted the same way (`seed/README.md`, `convertLegacyRole` in
 `src/domain/enums.ts`).
 
+## Ready to be invoiced (TASK-044)
+
+- Set by hand: `POST /api/events/{id}/ready-for-invoice` stores `event.ready_for_invoice_at` (now) and
+  `ready_for_invoice_by` (the signed-in partner) and logs `READY_FOR_INVOICE`; `DELETE` clears both and logs
+  `READY_FOR_INVOICE_CLEARED`. Both return `EventDetail`; already set / not set → 200 no-op without history.
+- Order of checks: 404 → deleted (409 `EVENT_DELETED`) → POST on a CANCELLED event (409
+  `INVALID_STATUS_TRANSITION`). Upcoming and played SOLD events are allowed. Cancelling keeps the values
+  (the UI hides them); DELETE may clear them on a cancelled event.
+- `readyForInvoiceAt` / `readyForInvoiceBy` are in every EventSummary/EventDetail. Not in seed/import.
+
 ## Layout
 
 ```
