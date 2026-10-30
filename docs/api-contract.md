@@ -550,7 +550,7 @@ One derived value **`invoiceState`** = the next invoicing action; first match wi
 1. `PAID` — paid > 0 and paid ≥ total → "Maksettu / Paid" (ok-strong, dark green)
 2. `ROWS_TO_INVOICE` — readyCents > 0 → "Laskutettavia rivejä / Rows to be invoiced" (info, blue)
 3. `OPEN_INVOICES` — openCents > 0 → "Avoimia laskuja / Open invoices" (warn, amber)
-4. `NEEDS_INVOICES` — invoiced < total → "Laskuttamatta / Needs invoices" (danger, red)
+4. `NEEDS_INVOICES` — **played gig** (SOLD and start date passed) and invoiced < total → "Laskuttamatta / Needs invoices" (**yellow**, new tone distinct from the amber of Open invoices; updated 2026-10-31). Upcoming and cancelled gigs never get this state (they fall to NONE)
 5. `NONE` — otherwise (e.g. total 0 and no rows) → "–"
 - `EventSummary`/`EventDetail`: remove `invoiceCoverage` and `paymentState`; add `invoiceState`; keep `invoicedCents`, `paidCents`, `openCents`, `readyCents`, `balanceCents`.
 - Filter `?invoiceState=` (repeatable, OR; unknown → 400) replaces `?invoiceCoverage=` / `?paymentState=`.
