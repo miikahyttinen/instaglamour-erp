@@ -19,12 +19,14 @@ export function poErrorMessage(t: TFunction, error: unknown): string {
   return apiErrorMessage(t, error);
 }
 
-/** Event text of the log (BR-119): Luotu freelancerin linkillä / … / Peruttu: <reason>. */
+/** Event text of the log (BR-119): Luotu freelancerin linkillä / Luotu käsin / … / Peruttu: <reason>. */
 export function poEventText(t: TFunction, event: PurchaseOrderEvent): string {
   if (event.type === 'CANCELLED') {
     const { reason } = event.details as { reason?: string };
     return t('purchaseOrders.log.CANCELLED', { reason: reason ?? '–' });
   }
+  // A partner id on CREATED = made by hand on the partner pages (the link path has null).
+  if (event.type === 'CREATED' && event.partnerId !== null) return t('purchaseOrders.log.CREATED_BY_PARTNER');
   return t(`purchaseOrders.log.${event.type}`);
 }
 
