@@ -39,3 +39,6 @@ export const PAYMENT_STATE_TONE: Record<Exclude<PaymentState, 'NONE'>, StatusTon
   PARTLY_PAID: 'purple',
   FULLY_PAID: 'ok-strong',
 };
+
+/** "Laskutettavia rivejä" in the Keikat table (owner 2026-10-31): blue, like the READY row status. */
+export const ROWS_TO_INVOICE_TONE: StatusTone = 'info';

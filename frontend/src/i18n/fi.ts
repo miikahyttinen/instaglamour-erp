@@ -310,6 +310,7 @@ const fi = {
       status: 'Tila',
       invoiceCoverage: 'Laskutus',
       paymentState: 'Maksut',
+      rowsToInvoice: 'Laskutettavia rivejä',
       balance: 'Saldo',
     },
     staffingFilter: {

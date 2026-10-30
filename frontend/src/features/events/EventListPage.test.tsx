@@ -277,7 +277,7 @@ describe('event list (UC-003)', () => {
     await waitFor(() => expect(venues()).toEqual(['Venue Y']));
   });
 
-  it('shows "Laskutus" as coverage + payment tags on two lines, sorted by coverage then payment, with Laskutus and Maksut filters', async () => {
+  it('shows "Laskutus" as coverage (or rows to invoice) + payment tags on two lines, sorted, with Laskutus and Maksut filters', async () => {
     signInMock().selectedYear = 2020;
     // Default mock gig total: 1 000,00 €.
     const add = (day: string, venue: string, rows: [InvoiceRowStatus, number][], priceCents = 100000) => {
@@ -291,7 +291,7 @@ describe('event list (UC-003)', () => {
     add('01-04', 'Venue Partly', [['PAID', 40000]]);
     add('01-03', 'Venue Open', [['PAID', 40000], ['SENT', 60000]]);
     add('01-02', 'Venue Draft', [['READY', 100000]]);
-    add('01-01', 'Venue Zero', [['READY', 5000]], 0);
+    add('01-01', 'Venue Zero', [], 0);
     installMatchMedia({ [TABLET_QUERY]: true, [DESKTOP_QUERY]: true, [WIDE_QUERY]: true });
     const { user, url } = renderAppWithUrl(`/gigs`);
     await waitFor(() => expect(venues()).toHaveLength(5));
@@ -306,7 +306,8 @@ describe('event list (UC-003)', () => {
         return tag ? `${[...tag.classList].find((c) => c.startsWith('tag-'))} ${tag.textContent}` : line.textContent;
       });
     expect(lines('Venue Zero')).toEqual(['–', '–']);
-    expect(lines('Venue Draft')).toEqual(['tag-warn Laskuttamatta', '–']);
+    // READY rows: "Laskutettavia rivejä" (blue) replaces the coverage tag in the table.
+    expect(lines('Venue Draft')).toEqual(['tag-info Laskutettavia rivejä', '–']);
     expect(lines('Venue Open')).toEqual(['tag-ok Laskutettu kokonaan', 'tag-info Avoimia laskuja']);
     expect(lines('Venue Partly')).toEqual(['tag-warn Laskuttamatta', 'tag-purple Osittain maksettu']);
     expect(lines('Venue Paid')).toEqual(['tag-ok Laskutettu kokonaan', 'tag-ok-strong Maksettu kokonaan']);
@@ -323,7 +324,15 @@ describe('event list (UC-003)', () => {
     await user.click(within(table()).getByRole('button', { name: 'Suodata: Laskutus' }));
     let popover = screen.getByRole('dialog', { name: 'Suodata: Laskutus' });
     const options = () => within(popover).getAllByRole('checkbox').map((c) => c.closest('label')!.textContent);
-    expect(options()).toEqual(['–', 'Laskuttamatta', 'Laskutettu kokonaan']);
+    expect(options()).toEqual(['–', 'Laskutettavia rivejä', 'Laskuttamatta', 'Laskutettu kokonaan']);
+    await user.click(within(popover).getByRole('button', { name: 'Tyhjennä' }));
+    await user.click(within(popover).getByRole('checkbox', { name: 'Laskutettavia rivejä' }));
+    await user.click(within(popover).getByRole('button', { name: 'OK' }));
+    expect(venues()).toEqual(['Venue Draft']);
+    expect(url()).toContain('f.invoiceCoverage=ROWS_TO_INVOICE');
+
+    await user.click(within(table()).getByRole('button', { name: 'Suodata: Laskutus' }));
+    popover = screen.getByRole('dialog', { name: 'Suodata: Laskutus' });
     await user.click(within(popover).getByRole('button', { name: 'Tyhjennä' }));
     await user.click(within(popover).getByRole('checkbox', { name: 'Laskutettu kokonaan' }));
     await user.click(within(popover).getByRole('button', { name: 'OK' }));

@@ -26,10 +26,11 @@ describe('invoiceFigures', () => {
     expect(invoiceFigures(list, total)).toMatchObject({ invoiceCoverage: coverage, paymentState: payment });
   });
 
-  it('sums invoiced (SENT + PAID), paid, open (SENT) and balance (total − paid)', () => {
+  it('sums invoiced (SENT + PAID), paid, ready (READY), open (SENT) and balance (total − paid)', () => {
     expect(invoiceFigures(rows(['READY', 1000], ['SENT', 2000], ['PAID', 3000]), 10000)).toEqual({
       invoicedCents: 5000,
       paidCents: 3000,
+      readyCents: 1000,
       openCents: 2000,
       balanceCents: 7000,
       invoiceCoverage: 'NEEDS_INVOICES',

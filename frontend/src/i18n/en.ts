@@ -307,6 +307,7 @@ const en: Resources = {
       status: 'Status',
       invoiceCoverage: 'Invoicing',
       paymentState: 'Payments',
+      rowsToInvoice: 'Rows to be invoiced',
       balance: 'Balance',
     },
     staffingFilter: {

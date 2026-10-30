@@ -262,6 +262,16 @@ test('gig statuses and "Laskutus": invoice rows, coverage + payment tags on the 
   await expect(row.locator('.invoice-row-changed')).toContainText(/Partner A \d+\.\d+\.\d{4} klo /);
   await expect.poll(async () => (await apiGig()).invoiceCoverage).toBe('NEEDS_INVOICES');
   expect((await apiGig()).paymentState).toBe('NONE');
+  expect((await apiGig()).readyCents).toBe(total + 1000);
+  // The gig page keeps the coverage tag; the Keikat table shows blue "Laskutettavia rivejä" instead
+  // (client-side filter value ROWS_TO_INVOICE).
+  await expect(stateLines.nth(0).locator('.tag')).toHaveText('Laskuttamatta');
+  await openList(page, year, '?f.invoiceCoverage=ROWS_TO_INVOICE');
+  await expect(eventListRows(page)).toHaveCount(1);
+  const readyTag = eventListRows(page).first().locator('td.event-col-invoice .invoicing-tags > span').first().locator('.tag');
+  await expect(readyTag).toHaveText('Laskutettavia rivejä');
+  await expect(readyTag).toHaveClass(/tag-info/);
+  await page.goto(`/gigs/${gig.id}`);
 
   // Sent (amber): fully invoiced (light green) + open invoices (blue); Avoimet = the row.
   await status.selectOption({ label: 'Lähetetty' });

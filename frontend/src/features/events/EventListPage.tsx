@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next';
 import { Plus, RotateCcw, Search } from 'lucide-react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import {
-  INVOICE_COVERAGES,
   PAYMENT_STATES,
   type EventDisplayStatus,
   type InvoiceCoverage,
@@ -36,6 +35,15 @@ import { useReference } from '../../reference/useReference';
 import { EventStatusTag, InvoicingTags } from './EventStatusTag';
 import { useApplyEvent, useEventList } from './queries';
 import './eventList.css';
+
+/**
+ * Line 1 of the "Laskutus" cell (Keikat table only): ROWS_TO_INVOICE ("Laskutettavia rivejä") when
+ * the gig has READY rows, else the coverage. Also its filter value (`f.invoiceCoverage`, client-side)
+ * and sort key; listed in this order.
+ */
+const LIST_COVERAGES = ['NONE', 'ROWS_TO_INVOICE', 'NEEDS_INVOICES', 'FULLY_INVOICED'] as const;
+type ListCoverage = (typeof LIST_COVERAGES)[number];
+const listCoverage = (g: EventSummary): ListCoverage => (g.readyCents > 0 ? 'ROWS_TO_INVOICE' : g.invoiceCoverage);
 
 /** Order of the status filter values and of the status sort. */
 const EVENT_DISPLAY_STATUSES: EventDisplayStatus[] = ['SOLD', 'PLAYED', 'CANCELLED'];
@@ -408,12 +416,15 @@ function EventTable({ events, partners, lang, tableState }: EventTableProps) {
       priority: 2,
       className: 'event-col-invoice',
       sortValue: (g) =>
-        INVOICE_COVERAGES.indexOf(g.invoiceCoverage) * PAYMENT_STATES.length + PAYMENT_STATES.indexOf(g.paymentState),
-      filterValue: (g) => g.invoiceCoverage,
-      filterLabel: (v) => invoiceCoverageLabel(t, v as InvoiceCoverage),
-      filterCompare: byCodeOrder(INVOICE_COVERAGES),
+        LIST_COVERAGES.indexOf(listCoverage(g)) * PAYMENT_STATES.length + PAYMENT_STATES.indexOf(g.paymentState),
+      filterValue: listCoverage,
+      filterLabel: (v) =>
+        v === 'ROWS_TO_INVOICE' ? t('events.columns.rowsToInvoice') : invoiceCoverageLabel(t, v as InvoiceCoverage),
+      filterCompare: byCodeOrder(LIST_COVERAGES),
       extraFilters: ['paymentState'],
-      cell: (g) => <InvoicingTags coverage={g.invoiceCoverage} payment={g.paymentState} />,
+      cell: (g) => (
+        <InvoicingTags coverage={g.invoiceCoverage} payment={g.paymentState} rowsToInvoice={g.readyCents > 0} />
+      ),
     },
     {
       key: 'paymentState',

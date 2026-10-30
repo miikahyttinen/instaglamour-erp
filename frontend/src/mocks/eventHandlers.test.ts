@@ -270,7 +270,7 @@ describe('event mocks', () => {
       statusBy: partnerA().id,
       createdBy: partnerA().id,
     });
-    expect(first).toMatchObject({ invoiceCoverage: 'NEEDS_INVOICES', paymentState: 'NONE', openCents: 0 });
+    expect(first).toMatchObject({ invoiceCoverage: 'NEEDS_INVOICES', paymentState: 'NONE', openCents: 0, readyCents: 10000 });
     const rowA = first.invoiceRows[0]!;
     const second = await invoiceRowsApi.create(event.id, { description: 'Invoice', amountCents: total - 10000, status: 'SENT' });
     expect(second.invoiceRows.map((r) => r.description)).toEqual(['Prepayment', 'Invoice']);

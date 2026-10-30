@@ -133,6 +133,8 @@ export interface EventSummary {
   paidCents: Cents;
   /** totalPriceCents − paidCents; negative when more has been paid than the total. */
   balanceCents: Cents;
+  /** Σ amountCents of READY invoice rows (drafts; the Keikat table shows "Laskutettavia rivejä"). */
+  readyCents: Cents;
   /** Σ amountCents of SENT invoice rows (sent, not paid; "Avoimet"). */
   openCents: Cents;
   /** Derived from the total and the rows (api-contract "Invoicing state: coverage + payment"). */

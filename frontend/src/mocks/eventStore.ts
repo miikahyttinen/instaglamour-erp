@@ -130,6 +130,7 @@ export function invoiceRowsOf(state: EventState, eventId: Id): InvoiceRow[] {
 export interface InvoiceFigures {
   invoicedCents: number;
   paidCents: number;
+  readyCents: number;
   openCents: number;
   balanceCents: number;
   invoiceCoverage: InvoiceCoverage;
@@ -138,7 +139,7 @@ export interface InvoiceFigures {
 
 /**
  * Derived invoicing figures of a gig (api-contract "Invoice rows" and "Invoicing state: coverage +
- * payment"): invoiced = Σ SENT + PAID, paid = Σ PAID, open = Σ SENT; READY rows are drafts.
+ * payment"): invoiced = Σ SENT + PAID, paid = Σ PAID, open = Σ SENT, ready = Σ READY (drafts).
  */
 export function invoiceFigures(
   rows: Pick<InvoiceRow, 'status' | 'amountCents'>[],
@@ -150,6 +151,7 @@ export function invoiceFigures(
   const invoicedCents = sum(['SENT', 'PAID']);
   const paidCents = sum(['PAID']);
   const openCents = sum(['SENT']);
+  const readyCents = sum(['READY']);
   const hasSentOrPaid = rows.some((r) => r.status === 'SENT' || r.status === 'PAID');
   // NONE: total 0 and nothing sent / paid (no rows, or READY drafts only).
   const invoiceCoverage: InvoiceCoverage =
@@ -162,7 +164,7 @@ export function invoiceFigures(
       : paidCents > 0 && paidCents < total
         ? 'PARTLY_PAID'
         : 'FULLY_PAID';
-  return { invoicedCents, paidCents, openCents, balanceCents: total - paidCents, invoiceCoverage, paymentState };
+  return { invoicedCents, paidCents, readyCents, openCents, balanceCents: total - paidCents, invoiceCoverage, paymentState };
 }
 
 export function toSummary(state: EventState, event: MockEvent, today = todayIso()): EventSummary {

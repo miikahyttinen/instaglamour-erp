@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next';
 import type { EventDisplayStatus, InvoiceCoverage, PaymentState } from '../../api/enums';
 import { StatusTag } from '../../components/StatusTag';
 import { eventStatusLabel, invoiceCoverageLabel, paymentStateLabel } from '../../i18n/labels';
-import { EVENT_DELETED_TONE, EVENT_STATUS_TONE, INVOICE_COVERAGE_TONE, PAYMENT_STATE_TONE } from './eventStatusTone';
+import { EVENT_DELETED_TONE, EVENT_STATUS_TONE, INVOICE_COVERAGE_TONE, PAYMENT_STATE_TONE, ROWS_TO_INVOICE_TONE } from './eventStatusTone';
 
 /** Event status (Upcoming / Played / Cancelled) as a shared `StatusTag`. */
 export function EventStatusTag({ status }: { status: EventDisplayStatus }) {
@@ -32,15 +32,34 @@ export function PaymentStateTag({ state }: { state: PaymentState }) {
   );
 }
 
+/** Keikat table: the gig has READY rows (`readyCents > 0`) — blue, replaces the coverage tag. */
+export function RowsToInvoiceTag() {
+  const { t } = useTranslation();
+  return (
+    <StatusTag tone={ROWS_TO_INVOICE_TONE} className="invoice-status-tag rows-to-invoice-tag">
+      {t('events.columns.rowsToInvoice')}
+    </StatusTag>
+  );
+}
+
 /**
  * Both invoicing tags of a gig, coverage on line 1 and payment on line 2 (list "Laskutus" cell,
- * phone cards, gig page Laskutus card). Lines are block spans (eventList.css / eventPage.css).
+ * phone cards, gig page Laskutus card). `rowsToInvoice` (Keikat table only, readyCents > 0) shows
+ * "Laskutettavia rivejä" on line 1 instead of the coverage. Lines are block spans (styles.css).
  */
-export function InvoicingTags({ coverage, payment }: { coverage: InvoiceCoverage; payment: PaymentState }) {
+export function InvoicingTags({
+  coverage,
+  payment,
+  rowsToInvoice = false,
+}: {
+  coverage: InvoiceCoverage;
+  payment: PaymentState;
+  rowsToInvoice?: boolean;
+}) {
   return (
     <span className="invoicing-tags">
       <span className="invoicing-tags-coverage">
-        <InvoiceCoverageTag coverage={coverage} />
+        {rowsToInvoice ? <RowsToInvoiceTag /> : <InvoiceCoverageTag coverage={coverage} />}
       </span>
       <span className="invoicing-tags-payment">
         <PaymentStateTag state={payment} />
