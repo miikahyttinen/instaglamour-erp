@@ -8,7 +8,7 @@ Rules only — concrete values are seeded settings (`domain-model.md`).
 | ID | Rule |
 |---|---|
 | BR-080 | The year is the primary dimension. Gig → year of start date; hour entry → year of date; budget row → its year. |
-| BR-081 | The app has a **selected year** (default: current), shown in the header on every screen, remembered per partner. All totals use it. |
+| BR-081 | **Revised 2026-10-30:** the year is chosen **on the pages that need it** (Vuosi, Budjetti, Tunnit, Keikat) with a page-level year selector (default current year, remembered per partner and shared by those pages). Other pages (offers, purchase orders, clients, people, tasks) show all years; offers newest created first. |
 | BR-082 | **Sold gigs sum** = Σ total price of all non-deleted gigs in the year (cancelled gigs included with their adjusted price, BR-013). |
 | BR-083 | **Hours sum** = Σ hours in the year, per partner (with monthly totals) and for all partners. |
 

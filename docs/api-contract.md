@@ -485,7 +485,16 @@ No compatibility aliases for old API paths (no external clients). The UI renames
 - Seed/import accept the old codes and convert them the same way (HORN_2 by the person's roles in the file, else `TROMBONE`).
 - API requests with the removed codes → 400 `INVALID_VALUE`.
 
+## Year is no longer global (owner decision 2026-10-30)
+The year selector leaves the top bar. Pages that need a year have their **own year selector**: **Vuosi**, **Budjetti**, **Tunnit**, **Keikat** (default = current year; the chosen year is still remembered in `Me.selectedYear` and shared by these pages). Every other page shows **all years**.
+- `GET /api/offers`: `year` becomes **optional**; without it all non-deleted offers (or `deleted=true`) are returned. The UI sends no year; default sort newest created first. `summary` is computed over the returned set (unused by the UI).
+- `GET /api/purchase-orders`: `year` **optional** (without it: all years, newest first).
+- `GET /api/people/{id}/cost-lines`: `year` **optional** (without it: all years, newest gig first; totals over all).
+- `GET /api/offers/stats`: `year` **optional**, default = current year in the organisation time zone (Europe/Helsinki). Series ranges change to **year−3 … year+2** (6 items) for `averageByCreatedYear`, `byEventYear` and `openValueByEventYear`. `createdByMonth` (6 completed months), `openByEventType` (all open offers) and `winRate` (all time) are unchanged. The UI shows each year card's big figure for the current year by default; clicking a bar selects another year.
+- Endpoints that take a required `year` today for the four year pages keep it.
+
 ## Change log
+- 2026-10-30 – Year no longer global: optional year on offers / purchase orders / person cost lines; offer stats ranges year−3…year+2 (PM)
 - 2026-10-30 – Remove HORN_1/HORN_2/TECHNICIAN roles (converted to TRUMPET/SAX|TROMBONE/MIX); MIX = "Miksaus" (PM)
 - 2026-10-27 – Rename Gig → Event across API, data and UI (SaaS phase 1) (PM)
 - 2026-10-22 – Convert only ACCEPTED offers with event date ≥ today: 409 OFFER_NOT_CONVERTIBLE on gig-draft and convert (PM)
