@@ -11,11 +11,18 @@ import { renderApp, signInMock } from '../../test/renderApp';
 const fi = (cents: number) => formatMoney(cents, 'fi').replace(/\s/g, ' ');
 const cellTexts = (row: HTMLElement) =>
   within(row).getAllByRole('cell').map((c) => c.textContent!.replace(/\s/g, ' '));
-const table = () => screen.getByRole('table', { name: `Kulurivit ${TEST_YEAR}` });
+const table = () => screen.getByRole('table', { name: 'Kulurivit' });
 const bodyRows = () => within(table()).getAllByRole('row').filter((r) => r.closest('tbody'));
+
+/** The demo seed has lines in other years; the person page lists every year, so start clean. */
+function clearLinesOf(name: string) {
+  const { id } = person(name);
+  db.events.costLines = db.events.costLines.filter((l) => l.personId !== id);
+}
 
 /** Person 1 on three events of TEST_YEAR (one paid line, one cancelled event), one deleted, one next year. */
 function seedLines() {
+  clearLinesOf('Person 1');
   const g1 = addMockEvent({ startDate: `${TEST_YEAR}-03-01`, venue: 'Venue X' });
   staffMockEvent(g1, ['Person 1']);
   payCostLine(db.events, mockLine(g1, 'VOC'), 10000, partnerA().id);
@@ -48,16 +55,17 @@ describe('person page (UC-014 A2)', () => {
     signInMock().selectedYear = TEST_YEAR;
   });
 
-  it("lists the person's cost lines of the selected year with totals and event links", async () => {
+  it("lists the person's cost lines of every year, newest event first, with totals and event links", async () => {
     const { g1, g2, cancelled } = seedLines();
     renderApp(`/people/${person('Person 1').id}`);
     expect(await screen.findByRole('heading', { name: 'Person 1', level: 1 })).toBeInTheDocument();
-    await screen.findByRole('table', { name: `Kulurivit ${TEST_YEAR}` });
+    await screen.findByRole('table', { name: 'Kulurivit' });
 
     const rows = bodyRows();
-    expect(rows).toHaveLength(3);
+    expect(rows).toHaveLength(4);
 
-    const [paid, other, onCancelled] = rows as [HTMLElement, HTMLElement, HTMLElement];
+    const [next, onCancelled, other, paid] = rows as [HTMLElement, HTMLElement, HTMLElement, HTMLElement];
+    expect(next).toHaveTextContent('Venue W');
     expect(within(paid).getByRole('link', { name: `1.3.${TEST_YEAR}` })).toHaveAttribute('href', `/events/${g1.id}`);
     expect(paid).toHaveTextContent('Template A');
     expect(paid).toHaveTextContent('Venue X');
@@ -76,24 +84,23 @@ describe('person page (UC-014 A2)', () => {
     expect(onCancelled).toHaveTextContent('Peruttu');
 
     const total = within(table()).getByRole('rowheader', { name: 'Yhteensä' }).closest('tr')!;
-    expect(cellTexts(total)).toEqual([fi(30000), fi(10000), '']); // budget: 3 lines; actual: paid only
+    expect(cellTexts(total)).toEqual([fi(40000), fi(10000), '']); // budget: 4 lines; actual: paid only
     expect(screen.queryByText('Venue U')).not.toBeInTheDocument();
-    expect(screen.queryByText('Venue W')).not.toBeInTheDocument();
   });
 
-  it('follows the selected year', async () => {
+  it('does not depend on the selected year (no year selector, no year in the texts)', async () => {
     seedLines();
-    const { user } = renderApp(`/people/${person('Person 1').id}`);
-    await screen.findByRole('table', { name: `Kulurivit ${TEST_YEAR}` });
-    await user.click(screen.getByRole('button', { name: 'Seuraava vuosi' }));
-    await screen.findByRole('table', { name: `Kulurivit ${TEST_YEAR + 1}` });
-    await waitFor(() => expect(screen.getByText('Venue W')).toBeInTheDocument());
-    expect(screen.queryByText('Venue X')).not.toBeInTheDocument();
+    renderApp(`/people/${person('Person 1').id}`);
+    await screen.findByRole('table', { name: 'Kulurivit' });
+    expect(screen.queryByRole('combobox', { name: 'Valittu vuosi' })).toBeNull();
+    expect(screen.getByText('Budjetti yhteensä')).toBeInTheDocument();
+    expect(screen.getByText('Toteuma yhteensä')).toBeInTheDocument();
   });
 
   it('shows an empty state when there are no lines', async () => {
+    clearLinesOf('Person 3');
     renderApp(`/people/${person('Person 3').id}`);
-    expect(await screen.findByText(`Ei kulurivejä vuonna ${TEST_YEAR}.`)).toBeInTheDocument();
+    expect(await screen.findByText('Ei kulurivejä.')).toBeInTheDocument();
   });
 
   it('edits name and active in place, with no Edit buttons', async () => {
