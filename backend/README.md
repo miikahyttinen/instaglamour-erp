@@ -181,9 +181,10 @@ Replace the TASK-045 event invoice status and prepayment (and, before that, the 
   1. PAID — paid > 0 and paid ≥ total (incl. overpaid with READY/SENT rows left)
   2. ROWS_TO_INVOICE — readyCents > 0
   3. OPEN_INVOICES — openCents > 0
-  4. NEEDS_INVOICES — invoiced < total
-  5. NONE — otherwise (total 0 and no rows)
-  Same formulas for cancelled events.
+  4. NEEDS_INVOICES — played event (SOLD and start date before today in Helsinki, same rule as `played`)
+     and invoiced < total; upcoming and cancelled events fall to NONE
+  5. NONE — otherwise (total 0 and no rows; upcoming/cancelled without rows to act on)
+  Same sums for cancelled events. The `?invoiceState=` filter uses the same derived value.
 - `POST /api/events/{id}/invoice-rows`, `PATCH /api/invoice-rows/{id}`, `DELETE /api/invoice-rows/{id}` →
   200 EventDetail; history `INVOICE_ROW_ADDED` / `INVOICE_ROW_UPDATED` / `INVOICE_ROW_REMOVED` with details
   `{ invoiceRowId, description, amountCents, status }` (UPDATED: `{ invoiceRowId, description, changes }`).

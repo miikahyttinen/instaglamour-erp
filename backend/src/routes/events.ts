@@ -3,7 +3,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import type { AppDeps } from '../app.js';
 import { dateFromIso, isoFromDate, todayIso } from '../domain/dates.js';
-import { eventEconomics, isNotFullyStaffed, yearEventSummary } from '../domain/eventEconomics.js';
+import { eventEconomics, isNotFullyStaffed, isPlayed, yearEventSummary } from '../domain/eventEconomics.js';
 import type { CostType, Prisma } from '../generated/prisma/client.js';
 import { AppError, notFound, parseInput, validationError, type FieldCode } from '../http/errors.js';
 import {
@@ -132,7 +132,7 @@ export function eventRoutes(app: FastifyInstance, deps: AppDeps): void {
       if (query.producerId && g.producerId !== query.producerId) return false;
       if (query.notFullyStaffed === 'true' && !isNotFullyStaffed(g.costLines)) return false;
       if (query.invoiceState) {
-        const inv = invoicing(eventEconomics(g).totalPriceCents, g.invoiceRows);
+        const inv = invoicing(eventEconomics(g).totalPriceCents, g.invoiceRows, isPlayed(g.status, start, today));
         if (!query.invoiceState.includes(inv.invoiceState)) return false;
       }
       if (q && ![g.venue, g.lineupName, g.notes ?? '', g.client?.name ?? ''].some((s) => s.toLowerCase().includes(q)))
