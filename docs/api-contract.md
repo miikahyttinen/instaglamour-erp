@@ -499,6 +499,7 @@ For exceptions, partners can create a PO for one person by hand.
 - `POST /api/purchase-orders` `{ personId, costLineIds: [id] }` (1…200, unique) → 201 `PurchaseOrder`. Same numbering, snapshot amounts, locks and all-or-nothing rules as the freelancer link (BR-115/116/118), but the eligibility is the one above (no "played" requirement). Any id not eligible or not that person's → 409 `COST_LINE_NOT_ELIGIBLE` with `details.costLineIds`. Unknown person → 400 `personId: UNKNOWN_REFERENCE`.
 - The `CREATED` PurchaseOrderEvent gets the creating partner's id (`partnerId`), so the log shows who created it (the freelancer-link path keeps `partnerId: null` = "Freelancer").
 - The freelancer link keeps its played-only rule (BR-114).
+- Details: allowed for inactive persons and partners too (exception tool); unknown/malformed person on GET → 404; unknown/malformed `eventId` → `[]`; `personId` missing → REQUIRED, non-string → INVALID_VALUE.
 
 ## Change log
 - 2026-10-31 – Partners can create POs by hand (POST /api/purchase-orders, eligible-lines endpoint) (PM)
