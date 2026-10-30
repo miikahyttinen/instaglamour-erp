@@ -198,23 +198,25 @@ test('freelancer link → create PO → mark paid → event lines paid and locke
   // ---- Partner: Ostotilaukset ----
   await page.goto('/');
   await goNav(page, 'Ostotilaukset');
-  await expect(page.getByRole('heading', { level: 1, name: `Ostotilaukset ${CURRENT_YEAR}` })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Ostotilaukset' })).toBeVisible();
   const row = poRow(page, po.number);
   await expect(row).toBeVisible();
   await expect(row).toContainText(person.name);
   await expect(row).toContainText(fiMoney(70000));
-  await expect(poRow(page, oldPo.number), 'the backdated PO is not in this year').toHaveCount(0);
+  // Every year is listed (contract "Year is no longer global"): the backdated PO too, below.
+  await expect(poRow(page, oldPo.number), 'the backdated PO is listed (all years)').toHaveCount(1);
+  await expect(page.getByRole('combobox', { name: 'Valittu vuosi' })).toHaveCount(0);
 
   // Search by part of the number finds it; the shared slug finds the other year's PO too.
   const search = page.getByLabel('Haku', { exact: true });
   await search.fill(po.number.slice(-9).toLowerCase());
-  await expect(page.getByText('Haetaan kaikilta vuosilta')).toBeVisible();
   await expect(poRow(page, po.number)).toBeVisible();
+  await expect(poRow(page, oldPo.number)).toHaveCount(0);
   await search.fill(`${tag}-${s}`.toLowerCase());
   await expect(poRow(page, po.number)).toBeVisible();
   await expect(poRow(page, oldPo.number)).toBeVisible();
   await search.fill('');
-  await expect(page.getByRole('heading', { level: 1, name: `Ostotilaukset ${CURRENT_YEAR}` })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Ostotilaukset' })).toBeVisible();
 
   // Mark paid in the list → green "Maksettu <date> klo <time>".
   const payRes = page.waitForResponse((r) => r.request().method() === 'POST' && r.url().endsWith('/pay'));
@@ -318,7 +320,7 @@ test('freelancer link → create PO → mark paid → event lines paid and locke
 
   // … and in the list's log, with the number.
   await page.goto('/purchase-orders');
-  await expect(page.getByRole('heading', { level: 1, name: `Ostotilaukset ${CURRENT_YEAR}` })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Ostotilaukset' })).toBeVisible();
   await expect(poRow(page, po.number).locator('.tag.tag-muted')).toHaveText('Peruttu');
   const log = page
     .getByRole('table', { name: 'Ostotilausten muutokset' })
