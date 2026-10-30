@@ -481,6 +481,9 @@ async function applySeed(
         additionalSalesDescription: g.additionalSalesDescription ?? null,
         notes: g.notes ?? null,
         clientId: g.client ? clientIdByKey.get(clientNameKey(g.client))! : null,
+        // From the file, not a change made in the app: invoiceStatusAt/By stay null.
+        invoiceStatus: g.invoiceStatus,
+        prepaymentCents: g.prepaymentCents,
         // Cost lines are shown in creation order: give them strictly increasing timestamps.
         costLines: { createMany: { data: lines.map((l, i) => ({ ...l, createdAt: new Date(createdBase + i)})) } },
       },

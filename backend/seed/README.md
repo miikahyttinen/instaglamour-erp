@@ -108,6 +108,8 @@ Partners, templates, people, clients and budget categories are referenced by ema
       "seller": "partner.a@example.com", "producer": "partner.b@example.com",
       "priceCents": 100000, "additionalSalesCents": 0, "additionalSalesDescription": "…", "notes": "…",
       "client": "Client A Oy",                              // optional; a name from clients (case-insensitive)
+      "invoiceStatus": "INVOICED",                          // optional: NONE (default) | READY | PREPAYMENT_PAID | INVOICED | PAID
+      "prepaymentCents": 20000,                             // optional, ≥ 0, default 0
       "costLines": [                                        // omit → generated per BR-020/BR-021 from template + settings
         {
           "type": "BASS",                                   // any CostType (docs/domain-model.md)
