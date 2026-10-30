@@ -129,6 +129,16 @@
 .event-list-page .event-table td.event-col-invoice {
   color: var(--text-muted);
 }
+/* Every column shown (from 1600 px of table width): the invoicing tag is the fit column's minimum
+   ("Avoimia laskuja", "Laskuttamatta"), so it gets a tighter letter spacing and padding to keep
+   the table inside its container (one line, no wrap). */
+@container excel-table (min-width: 1600px) {
+  .event-list-page .event-table td.event-col-invoice .tag {
+    letter-spacing: 0.06em;
+    padding-left: var(--space-1);
+    padding-right: var(--space-1);
+  }
+}
 .event-list-page .event-balance-negative {
   color: var(--warn-fg);
 }
