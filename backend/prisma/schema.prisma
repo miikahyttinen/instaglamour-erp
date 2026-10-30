@@ -95,6 +95,8 @@ enum EventHistoryType {
   COST_UNPAID
   ATTACHMENT_ADDED
   ATTACHMENT_REMOVED
+  READY_FOR_INVOICE
+  READY_FOR_INVOICE_CLEARED
 }
 
 /// Where an offer request came from (domain-model.md "Offer").
@@ -201,6 +203,7 @@ model Partner {
   soldEvents              Event[]              @relation("EventSeller")
   producedEvents          Event[]              @relation("EventProducer")
   deletedEvents           Event[]              @relation("EventDeletedBy")
+  readyForInvoiceEvents   Event[]              @relation("EventReadyForInvoiceBy")
   paidCostLines           CostLine[]           @relation("CostLinePaidBy")
   uploadedAttachments     Attachment[]
   eventHistory            EventHistory[]
@@ -303,6 +306,9 @@ model Event {
   offerId                    String?         @unique @map("offer_id") @db.Uuid
   deletedAt                  DateTime?       @map("deleted_at")
   deletedById                String?         @map("deleted_by") @db.Uuid
+  /// Set by hand on the gig page ("Ready to be invoiced", api-contract 2026-10-31); both null = not set.
+  readyForInvoiceAt          DateTime?       @map("ready_for_invoice_at")
+  readyForInvoiceById        String?         @map("ready_for_invoice_by") @db.Uuid
   createdAt                  DateTime        @default(now()) @map("created_at")
   updatedAt                  DateTime        @updatedAt @map("updated_at")
 
@@ -310,6 +316,7 @@ model Event {
   seller             Partner             @relation("EventSeller", fields: [sellerId], references: [id])
   producer           Partner             @relation("EventProducer", fields: [producerId], references: [id])
   deletedBy          Partner?            @relation("EventDeletedBy", fields: [deletedById], references: [id])
+  readyForInvoiceBy  Partner?            @relation("EventReadyForInvoiceBy", fields: [readyForInvoiceById], references: [id])
   client             Client?             @relation(fields: [clientId], references: [id], onDelete: Restrict)
   offer              Offer?              @relation(fields: [offerId], references: [id], onDelete: Restrict)
   costLines          CostLine[]
