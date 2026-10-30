@@ -254,6 +254,7 @@ describe('event page (UC-004, UC-007)', () => {
     await user.selectOptions(status, 'Lähetetty');
     await waitFor(() => expect(total('Avoimet')).toHaveTextContent(/400,00\s€/));
     expectState('Avoimia laskuja', 'tag-warn');
+    expect(status.closest('.inline-field')).toHaveClass('tone-ok');
     await user.selectOptions(status, 'Maksettu');
     await waitFor(() => expect(total('Maksettu')).toHaveTextContent(/400,00\s€/));
     expect(total('Avoimet')).toHaveTextContent(/0,00\s€/);
@@ -306,7 +307,7 @@ describe('event page (UC-004, UC-007)', () => {
     expect(status).toBeEnabled();
     await user.selectOptions(status, 'Lähetetty');
     await waitFor(() => expect(fee.status).toBe('SENT'));
-    expect(status.closest('.inline-field')).toHaveClass('tone-warn');
+    expect(status.closest('.inline-field')).toHaveClass('tone-ok');
   });
 
   it('deleted gigs show invoice rows read-only', async () => {

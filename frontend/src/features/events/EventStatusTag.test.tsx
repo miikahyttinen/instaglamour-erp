@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { EVENT_DISPLAY_STATUSES, INVOICE_STATES } from '../../api/enums';
 import { EventDeletedTag, EventStatusTag, InvoiceStateTag } from './EventStatusTag';
-import { EVENT_STATUS_TONE, INVOICE_STATE_TONE } from './eventStatusTone';
+import { EVENT_STATUS_TONE, INVOICE_ROW_STATUS_TONE, INVOICE_STATE_TONE } from './eventStatusTone';
 
 describe('EventStatusTag', () => {
   it.each([
@@ -31,6 +31,10 @@ describe('EventStatusTag', () => {
 
   it('has a tone for every invoicing state except NONE', () => {
     for (const state of INVOICE_STATES) if (state !== 'NONE') expect(INVOICE_STATE_TONE[state]).toBeDefined();
+  });
+
+  it('invoice row statuses: Ready blue, Sent light green, Paid solid green', () => {
+    expect(INVOICE_ROW_STATUS_TONE).toEqual({ READY: 'info', SENT: 'ok', PAID: 'ok-strong' });
   });
 
   it('NONE is a plain dash', () => {

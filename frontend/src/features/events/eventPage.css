@@ -797,7 +797,7 @@
   text-align: right;
 }
 /* Status select drawn as its colour tag (owner 2026-10-31: Valmis laskutukseen blue, Lähetetty
-   amber, Maksettu solid dark green); hover / focus keep the usual inline outline. */
+   light green, Maksettu solid green box); hover / focus keep the usual inline outline. */
 .event-page .invoice-row-status select.inline-input {
   /* Sized to the chosen label (the table is narrow in the two-column layout). */
   field-sizing: content;
