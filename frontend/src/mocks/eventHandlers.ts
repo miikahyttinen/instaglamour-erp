@@ -243,6 +243,11 @@ export const eventHandlers = [
     const notFullyStaffed = params.get('notFullyStaffed') === 'true';
     const deleted = params.get('deleted') === 'true';
     const q = (params.get('q') ?? '').trim().toLowerCase();
+    // Repeatable ?invoiceStatus= (any of); an unknown value → 400 (the UI filters client-side).
+    const invoiceStatuses = params.getAll('invoiceStatus');
+    if (invoiceStatuses.some((v) => !(INVOICE_STATUSES as readonly string[]).includes(v))) {
+      return validationError({ invoiceStatus: 'INVALID_VALUE' });
+    }
     const today = todayIso();
 
     const events = db.events.events
@@ -252,6 +257,7 @@ export const eventHandlers = [
       .filter((g) => when === 'all' || (when === 'upcoming' ? g.startDate >= today : g.startDate < today))
       .filter((g) => !sellerId || g.sellerId === sellerId)
       .filter((g) => !producerId || g.producerId === producerId)
+      .filter((g) => invoiceStatuses.length === 0 || invoiceStatuses.includes(g.invoiceStatus))
       .filter((g) => {
         if (!q) return true;
         const clientName = db.events.clients.find((c) => c.id === g.clientId)?.name ?? '';

@@ -11,7 +11,6 @@ import {
   logEvent,
   nowTs,
   payCostLine,
-  updateEvent,
 } from './eventStore';
 
 /** Fixed ids of the synthetic people (Person 1…9). */
@@ -108,7 +107,8 @@ export function seedEventState(
   linesOf(state, g1.id).forEach((line) => payCostLine(state, line, line.budgetedCents, a.id));
   // An old-style history entry (before invoice statuses) still renders its own text.
   logEvent(state, g1.id, 'READY_FOR_INVOICE', a.id);
-  updateEvent(state, g1, { invoiceStatus: 'READY' }, ctx.partners, a.id);
+  // Seeded statuses have no who / when (as in the backend seed).
+  g1.invoiceStatus = 'READY';
 
   // 2. Two-day event with additional sales; keys not staffed.
   const g2 = createEvent(
@@ -131,7 +131,8 @@ export function seedEventState(
   );
   staff(g2.id, [PERSON_IDS[0]!]);
   addCostLine(state, g2, { type: 'FUEL', personId: null, description: null, budgetedCents: 10000 }, a.id);
-  updateEvent(state, g2, { invoiceStatus: 'PREPAYMENT_PAID', prepaymentCents: 50000 }, ctx.partners, b.id);
+  g2.invoiceStatus = 'PREPAYMENT_PAID';
+  g2.prepaymentCents = 50000;
 
   // 3. Cancelled; price adjusted to what is still billed.
   const g3 = createEvent(
@@ -142,7 +143,7 @@ export function seedEventState(
   );
   g3.status = 'CANCELLED';
   logEvent(state, g3.id, 'CANCELLED', b.id, {}, 'Event called off by the client.');
-  updateEvent(state, g3, { invoiceStatus: 'INVOICED' }, ctx.partners, b.id);
+  g3.invoiceStatus = 'INVOICED';
 
   // 4. Deleted by mistake (shows in Events → Deleted).
   const g4 = createEvent(

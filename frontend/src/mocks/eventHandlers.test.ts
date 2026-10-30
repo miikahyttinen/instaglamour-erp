@@ -279,6 +279,14 @@ describe('event mocks', () => {
       (await expectError(eventsApi.update(event.id, { invoiceStatus: 'NOPE' as never }))).fields,
     ).toEqual({ invoiceStatus: 'INVALID_VALUE' });
 
+    const listed2 = async (query: string) => {
+      const res = await fetch(`/api/events?year=${YEAR}&${query}`);
+      return { status: res.status, ids: res.ok ? ((await res.json()) as { events: { id: string }[] }).events.map((g) => g.id) : [] };
+    };
+    expect((await listed2('invoiceStatus=READY')).ids).toContain(event.id);
+    expect((await listed2('invoiceStatus=NONE&invoiceStatus=PAID')).ids).not.toContain(event.id);
+    expect((await listed2('invoiceStatus=NOPE')).status).toBe(400);
+
     // Allowed on cancelled gigs; deleted → 409.
     await eventsApi.cancel(event.id, { reason: 'Called off' });
     expect((await eventsApi.update(event.id, { invoiceStatus: 'INVOICED' })).event.invoiceStatus).toBe('INVOICED');
