@@ -1,4 +1,4 @@
-/* Event page (UC-004 … UC-013): header, sections, economics, cost table, attachments, history.
+/* Event page (UC-004 … UC-013): header, sections, economics, cost table, history.
    Tokens only (docs/design.md, Layout v2). Scoped under .event-page. Phone first.
    - Sections: 1 column; 2 columns from 1200 px (the 232 px sidebar leaves ~590 px at 900 px).
    - Basic info / price: Card + FieldList (one label column).
@@ -640,59 +640,6 @@
       border-top: var(--hairline) solid var(--border);
     }
   }
-}
-
-/* ---------- Attachments ---------- */
-
-.event-page .attachment-list {
-  display: block;
-  list-style: none;
-  margin: 0 0 var(--space-4);
-  padding: 0;
-  background: var(--surface);
-  border: var(--hairline) solid var(--border);
-  border-radius: var(--radius);
-}
-.event-page .attachment {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 0 var(--space-3);
-  padding: var(--space-2) var(--card-pad);
-  min-height: var(--row-h);
-  border-bottom: var(--hairline) solid var(--border);
-}
-.event-page .attachment:last-child {
-  border-bottom: 0;
-}
-.event-page .attachment-icon {
-  color: var(--label);
-}
-.event-page .attachment-text {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  min-width: 0;
-}
-.event-page .attachment-name {
-  font-weight: var(--fw-medium);
-  overflow-wrap: anywhere;
-  text-decoration-color: transparent;
-}
-.event-page .attachment-name:hover {
-  text-decoration-color: var(--accent);
-}
-.event-page .attachment-remove:hover:not(:disabled) {
-  color: var(--danger-fg);
-  border-color: var(--danger-border);
-}
-.event-page .attachment-upload-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-.event-page .attachment-allowed {
-  margin-top: var(--space-2);
 }
 
 /* ---------- History ---------- */

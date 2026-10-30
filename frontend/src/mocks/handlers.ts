@@ -6,7 +6,7 @@ import { budgetCategoryHandlers, budgetHandlers } from './budgetHandlers';
 import { clientHandlers } from './clientHandlers';
 import { db, setMockSession } from './data';
 import { freelancerHandlers } from './freelancerHandlers';
-import { attachmentHandlers, costLineHandlers, eventHandlers, invoiceRowHandlers } from './eventHandlers';
+import { costLineHandlers, eventHandlers, invoiceRowHandlers } from './eventHandlers';
 import { hoursHandlers } from './hoursHandlers';
 import { importHandlers } from './importHandlers';
 import { offerHandlers } from './offerHandlers';
@@ -20,7 +20,7 @@ import { yearHandlers } from './yearHandlers';
 
 // Mock handlers per contract section. Each section has a handler array included in
 // `handlers`: auth and reference here, the features in <feature>Handlers.ts (eventHandlers.ts
-// also has cost lines and attachments), registered in navigation order. Mock state is in
+// also has cost lines and invoice rows), registered in navigation order. Mock state is in
 // `db` (data.ts).
 
 export const authHandlers = [
@@ -83,7 +83,6 @@ export const handlers = [
   ...eventHandlers,
   ...costLineHandlers,
   ...invoiceRowHandlers,
-  ...attachmentHandlers,
   ...purchaseOrderHandlers,
   ...clientHandlers,
   ...peopleHandlers,

@@ -24,7 +24,7 @@ export interface MockDb {
   /** Partner id of the signed-in mock user, or null. */
   sessionPartnerId: string | null;
   reference: Omit<ReferenceData, 'partners'>;
-  /** Events, cost lines, attachments, history and people. */
+  /** Events, cost lines, invoice rows, history and people. */
   events: EventState;
   /** Offers, their history and the `offers.*` settings (UC-028…UC-031). */
   offers: OfferState;
