@@ -1,8 +1,9 @@
 /**
- * Invoice rows of an event (api-contract "Invoice rows", TASK-046): derived sums and state, and the
- * conversion of the legacy invoice status + prepayment (TASK-045) into rows. Pure functions.
+ * Invoice rows of an event (api-contract "Invoice rows" + "Invoicing state: coverage + payment"):
+ * derived sums and states, and the conversion of the legacy invoice status + prepayment (TASK-045)
+ * into rows. Pure functions.
  */
-import type { InvoiceRowStatusCode, InvoiceState } from './enums.js';
+import type { InvoiceCoverage, InvoiceRowStatusCode, PaymentState } from './enums.js';
 
 export interface InvoicingRow {
   amountCents: number;
@@ -12,36 +13,53 @@ export interface InvoicingRow {
 export interface Invoicing {
   /** totalPriceCents − Σ PAID rows; negative when more was paid than the total. */
   balanceCents: number;
-  /** Σ SENT + PAID rows. */
+  /** Σ SENT + PAID rows (READY rows are drafts, not yet invoiced). */
   invoicedCents: number;
   /** Σ PAID rows. */
   paidCents: number;
-  invoiceState: InvoiceState;
+  /** Σ SENT rows (sent, not paid). */
+  openCents: number;
+  /** Σ READY rows (drafts, not yet invoiced). */
+  readyCents: number;
+  invoiceCoverage: InvoiceCoverage;
+  paymentState: PaymentState;
 }
 
 /**
- * Sums and state. Open rows win over the balance: an event with a READY or SENT row is READY / SENT
- * even when the paid rows already cover the total (the contract's PAID rule "rows exist and
- * balance ≤ 0" is applied only once no row is open, like PARTLY_PAID).
+ * Sums and the two derived states:
+ * - invoiceCoverage: NONE (total 0 and no SENT/PAID rows; READY drafts don't count) ·
+ *   NEEDS_INVOICES (invoiced < total) · FULLY_INVOICED (invoiced ≥ total).
+ * - paymentState: NONE (no SENT/PAID rows) · OPEN_INVOICES (open > 0) · PARTLY_PAID (open 0,
+ *   0 < paid < total) · FULLY_PAID (open 0, paid ≥ total). The contract says "paid ≥ total > 0";
+ *   the only case outside it — PAID rows on an event whose total is 0 — is also FULLY_PAID
+ *   (paid covers the total; every SENT/PAID combination thus has exactly one state).
  */
 export function invoicing(totalPriceCents: number, rows: readonly InvoicingRow[]): Invoicing {
-  let invoicedCents = 0;
   let paidCents = 0;
-  let ready = false;
-  let sent = false;
+  let openCents = 0;
+  let readyCents = 0;
   for (const row of rows) {
-    if (row.status === 'READY') ready = true;
-    if (row.status === 'SENT') sent = true;
-    if (row.status !== 'READY') invoicedCents += row.amountCents;
+    if (row.status === 'READY') readyCents += row.amountCents;
+    if (row.status === 'SENT') openCents += row.amountCents;
     if (row.status === 'PAID') paidCents += row.amountCents;
   }
+  const invoicedCents = openCents + paidCents;
   const balanceCents = totalPriceCents - paidCents;
-  let invoiceState: InvoiceState;
-  if (rows.length === 0) invoiceState = 'NONE';
-  else if (sent) invoiceState = 'SENT';
-  else if (ready) invoiceState = 'READY';
-  else invoiceState = balanceCents > 0 ? 'PARTLY_PAID' : 'PAID';
-  return { balanceCents, invoicedCents, paidCents, invoiceState };
+
+  const hasInvoices = rows.some((r) => r.status === 'SENT' || r.status === 'PAID');
+
+  let invoiceCoverage: InvoiceCoverage;
+  if (totalPriceCents === 0 && !hasInvoices) invoiceCoverage = 'NONE';
+  else if (invoicedCents < totalPriceCents) invoiceCoverage = 'NEEDS_INVOICES';
+  else invoiceCoverage = 'FULLY_INVOICED';
+
+  let paymentState: PaymentState;
+  if (!hasInvoices) paymentState = 'NONE';
+  else if (openCents > 0) paymentState = 'OPEN_INVOICES';
+  else if (paidCents < totalPriceCents) paymentState = 'PARTLY_PAID';
+  else paymentState = 'FULLY_PAID';
+
+  return { balanceCents, invoicedCents, paidCents, openCents, readyCents, invoiceCoverage, paymentState };
 }
 
 /** The invoice status of TASK-045 (no longer stored; still accepted by the seed/import). */

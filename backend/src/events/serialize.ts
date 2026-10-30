@@ -150,7 +150,8 @@ export function toEventSummaryDto(event: EventWithLines, today: string) {
     offerId: event.offerId,
     ...economics,
     notFullyStaffed: isNotFullyStaffed(event.costLines),
-    // balanceCents (may be negative), invoicedCents, paidCents, invoiceState (api-contract "Invoice rows").
+    // balanceCents (may be negative), invoicedCents, paidCents, openCents, readyCents, invoiceCoverage, paymentState
+    // (api-contract "Invoicing state: coverage + payment").
     ...invoicing(economics.totalPriceCents, event.invoiceRows),
     deletedAt: event.deletedAt?.toISOString() ?? null,
     createdAt: event.createdAt.toISOString(),
