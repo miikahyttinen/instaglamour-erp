@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next';
 import { Link, useSearchParams } from 'react-router-dom';
 import { PURCHASE_ORDER_STATUSES, type PurchaseOrderStatus } from '../../api/enums';
 import type { PurchaseOrder, PurchaseOrderListQuery } from '../../api/types';
-import { useSelectedYear } from '../../auth/SignedInContext';
 import { Button } from '../../components/Button';
 import { ExcelTable } from '../../components/ExcelTable';
 import { useUrlTableState, type ExcelColumn } from '../../components/excelTableState';
@@ -30,13 +29,12 @@ function eventDates(po: PurchaseOrder): string[] {
 }
 
 /**
- * Purchase orders (UC-034): the selected year's POs (year of creation) in an Excel-style table,
- * a search over every year (number / freelancer), one-click Mark paid, and the log of recent
- * PO events below.
+ * Purchase orders (UC-034): every year's POs, newest first (contract "Year is no longer global"),
+ * in an Excel-style table, a search (number / freelancer), one-click Mark paid, and the log of
+ * recent PO events below.
  */
 export function PurchaseOrderListPage() {
   const { t } = useTranslation();
-  const year = useSelectedYear();
   const [params, setParams] = useSearchParams();
   const tableState = useUrlTableState({ defaultSort: DEFAULT_SORT });
   const [search, setSearch] = useState(params.get('q') ?? '');
@@ -55,13 +53,13 @@ export function PurchaseOrderListPage() {
     );
   }, [q, params, setParams]);
 
-  // BR-119: a search covers every year, so the year is not sent with it.
-  const query: PurchaseOrderListQuery = q ? { q } : { year };
+  // No year: the list and the search cover every year.
+  const query: PurchaseOrderListQuery = q ? { q } : {};
   const list = usePurchaseOrderList(query);
 
   return (
     <section className="page purchase-orders-page">
-      <PageHead title={q ? t('purchaseOrders.listLabel') : t('pages.purchaseOrders', { year })} />
+      <PageHead title={t('pages.purchaseOrders')} />
 
       <div className="po-toolbar">
         <div className="po-search">
@@ -73,15 +71,9 @@ export function PurchaseOrderListPage() {
               type="search"
               value={search}
               placeholder={t('purchaseOrders.searchPlaceholder')}
-              aria-describedby={q ? 'po-search-hint' : undefined}
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-          {q && (
-            <p id="po-search-hint" className="meta po-search-hint">
-              {t('purchaseOrders.searchAllYears')}
-            </p>
-          )}
         </div>
       </div>
 
@@ -101,7 +93,7 @@ export function PurchaseOrderListPage() {
       {list.data &&
         (list.data.purchaseOrders.length === 0 ? (
           <div className="po-empty">
-            <p>{q ? t('purchaseOrders.emptySearch') : t('purchaseOrders.empty', { year })}</p>
+            <p>{q ? t('purchaseOrders.emptySearch') : t('purchaseOrders.empty')}</p>
           </div>
         ) : (
           <PurchaseOrderTable orders={list.data.purchaseOrders} tableState={tableState} />

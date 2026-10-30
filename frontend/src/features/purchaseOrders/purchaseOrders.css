@@ -51,9 +51,6 @@
 .purchase-orders-page .po-search-input input {
   padding-left: calc(var(--space-3) + var(--icon) + var(--space-2));
 }
-.purchase-orders-page .po-search-hint {
-  margin: var(--space-2) 0 0;
-}
 .purchase-orders-page .po-empty {
   padding: var(--space-6) var(--card-pad);
   border: var(--hairline) dashed var(--border);

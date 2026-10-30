@@ -73,10 +73,10 @@ const en: Resources = {
     },
   },
   pages: {
-    offers: 'Offers {{year}}',
+    offers: 'Offers',
     year: 'Year {{year}}',
     events: 'Events {{year}}',
-    purchaseOrders: 'Purchase orders {{year}}',
+    purchaseOrders: 'Purchase orders',
     clients: 'Clients',
     people: 'People',
     tasks: 'Tasks',

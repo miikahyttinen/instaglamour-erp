@@ -6,7 +6,6 @@ export const fi = {
     listLabel: 'Ostotilaukset',
     search: 'Haku',
     searchPlaceholder: 'Numero tai freelancerin nimi',
-    searchAllYears: 'Haetaan kaikilta vuosilta',
     columns: {
       number: 'Numero',
       freelancer: 'Freelancer',
@@ -27,7 +26,7 @@ export const fi = {
     markPaidLabel: 'Merkitse maksetuksi: {{number}}',
     unmarkPaid: 'Peru maksu',
     cancel: 'Peru ostotilaus',
-    empty: 'Ei ostotilauksia vuonna {{year}}.',
+    empty: 'Ei ostotilauksia.',
     emptySearch: 'Ei hakua vastaavia ostotilauksia.',
     statusChanged: 'Ostotilauksen tila on jo muuttunut. Tiedot on päivitetty.',
     log: {
@@ -91,7 +90,6 @@ export const en: typeof fi = {
     listLabel: 'Purchase orders',
     search: 'Search',
     searchPlaceholder: 'Number or freelancer name',
-    searchAllYears: 'Searching all years',
     columns: {
       number: 'Number',
       freelancer: 'Freelancer',
@@ -112,7 +110,7 @@ export const en: typeof fi = {
     markPaidLabel: 'Mark paid: {{number}}',
     unmarkPaid: 'Unmark paid',
     cancel: 'Cancel purchase order',
-    empty: 'No purchase orders in {{year}}.',
+    empty: 'No purchase orders.',
     emptySearch: 'No purchase orders match the search.',
     statusChanged: 'The purchase order has already changed. The data has been refreshed.',
     log: {

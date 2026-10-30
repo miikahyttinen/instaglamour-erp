@@ -182,7 +182,8 @@ export const peopleApi = {
     apiRequest<PersonWithWarnings>('/people', { method: 'POST', body }),
   update: (id: Id, body: PersonUpdate) =>
     apiRequest<PersonWithWarnings>(`/people/${id}`, { method: 'PATCH', body }),
-  costLines: (id: Id, year: number) =>
+  /** Without `year`: all years, newest event first (contract "Year is no longer global"). */
+  costLines: (id: Id, year?: number) =>
     apiRequest<PersonCostLinesResponse>(`/people/${id}/cost-lines`, { query: { year } }),
   /** Makes / keeps the person an active partner with this Google email (UC-032). */
   setPartner: (id: Id, body: PersonPartnerUpdate) =>
@@ -228,8 +229,8 @@ export const offersApi = {
   delete: (id: Id) => apiRequest<void>(`/offers/${id}/delete`, { method: 'POST' }),
   restore: (id: Id) => apiRequest<OfferDetail>(`/offers/${id}/restore`, { method: 'POST' }),
   history: (id: Id) => apiRequest<OfferEvent[]>(`/offers/${id}/history`),
-  /** BR-122: KPI cards (all years; `year` = the selected year). */
-  stats: (year: number) => apiRequest<OfferStats>('/offers/stats', { query: { year } }),
+  /** BR-122: KPI cards (all offers; year series around `year`, default = current Helsinki year). */
+  stats: (year?: number) => apiRequest<OfferStats>('/offers/stats', { query: { year } }),
 };
 
 // ---------- Tasks ----------
@@ -297,7 +298,7 @@ export const referencesApi = {
 // ---------- Purchase orders (UC-034) ----------
 
 export const purchaseOrdersApi = {
-  /** With `q`, the server ignores `year` and searches all years (BR-119). */
+  /** Without `year`, all years; with `q`, the server ignores `year` and searches all years (BR-119). */
   list: (query: PurchaseOrderListQuery) =>
     apiRequest<PurchaseOrderListResponse>('/purchase-orders', {
       query: { year: query.q ? undefined : query.year, q: query.q || undefined, status: query.status },

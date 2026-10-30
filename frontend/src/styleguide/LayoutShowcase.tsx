@@ -13,7 +13,7 @@ import { StatGrid, StatTile } from '../components/StatTile';
 import { NavDrawer } from '../layout/NavDrawer';
 import { Sidebar } from '../layout/Sidebar';
 import { TopbarControls } from '../layout/TopbarControls';
-import { YearSelector } from '../layout/YearSelector';
+import { YearSelector } from '../components/YearSelector';
 import type { Theme } from '../theme/theme';
 
 const TYPE_SCALE = [
@@ -72,9 +72,10 @@ export function LayoutShowcase({ theme }: { theme: Theme }) {
       <SectionLabel>App shell: sidebar, top bar, drawer</SectionLabel>
       <p className="meta sg-note-top">
         Sidebar ≥ 900 px (expanded 232 px / collapsed 64 px, stored in localStorage
-        &apos;ig-sidebar&apos;); its bottom has only the collapse toggle. Desktop top bar: year ·
-        language · theme · sign out (Layout v2.1). Phone: top bar ☰ · logo · year; ☰ opens the
-        drawer, which has language, theme and sign out at the bottom.
+        &apos;ig-sidebar&apos;); its bottom has only the collapse toggle. Desktop top bar: language ·
+        theme · sign out (Layout v2.1). Phone: top bar ☰ · logo; ☰ opens the drawer, which has
+        language, theme and sign out at the bottom. The year selector is page-level (BR-081): at the
+        top of the page head on Vuosi, Budjetti, Tunnit and Keikat.
       </p>
       <div className="sg-shell-row">
         {([false, true] as const).map((isCollapsed) => (
@@ -95,12 +96,14 @@ export function LayoutShowcase({ theme }: { theme: Theme }) {
                 <div className="topbar-inner">
                   <p className="topbar-context">{isCollapsed ? 'Collapsed' : 'Expanded'}</p>
                   <div className="topbar-end">
-                    <YearSelector year={year} onChange={setYear} />
                     <TopbarControls {...account} theme={theme} />
                   </div>
                 </div>
               </div>
               <div className="page-container sg-shell-page">
+                <div className="page-year">
+                  <YearSelector year={year} onChange={setYear} />
+                </div>
                 <p className="meta">.page-container</p>
               </div>
             </div>

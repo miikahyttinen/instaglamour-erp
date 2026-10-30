@@ -167,9 +167,11 @@ export function toOfferDetail(state: OfferState, offer: MockOffer, ctx: OfferCon
   };
 }
 
-/** BR-106 over the non-deleted offers whose event date is in `year`. */
-export function offerYearSummary(state: OfferState, year: number, today = todayIso()): OfferYearSummary {
-  const offers = state.offers.filter((o) => o.deletedAt === null && o.eventDate.startsWith(`${year}-`));
+/** BR-106 over the non-deleted offers whose event date is in `year` (`null` = all years). */
+export function offerYearSummary(state: OfferState, year: number | null, today = todayIso()): OfferYearSummary {
+  const offers = state.offers.filter(
+    (o) => o.deletedAt === null && (year === null || o.eventDate.startsWith(`${year}-`)),
+  );
   const openValueCents = offers
     .filter((o) => statusOf(o.disposition) === 'OPEN' && !isExpired(o, today))
     .reduce((sum, o) => sum + (o.priceCents ?? 0), 0);
@@ -188,6 +190,11 @@ const helsinkiMonth = new Intl.DateTimeFormat('en-CA', {
   year: 'numeric',
   month: '2-digit',
 });
+
+/** The current year (or the year of `now`) in Europe/Helsinki. */
+export function helsinkiYear(now: Date = new Date()): number {
+  return Number(helsinkiYearMonth(now.toISOString()).slice(0, 4));
+}
 
 /** `YYYY-MM` of a timestamp in Europe/Helsinki. */
 export function helsinkiYearMonth(ts: string): string {
@@ -231,7 +238,7 @@ export function offerStats(state: OfferState, year: number, today = todayIso()):
       const list = created.filter((c) => c.month === month).map((c) => c.o);
       return { month, count: list.length, valueCents: list.reduce((s, o) => s + value(o), 0) };
     }),
-    averageByCreatedYear: range(year - 5, 6).map((y) => {
+    averageByCreatedYear: range(year - 3, 6).map((y) => {
       const list = created.filter((c) => c.month.startsWith(`${y}-`)).map((c) => c.o);
       const priced = list.filter((o) => o.priceCents !== null);
       return {
@@ -245,7 +252,7 @@ export function offerStats(state: OfferState, year: number, today = todayIso()):
       const list = offers.filter((o) => eventYear(o) === y);
       return { year: y, count: list.length, valueCents: list.reduce((s, o) => s + value(o), 0) };
     }),
-    openValueByEventYear: range(year, 4).map((y) => {
+    openValueByEventYear: range(year - 3, 6).map((y) => {
       const list = open.filter((o) => eventYear(o) === y);
       return { year: y, count: list.length, valueCents: list.reduce((s, o) => s + value(o), 0) };
     }),

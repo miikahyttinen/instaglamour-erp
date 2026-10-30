@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { NavLink, Outlet, Route, Routes, useMatch } from 'react-router-dom';
 import { useSelectedYear } from '../../auth/SignedInContext';
 import { PageHead } from '../../components/PageHead';
+import { PageYearSelector } from '../../components/PageYearSelector';
 import type { HoursOutletContext } from './hoursOutlet';
 import { HoursTotalsPage } from './HoursTotalsPage';
 import { MyHoursPage } from './MyHoursPage';
@@ -24,7 +25,9 @@ function HoursLayout() {
       <PageHead
         title={t('pages.hours', { year })}
         actions={onMyHours ? <div ref={setActionsSlot} className="hours-head-actions" /> : undefined}
-      />
+      >
+        <PageYearSelector />
+      </PageHead>
       <nav className="hours-tabs" aria-label={t('hours.tabs.label')}>
         <NavLink to="/hours" end>
           {t('hours.tabs.mine')}

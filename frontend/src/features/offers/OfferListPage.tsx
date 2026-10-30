@@ -7,7 +7,6 @@ import type { OfferDisposition, OfferEventType, OfferSource } from '../../api/en
 import { OFFER_DISPOSITIONS, OFFER_EVENT_TYPES, OFFER_SOURCES } from '../../api/enums';
 import { offersApi } from '../../api/endpoints';
 import type { OfferListQuery, OfferSummary, OfferUpdate, Partner } from '../../api/types';
-import { useSelectedYear } from '../../auth/SignedInContext';
 import { Button, IconButton } from '../../components/Button';
 import { buttonClass } from '../../components/buttonClass';
 import { DataTable, type DataTableColumn } from '../../components/DataTable';
@@ -59,13 +58,12 @@ function partnerName(partners: Partner[] | undefined, id: string): string {
 }
 
 /**
- * Offers of the selected year (UC-028): KPI cards (BR-122, all years), search, Excel-style table with column filters
+ * All offers, every year (UC-028; contract "Year is no longer global"): KPI cards (BR-122), search, Excel-style table with column filters
  * (ExcelTable; filters and sort in the URL, client-side), Deleted view.
  */
 export function OfferListPage() {
   const { t } = useTranslation();
   const lang = useLang();
-  const year = useSelectedYear();
   const { data: reference } = useReference();
   const partners = reference?.partners;
   const queryClient = useQueryClient();
@@ -109,7 +107,7 @@ export function OfferListPage() {
   }, [q, params, setParams]);
 
   // The column filters are client-side (design.md); only the search goes to the API.
-  const query: OfferListQuery = deletedView ? { year, deleted: true, q: q || undefined } : { year, q: q || undefined };
+  const query: OfferListQuery = deletedView ? { deleted: true, q: q || undefined } : { q: q || undefined };
   const list = useOfferList(query);
   const deletedRows = useMemo(() => [...(list.data?.offers ?? [])].sort(offerTieBreak), [list.data]);
 
@@ -157,9 +155,9 @@ export function OfferListPage() {
 
   return (
     <section className="page offers-page">
-      <PageHead title={t('pages.offers', { year })} actions={headActions} />
+      <PageHead title={t('pages.offers')} actions={headActions} />
 
-      <OfferKpis year={year} />
+      <OfferKpis />
 
       <div className="offers-toolbar">
         <div className="segmented" role="group" aria-label={t('offers.viewLabel')}>
@@ -205,10 +203,10 @@ export function OfferListPage() {
           <div className="offers-empty">
             <p>
               {deletedView
-                ? t('offers.emptyDeleted', { year })
+                ? t('offers.emptyDeleted')
                 : q
                   ? t('offers.emptyFiltered')
-                  : t('offers.empty', { year })}
+                  : t('offers.empty')}
             </p>
             {!deletedView && !q && newOfferLink}
           </div>

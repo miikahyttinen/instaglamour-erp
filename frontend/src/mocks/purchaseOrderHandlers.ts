@@ -42,18 +42,18 @@ export const purchaseOrderHandlers = [
     const q = params.get('q')?.trim().toLowerCase() ?? '';
     const yearParam = params.get('year');
     const status = params.get('status');
-    if (!q && !yearParam) return validationError({ year: 'REQUIRED' });
-    if (!q && !/^\d{4}$/.test(yearParam ?? '')) return validationError({ year: 'INVALID_VALUE' });
+    // `year` is optional (contract "Year is no longer global"): without it, every year.
+    if (!q && yearParam !== null && !/^\d{4}$/.test(yearParam)) return validationError({ year: 'INVALID_VALUE' });
     if (status && !(PURCHASE_ORDER_STATUSES as readonly string[]).includes(status)) {
       return validationError({ status: 'INVALID_VALUE' });
     }
-    const year = Number(yearParam);
+    const year = yearParam === null ? null : Number(yearParam);
     const orders = db.freelancer.purchaseOrders
-      // With q: every year (BR-119); otherwise the year of creation.
+      // With q: every year (BR-119); otherwise the year of creation, or every year without `year`.
       .filter((po) =>
         q
           ? po.number.toLowerCase().includes(q) || po.personName.toLowerCase().includes(q)
-          : helsinkiYear(po.createdAt) === year,
+          : year === null || helsinkiYear(po.createdAt) === year,
       )
       .filter((po) => !status || po.status === status)
       .sort(newestFirst)

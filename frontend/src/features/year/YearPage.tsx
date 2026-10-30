@@ -10,6 +10,7 @@ import { DataTable, type DataTableColumn } from '../../components/DataTable';
 import { MiniBars } from '../../components/MiniBars';
 import { Notice } from '../../components/Notice';
 import { PageHead } from '../../components/PageHead';
+import { PageYearSelector } from '../../components/PageYearSelector';
 import { SectionLabel } from '../../components/SectionLabel';
 import { StatusTag } from '../../components/StatusTag';
 import { apiErrorMessage } from '../../i18n/labels';
@@ -45,7 +46,9 @@ export function YearPage() {
             />
           )
         }
-      />
+      >
+        <PageYearSelector />
+      </PageHead>
       {query.isPending && (
         <p className="muted" role="status">
           {t('app.loading')}

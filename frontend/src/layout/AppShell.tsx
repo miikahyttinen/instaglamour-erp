@@ -16,12 +16,11 @@ import { activeNavItem } from './navItems';
 import { Sidebar } from './Sidebar';
 import { useSidebarCollapsed } from './sidebarState';
 import { TopbarControls } from './TopbarControls';
-import { YearSelector } from './YearSelector';
 
 /**
  * Layout v2.1. Desktop (≥ 900 px): collapsible left sidebar (nav + collapse toggle) + sticky
- * top bar (section · year · language · theme · sign out).
- * Phone: sticky top bar (☰, logo, year); ☰ opens the sidebar as a drawer, with language /
+ * top bar (section · language · theme · sign out).
+ * Phone: sticky top bar (☰, logo); ☰ opens the sidebar as a drawer, with language /
  * theme / sign out at its bottom. Every route renders
  * inside `.page-container` (one left edge, full width, page padding).
  */
@@ -113,13 +112,12 @@ export function AppShell() {
                 </NavLink>
               </>
             )}
-            <div className="topbar-end">
-              <YearSelector
-                year={me.selectedYear}
-                onChange={(selectedYear) => updateMe.mutate({ selectedYear })}
-              />
-              {isDesktop && <TopbarControls {...account} />}
-            </div>
+            {/* The year selector is page-level (BR-081 revised 2026-10-30): PageYearSelector. */}
+            {isDesktop && (
+              <div className="topbar-end">
+                <TopbarControls {...account} />
+              </div>
+            )}
           </div>
           {updateMe.isError && (
             <p className="topbar-error" role="alert">

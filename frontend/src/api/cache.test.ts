@@ -12,7 +12,7 @@ const keys = {
   year: yearPageKey(YEAR),
   eventList: eventKeys.list({ year: YEAR }),
   eventDetail: eventKeys.detail('g1'),
-  costLines: peopleKeys.costLines('p1', YEAR),
+  costLines: peopleKeys.costLines('p1'),
   peopleList: peopleKeys.list('all'),
   clientPage: ['clients', 'detail', 'c1'],
   offerList: ['offers', 'list', { year: YEAR }],
