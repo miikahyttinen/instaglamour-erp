@@ -36,7 +36,13 @@ test('dev login shows the year page with figures from the backend', async ({ pag
     String(year.events.cancelledCount),
   );
   await expect(events.getByRole('link', { name: `Myytyjen keikkojen summa ${fiMoney(year.events.soldEventsSumCents)}` })).toBeVisible();
-  await expect(events.getByRole('link', { name: `Kulut, budjetti ${fiMoney(year.events.budgetedCostsCents)}` })).toBeVisible();
+  // Costs: one tile with the budget and the actual as labelled figures.
+  const costs = events.getByRole('link', {
+    name: `Kulut Budjetti ${fiMoney(year.events.budgetedCostsCents)} Toteuma ${fiMoney(year.events.actualCostsCents)}`,
+  });
+  await expect(costs).toBeVisible();
+  await expect(yearFigure(costs, 'Budjetti')).toHaveText(fiMoney(year.events.budgetedCostsCents));
+  await expect(yearFigure(costs, 'Toteuma')).toHaveText(fiMoney(year.events.actualCostsCents));
   // The seed has sold events in the current year, so the figures are not all zero.
   expect(year.events.eventCount).toBeGreaterThan(0);
 
