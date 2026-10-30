@@ -11,7 +11,7 @@ import {
   COST_TYPES,
   DESCRIPTION_REQUIRED_TYPES,
   EVENT_TYPES,
-  INVOICE_STATUSES,
+  INVOICE_ROW_STATUSES,
   convertLegacyRole,
   isLegacyRole,
   isMusicianRole,
@@ -23,6 +23,7 @@ import {
   OFFER_SOURCES,
   TECHNICAL_SETUPS,
 } from '../src/domain/enums.js';
+import { LEGACY_INVOICE_STATUSES } from '../src/domain/invoicing.js';
 
 const cents = z.number().int().nonnegative();
 const name = z.string().trim().min(1).max(500);
@@ -53,6 +54,13 @@ const costLine = z.strictObject({
   paidBy: email.optional(),
 });
 
+/** An invoice row (TASK-046); status defaults to READY like the API. */
+const invoiceRow = z.strictObject({
+  description: name,
+  amountCents: z.number().int().positive(),
+  status: z.enum(INVOICE_ROW_STATUSES).default('READY'),
+});
+
 const event = z.strictObject({
   startDate: isoDate,
   endDate: isoDate.optional(),
@@ -71,9 +79,11 @@ const event = z.strictObject({
   additionalSalesDescription: z.string().max(500).optional(),
   notes: z.string().max(5000).optional(),
   client: name.optional(),
-  // TASK-045: optional invoice status and prepayment (default NONE / 0).
-  invoiceStatus: z.enum(INVOICE_STATUSES).default('NONE'),
-  prepaymentCents: cents.default(0),
+  // TASK-046: optional invoice rows.
+  invoiceRows: z.array(invoiceRow).max(1000).optional(),
+  // TASK-045 legacy (no longer stored): converted into invoice rows like the TASK-046 migration.
+  invoiceStatus: z.enum(LEGACY_INVOICE_STATUSES).optional(),
+  prepaymentCents: cents.optional(),
   costLines: z.array(costLine).optional(),
 });
 
@@ -350,6 +360,8 @@ export function validateSeed(rawInput: unknown): ValidationResult {
     if (!g.lineupTemplate && !g.lineupName) errors.push(`${at}: lineupTemplate or lineupName is required`);
     if (g.client && !clientKeys.has(clientNameKey(g.client)))
       errors.push(`${at}.client: unknown client "${g.client}" (list it in clients)`);
+    if (g.invoiceRows && (g.invoiceStatus !== undefined || g.prepaymentCents !== undefined))
+      errors.push(`${at}.invoiceRows: use either invoiceRows or the legacy invoiceStatus/prepaymentCents, not both`);
     g.costLines?.forEach((c, j) => {
       const lat = `${at}.costLines.${j}`;
       if (c.person && !personNames.has(c.person)) errors.push(`${lat}.person: unknown person "${c.person}"`);

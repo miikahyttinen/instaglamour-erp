@@ -1,7 +1,16 @@
 /** Event rows → contract JSON (docs/api-contract.md: EventSummary, EventDetail, CostLine, Attachment, EventHistoryEntry). */
 import { isoFromDate } from '../domain/dates.js';
 import { eventEconomics, isNotFullyStaffed, isPlayed } from '../domain/eventEconomics.js';
-import type { Attachment, CostLine, Event, EventHistory, Prisma, PurchaseOrderStatus } from '../generated/prisma/client.js';
+import { invoicing } from '../domain/invoicing.js';
+import type {
+  Attachment,
+  CostLine,
+  Event,
+  EventHistory,
+  InvoiceRow,
+  Prisma,
+  PurchaseOrderStatus,
+} from '../generated/prisma/client.js';
 
 /**
  * Prisma include for a cost line's OPEN/PAID purchase order (CostLine.purchaseOrder). A line is on
@@ -73,6 +82,29 @@ export function toAttachmentDto(a: Attachment): AttachmentDto {
   };
 }
 
+export function toInvoiceRowDto(row: InvoiceRow) {
+  return {
+    id: row.id,
+    eventId: row.eventId,
+    description: row.description,
+    amountCents: row.amountCents,
+    status: row.status,
+    statusAt: row.statusAt.toISOString(),
+    statusBy: row.statusById,
+    createdAt: row.createdAt.toISOString(),
+    createdBy: row.createdById,
+  };
+}
+
+export type InvoiceRowDto = ReturnType<typeof toInvoiceRowDto>;
+
+/** Contract order of an event's invoice rows: creation order (time, then id). */
+export function compareInvoiceRows(a: InvoiceRow, b: InvoiceRow): number {
+  const t = a.createdAt.getTime() - b.createdAt.getTime();
+  if (t !== 0) return t;
+  return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+}
+
 /** Contract order of an event's cost lines: creation time, then id. */
 export function compareCostLines(a: CostLine, b: CostLine): number {
   const t = a.createdAt.getTime() - b.createdAt.getTime();
@@ -81,7 +113,11 @@ export function compareCostLines(a: CostLine, b: CostLine): number {
 }
 
 /** An event as the serializers need it: its cost lines and the name of its client (BR-100). */
-export type EventWithLines = Event & { costLines: CostLine[]; client: { name: string } | null };
+export type EventWithLines = Event & {
+  costLines: CostLine[];
+  client: { name: string } | null;
+  invoiceRows: InvoiceRow[];
+};
 export type EventWithDetail = Omit<EventWithLines, 'costLines'> & {
   costLines: CostLineWithPurchaseOrder[];
   attachments: Attachment[];
@@ -114,12 +150,8 @@ export function toEventSummaryDto(event: EventWithLines, today: string) {
     offerId: event.offerId,
     ...economics,
     notFullyStaffed: isNotFullyStaffed(event.costLines),
-    invoiceStatus: event.invoiceStatus,
-    invoiceStatusAt: event.invoiceStatusAt?.toISOString() ?? null,
-    invoiceStatusBy: event.invoiceStatusById,
-    prepaymentCents: event.prepaymentCents,
-    // May be negative when the prepayment exceeds the total price (the UI warns).
-    balanceCents: economics.totalPriceCents - event.prepaymentCents,
+    // balanceCents (may be negative), invoicedCents, paidCents, invoiceState (api-contract "Invoice rows").
+    ...invoicing(economics.totalPriceCents, event.invoiceRows),
     deletedAt: event.deletedAt?.toISOString() ?? null,
     createdAt: event.createdAt.toISOString(),
     updatedAt: event.updatedAt.toISOString(),
@@ -132,6 +164,7 @@ export function toEventDetailDto(event: EventWithDetail, today: string) {
   return {
     ...toEventSummaryDto(event, today),
     costLines: [...event.costLines].sort(compareCostLines).map(toCostLineDto),
+    invoiceRows: [...event.invoiceRows].sort(compareInvoiceRows).map(toInvoiceRowDto),
     attachments: event.attachments
       .filter((a) => a.deletedAt === null)
       .sort((a, b) => b.uploadedAt.getTime() - a.uploadedAt.getTime() || (a.id < b.id ? 1 : -1))

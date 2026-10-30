@@ -166,22 +166,29 @@ template roles (no person → `TROMBONE`) and person roles (de-duplicated, `MUSI
 still load and are converted the same way (`seed/README.md`, `convertLegacyRole` in
 `src/domain/enums.ts`).
 
-## Invoice status, prepayment and balance (TASK-045)
+## Invoice rows (TASK-046)
 
-Replaces the TASK-044 "Ready to be invoiced" flag (its endpoints and `readyForInvoiceAt/By` are gone).
+Replace the TASK-045 event invoice status and prepayment (and, before that, the TASK-044 ready flag).
 
-- Columns `event.invoice_status` (enum `InvoiceStatus`: NONE default, READY, PREPAYMENT_PAID, INVOICED,
-  PAID), `invoice_status_at` / `invoice_status_by` (last status change) and `prepayment_cents`
-  (default 0, DB check ≥ 0). EventSummary/EventDetail also return the derived
-  `balanceCents = totalPriceCents − prepaymentCents` (negative when the prepayment exceeds the total).
-- Set with `PATCH /api/events/{id}`: `invoiceStatus` (any value → any value) and `prepaymentCents`
-  (integer ≥ 0, else 400 `INVALID_VALUE`). Changes are logged as normal `UPDATED` field changes; a status
-  change (also back to NONE) sets at/by = now/me. Allowed on SOLD and CANCELLED events; deleted → 409
-  `EVENT_DELETED`.
-- `GET /api/events?invoiceStatus=READY&invoiceStatus=INVOICED` (repeatable) keeps events with any of them.
-- Migration `20261031130000_event_invoice_status` copies `ready_for_invoice_at/by` into READY with the same
-  at/by, then drops the two old columns. Old `READY_FOR_INVOICE[_CLEARED]` history entries stay.
-- Seed/import: optional `invoiceStatus` / `prepaymentCents` per event (default NONE / 0; at/by stay null).
+- Table `invoice_row` (event FK, `description`, `amount_cents` > 0 DB check, `status` enum
+  `InvoiceRowStatus` READY | SENT | PAID, `status_at`/`status_by` = last status change, `created_at`/`created_by`).
+  `created_by`/`status_by` are null for rows made by the migration or the seed/import.
+- `EventDetail.invoiceRows` (creation order). EventSummary/EventDetail derive (`src/domain/invoicing.ts`):
+  `balanceCents = totalPriceCents − Σ PAID`, `invoicedCents = Σ SENT + PAID`, `paidCents = Σ PAID` and
+  `invoiceState`: NONE (no rows) · SENT (some SENT) · READY (some READY, none SENT) · otherwise (only PAID
+  rows) PARTLY_PAID if balance > 0, else PAID. Open READY/SENT rows win over a covered balance.
+- `POST /api/events/{id}/invoice-rows`, `PATCH /api/invoice-rows/{id}`, `DELETE /api/invoice-rows/{id}` →
+  200 EventDetail; history `INVOICE_ROW_ADDED` / `INVOICE_ROW_UPDATED` / `INVOICE_ROW_REMOVED` with details
+  `{ invoiceRowId, description, amountCents, status }` (UPDATED: `{ invoiceRowId, description, changes }`).
+  SOLD and CANCELLED events; deleted → 409 `EVENT_DELETED`. Same-value PATCH = no-op (no history).
+- `GET /api/events?invoiceState=SENT&invoiceState=PAID` (repeatable); unknown value → 400 `INVALID_VALUE`.
+- Removed: `invoiceStatus*`, `prepaymentCents`, `?invoiceStatus=` (PATCH ignores the old keys like any unknown key).
+- Migration `20261031140000_invoice_rows` converts first, then drops the old columns and the `InvoiceStatus`
+  enum: prepayment > 0 → PAID "Ennakkomaksu"; READY / INVOICED / PAID → READY / SENT / PAID "Lasku" for
+  total − prepayment; PREPAYMENT_PAID / NONE → nothing more; only amounts > 0; deleted/cancelled events too.
+  The balance row keeps the old status at/by. Old history entries are untouched.
+- Seed/import: optional `invoiceRows` per event; legacy `invoiceStatus`/`prepaymentCents` still accepted and
+  converted the same way (`legacyInvoiceRows`); both on one event → validation error.
 
 ## Layout
 

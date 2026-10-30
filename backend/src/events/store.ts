@@ -15,10 +15,11 @@ export function isUuid(value: unknown): value is string {
   return typeof value === 'string' && UUID.test(value);
 }
 
-/** What EventSummary needs: cost lines (economics) and the client name. */
+/** What EventSummary needs: cost lines (economics), the client name and invoice rows (balance, state). */
 export const eventSummaryInclude = {
   costLines: true,
   client: { select: { name: true } },
+  invoiceRows: true,
 } as const satisfies Prisma.EventInclude;
 
 export const eventDetailInclude = {

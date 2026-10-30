@@ -5,7 +5,7 @@
 import type {
   CostType,
   EventType,
-  InvoiceStatus,
+  InvoiceRowStatus,
   Logistics,
   OfferDisposition,
   OfferSource,
@@ -50,10 +50,15 @@ export const COST_TYPES = [...MUSICIAN_ROLES, ...INTERNAL_ROLES, ...EXPENSE_CATE
 /** Single choice (domain-model.md "TechnicalSetup"); an event may also have none (null). */
 export const TECHNICAL_SETUPS = ['HOUSE_TECH', 'SET_A', 'SET_B', 'SET_C'] as const satisfies readonly TechnicalSetup[];
 
-/** Single choice (domain-model.md "Logistics"); an event may also have none (null). */
-/** Invoice status of an event, set by hand (api-contract "Invoice status, prepayment and balance"). */
-export const INVOICE_STATUSES = ['NONE', 'READY', 'PREPAYMENT_PAID', 'INVOICED', 'PAID'] as const satisfies readonly InvoiceStatus[];
+/** Status of one invoice row, set by hand (api-contract "Invoice rows"). */
+export const INVOICE_ROW_STATUSES = ['READY', 'SENT', 'PAID'] as const satisfies readonly InvoiceRowStatus[];
+export type InvoiceRowStatusCode = (typeof INVOICE_ROW_STATUSES)[number];
 
+/** Derived invoicing state of an event (api-contract "Invoice rows"); not stored. */
+export const INVOICE_STATES = ['NONE', 'READY', 'SENT', 'PARTLY_PAID', 'PAID'] as const;
+export type InvoiceState = (typeof INVOICE_STATES)[number];
+
+/** Single choice (domain-model.md "Logistics"); an event may also have none (null). */
 export const LOGISTICS = ['OWN_VAN', 'RENTAL_VAN', 'TAXI', 'OTHER'] as const satisfies readonly Logistics[];
 
 export type MusicianRole = (typeof MUSICIAN_ROLES)[number];

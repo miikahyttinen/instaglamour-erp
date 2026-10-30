@@ -10,7 +10,8 @@ import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import type { Prisma } from '../src/generated/prisma/client.js';
-import { INVOICE_STATUSES } from '../src/domain/enums.js';
+/** The InvoiceStatus values this migration created (the enum is dropped again by TASK-046). */
+const INVOICE_STATUSES = ['NONE', 'READY', 'PREPAYMENT_PAID', 'INVOICED', 'PAID'];
 import { closeTestDb, testDb } from './helpers.js';
 
 const MIGRATIONS = path.resolve(import.meta.dirname, '../prisma/migrations');
