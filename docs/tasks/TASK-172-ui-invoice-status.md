@@ -1,0 +1,8 @@
+# TASK-172: Invoice status, prepayment and balance (UI) — replaces the ready-for-invoice button/column
+- **owner:** ui · **status:** todo · **spec:** api-contract "Invoice status, prepayment and balance" · **parallel:** TASK-045
+## Acceptance criteria
+- [ ] **Gig page:** replace the "Valmis laskutukseen" button/tag with an inline **"Laskutus / Invoicing"** select (–, Valmis laskutukseen, Ennakko maksettu, Laskutettu, Maksettu) that saves on change (NFR-8), showing "<partner> <date> klo <time>" of the last change. In the price block: after **Kokonaishinta / Total price** add an inline money field **"Ennakkomaksu / Prepayment"** and then a computed **"Saldo / Balance"** (= total − prepayment), styled like the other totals; warn (yellow) if balance < 0.
+- [ ] **Keikat list:** the "Valmis laskutukseen" column becomes **"Laskutus / Invoicing"** showing a colour tag per status (– plain dash; Valmis laskutukseen light green; Ennakko maksettu blue; Laskutettu amber/warn; Maksettu dark green) — sortable (in workflow order) and filterable (all five values), priority 2, phone cards too. Optionally add **"Saldo"** money column (priority 3).
+- [ ] Tags use design tokens; check contrast in both themes (add a "dark green"/"light green" variant if needed).
+- [ ] History texts render invoiceStatus/prepayment field changes; old READY_FOR_INVOICE entries keep their texts.
+- [ ] Types, endpoints (remove ready-for-invoice calls), MSW mocks per contract; tests; update e2e (allowed) and run gig list/page specs after TASK-045 is on main (fresh E2E_DB_NAME, free ports); lint, build; headless check 375/1440 both themes.

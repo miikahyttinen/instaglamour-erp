@@ -511,7 +511,18 @@ For exceptions, partners can create a PO for one person by hand.
 - DELETE also works on cancelled gigs (to clear a leftover flag); deleted gig → 409 `EVENT_DELETED` for both methods (wins over cancelled). Not part of seed/import.
 - Keikat list column **"Valmis laskutukseen / Ready to be invoiced"**: green box when `readyForInvoiceAt` is set (and not cancelled), else "–".
 
+## Invoice status, prepayment and balance (owner decision 2026-10-31) — replaces the "Ready to be invoiced" flag
+- `EventSummary`/`EventDetail` gain:
+  - `invoiceStatus: "NONE" | "READY" | "PREPAYMENT_PAID" | "INVOICED" | "PAID"` — FI/EN labels: "–", "Valmis laskutukseen / Ready to be invoiced", "Ennakko maksettu / Prepayment paid", "Laskutettu / Invoiced", "Maksettu / Invoice paid".
+  - `invoiceStatusAt: datetime|null`, `invoiceStatusBy: partnerId|null` (last change).
+  - `prepaymentCents: int` (default 0, ≥ 0) and derived `balanceCents = totalPriceCents − prepaymentCents` (may be negative if prepayment exceeds the total; the UI warns).
+- `EventUpdate` (PATCH) accepts `invoiceStatus` (any value → any value, set by hand) and `prepaymentCents` (integer ≥ 0, else 400 `INVALID_VALUE`). Changes are logged as normal `UPDATED` field changes (old → new) and set `invoiceStatusAt/By` when the status changes. Allowed on SOLD and CANCELLED gigs (cancellation fees can be invoiced); deleted → 409 `EVENT_DELETED`.
+- Removed: `readyForInvoiceAt`, `readyForInvoiceBy` and `POST/DELETE /api/events/{id}/ready-for-invoice`. Migration: gigs with `ready_for_invoice_at` set get `invoiceStatus READY` with the same at/by; old history entries `READY_FOR_INVOICE[_CLEARED]` stay and keep their texts.
+- `GET /api/events` gains filter `?invoiceStatus=` (repeatable) — the UI filters client-side anyway.
+- Seed/import: optional `invoiceStatus` and `prepaymentCents` per gig (default NONE / 0).
+
 ## Change log
+- 2026-10-31 – Invoice status (NONE/READY/PREPAYMENT_PAID/INVOICED/PAID), prepayment and balance replace the ready-for-invoice flag (PM)
 - 2026-10-31 – Gig status labels Tuleva/Soitettu/Peruttu; manual "ready to be invoiced" flag + endpoints (PM)
 - 2026-10-31 – Partners can create POs by hand (POST /api/purchase-orders, eligible-lines endpoint) (PM)
 - 2026-10-30 – Year no longer global: optional year on offers / purchase orders / person cost lines; offer stats ranges year−3…year+2 (PM)
