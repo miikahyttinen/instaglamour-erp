@@ -178,8 +178,7 @@ Replace the TASK-045 event invoice status and prepayment (and, before that, the 
   `balanceCents = totalPriceCents − Σ PAID`, `invoicedCents = Σ SENT + PAID`, `paidCents = Σ PAID`,
   `openCents = Σ SENT`, `readyCents = Σ READY` (READY rows are drafts, not invoiced) and one state
   `invoiceState` = the next invoicing action, first match wins:
-  1. PAID — at least one row (any status) and paid ≥ total (incl. overpaid with READY/SENT rows left, and
-     any row on a total of 0)
+  1. PAID — paid > 0 and paid ≥ total (incl. overpaid with READY/SENT rows left)
   2. ROWS_TO_INVOICE — readyCents > 0
   3. OPEN_INVOICES — openCents > 0
   4. NEEDS_INVOICES — invoiced < total

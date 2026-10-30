@@ -31,9 +31,11 @@ describe('invoicing()', () => {
   it.each([
     // total 0
     ['total 0, no rows', 0, [], 'NONE'],
-    ['total 0, READY-only (rows exist, paid 0 ≥ total 0)', 0, [row('READY', 1000)], 'PAID'],
-    ['total 0, SENT-only (rows exist, paid 0 ≥ total 0)', 0, [row('SENT', 1000)], 'PAID'],
+    ['total 0, READY-only (paid 0 → not PAID)', 0, [row('READY', 1000)], 'ROWS_TO_INVOICE'],
+    ['total 0, SENT-only (paid 0 → not PAID)', 0, [row('SENT', 1000)], 'OPEN_INVOICES'],
+    ['total 0, READY + SENT', 0, [row('READY', 1000), row('SENT', 1000)], 'ROWS_TO_INVOICE'],
     ['total 0, PAID', 0, [row('PAID', 1000)], 'PAID'],
+    ['total 0, PAID + READY', 0, [row('PAID', 1000), row('READY', 1000)], 'PAID'],
     // nothing yet
     ['no rows', 100000, [], 'NEEDS_INVOICES'],
     // ROWS_TO_INVOICE beats OPEN_INVOICES and NEEDS_INVOICES

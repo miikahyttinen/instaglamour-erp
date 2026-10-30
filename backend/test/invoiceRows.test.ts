@@ -60,13 +60,15 @@ describe('EventSummary / EventDetail fields', () => {
     expect(summary).not.toHaveProperty('paymentState');
   });
 
-  it('an event with total 0: NONE without rows; any row → PAID (rows exist and paid ≥ total)', async () => {
+  it('an event with total 0: NONE without rows; READY → ROWS_TO_INVOICE, SENT → OPEN_INVOICES, PAID → PAID', async () => {
     const event = await createEvent(s, { priceCents: 0, additionalSalesCents: 0 });
     expect(event).toMatchObject({ totalPriceCents: 0, invoiceState: 'NONE', openCents: 0 });
     let e = await added(event.id, { description: 'Lasku', amountCents: 1000 });
-    expect(e).toMatchObject({ invoiceState: 'PAID', readyCents: 1000, invoicedCents: 0 });
+    expect(e).toMatchObject({ invoiceState: 'ROWS_TO_INVOICE', readyCents: 1000, invoicedCents: 0 });
     e = (await patchRow(lastRow(e).id, { status: 'SENT' })).json();
-    expect(e).toMatchObject({ invoiceState: 'PAID', openCents: 1000 });
+    expect(e).toMatchObject({ invoiceState: 'OPEN_INVOICES', openCents: 1000 });
+    e = (await patchRow(lastRow(e).id, { status: 'PAID' })).json();
+    expect(e).toMatchObject({ invoiceState: 'PAID', paidCents: 1000 });
     e = (await deleteRow(lastRow(e).id)).json();
     expect(e).toMatchObject({ invoiceState: 'NONE' });
   });
