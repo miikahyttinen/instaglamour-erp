@@ -185,16 +185,12 @@ const en: Resources = {
     SENT: 'Invoice sent',
     PAID: 'Paid',
   },
-  invoiceCoverage: {
+  invoiceState: {
     NONE: '–',
     NEEDS_INVOICES: 'Needs invoices',
-    FULLY_INVOICED: 'Fully invoiced',
-  },
-  paymentState: {
-    NONE: '–',
+    ROWS_TO_INVOICE: 'Rows to be invoiced',
     OPEN_INVOICES: 'Open invoices',
-    PARTLY_PAID: 'Partly paid',
-    FULLY_PAID: 'Fully paid',
+    PAID: 'Paid',
   },
   taskStatus: {
     OPEN: 'Open',
@@ -305,9 +301,7 @@ const en: Resources = {
       lineup: 'Lineup',
       venue: 'Venue',
       status: 'Status',
-      invoiceCoverage: 'Invoicing',
-      paymentState: 'Payments',
-      rowsToInvoice: 'Rows to be invoiced',
+      invoiceState: 'Invoicing',
       balance: 'Balance',
     },
     staffingFilter: {

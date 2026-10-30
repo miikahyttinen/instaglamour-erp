@@ -10,10 +10,9 @@ import type {
   EventStatus,
   InternalRole,
   InvoiceRowStatus,
-  InvoiceCoverage,
+  InvoiceState,
   Language,
   MusicianRole,
-  PaymentState,
   ExpenseCategory,
   OfferDisposition,
   OfferEventType,
@@ -137,10 +136,8 @@ export interface EventSummary {
   readyCents: Cents;
   /** Σ amountCents of SENT invoice rows (sent, not paid; "Avoimet"). */
   openCents: Cents;
-  /** Derived from the total and the rows (api-contract "Invoicing state: coverage + payment"). */
-  invoiceCoverage: InvoiceCoverage;
-  /** Derived from the rows (same contract section). */
-  paymentState: PaymentState;
+  /** Next invoicing action, derived from the total and the rows (api-contract "Invoicing: one label"). */
+  invoiceState: InvoiceState;
   deletedAt: IsoTimestamp | null;
   createdAt: IsoTimestamp;
   updatedAt: IsoTimestamp;

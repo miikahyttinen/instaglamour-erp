@@ -806,18 +806,6 @@ label.switch.inline-switch {
   background: var(--danger-bg);
   border-color: var(--danger-border);
 }
-/* Invoicing tags of a gig (InvoicingTags): coverage on line 1, payment on line 2, always two
-   lines (like Kate-%); each tag stays on one line. */
-.invoicing-tags {
-  display: block;
-}
-.invoicing-tags > span {
-  display: block;
-  white-space: nowrap;
-}
-.invoicing-tags > span + span {
-  margin-top: var(--space-1);
-}
 
 .notice {
   margin: var(--space-3) 0;

@@ -57,7 +57,7 @@ const TONES: { tone: StatusTone; text: string; use: string }[] = [
   { tone: 'info', text: 'Upcoming', use: 'Upcoming gig / Open' },
   { tone: 'ok', text: 'Played', use: 'Played gig / Done / Paid / Ready to be invoiced' },
   { tone: 'warn', text: 'Not fully staffed', use: 'Overdue / staffing / contract warnings' },
-  { tone: 'purple', text: 'Partly paid', use: 'Partly paid gig' },
+  { tone: 'purple', text: 'Purple', use: 'currently unused (token kept)' },
   { tone: 'danger', text: 'Cancelled', use: 'Cancelled / Deleted' },
   { tone: 'muted', text: 'Inactive', use: 'neutral facts' },
 ];

@@ -3,12 +3,7 @@ import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } f
 import { useTranslation } from 'react-i18next';
 import { Plus, RotateCcw, Search } from 'lucide-react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
-import {
-  PAYMENT_STATES,
-  type EventDisplayStatus,
-  type InvoiceCoverage,
-  type PaymentState,
-} from '../../api/enums';
+import { INVOICE_STATES, type EventDisplayStatus, type InvoiceState } from '../../api/enums';
 import { eventsApi } from '../../api/endpoints';
 import type { EventListQuery, EventSummary, Partner, YearEventTotals } from '../../api/types';
 import { useSelectedYear } from '../../auth/SignedInContext';
@@ -28,22 +23,13 @@ import { PageYearSelector } from '../../components/PageYearSelector';
 import { SectionLabel } from '../../components/SectionLabel';
 import { StatGrid, StatTile } from '../../components/StatTile';
 import { StatusTag } from '../../components/StatusTag';
-import { apiErrorMessage, eventDisplayStatus, invoiceCoverageLabel, paymentStateLabel } from '../../i18n/labels';
+import { apiErrorMessage, eventDisplayStatus, invoiceStateLabel } from '../../i18n/labels';
 import { useLang } from '../../i18n/useLang';
 import { formatDate, formatDateRange, formatMoney, formatPercent, todayIso } from '../../lib/format';
 import { useReference } from '../../reference/useReference';
-import { EventStatusTag, InvoicingTags } from './EventStatusTag';
+import { EventStatusTag, InvoiceStateTag } from './EventStatusTag';
 import { useApplyEvent, useEventList } from './queries';
 import './eventList.css';
-
-/**
- * Line 1 of the "Laskutus" cell (Keikat table only): ROWS_TO_INVOICE ("Laskutettavia rivejä") when
- * the gig has READY rows, else the coverage. Also its filter value (`f.invoiceCoverage`, client-side)
- * and sort key; listed in this order.
- */
-const LIST_COVERAGES = ['NONE', 'ROWS_TO_INVOICE', 'NEEDS_INVOICES', 'FULLY_INVOICED'] as const;
-type ListCoverage = (typeof LIST_COVERAGES)[number];
-const listCoverage = (g: EventSummary): ListCoverage => (g.readyCents > 0 ? 'ROWS_TO_INVOICE' : g.invoiceCoverage);
 
 /** Order of the status filter values and of the status sort. */
 const EVENT_DISPLAY_STATUSES: EventDisplayStatus[] = ['SOLD', 'PLAYED', 'CANCELLED'];
@@ -409,31 +395,16 @@ function EventTable({ events, partners, lang, tableState }: EventTableProps) {
       cell: (g) => <EventStatusTag status={eventDisplayStatus(g)} />,
     },
     {
-      // "Laskutus": coverage tag on line 1, payment tag on line 2; sorted by coverage, then
-      // payment. Two filters in its header: Laskutus (coverage) and Maksut (payment state).
-      key: 'invoiceCoverage',
-      label: t('events.columns.invoiceCoverage'),
+      // "Laskutus": one tag = the gig's next invoicing action (api-contract "Invoicing: one label").
+      key: 'invoiceState',
+      label: t('events.columns.invoiceState'),
       priority: 2,
-      className: 'event-col-invoice',
-      sortValue: (g) =>
-        LIST_COVERAGES.indexOf(listCoverage(g)) * PAYMENT_STATES.length + PAYMENT_STATES.indexOf(g.paymentState),
-      filterValue: listCoverage,
-      filterLabel: (v) =>
-        v === 'ROWS_TO_INVOICE' ? t('events.columns.rowsToInvoice') : invoiceCoverageLabel(t, v as InvoiceCoverage),
-      filterCompare: byCodeOrder(LIST_COVERAGES),
-      extraFilters: ['paymentState'],
-      cell: (g) => (
-        <InvoicingTags coverage={g.invoiceCoverage} payment={g.paymentState} rowsToInvoice={g.readyCents > 0} />
-      ),
-    },
-    {
-      key: 'paymentState',
-      label: t('events.columns.paymentState'),
-      filterOnly: true,
-      filterValue: (g) => g.paymentState,
-      filterLabel: (v) => paymentStateLabel(t, v as PaymentState),
-      filterCompare: byCodeOrder(PAYMENT_STATES),
-      cell: () => null,
+      className: 'event-col-invoice excel-col-fit',
+      sortValue: (g) => INVOICE_STATES.indexOf(g.invoiceState),
+      filterValue: (g) => g.invoiceState,
+      filterLabel: (v) => invoiceStateLabel(t, v as InvoiceState),
+      filterCompare: byCodeOrder(INVOICE_STATES),
+      cell: (g) => <InvoiceStateTag state={g.invoiceState} />,
     },
     {
       key: 'staffing',

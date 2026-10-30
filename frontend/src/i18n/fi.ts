@@ -187,16 +187,12 @@ const fi = {
     SENT: 'Lähetetty',
     PAID: 'Maksettu',
   },
-  invoiceCoverage: {
+  invoiceState: {
     NONE: '–',
     NEEDS_INVOICES: 'Laskuttamatta',
-    FULLY_INVOICED: 'Laskutettu kokonaan',
-  },
-  paymentState: {
-    NONE: '–',
+    ROWS_TO_INVOICE: 'Laskutettavia rivejä',
     OPEN_INVOICES: 'Avoimia laskuja',
-    PARTLY_PAID: 'Osittain maksettu',
-    FULLY_PAID: 'Maksettu kokonaan',
+    PAID: 'Maksettu',
   },
   taskStatus: {
     OPEN: 'Avoin',
@@ -308,9 +304,7 @@ const fi = {
       lineup: 'Kokoonpano',
       venue: 'Paikka',
       status: 'Tila',
-      invoiceCoverage: 'Laskutus',
-      paymentState: 'Maksut',
-      rowsToInvoice: 'Laskutettavia rivejä',
+      invoiceState: 'Laskutus',
       balance: 'Saldo',
     },
     staffingFilter: {

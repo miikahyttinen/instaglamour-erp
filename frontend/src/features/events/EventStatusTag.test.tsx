@@ -1,8 +1,8 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { EVENT_DISPLAY_STATUSES } from '../../api/enums';
-import { EventDeletedTag, EventStatusTag, InvoiceCoverageTag, InvoicingTags, PaymentStateTag } from './EventStatusTag';
-import { EVENT_STATUS_TONE } from './eventStatusTone';
+import { EVENT_DISPLAY_STATUSES, INVOICE_STATES } from '../../api/enums';
+import { EventDeletedTag, EventStatusTag, InvoiceStateTag } from './EventStatusTag';
+import { EVENT_STATUS_TONE, INVOICE_STATE_TONE } from './eventStatusTone';
 
 describe('EventStatusTag', () => {
   it.each([
@@ -19,26 +19,24 @@ describe('EventStatusTag', () => {
   });
 
   it.each([
-    ['NEEDS_INVOICES', 'Laskuttamatta', 'tag-warn'],
-    ['FULLY_INVOICED', 'Laskutettu kokonaan', 'tag-ok'],
-  ] as const)('coverage %s is "%s" (%s)', (coverage, label, toneClass) => {
-    render(<InvoiceCoverageTag coverage={coverage} />);
+    ['PAID', 'Maksettu', 'tag-ok-strong'],
+    ['ROWS_TO_INVOICE', 'Laskutettavia rivejä', 'tag-info'],
+    ['OPEN_INVOICES', 'Avoimia laskuja', 'tag-warn'],
+    ['NEEDS_INVOICES', 'Laskuttamatta', 'tag-danger'],
+  ] as const)('invoicing state %s is one "%s" tag (%s)', (state, label, toneClass) => {
+    const { container } = render(<InvoiceStateTag state={state} />);
     expect(screen.getByText(label)).toHaveClass('tag', toneClass);
+    expect(container.querySelectorAll('.tag')).toHaveLength(1);
   });
 
-  it.each([
-    ['OPEN_INVOICES', 'Avoimia laskuja', 'tag-info'],
-    ['PARTLY_PAID', 'Osittain maksettu', 'tag-purple'],
-    ['FULLY_PAID', 'Maksettu kokonaan', 'tag-ok-strong'],
-  ] as const)('payment %s is "%s" (%s)', (state, label, toneClass) => {
-    render(<PaymentStateTag state={state} />);
-    expect(screen.getByText(label)).toHaveClass('tag', toneClass);
+  it('has a tone for every invoicing state except NONE', () => {
+    for (const state of INVOICE_STATES) if (state !== 'NONE') expect(INVOICE_STATE_TONE[state]).toBeDefined();
   });
 
-  it('NONE is a plain dash on both lines', () => {
-    const { container } = render(<InvoicingTags coverage="NONE" payment="NONE" />);
+  it('NONE is a plain dash', () => {
+    const { container } = render(<InvoiceStateTag state="NONE" />);
     expect(container.querySelector('.tag')).toBeNull();
-    expect([...container.querySelectorAll('.invoicing-tags > span')].map((s) => s.textContent)).toEqual(['–', '–']);
+    expect(container.textContent).toBe('–');
   });
 
   it('shows Deleted as a danger tag', () => {

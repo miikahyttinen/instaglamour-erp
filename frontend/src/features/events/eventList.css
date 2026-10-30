@@ -125,19 +125,13 @@
 .event-list-page .event-table td.event-col-staffing {
   color: var(--text-muted);
 }
-/* "Laskutus": coverage + payment tags on two lines; NONE is a muted dash. */
+/* "Laskutus": colour tag per invoice status; NONE is a muted dash. */
 .event-list-page .event-table td.event-col-invoice {
   color: var(--text-muted);
 }
-/* Not a fit column: with room the tags stay on one line each; when the table is tight a long
-   tag ("Laskutettu kokonaan") may wrap inside itself instead of widening the table. */
-.event-list-page .event-table td.event-col-invoice .invoicing-tags > span,
-.event-list-page .event-table td.event-col-invoice .tag {
-  white-space: normal;
-}
-/* Every column shown (from 1600 px of table width): the longest one-word label
-   ("Laskuttamatta") is the column's minimum, so its tags get a tighter letter spacing and padding
-   to keep the table inside its container. */
+/* Every column shown (from 1600 px of table width): the invoicing tag is the fit column's minimum
+   ("Avoimia laskuja", "Laskuttamatta"), so it gets a tighter letter spacing and padding to keep
+   the table inside its container (one line, no wrap). */
 @container excel-table (min-width: 1600px) {
   .event-list-page .event-table td.event-col-invoice .tag {
     letter-spacing: 0.06em;
