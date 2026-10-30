@@ -540,6 +540,7 @@ The single `invoiceState` can't express the owner's five states (they overlap), 
 Definitions: `total = totalPriceCents`; `invoiced = Σ SENT + PAID rows`; `paid = Σ PAID rows`; `open = Σ SENT rows` (sent, not paid). READY rows are drafts (not yet invoiced).
 - `invoiceCoverage`: `NONE` (total = 0 and no rows) · `NEEDS_INVOICES` (invoiced < total) · `FULLY_INVOICED` (invoiced ≥ total). Labels: "–", "Laskuttamatta / Needs invoices", "Laskutettu kokonaan / Fully invoiced".
 - `paymentState`: `NONE` (no SENT/PAID rows) · `OPEN_INVOICES` (open > 0) · `PARTLY_PAID` (open = 0 and 0 < paid < total) · `FULLY_PAID` (open = 0 and paid ≥ total > 0). Labels: "–", "Avoimia laskuja / Open invoices", "Osittain maksettu / Partly paid", "Maksettu kokonaan / Fully paid".
+- Details: coverage `NONE` also when total = 0 and there are no SENT/PAID rows (READY drafts only); payment `FULLY_PAID` when open = 0, rows exist and paid ≥ total (incl. total 0). Both filters combine with AND; values within one filter with OR. Cancelled gigs use the same formulas (their price is the amount still billed, BR-013).
 - Colours: Needs invoices = warn (amber); Fully invoiced = ok (light green); Open invoices = info (blue); Partly paid = accent (purple tag, new); Fully paid = ok-strong (dark green). "–" plain.
 - `EventSummary`/`EventDetail`: `invoiceState` is **removed**; add `invoiceCoverage`, `paymentState` (keep `invoicedCents`, `paidCents`, `balanceCents`; add `openCents`). Filters `?invoiceCoverage=` and `?paymentState=` (repeatable) replace `?invoiceState=`.
 
