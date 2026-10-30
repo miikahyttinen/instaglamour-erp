@@ -478,7 +478,14 @@ Details: `averageByCreatedYear[].count` = priced offers in the average, `average
 Also renamed by the same rule (TASK-032): year page `events.eventCount`, `events.soldEventsSumCents`, `upcomingEvents`; clients `gigCount` → `eventCount`, `GET /api/clients/{id}` → `{ client, events, offers }`; double-booking warning `otherEventId`, `otherEventStartDate`, `otherEventLineupName`; history entry `eventId`; PATCH/move responses `{ event, … }`; FreelancerLine / PO line `eventStartDate`, `eventEndDate`, `eventVenue`, `eventLineupName`, `eventStatus`; offer history `CONVERTED {eventId}`. `GET /api/events` returns `{ events: [EventSummary], yearSummary }` (`yearSummary` keeps its name). Stored history/import JSON keys are migrated too.
 No compatibility aliases for old API paths (no external clients). The UI renames routes `/gigs…` → `/events…` and redirects old `/gigs…` URLs. Labels: FI **Tapahtumat / Tapahtuma**, EN **Events / Event**; "Muuta keikaksi" → **"Muuta tapahtumaksi" / "Convert to event"**; people column "Keikkoja" → **"Tapahtumia" / "Events"**.
 
+## Role cleanup: Horn 1/2 and Technician removed (owner decision 2026-10-30)
+- Musician roles **`HORN_1`, `HORN_2` and `TECHNICIAN` are removed** from `CostType` / `MUSICIAN_ROLES` and from `/api/reference.costTypes`. `MIX` is labelled FI **"Miksaus"**, EN **"Mixing"** (covers mixing and technician work).
+- Migration converts existing data (cost lines, person `roles`, lineup template roles): `HORN_1` → `TRUMPET`; `TECHNICIAN` → `MIX`; `HORN_2` → `SAX` if the line's person has `SAX` but not `TROMBONE` in roles, `TROMBONE` if the person has `TROMBONE` but not `SAX`, otherwise `TROMBONE`. Person roles are de-duplicated and kept in `MUSICIAN_ROLES` order. Stored history details keep their old codes; the UI still labels them ("Horn 1", "Horn 2", "Teknikko") in history only.
+- Seed/import accept the old codes and convert them the same way (HORN_2 by the person's roles in the file, else `TROMBONE`).
+- API requests with the removed codes → 400 `INVALID_VALUE`.
+
 ## Change log
+- 2026-10-30 – Remove HORN_1/HORN_2/TECHNICIAN roles (converted to TRUMPET/SAX|TROMBONE/MIX); MIX = "Miksaus" (PM)
 - 2026-10-27 – Rename Gig → Event across API, data and UI (SaaS phase 1) (PM)
 - 2026-10-22 – Convert only ACCEPTED offers with event date ≥ today: 409 OFFER_NOT_CONVERTIBLE on gig-draft and convert (PM)
 - 2026-10-20 – Convert to gig via an editable prefilled form: GET /api/offers/{id}/gig-draft, convert accepts GigCreate (PM)

@@ -176,8 +176,8 @@ One row per category per year. All four numbers are typed in by partners.
 ## Fixed lists
 
 ### CostType
-**Roles** (people): `VOC`, `BACKING_VOC`, `BASS`, `GUITAR`, `DRUMS`, `KEYS`, `PIANO`, `MIX`,
-`HORN_1`, `HORN_2`, `SAX`, `TRUMPET`, `TROMBONE`, `VIOLIN`, `DJ`, `TECHNICIAN`, `OTHER_ROLE`
+**Roles** (people): `VOC`, `BACKING_VOC`, `BASS`, `GUITAR`, `DRUMS`, `KEYS`, `PIANO`, `MIX` (mixing & tech),
+`SAX`, `TRUMPET`, `TROMBONE`, `VIOLIN`, `DJ`, `OTHER_ROLE` (HORN_1/HORN_2/TECHNICIAN removed 2026-10-30)
 — these are **musician roles** (load-in switch, staffing check).
 **Internal roles:** `OFFICE`, `SALES`, `PRODUCTION`.
 **Expense categories:** `FUEL` (estimate only), `VEHICLE`, `TRAVEL`, `PARKING`, `ACCOMMODATION`,
