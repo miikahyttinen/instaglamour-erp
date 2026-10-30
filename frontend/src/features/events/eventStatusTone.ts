@@ -12,11 +12,11 @@ export const EVENT_STATUS_TONE: Record<EventDisplayStatus, StatusTone> = {
 export const EVENT_DELETED_TONE: StatusTone = 'danger';
 
 /**
- * Invoice row status tones (TASK-173): Ready = light green (ok, tinted), Sent = amber (warn),
+ * Invoice row status tones (owner change 2026-10-31): Ready = blue (info), Sent = amber (warn),
  * Paid = dark green (solid `ok-strong`).
  */
 export const INVOICE_ROW_STATUS_TONE: Record<InvoiceRowStatus, StatusTone> = {
-  READY: 'ok',
+  READY: 'info',
   SENT: 'warn',
   PAID: 'ok-strong',
 };

@@ -150,10 +150,11 @@ export function invoiceFigures(
   const invoicedCents = sum(['SENT', 'PAID']);
   const paidCents = sum(['PAID']);
   const openCents = sum(['SENT']);
-  const invoiceCoverage: InvoiceCoverage =
-    total === 0 && rows.length === 0 ? 'NONE' : invoicedCents < total ? 'NEEDS_INVOICES' : 'FULLY_INVOICED';
   const hasSentOrPaid = rows.some((r) => r.status === 'SENT' || r.status === 'PAID');
-  // Not covered by the contract: open = 0, paid > 0 and total = 0 → FULLY_PAID (paid ≥ total).
+  // NONE: total 0 and nothing sent / paid (no rows, or READY drafts only).
+  const invoiceCoverage: InvoiceCoverage =
+    total === 0 && !hasSentOrPaid ? 'NONE' : invoicedCents < total ? 'NEEDS_INVOICES' : 'FULLY_INVOICED';
+  // FULLY_PAID: open = 0, rows exist and paid ≥ total (total 0 included).
   const paymentState: PaymentState = !hasSentOrPaid
     ? 'NONE'
     : openCents > 0

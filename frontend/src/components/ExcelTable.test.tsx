@@ -457,3 +457,47 @@ describe('<ExcelTable> on phones (< 600 px)', () => {
     expect(names()).toHaveLength(4);
   });
 });
+
+// A second filter in one column's header (e.g. "Maksut" in the gig list "Laskutus" column).
+const EXTRA_COLUMNS: ExcelColumn<Row>[] = [
+  ...COLUMNS.map((c) => (c.key === 'city' ? { ...c, extraFilters: ['hasPrice'] } : c)),
+  {
+    key: 'hasPrice',
+    label: 'Priced',
+    filterOnly: true,
+    filterValue: (r) => (r.price === null ? 'no' : 'yes'),
+    cell: () => null,
+  },
+];
+
+describe('<ExcelTable> filterOnly columns', () => {
+  it('shows the filter button in the host header, no header / cell of its own, filters and keeps the URL', async () => {
+    installMatchMedia({ [TABLET_QUERY]: true });
+    const { user } = renderDemo('/', { columns: EXTRA_COLUMNS });
+    expect(within(table()).getAllByRole('columnheader')).toHaveLength(4);
+    expect(within(table()).getAllByRole('row')[1]!.querySelectorAll('td')).toHaveLength(4);
+    const host = within(table()).getByRole('columnheader', { name: /City/ });
+    expect(within(host).getAllByRole('button').map((b) => b.getAttribute('aria-label') ?? b.textContent)).toEqual([
+      'City',
+      'Suodata: City',
+      'Suodata: Priced',
+    ]);
+    await user.click(within(host).getByRole('button', { name: 'Suodata: Priced' }));
+    const popover = screen.getByRole('dialog', { name: 'Suodata: Priced' });
+    await user.click(within(popover).getByRole('checkbox', { name: 'no' }));
+    await user.click(within(popover).getByRole('button', { name: 'OK' }));
+    expect(names()).toEqual(['Event 10', 'event 1', 'Event 3']);
+    expect(location()).toBe('?f.hasPrice=yes');
+    expect(within(host).getByRole('button', { name: 'Suodata: Priced' })).toHaveAccessibleDescription('Suodatin käytössä');
+    expect(within(host).getByRole('button', { name: 'Suodata: City' })).not.toHaveClass('is-active');
+  });
+
+  it('phones: listed in the Filters sheet, not a card line', async () => {
+    installMatchMedia({});
+    const { user } = renderDemo('/', { columns: EXTRA_COLUMNS });
+    expect(within(table()).getAllByRole('row')[1]!.querySelectorAll('td[data-label="Priced"]')).toHaveLength(0);
+    await user.click(screen.getByRole('button', { name: 'Suodattimet' }));
+    const sheet = screen.getByRole('dialog', { name: 'Suodattimet' });
+    expect(within(sheet).getByRole('button', { name: 'Priced' })).toBeInTheDocument();
+  });
+});

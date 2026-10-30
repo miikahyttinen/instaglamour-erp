@@ -255,7 +255,9 @@ describe('event mocks', () => {
       invoicedCents: 0,
       paidCents: 0,
       balanceCents: total,
-      invoiceState: 'NONE',
+      openCents: 0,
+      invoiceCoverage: 'NEEDS_INVOICES',
+      paymentState: 'NONE',
     });
 
     // Default status READY; who / when set; creation order kept.
@@ -268,33 +270,62 @@ describe('event mocks', () => {
       statusBy: partnerA().id,
       createdBy: partnerA().id,
     });
-    expect(first.invoiceState).toBe('READY');
+    expect(first).toMatchObject({ invoiceCoverage: 'NEEDS_INVOICES', paymentState: 'NONE', openCents: 0 });
     const rowA = first.invoiceRows[0]!;
     const second = await invoiceRowsApi.create(event.id, { description: 'Invoice', amountCents: total - 10000, status: 'SENT' });
     expect(second.invoiceRows.map((r) => r.description)).toEqual(['Prepayment', 'Invoice']);
-    expect(second).toMatchObject({ invoicedCents: total - 10000, paidCents: 0, invoiceState: 'SENT' });
+    expect(second).toMatchObject({
+      invoicedCents: total - 10000,
+      paidCents: 0,
+      openCents: total - 10000,
+      invoiceCoverage: 'NEEDS_INVOICES',
+      paymentState: 'OPEN_INVOICES',
+    });
     const rowB = second.invoiceRows[1]!;
 
-    // Paid prepayment, invoice still sent → SENT; invoice paid as well → PAID (balance 0).
+    // Prepayment paid, invoice still sent → fully invoiced, open invoices; invoice paid → fully paid.
     const paidA = await invoiceRowsApi.update(rowA.id, { status: 'PAID' });
-    expect(paidA).toMatchObject({ paidCents: 10000, balanceCents: total - 10000, invoicedCents: total, invoiceState: 'SENT' });
+    expect(paidA).toMatchObject({
+      paidCents: 10000,
+      balanceCents: total - 10000,
+      invoicedCents: total,
+      openCents: total - 10000,
+      invoiceCoverage: 'FULLY_INVOICED',
+      paymentState: 'OPEN_INVOICES',
+    });
     const paidAll = await invoiceRowsApi.update(rowB.id, { status: 'PAID' });
-    expect(paidAll).toMatchObject({ paidCents: total, balanceCents: 0, invoiceState: 'PAID' });
-    // Only some paid, no open rows → PARTLY_PAID; more paid than the total → negative balance, PAID.
+    expect(paidAll).toMatchObject({ paidCents: total, balanceCents: 0, openCents: 0, paymentState: 'FULLY_PAID' });
+    // Only some paid, nothing open → needs invoices + partly paid; overpaid → negative balance, fully paid.
     const partly = await invoiceRowsApi.remove(rowB.id);
-    expect(partly).toMatchObject({ invoiceRows: [expect.objectContaining({ id: rowA.id })], invoiceState: 'PARTLY_PAID' });
+    expect(partly).toMatchObject({
+      invoiceRows: [expect.objectContaining({ id: rowA.id })],
+      invoiceCoverage: 'NEEDS_INVOICES',
+      paymentState: 'PARTLY_PAID',
+    });
     const over = await invoiceRowsApi.update(rowA.id, { amountCents: total + 500, description: 'All' });
-    expect(over).toMatchObject({ balanceCents: -500, invoiceState: 'PAID' });
+    expect(over).toMatchObject({ balanceCents: -500, invoiceCoverage: 'FULLY_INVOICED', paymentState: 'FULLY_PAID' });
 
     const listed = (await eventsApi.list({ year: YEAR })).events.find((g) => g.id === event.id)!;
-    expect(listed).toMatchObject({ invoiceState: 'PAID', balanceCents: -500, paidCents: total + 500 });
+    expect(listed).toMatchObject({
+      invoiceCoverage: 'FULLY_INVOICED',
+      paymentState: 'FULLY_PAID',
+      openCents: 0,
+      balanceCents: -500,
+      paidCents: total + 500,
+    });
     const filtered = async (query: string) => {
       const res = await fetch(`/api/events?year=${YEAR}&${query}`);
       return { status: res.status, ids: res.ok ? ((await res.json()) as { events: { id: string }[] }).events.map((g) => g.id) : [] };
     };
-    expect((await filtered('invoiceState=PAID')).ids).toContain(event.id);
-    expect((await filtered('invoiceState=NONE&invoiceState=SENT')).ids).not.toContain(event.id);
-    expect((await filtered('invoiceState=NOPE')).status).toBe(400);
+    // OR within one filter, AND across the two; unknown value → 400.
+    expect((await filtered('invoiceCoverage=FULLY_INVOICED')).ids).toContain(event.id);
+    expect(
+      (await filtered('invoiceCoverage=NONE&invoiceCoverage=FULLY_INVOICED&paymentState=FULLY_PAID')).ids,
+    ).toContain(event.id);
+    expect((await filtered('invoiceCoverage=FULLY_INVOICED&paymentState=OPEN_INVOICES')).ids).not.toContain(event.id);
+    expect((await filtered('invoiceCoverage=NEEDS_INVOICES')).ids).not.toContain(event.id);
+    expect((await filtered('invoiceCoverage=NOPE')).status).toBe(400);
+    expect((await filtered('paymentState=PAID')).status).toBe(400);
 
     const history = (await eventsApi.history(event.id)).filter((h) => h.type.startsWith('INVOICE_ROW'));
     expect(history.map((h) => h.type)).toEqual([
@@ -329,7 +360,7 @@ describe('event mocks', () => {
 
     // Allowed on cancelled gigs; deleted → 409.
     await eventsApi.cancel(event.id, { reason: 'Called off' });
-    expect((await invoiceRowsApi.update(rowA.id, { status: 'SENT' })).invoiceState).toBe('SENT');
+    expect((await invoiceRowsApi.update(rowA.id, { status: 'SENT' })).paymentState).toBe('OPEN_INVOICES');
     await eventsApi.uncancel(event.id, { reason: 'Back on' });
     await eventsApi.delete(event.id, { reason: 'Duplicate' });
     expect((await expectError(invoiceRowsApi.update(rowA.id, { status: 'PAID' }))).code).toBe('EVENT_DELETED');
