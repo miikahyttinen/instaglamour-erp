@@ -163,12 +163,14 @@ describe('offer page (UC-029, UC-031)', () => {
   });
 
   it('deletes after confirmation; a deleted offer is read-only with Restore only', async () => {
+    // The list it returns to shows every year: no seed offers, so their buttons don't count below.
+    db.offers.offers.length = 0;
     const offer = addMockOffer({ clientId, eventName: 'Event 1' });
     const { user } = renderApp(`/offers/${offer.id}`);
     await user.click(await screen.findByRole('button', { name: 'Poista tarjous' }));
     await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Poista tarjous' }));
     expect(await screen.findByText('Tarjous poistettu: Event 1.')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { level: 1, name: `Tarjoukset ${TEST_YEAR}` })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'Tarjoukset' })).toBeInTheDocument();
 
     renderApp(`/offers/${offer.id}`);
     expect(await screen.findByText(/Tarjous on poistettu/)).toBeInTheDocument();

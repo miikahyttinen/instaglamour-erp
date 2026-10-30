@@ -12,12 +12,11 @@ export const offerKeys = {
   detail: (id: Id) => [...rootKeys.offers, 'detail', id] as const,
   history: (id: Id) => [...rootKeys.offers, 'history', id] as const,
   allStats: [...rootKeys.offers, 'stats'] as const,
-  stats: (year: number) => [...rootKeys.offers, 'stats', year] as const,
 };
 
-/** KPI cards (BR-122): all offers of all years, relative to the selected year. */
-export function useOfferStats(year: number) {
-  return useQuery({ queryKey: offerKeys.stats(year), queryFn: () => offersApi.stats(year) });
+/** KPI cards (BR-122): all offers of all years; the year series are around the current year. */
+export function useOfferStats() {
+  return useQuery({ queryKey: offerKeys.allStats, queryFn: () => offersApi.stats() });
 }
 
 export function useOfferList(query: OfferListQuery) {

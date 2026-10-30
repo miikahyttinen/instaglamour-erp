@@ -18,29 +18,57 @@ const menuButton = () => screen.getByRole('button', { name: 'Valikko' });
 const drawer = () => screen.getByRole('dialog', { name: 'Päävalikko' });
 
 describe('app shell', () => {
-  it('shows the selected year in the top bar on every page', async () => {
+  it('has a year selector only on the year pages (BR-081 revised), never in the top bar', async () => {
     desktop();
     const partner = signInMock();
     partner.selectedYear = 2030;
-    const { user } = renderApp('/');
+    const { user, container } = renderApp('/');
     expect(await screen.findByRole('heading', { name: 'Vuosi 2030' })).toBeInTheDocument();
 
-    for (const [label, heading] of [
-      ['Tarjoukset', 'Tarjoukset 2030'],
-      ['Keikat', 'Keikat 2030'],
-      ['Ostotilaukset', 'Ostotilaukset 2030'],
-      ['Asiakkaat', 'Asiakkaat'],
-      ['Henkilöt', 'Henkilöt'],
-      ['Tehtävät', 'Tehtävät'],
-      ['Tunnit', 'Tunnit 2030'],
-      ['Budjetti', 'Budjetti 2030'],
-      ['Tietojen tuonti', 'Tietojen tuonti'],
-      ['Vuosi', 'Vuosi 2030'],
+    for (const [label, heading, hasYear] of [
+      ['Tarjoukset', 'Tarjoukset', false],
+      ['Keikat', 'Keikat 2030', true],
+      ['Ostotilaukset', 'Ostotilaukset', false],
+      ['Asiakkaat', 'Asiakkaat', false],
+      ['Henkilöt', 'Henkilöt', false],
+      ['Tehtävät', 'Tehtävät', false],
+      ['Tunnit', 'Tunnit 2030', true],
+      ['Budjetti', 'Budjetti 2030', true],
+      ['Tietojen tuonti', 'Tietojen tuonti', false],
+      ['Vuosi', 'Vuosi 2030', true],
     ] as const) {
       await user.click(within(mainNav()).getByRole('link', { name: label }));
       expect(await screen.findByRole('heading', { name: heading })).toBeInTheDocument();
-      expect(yearSelect()).toHaveValue('2030');
+      const topbar = container.querySelector('header.topbar') as HTMLElement;
+      expect(within(topbar).queryByRole('combobox', { name: 'Valittu vuosi' })).toBeNull();
+      if (hasYear) {
+        // In the page head, above the title.
+        const head = container.querySelector('.page-head') as HTMLElement;
+        expect(within(head).getByRole('combobox', { name: 'Valittu vuosi' })).toHaveValue('2030');
+      } else {
+        expect(screen.queryByRole('combobox', { name: 'Valittu vuosi' })).toBeNull();
+      }
     }
+  });
+
+  it('the year pages share the year: a change on one shows on the others', async () => {
+    desktop();
+    const partner = signInMock();
+    partner.selectedYear = 2030;
+    const { user } = renderApp('/budget');
+    await screen.findByRole('heading', { name: 'Budjetti 2030' });
+    await user.click(screen.getByRole('button', { name: 'Seuraava vuosi' }));
+    expect(await screen.findByRole('heading', { name: 'Budjetti 2031' })).toBeInTheDocument();
+    for (const [label, heading] of [
+      ['Tunnit', 'Tunnit 2031'],
+      ['Keikat', 'Keikat 2031'],
+      ['Vuosi', 'Vuosi 2031'],
+    ] as const) {
+      await user.click(within(mainNav()).getByRole('link', { name: label }));
+      expect(await screen.findByRole('heading', { name: heading })).toBeInTheDocument();
+      expect(yearSelect()).toHaveValue('2031');
+    }
+    await waitFor(() => expect(db.partners[0]!.selectedYear).toBe(2031));
   });
 
   it('next / previous / pick change selectedYear via PATCH /api/me', async () => {
@@ -204,20 +232,17 @@ describe('app shell', () => {
   });
 
   describe('phone: top bar + drawer', () => {
-    it('has ☰, logo and year in the top bar; no nav until the drawer opens; no bottom nav', async () => {
+    it('has ☰ and logo in the top bar (year on the page); no nav until the drawer opens; no bottom nav', async () => {
       signInMock();
       const { container } = renderApp('/');
       await screen.findByRole('heading', { name: /^Vuosi/ });
       const topbar = container.querySelector('header.topbar') as HTMLElement;
       expect(within(topbar).getByRole('button', { name: 'Valikko' })).toHaveAttribute('aria-expanded', 'false');
       expect(within(topbar).getByRole('link', { name: 'Instaglamour ERP' })).toBeInTheDocument();
-      expect(within(topbar).getByRole('combobox', { name: 'Valittu vuosi' })).toBeInTheDocument();
+      expect(within(topbar).queryByRole('combobox', { name: 'Valittu vuosi' })).toBeNull();
+      expect(yearSelect()).toBeInTheDocument();
       // Language / theme / sign out stay in the drawer on phones (Layout v2.1).
-      expect(within(topbar).getAllByRole('button').map((b) => b.getAttribute('aria-label'))).toEqual([
-        'Valikko',
-        'Edellinen vuosi',
-        'Seuraava vuosi',
-      ]);
+      expect(within(topbar).getAllByRole('button').map((b) => b.getAttribute('aria-label'))).toEqual(['Valikko']);
       expect(screen.queryByRole('button', { name: 'Kirjaudu ulos' })).not.toBeInTheDocument();
       expect(screen.queryByRole('navigation')).not.toBeInTheDocument();
       expect(container.querySelector('.nav-bottom')).toBeNull();
@@ -338,7 +363,7 @@ describe('app shell', () => {
       expect(container.querySelector('.topbar-context')).toHaveTextContent('Keikat');
     });
 
-    it('has year · language · theme · sign out in the top bar (Layout v2.1)', async () => {
+    it('has language · theme · sign out in the top bar (Layout v2.1; the year is on the page)', async () => {
       desktop();
       signInMock();
       document.documentElement.setAttribute('data-theme', 'dark');
@@ -347,18 +372,15 @@ describe('app shell', () => {
       const topbarEnd = container.querySelector('header.topbar .topbar-end') as HTMLElement;
       const name = db.partners[0]!.name;
 
-      // Order: year selector, then language, theme, sign out (icon buttons with tooltips).
+      // Order: language, theme, sign out (icon buttons with tooltips).
       const buttons = within(topbarEnd).getAllByRole('button');
       expect(buttons.map((b) => b.getAttribute('aria-label'))).toEqual([
-        'Edellinen vuosi',
-        'Seuraava vuosi',
         'Vaihda kieleksi English',
         'Vaihda vaaleaan teemaan',
         'Kirjaudu ulos',
       ]);
-      const year = within(topbarEnd).getByRole('group', { name: 'Valittu vuosi' });
-      expect(year.compareDocumentPosition(buttons[2]!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-      for (const b of buttons.slice(2)) expect(b).toHaveClass('icon-btn');
+      expect(within(topbarEnd).queryByRole('group', { name: 'Valittu vuosi' })).toBeNull();
+      for (const b of buttons) expect(b).toHaveClass('icon-btn');
       const signOut = within(topbarEnd).getByRole('button', { name: 'Kirjaudu ulos' });
       expect(signOut).toHaveAccessibleDescription(`Kirjautuneena: ${name}`);
       expect(signOut).toHaveAttribute('title', `Kirjaudu ulos · Kirjautuneena: ${name}`);

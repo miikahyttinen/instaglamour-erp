@@ -1121,7 +1121,7 @@ label.switch.inline-switch {
   align-items: center;
   gap: var(--space-2);
   min-height: var(--topbar-h);
-  /* Phones: ☰ and the year arrows bring their own touch padding. */
+  /* Phones: ☰ brings its own touch padding. */
   padding: 0 var(--space-1);
 }
 .topbar-menu {
@@ -1165,7 +1165,7 @@ label.switch.inline-switch {
   gap: var(--space-2);
   flex: 0 0 auto;
 }
-/* Desktop (Layout v2.1): language · theme · sign out, right of the year selector. */
+/* Desktop (Layout v2.1): language · theme · sign out. */
 .topbar-controls {
   /* Containing block for the visually hidden "Signed in as" description. */
   position: relative;
@@ -1233,6 +1233,16 @@ label.switch.inline-switch {
 .year-select option {
   background: var(--surface);
   color: var(--text);
+}
+/* Page-level year selector (BR-081 revised): top of the page head, before the title; the
+   left arrow lines up with the page's left edge. */
+.page-year {
+  margin: 0 0 var(--space-2) calc(-1 * var(--space-2));
+}
+.page-year-error {
+  margin: var(--space-1) 0 0 var(--space-2);
+  font-size: var(--fs-small);
+  color: var(--danger-fg);
 }
 
 /* ---------- Content ---------- */

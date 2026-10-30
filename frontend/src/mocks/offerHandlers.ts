@@ -19,6 +19,7 @@ import {
   eventInputFromOffer,
   logOfferEvent,
   markConverted,
+  helsinkiYear,
   offerStats,
   offerYearSummary,
   regenerateLink,
@@ -151,9 +152,10 @@ export const offerHandlers = [
   http.get('/api/offers', ({ request }) => {
     if (!currentPartner()) return unauthenticated();
     const params = new URL(request.url).searchParams;
-    const yearParam = params.get('year') ?? '';
-    if (!/^\d{4}$/.test(yearParam)) return validationError({ year: 'INVALID_VALUE' });
-    const year = Number(yearParam);
+    // `year` is optional (contract "Year is no longer global"): without it, every year.
+    const yearParam = params.get('year');
+    if (yearParam !== null && !/^\d{4}$/.test(yearParam)) return validationError({ year: 'INVALID_VALUE' });
+    const year = yearParam === null ? null : Number(yearParam);
     const status = params.get('status');
     if (status && !oneOf(OFFER_STATUS_FILTERS, status)) return validationError({ status: 'INVALID_VALUE' });
     const today = todayIso();
@@ -164,7 +166,7 @@ export const offerHandlers = [
     const eventType = params.get('eventType');
     const source = params.get('source');
     const offers = db.offers.offers
-      .filter((o) => o.eventDate.startsWith(`${year}-`))
+      .filter((o) => year === null || o.eventDate.startsWith(`${year}-`))
       .filter((o) => (deleted ? o.deletedAt !== null : o.deletedAt === null))
       .map((o) => toOfferSummary(o, ctx(), today))
       .filter((o) => !status || (status === 'EXPIRED' ? o.expired : o.status === status))
@@ -177,7 +179,12 @@ export const offerHandlers = [
           !q ||
           [o.eventName, o.clientName, o.venue, o.city ?? ''].some((v) => v.toLowerCase().includes(q)),
       )
-      .sort((a, b) => a.eventDate.localeCompare(b.eventDate) || a.createdAt.localeCompare(b.createdAt));
+      // With a year: by event date; without: newest created first.
+      .sort((a, b) =>
+        year === null
+          ? b.createdAt.localeCompare(a.createdAt)
+          : a.eventDate.localeCompare(b.eventDate) || a.createdAt.localeCompare(b.createdAt),
+      );
     const body: OfferListResponse = { offers, summary: offerYearSummary(db.offers, year, today) };
     return HttpResponse.json(body);
   }),
@@ -213,9 +220,10 @@ export const offerHandlers = [
   // Before `/api/offers/:id` (first match wins).
   http.get('/api/offers/stats', ({ request }) => {
     if (!currentPartner()) return unauthenticated();
-    const yearParam = new URL(request.url).searchParams.get('year') ?? '';
-    if (!/^\d{4}$/.test(yearParam)) return validationError({ year: 'INVALID_VALUE' });
-    return HttpResponse.json(offerStats(db.offers, Number(yearParam)));
+    // `year` optional: default = the current year in Europe/Helsinki.
+    const yearParam = new URL(request.url).searchParams.get('year');
+    if (yearParam !== null && !/^\d{4}$/.test(yearParam)) return validationError({ year: 'INVALID_VALUE' });
+    return HttpResponse.json(offerStats(db.offers, yearParam === null ? helsinkiYear() : Number(yearParam)));
   }),
 
   http.get('/api/offers/:id', ({ params }) => {

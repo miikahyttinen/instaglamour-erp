@@ -7,6 +7,7 @@ import { Button } from '../../components/Button';
 import { Dialog } from '../../components/Dialog';
 import { Notice } from '../../components/Notice';
 import { PageHead } from '../../components/PageHead';
+import { PageYearSelector } from '../../components/PageYearSelector';
 import { SectionLabel } from '../../components/SectionLabel';
 import { StatGrid, StatTile } from '../../components/StatTile';
 import { apiErrorMessage } from '../../i18n/labels';
@@ -94,7 +95,9 @@ export function BudgetPage() {
           {copy.isPending ? t('budget.copying') : t('budget.copy')}
         </Button>
       }
-    />
+    >
+      <PageYearSelector />
+    </PageHead>
   );
 
   if (budget.isError || reference.isError) {

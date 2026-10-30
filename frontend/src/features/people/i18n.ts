@@ -33,7 +33,7 @@ export const fi = {
     back: '← Henkilöt',
     notFound: 'Henkilöä ei löytynyt.',
     lines: {
-      title: 'Kulurivit {{year}}',
+      title: 'Kulurivit',
       date: 'Päivä',
       event: 'Keikka',
       lineup: 'Kokoonpano',
@@ -44,11 +44,11 @@ export const fi = {
       paid: 'Maksettu',
       notPaid: 'Maksamatta',
       total: 'Yhteensä',
-      totalBudgeted: 'Budjetti yhteensä {{year}}',
-      totalActual: 'Toteuma yhteensä {{year}}',
+      totalBudgeted: 'Budjetti yhteensä',
+      totalActual: 'Toteuma yhteensä',
       lineCount: 'Rivejä: {{count}}',
       paidCount: 'Maksettuja: {{count}}',
-      empty: 'Ei kulurivejä vuonna {{year}}.',
+      empty: 'Ei kulurivejä.',
     },
     // Partner status (UC-032).
     partner: {
@@ -109,7 +109,7 @@ export const en: typeof fi = {
     back: '← People',
     notFound: 'Person not found.',
     lines: {
-      title: 'Cost lines {{year}}',
+      title: 'Cost lines',
       date: 'Date',
       event: 'Gig',
       lineup: 'Lineup',
@@ -120,11 +120,11 @@ export const en: typeof fi = {
       paid: 'Paid',
       notPaid: 'Unpaid',
       total: 'Total',
-      totalBudgeted: 'Budget total {{year}}',
-      totalActual: 'Actual total {{year}}',
+      totalBudgeted: 'Budget total',
+      totalActual: 'Actual total',
       lineCount: 'Lines: {{count}}',
       paidCount: 'Paid: {{count}}',
-      empty: 'No cost lines in {{year}}.',
+      empty: 'No cost lines.',
     },
     partner: {
       label: 'Partner',

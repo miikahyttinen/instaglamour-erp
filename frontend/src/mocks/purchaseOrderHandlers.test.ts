@@ -65,6 +65,10 @@ describe('purchase order mocks', () => {
     expect(byNumber.purchaseOrders.map((p) => p.id)).toEqual([newer.id]);
 
     expect((await purchaseOrdersApi.list({ year: TEST_YEAR, status: 'PAID' })).purchaseOrders).toEqual([]);
+
+    // Without a year: every year, newest first (contract "Year is no longer global").
+    const all = await purchaseOrdersApi.list({});
+    expect(all.purchaseOrders.map((p) => p.id)).toEqual([nextYear.id, newer.id, older.id]);
   });
 
   it('pay marks every line paid with the PO amount, logs COST_PAID with the number; unpay reverts', async () => {

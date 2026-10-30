@@ -125,7 +125,9 @@ export async function setDisposition(page: Page, id: string, disposition: OfferD
   return api(page).patch(`/offers/${id}`, { disposition });
 }
 
-export async function offerList(page: Page, year: number, query = ''): Promise<OfferList> {
+/** `year` = that year only; `null` = every year (what the UI asks for, contract "Year is no longer global"). */
+export async function offerList(page: Page, year: number | null, query = ''): Promise<OfferList> {
+  if (year === null) return api(page).get(`/offers${query.replace(/^&/, '?')}`);
   return api(page).get(`/offers?year=${year}${query}`);
 }
 
@@ -211,8 +213,9 @@ export interface OfferStats {
   };
 }
 
-export async function offerStats(page: Page, year: number): Promise<OfferStats> {
-  return api(page).get(`/offers/stats?year=${year}`);
+/** Without `year`: the default (current Helsinki year), like the UI. */
+export async function offerStats(page: Page, year?: number): Promise<OfferStats> {
+  return api(page).get(year === undefined ? '/offers/stats' : `/offers/stats?year=${year}`);
 }
 
 /** FI whole euros as the KPI cards format money ("1 500 €"). */
@@ -246,10 +249,10 @@ export function kpiCard(page: Page, name: string | RegExp) {
   };
 }
 
-/** Opens the offer list for the signed-in partner's year and waits for the data. */
+/** Opens the offer list (all years) and waits for the data. */
 export async function openOfferList(page: Page, query = ''): Promise<void> {
   await page.goto(`/offers${query}`);
-  await expect(page.getByRole('heading', { level: 1, name: /^Tarjoukset \d{4}$/ })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Tarjoukset', exact: true })).toBeVisible();
   await expect(page.getByText('Ladataan…')).toHaveCount(0);
 }
 

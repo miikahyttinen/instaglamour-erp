@@ -19,6 +19,7 @@ import {
 } from '../../components/excelTableState';
 import { Notice } from '../../components/Notice';
 import { PageHead } from '../../components/PageHead';
+import { PageYearSelector } from '../../components/PageYearSelector';
 import { SectionLabel } from '../../components/SectionLabel';
 import { StatGrid, StatTile } from '../../components/StatTile';
 import { StatusTag } from '../../components/StatusTag';
@@ -122,7 +123,9 @@ export function EventListPage() {
         title={t('pages.events', { year })}
         subtitle={list.data ? <YearSubtitle totals={list.data.yearSummary} /> : undefined}
         actions={newEventLink}
-      />
+      >
+        <PageYearSelector />
+      </PageHead>
 
       {deletedNotice && <Notice role="status">{t('event.notice.deleted')}</Notice>}
 

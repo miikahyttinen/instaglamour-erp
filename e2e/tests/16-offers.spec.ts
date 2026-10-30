@@ -84,15 +84,17 @@ test('new offer: required fields refused, "what\'s included" default applied, no
   const client = await createClientViaApi(page, `Client ${tag}-${suffix()}-offer`);
   const eventName = `Juhla ${tag}-${suffix()}`;
 
-  // Offers is the second menu item (after Vuosi, TASK-142); the selected year has no offers yet → empty state (E1).
+  // Offers is the second menu item (after Vuosi, TASK-142); all years, no year selector (BR-081
+  // revised); with no offers at all → empty state (E1).
   await page.goto('/');
   await goNav(page, 'Tarjoukset');
-  await expect(page.getByRole('heading', { level: 1, name: `Tarjoukset ${year}` })).toBeVisible();
-  const before = await offerList(page, year);
+  await expect(page.getByRole('heading', { level: 1, name: 'Tarjoukset' })).toBeVisible();
+  await expect(page.getByRole('combobox', { name: 'Valittu vuosi' })).toHaveCount(0);
+  const before = await offerList(page, null);
   if (before.offers.length === 0) {
-    await expect(page.getByText(`Ei tarjouksia vuodelle ${year}.`)).toBeVisible();
-    // KPI cards (BR-122) are shown even for an empty year: nothing open for it.
-    await expect(kpiCard(page, `Avoimet tarjoukset · ${year}`).value).toHaveText(fiMoneyWhole(0));
+    await expect(page.getByText('Ei tarjouksia.')).toBeVisible();
+    // KPI cards (BR-122) are shown even without offers: nothing open in the current year.
+    await expect(kpiCard(page, `Avoimet tarjoukset · ${CURRENT_YEAR}`).value).toHaveText(fiMoneyWhole(0));
   }
   await page.getByRole('main').getByRole('link', { name: 'Uusi tarjous' }).first().click();
   await expect(page.getByRole('heading', { level: 1, name: 'Uusi tarjous' })).toBeVisible();
@@ -191,7 +193,7 @@ test('new offer: required fields refused, "what\'s included" default applied, no
   expect(spotifyPatch.status()).toBe(400);
   expect((await spotifyPatch.json()).error.fields).toEqual({ spotifyUrl: 'INVALID_VALUE' });
 
-  // The list of the year shows it.
+  // The list (all years) shows it.
   await openOfferList(page);
   await expect(offerRow(page, eventName)).toHaveCount(1);
   await expect(offerRow(page, eventName)).toContainText(client.name);
@@ -200,7 +202,7 @@ test('new offer: required fields refused, "what\'s included" default applied, no
   await expect(offerRow(page, eventName)).toContainText('Avoin');
 });
 
-test('list: KPI cards = offer stats API (open value = BR-106); rows of the year; sorting; filters incl. Expired', async ({ page }, testInfo) => {
+test('list: KPI cards = offer stats API (open value = BR-106); rows of every year; sorting; filters incl. Expired', async ({ page }, testInfo) => {
   const tag = tagOf(testInfo);
   await signIn(page); // current year: offers before and after today
   const sfx = `${tag}${suffix()}`;
@@ -250,12 +252,14 @@ test('list: KPI cards = offer stats API (open value = BR-106); rows of the year;
   const expected = br106(all.offers);
   expect(all.summary).toEqual(expected);
 
-  // UI: figures and rows (= non-deleted offers whose event date is in the year).
+  // UI: figures and rows (= every non-deleted offer, all years; contract "Year is no longer global").
   await page.goto('/');
   await goNav(page, 'Tarjoukset');
-  await expect(page.getByRole('heading', { level: 1, name: `Tarjoukset ${CURRENT_YEAR}` })).toBeVisible();
-  // KPI cards (BR-122) = GET /api/offers/stats; the open value of the year = BR-106's open value.
-  const stats = await offerStats(page, CURRENT_YEAR);
+  await expect(page.getByRole('heading', { level: 1, name: 'Tarjoukset' })).toBeVisible();
+  // KPI cards (BR-122) = GET /api/offers/stats (no year → current year); the open value of the
+  // current year (selected by default) = BR-106's open value.
+  const stats = await offerStats(page);
+  expect(stats).toEqual(await offerStats(page, CURRENT_YEAR));
   const openOfYear = stats.openValueByEventYear.find((y) => y.year === CURRENT_YEAR)!;
   expect(openOfYear.valueCents, 'stats open value = BR-106 open value').toBe(expected.openValueCents);
   const openCard = kpiCard(page, `Avoimet tarjoukset · ${CURRENT_YEAR}`);
@@ -263,7 +267,7 @@ test('list: KPI cards = offer stats API (open value = BR-106); rows of the year;
   await expect(openCard.value).toHaveText(fiMoneyWhole(openOfYear.valueCents));
   await expect(winCard.ring).toHaveText(fiPercentWhole(stats.winRate.pct));
   await expect(winCard.value).toHaveText(`${stats.winRate.won} / ${stats.winRate.decided}`);
-  await expect(offerRows(page)).toHaveCount(all.offers.length);
+  await expect(offerRows(page)).toHaveCount((await offerList(page, null)).offers.length);
   await expectNoHorizontalScroll(page, 'offer list');
 
   // Only this test's offers from here on (search matches the event name).
@@ -429,8 +433,10 @@ async function showAllOfferColumns(page: Page, testInfo: Parameters<typeof isMob
 
 test('KPI cards: clicking or pressing Enter on a bar selects that month / year (BR-122)', async ({ page }, testInfo) => {
   const tag = tagOf(testInfo);
-  const year = offerYear(testInfo);
-  await signIn(page, PARTNER_A, { selectedYear: year });
+  // The year cards show current year − 3 … + 2 with the current year selected, whatever the
+  // partner's selected year (contract "Year is no longer global").
+  const year = CURRENT_YEAR;
+  await signIn(page, PARTNER_A, { selectedYear: offerYear(testInfo) });
   const client = await createClientViaApi(page, `Client ${tag}-${suffix()}-kpi`);
   for (const [date, price] of [
     [`${year}-05-10`, 120000],
@@ -439,11 +445,15 @@ test('KPI cards: clicking or pressing Enter on a bar selects that month / year (
   ] as const) {
     await createOfferViaApi(page, { clientId: client.id, eventName: `KPI ${tag}-${suffix()}`, eventDate: date, venue: 'Venue K', priceCents: price });
   }
-  const stats = await offerStats(page, year);
+  const stats = await offerStats(page);
+  expect(stats.byEventYear.map((y) => y.year)).toEqual([-3, -2, -1, 0, 1, 2].map((i) => year + i));
+  expect(stats.averageByCreatedYear.map((y) => y.year)).toEqual([-3, -2, -1, 0, 1, 2].map((i) => year + i));
+  expect(stats.openValueByEventYear.map((y) => y.year)).toEqual([-3, -2, -1, 0, 1, 2].map((i) => year + i));
   await openOfferList(page);
   await expect(page.getByRole('heading', { level: 2, name: 'Tarjoustilastot' })).toBeVisible();
+  await expect(kpiCard(page, `Keskiarvo · ${year}`).card.getByRole('button')).toHaveCount(6);
 
-  // Offers by event year: default = the selected year; click the previous year.
+  // Offers by event year: default = the current year; click the previous year.
   const byYear = (y: number) => kpiCard(page, `Tarjoukset vuodelle (tapahtuman päivä) · ${y}`);
   const fig = (y: number) => stats.byEventYear.find((x) => x.year === y)!;
   await expect(byYear(year).value).toHaveText(String(fig(year).count));

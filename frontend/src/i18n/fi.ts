@@ -75,10 +75,10 @@ const fi = {
     },
   },
   pages: {
-    offers: 'Tarjoukset {{year}}',
+    offers: 'Tarjoukset',
     year: 'Vuosi {{year}}',
     events: 'Keikat {{year}}',
-    purchaseOrders: 'Ostotilaukset {{year}}',
+    purchaseOrders: 'Ostotilaukset',
     clients: 'Asiakkaat',
     people: 'Henkilöt',
     tasks: 'Tehtävät',
