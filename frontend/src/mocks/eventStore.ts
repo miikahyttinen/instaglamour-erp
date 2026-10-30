@@ -646,7 +646,11 @@ export function updateInvoiceRow(
   }
   if (changes.length > 0) {
     event.updatedAt = nowTs();
-    logEvent(state, event.id, 'INVOICE_ROW_UPDATED', actorId, { ...rowSnapshot(row), changes });
+    logEvent(state, event.id, 'INVOICE_ROW_UPDATED', actorId, {
+      invoiceRowId: row.id,
+      description: row.description,
+      changes,
+    });
   }
   return changes;
 }

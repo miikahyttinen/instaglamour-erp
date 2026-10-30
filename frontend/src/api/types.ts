@@ -229,8 +229,9 @@ interface EventHistoryEntryBase<T extends EventHistoryType, D> {
 type EmptyDetails = Record<string, never>;
 
 /**
- * Details of INVOICE_ROW_* history entries. The contract only names `changes` (UPDATED); the row
- * snapshot fields are optional so the texts degrade gracefully if the backend omits them.
+ * Details of INVOICE_ROW_* history entries (api-contract "Invoice rows", TASK-046): ADDED / REMOVED
+ * `{ invoiceRowId, description, amountCents, status }`, UPDATED `{ invoiceRowId, description,
+ * changes }` (description after the change). Fields are optional so texts degrade gracefully.
  */
 export interface InvoiceRowHistoryDetails {
   invoiceRowId?: Id;
