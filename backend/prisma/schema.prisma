@@ -27,12 +27,10 @@ enum EventStatus {
   CANCELLED
 }
 
-/// Invoicing state of an event, set by hand (api-contract "Invoice status, prepayment and balance").
-enum InvoiceStatus {
-  NONE
+/// Status of one invoice row of an event, set by hand (api-contract "Invoice rows").
+enum InvoiceRowStatus {
   READY
-  PREPAYMENT_PAID
-  INVOICED
+  SENT
   PAID
 }
 
@@ -106,6 +104,9 @@ enum EventHistoryType {
   ATTACHMENT_REMOVED
   READY_FOR_INVOICE
   READY_FOR_INVOICE_CLEARED
+  INVOICE_ROW_ADDED
+  INVOICE_ROW_UPDATED
+  INVOICE_ROW_REMOVED
 }
 
 /// Where an offer request came from (domain-model.md "Offer").
@@ -212,7 +213,8 @@ model Partner {
   soldEvents              Event[]              @relation("EventSeller")
   producedEvents          Event[]              @relation("EventProducer")
   deletedEvents           Event[]              @relation("EventDeletedBy")
-  invoiceStatusEvents     Event[]              @relation("EventInvoiceStatusBy")
+  invoiceRowStatusChanges InvoiceRow[]         @relation("InvoiceRowStatusBy")
+  createdInvoiceRows      InvoiceRow[]         @relation("InvoiceRowCreatedBy")
   paidCostLines           CostLine[]           @relation("CostLinePaidBy")
   uploadedAttachments     Attachment[]
   eventHistory            EventHistory[]
@@ -315,13 +317,6 @@ model Event {
   offerId                    String?         @unique @map("offer_id") @db.Uuid
   deletedAt                  DateTime?       @map("deleted_at")
   deletedById                String?         @map("deleted_by") @db.Uuid
-  /// Set by hand on the gig page (api-contract "Invoice status, prepayment and balance");
-  /// at/by = last status change, both null = never changed.
-  invoiceStatus              InvoiceStatus   @default(NONE) @map("invoice_status")
-  invoiceStatusAt            DateTime?       @map("invoice_status_at")
-  invoiceStatusById          String?         @map("invoice_status_by") @db.Uuid
-  /// Prepayment received (≥ 0, DB check); balance = total price − prepayment (derived).
-  prepaymentCents            Int             @default(0) @map("prepayment_cents")
   createdAt                  DateTime        @default(now()) @map("created_at")
   updatedAt                  DateTime        @updatedAt @map("updated_at")
 
@@ -329,19 +324,42 @@ model Event {
   seller             Partner             @relation("EventSeller", fields: [sellerId], references: [id])
   producer           Partner             @relation("EventProducer", fields: [producerId], references: [id])
   deletedBy          Partner?            @relation("EventDeletedBy", fields: [deletedById], references: [id])
-  invoiceStatusBy    Partner?            @relation("EventInvoiceStatusBy", fields: [invoiceStatusById], references: [id], onDelete: SetNull)
   client             Client?             @relation(fields: [clientId], references: [id], onDelete: Restrict)
   offer              Offer?              @relation(fields: [offerId], references: [id], onDelete: Restrict)
   costLines          CostLine[]
   attachments        Attachment[]
   history            EventHistory[]
   purchaseOrderLines PurchaseOrderLine[]
+  invoiceRows        InvoiceRow[]
 
   technicalSetupLegacy EventTechnicalSetupLegacy?
 
   @@index([startDate])
   @@index([clientId])
   @@map("event")
+}
+
+/// One invoice row of an event (api-contract "Invoice rows", TASK-046). Balance, invoiced/paid sums and
+/// the event's invoiceState are derived from the rows. amount_cents > 0 (DB check
+/// "invoice_row_amount_positive"). status_at/by = last status change (creation counts);
+/// created_by / status_by are null for rows from the TASK-046 migration or the seed/import.
+model InvoiceRow {
+  id          String           @id @default(uuid()) @db.Uuid
+  eventId     String           @map("event_id") @db.Uuid
+  description String
+  amountCents Int              @map("amount_cents")
+  status      InvoiceRowStatus @default(READY)
+  statusAt    DateTime         @map("status_at")
+  statusById  String?          @map("status_by") @db.Uuid
+  createdAt   DateTime         @default(now()) @map("created_at")
+  createdById String?          @map("created_by") @db.Uuid
+
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  statusBy  Partner? @relation("InvoiceRowStatusBy", fields: [statusById], references: [id], onDelete: SetNull)
+  createdBy Partner? @relation("InvoiceRowCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([eventId])
+  @@map("invoice_row")
 }
 
 // ---------------------------------------------------------------------------

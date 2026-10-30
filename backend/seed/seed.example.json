@@ -90,8 +90,11 @@
       "seller": "partner.a@example.com",
       "producer": "partner.b@example.com",
       "priceCents": 300000,
-      "invoiceStatus": "PAID",
-      "prepaymentCents": 100000,
+      "invoiceRows": [
+        { "description": "Ennakkomaksu", "amountCents": 100000, "status": "PAID" },
+        { "description": "Lasku", "amountCents": 150000, "status": "PAID" },
+        { "description": "Lasku 2", "amountCents": 50000, "status": "SENT" }
+      ],
       "costLines": [
         { "type": "VOC", "person": "Person 1", "budgetedCents": 30000, "actualCents": 30000, "paidBy": "partner.b@example.com" },
         { "type": "GUITAR", "person": "Person 2", "budgetedCents": 30000, "actualCents": 30000, "paidBy": "partner.b@example.com" },

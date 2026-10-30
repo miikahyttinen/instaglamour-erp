@@ -48,7 +48,7 @@ at once can't create duplicates. Import files contain real data: keep them out o
 | Setting | key | Value updated |
 | Budget category (row) | `code` if given, else `name` (case-insensitive; removed rows count too) | Inserted only if missing — partners manage the rows in the app, so a re-run never renames, reorders or brings back a row they removed |
 | Client | `name` (case-insensitive, trimmed; non-deleted clients) | Inserted only if missing — partners manage clients in the app, so a re-run never changes notes or brings back a deleted client (a deleted client's name creates a new client) |
-| Event | `startDate` + `venue` + `lineupName` | Inserted only if missing (never overwrites app edits — so adding `client` to an already-loaded event does not link it; set the client in the app) |
+| Event | `startDate` + `venue` + `lineupName` | Inserted only if missing (never overwrites app edits — so adding `client` to an already-loaded event does not link it; set the client in the app; the same goes for `invoiceRows`) |
 | Offer | `client` + `eventName` + `eventDate` (deleted offers count too) | Inserted only if missing, with a new random share link. `converted: true` also creates the event per BR-105 (disposition WON). `createdAt` (TASK-028) sets the offer's created/updated time and the time of its "created" history event on insert; an existing offer is never changed, and the offer's year stays its `eventDate` |
 | Task | `title` + owner | Inserted only if missing |
 | Hour entry | partner + `date` + `comment` | Inserted only if missing |
@@ -108,8 +108,13 @@ Partners, templates, people, clients and budget categories are referenced by ema
       "seller": "partner.a@example.com", "producer": "partner.b@example.com",
       "priceCents": 100000, "additionalSalesCents": 0, "additionalSalesDescription": "…", "notes": "…",
       "client": "Client A Oy",                              // optional; a name from clients (case-insensitive)
-      "invoiceStatus": "INVOICED",                          // optional: NONE (default) | READY | PREPAYMENT_PAID | INVOICED | PAID
-      "prepaymentCents": 20000,                             // optional, ≥ 0, default 0
+      "invoiceRows": [                                      // optional, kept in this order (TASK-046)
+        { "description": "Ennakkomaksu", "amountCents": 20000, "status": "PAID" },  // amount > 0; status READY (default) | SENT | PAID
+        { "description": "Lasku", "amountCents": 80000, "status": "SENT" }
+      ],
+      // Legacy (TASK-045), instead of invoiceRows — not both: "invoiceStatus" (NONE | READY | PREPAYMENT_PAID |
+      // INVOICED | PAID) and "prepaymentCents" (≥ 0) are converted into rows like migration 20261031140000:
+      // prepayment > 0 → PAID "Ennakkomaksu"; READY/INVOICED/PAID → READY/SENT/PAID "Lasku" for total − prepayment.
       "costLines": [                                        // omit → generated per BR-020/BR-021 from template + settings
         {
           "type": "BASS",                                   // any CostType (docs/domain-model.md)
