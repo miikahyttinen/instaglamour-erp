@@ -32,8 +32,17 @@ async function expectNoPersonButtons(scope: Locator, where: string): Promise<voi
   ).toHaveCount(0);
 }
 
+/** The people list is read-only (TASK-169): no inputs, switches or role pickers in rows. */
+async function expectReadOnlyList(list: Locator): Promise<void> {
+  await expect(list.getByRole('textbox'), 'list: no name fields').toHaveCount(0);
+  await expect(list.getByRole('switch'), 'list: no active switches').toHaveCount(0);
+  await expect(list.getByRole('checkbox'), 'list: no role checkboxes').toHaveCount(0);
+  await expect(list.getByRole('combobox'), 'list: no role pickers').toHaveCount(0);
+}
+
 // Flow 5: people — add, rename, deactivate; the person page shows their lines (UC-014).
-// Name and active are edited in place (NFR-8): no rename dialog, no Rename/Activate buttons.
+// The list is read-only (TASK-169): the name links to the person page, where name and active are
+// edited in place (NFR-8): no rename dialog, no Rename/Activate buttons.
 test('add, rename and deactivate a person; person page lists their lines', async ({ page }, testInfo) => {
   await signIn(page);
   const tag = tagOf(testInfo);
@@ -51,37 +60,24 @@ test('add, rename and deactivate a person; person page lists their lines', async
   await page.getByRole('button', { name: 'Lisää', exact: true }).click();
   await expect(page.getByRole('status').filter({ hasText: `Henkilö lisätty: ${name}.` })).toBeVisible();
   const list = page.getByRole('table', { name: 'Henkilöt' });
-  const nameField = list.getByLabel(`Nimi: ${name}`, { exact: true });
-  await expect(nameField).toHaveValue(name);
-  await expect(list.getByRole('link', { name: `Avaa: ${name}`, exact: true })).toBeVisible();
-  await expect(list.getByRole('switch', { name: `Aktiivinen: ${name}`, exact: true })).toBeChecked();
+  const link = (n: string) => list.getByRole('link', { name: n, exact: true });
+  await expect(link(name)).toBeVisible();
+  await expectReadOnlyList(list);
   await expectNoPersonButtons(page.getByRole('main'), 'people list');
 
-  // Esc reverts; an empty name shows the translated error and is not sent (UC-014 E1).
-  await expectEscReverts(page, nameField, 'Person Z', name);
-  await expectInvalidNotSent(page, nameField, '', 'Pakollinen tieto.');
-  await page.reload();
-  await expect(nameField).toHaveValue(name);
-
-  // Rename in place: Enter saves one PATCH with just the name; the row is then named after it.
-  expect(await editInline(page, nameField, renamed, { commit: 'Enter' })).toEqual({ name: renamed });
-  await expect(list.getByLabel(`Nimi: ${renamed}`, { exact: true })).toHaveValue(renamed);
-  await expect(list.getByRole('link', { name: `Avaa: ${renamed}`, exact: true })).toBeVisible();
-  await expect(list.getByRole('link', { name: `Avaa: ${name}`, exact: true })).toHaveCount(0);
-  await expect(page.getByRole('dialog')).toHaveCount(0); // no rename dialog
-  await page.reload();
-  await expect(list.getByLabel(`Nimi: ${renamed}`, { exact: true })).toHaveValue(renamed);
-
   // Give the person a line on an event (setup through the API), then open the person page.
-  const person = ((await api(page).get('/people?active=all')) as ApiPerson[]).find((p) => p.name === renamed);
-  expect(person, 'renamed person is returned by the API').toBeTruthy();
+  const person = ((await api(page).get('/people?active=all')) as ApiPerson[]).find((p) => p.name === name);
+  expect(person, 'new person is returned by the API').toBeTruthy();
   const venue = `Venue ${tag}-${s}`;
   const event = await createEventViaApi(page, { startDate: tag === 'M' ? '2026-12-12' : '2026-12-19', venue });
   const guitar = event.costLines.find((l) => l.type === 'GUITAR');
   await api(page).patch(`/cost-lines/${guitar?.id}`, { personId: person?.id });
 
-  await list.getByRole('link', { name: `Avaa: ${renamed}`, exact: true }).click();
-  await expect(page.getByRole('heading', { level: 1, name: renamed })).toBeVisible();
+  // The name link is keyboard accessible: focus + Enter opens the person page.
+  await link(name).focus();
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(new RegExp(`/people/${person?.id}$`));
+  await expect(page.getByRole('heading', { level: 1, name })).toBeVisible();
   const lines = page.getByRole('table', { name: 'Kulurivit 2026' });
   await expect(lines.getByRole('row', { name: new RegExp(venue) })).toContainText('Kitara');
   await expect(lines.getByRole('row', { name: new RegExp(venue) })).toContainText(fiMoney(SEED.templateB.roleFeeCents));
@@ -89,11 +85,24 @@ test('add, rename and deactivate a person; person page lists their lines', async
   const pageName = page.getByLabel('Nimi', { exact: true });
   const active = page.getByRole('switch', { name: 'Aktiivinen', exact: true });
   await expect(pageName).toBeVisible();
-  await expect(pageName).toHaveValue(renamed);
+  await expect(pageName).toHaveValue(name);
   await expect(active).toBeVisible();
   await expect(active).toBeChecked();
   await expectNoPersonButtons(page.getByRole('main'), 'person page');
   await expectNoHorizontalScroll(page, 'person page');
+
+  // Esc reverts; an empty name shows the translated error and is not sent (UC-014 E1).
+  await expectEscReverts(page, pageName, 'Person Z', name);
+  await expectInvalidNotSent(page, pageName, '', 'Pakollinen tieto.');
+  await page.reload();
+  await expect(pageName).toHaveValue(name);
+
+  // Rename in place: Enter saves one PATCH with just the name.
+  expect(await editInline(page, pageName, renamed, { commit: 'Enter' })).toEqual({ name: renamed });
+  await expect(page.getByRole('heading', { level: 1, name: renamed })).toBeVisible();
+  await expect(page.getByRole('dialog')).toHaveCount(0); // no rename dialog
+  await page.reload();
+  await expect(pageName).toHaveValue(renamed);
 
   // Deactivate on the person page: the switch saves on change and a notice stays.
   const writes = page.waitForResponse((r) => r.request().method() === 'PATCH' && r.url().includes('/api/people/'));
@@ -114,17 +123,20 @@ test('add, rename and deactivate a person; person page lists their lines', async
   await page.reload();
   await expect(active).not.toBeChecked();
 
+  // Back on the list: renamed, hidden from active; under "Ei käytössä" with the inactive tag.
   await page.getByRole('link', { name: '← Henkilöt' }).click();
-  await expect(list.getByRole('link', { name: `Avaa: ${renamed}`, exact: true })).toHaveCount(0);
+  await expect(link(renamed)).toHaveCount(0);
+  await expect(link(name)).toHaveCount(0);
   await page.getByRole('button', { name: 'Ei käytössä', exact: true }).click();
-  await expect(list.getByRole('link', { name: `Avaa: ${renamed}`, exact: true })).toBeVisible();
-  await expect(list.getByRole('switch', { name: `Aktiivinen: ${renamed}`, exact: true })).not.toBeChecked();
+  await expect(link(renamed)).toBeVisible();
+  await expect(list.getByRole('row').filter({ has: link(renamed) })).toContainText('Ei käytössä');
+  await expectReadOnlyList(list);
   const saved = ((await api(page).get('/people?active=all')) as ApiPerson[]).find((p) => p.id === person?.id);
   expect(saved).toMatchObject({ name: renamed, active: false });
 });
 
-// Activate from the list: the switch in the row saves on change; the notice names the person.
-test('a person is reactivated from the list with the row switch', async ({ page }, testInfo) => {
+// Reactivate: the list has no switch, so it is done on the person page opened from the name link.
+test('an inactive person is reactivated on the person page opened from the list', async ({ page }, testInfo) => {
   await signIn(page);
   const name = `Person ${tagOf(testInfo)}3-${suffix()}`;
   const created = (await api(page).post('/people', { name })) as { person: ApiPerson };
@@ -132,7 +144,10 @@ test('a person is reactivated from the list with the row switch', async ({ page 
 
   await page.goto('/people?active=false');
   const list = page.getByRole('table', { name: 'Henkilöt' });
-  const sw = list.getByRole('switch', { name: `Aktiivinen: ${name}`, exact: true });
+  await expectReadOnlyList(list);
+  await list.getByRole('link', { name, exact: true }).click();
+  await expect(page.getByRole('heading', { level: 1, name })).toBeVisible();
+  const sw = page.getByRole('switch', { name: 'Aktiivinen', exact: true });
   await expect(sw).not.toBeChecked();
   const writes = page.waitForResponse((r) => r.request().method() === 'PATCH' && r.url().includes('/api/people/'));
   await sw.click();

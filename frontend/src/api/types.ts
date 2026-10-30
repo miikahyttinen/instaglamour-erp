@@ -3,6 +3,7 @@
 
 import type {
   CostType,
+  LegacyCostType,
   ErrorCode,
   FieldCode,
   EventHistoryType,
@@ -185,6 +186,9 @@ interface EventHistoryEntryBase<T extends EventHistoryType, D> {
 
 type EmptyDetails = Record<string, never>;
 
+/** History keeps the codes it was written with, including removed roles (Role cleanup). */
+export type HistoryCostType = CostType | LegacyCostType;
+
 export type EventHistoryEntry =
   | EventHistoryEntryBase<'CREATED', EmptyDetails>
   | EventHistoryEntryBase<'UPDATED', { changes: FieldChange[]; movedCostLineIds: Id[] }>
@@ -192,16 +196,16 @@ export type EventHistoryEntry =
   | EventHistoryEntryBase<'CANCELLED' | 'UNCANCELLED' | 'DELETED' | 'RESTORED', EmptyDetails>
   | EventHistoryEntryBase<
       'COST_ADDED' | 'COST_REMOVED',
-      { costLineId: Id; type: CostType; personId: Id | null; budgetedCents: Cents }
+      { costLineId: Id; type: HistoryCostType; personId: Id | null; budgetedCents: Cents }
     >
-  | EventHistoryEntryBase<'COST_UPDATED', { costLineId: Id; type: CostType; changes: FieldChange[] }>
+  | EventHistoryEntryBase<'COST_UPDATED', { costLineId: Id; type: HistoryCostType; changes: FieldChange[] }>
   | EventHistoryEntryBase<
       'COST_PAID',
-      { costLineId: Id; type: CostType; actualCents: Cents; purchaseOrderNumber?: string }
+      { costLineId: Id; type: HistoryCostType; actualCents: Cents; purchaseOrderNumber?: string }
     >
   | EventHistoryEntryBase<
       'COST_UNPAID',
-      { costLineId: Id; type: CostType; previousActualCents: Cents; purchaseOrderNumber?: string }
+      { costLineId: Id; type: HistoryCostType; previousActualCents: Cents; purchaseOrderNumber?: string }
     >
   | EventHistoryEntryBase<'ATTACHMENT_ADDED' | 'ATTACHMENT_REMOVED', { attachmentId: Id; filename: string }>;
 

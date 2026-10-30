@@ -1,6 +1,14 @@
 import type { TFunction } from 'i18next';
-import type { CostType, EventHistoryType, Language } from '../../api/enums';
-import type { ClientListItem, DateRange, FieldChange, EventHistoryEntry, Partner, Person } from '../../api/types';
+import { LEGACY_COST_TYPES, type EventHistoryType, type Language, type LegacyCostType } from '../../api/enums';
+import type {
+  ClientListItem,
+  DateRange,
+  FieldChange,
+  EventHistoryEntry,
+  HistoryCostType,
+  Partner,
+  Person,
+} from '../../api/types';
 import { costTypeLabel, eventHistoryTypeLabel } from '../../i18n/labels';
 import { formatDateRange, formatMoney } from '../../lib/format';
 
@@ -89,6 +97,9 @@ function changeLines(
   );
 }
 
+const isLegacyCostType = (code: string): code is LegacyCostType =>
+  (LEGACY_COST_TYPES as readonly string[]).includes(code);
+
 const range = (r: DateRange, lang: Language) => formatDateRange(r.startDate, r.endDate, lang);
 
 /** Title + detail lines for one history entry, in the user's language (UC-013). */
@@ -100,7 +111,9 @@ export function describeEntry(
 ): { title: string; lines: string[] } {
   const title = eventHistoryTypeLabel(t, entry.type);
   const lines: string[] = [];
-  const type = (code: CostType) => costTypeLabel(t, code);
+  // Old entries may hold a removed role code (HORN_1, HORN_2, TECHNICIAN): labelled from legacyCostType.
+  const type = (code: HistoryCostType) =>
+    isLegacyCostType(code) ? t(`legacyCostType.${code}`) : costTypeLabel(t, code);
   switch (entry.type) {
     case 'UPDATED':
       lines.push(...changeLines(t, lang, entry.details.changes, ctx));

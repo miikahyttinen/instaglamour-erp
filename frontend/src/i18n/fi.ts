@@ -137,14 +137,11 @@ const fi = {
     KEYS: 'Koskettimet',
     PIANO: 'Piano',
     MIX: 'Miksaus',
-    HORN_1: 'Puhallin 1',
-    HORN_2: 'Puhallin 2',
     SAX: 'Saksofoni',
     TRUMPET: 'Trumpetti',
     TROMBONE: 'Pasuuna',
     VIOLIN: 'Viulu',
     DJ: 'DJ',
-    TECHNICIAN: 'Teknikko',
     OTHER_ROLE: 'Muu rooli',
     OFFICE: 'Toimisto',
     SALES: 'Myynti',
@@ -441,6 +438,12 @@ const fi = {
     no: 'ei',
   },
   /** History only: technicalSetup codes from before 2026-10-05 (multi-choice). */
+  // Removed roles (2026-10-30): only old history entries show these.
+  legacyCostType: {
+    HORN_1: 'Puhallin 1',
+    HORN_2: 'Puhallin 2',
+    TECHNICIAN: 'Teknikko',
+  },
   legacyTechnicalSetup: {
     HOUSE_TECHNICIAN: 'Talon teknikko',
     OWN_PA: 'Oma PA',

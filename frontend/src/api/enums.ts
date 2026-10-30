@@ -14,17 +14,21 @@ export const MUSICIAN_ROLES = [
   'KEYS',
   'PIANO',
   'MIX',
-  'HORN_1',
-  'HORN_2',
   'SAX',
   'TRUMPET',
   'TROMBONE',
   'VIOLIN',
   'DJ',
-  'TECHNICIAN',
   'OTHER_ROLE',
 ] as const;
 export type MusicianRole = (typeof MUSICIAN_ROLES)[number];
+
+/**
+ * Roles removed on 2026-10-30 (api-contract "Role cleanup"; converted to TRUMPET / SAX|TROMBONE /
+ * MIX). Stored history entries keep these codes, so history still labels them (`legacyCostType`).
+ */
+export const LEGACY_COST_TYPES = ['HORN_1', 'HORN_2', 'TECHNICIAN'] as const;
+export type LegacyCostType = (typeof LEGACY_COST_TYPES)[number];
 
 export const INTERNAL_ROLES = ['OFFICE', 'SALES', 'PRODUCTION'] as const;
 export type InternalRole = (typeof INTERNAL_ROLES)[number];

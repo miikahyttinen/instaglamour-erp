@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ChevronRight } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { MUSICIAN_ROLES, type MusicianRole } from '../../api/enums';
 import type { PeopleActiveFilter, Person } from '../../api/types';
@@ -18,7 +17,6 @@ import { NameForm } from './NameForm';
 import { NoticeBox, type Notice } from './Notices';
 import { isPartner } from './partnerRules';
 import { PartnerTag } from './PartnerStatus';
-import { PersonActiveSwitch, PersonNameField } from './PersonFields';
 import { PEOPLE_SORT_KEYS, parsePeopleSort, sortPeople, type PeopleSort, type PeopleSortKey } from './peopleSort';
 import { useCreatePerson, usePeopleList } from './queries';
 import './people.css';
@@ -67,8 +65,8 @@ function rowNames(people: readonly Person[]): Map<string, string> {
 }
 
 /**
- * People register (UC-014): list (active by default), add; name and active are edited in place
- * (NFR-8: no Edit buttons, the name saves on blur / Enter, the switch on change). Partners have an
+ * People register (UC-014): list (active by default), add. The list is read-only (TASK-169): the
+ * name links to the person page, where name, active status and roles are edited. Partners have an
  * "Osakas" tag; each row shows the person's roles and played event count. Filters on one line:
  * active status, role (`?role=`) and "only partners" (`?partner=true`), all kept in the URL.
  * Sorted client-side (TASK-156) by name / event count / partnership via the column headers (phones:
@@ -135,25 +133,18 @@ export function PeoplePage() {
       label: t('people.name'),
       primary: true,
       ...sortProps('name'),
-      cell: (person) => (
-        <span className="people-name">
-          <PersonNameField
-            person={person}
-            label={t('people.nameOf', { name: nameOf(person) })}
-            hideLabel
-            className="people-name-field"
-            onNotice={setNotice}
-          />
+      cell: (person) => {
+        const label = nameOf(person);
+        return (
           <Link
             to={person.id}
-            className="people-open"
-            aria-label={t('people.openOf', { name: nameOf(person) })}
+            className="people-name-link"
+            aria-label={label === person.name ? undefined : label}
           >
-            <span className="people-open-text">{t('people.open')}</span>
-            <ChevronRight aria-hidden="true" />
+            {person.name}
           </Link>
-        </span>
-      ),
+        );
+      },
     },
     {
       key: 'roles',
@@ -191,14 +182,12 @@ export function PeoplePage() {
       key: 'active',
       label: t('people.active'),
       className: 'people-active-cell',
-      cell: (person) => (
-        <PersonActiveSwitch
-          person={person}
-          label={t('people.activeOf', { name: nameOf(person) })}
-          hideLabel
-          onNotice={setNotice}
-        />
-      ),
+      cell: (person) =>
+        person.active ? (
+          <StatusTag tone="ok">{t('people.active')}</StatusTag>
+        ) : (
+          <StatusTag tone="muted">{t('people.inactiveBadge')}</StatusTag>
+        ),
     },
   ];
 

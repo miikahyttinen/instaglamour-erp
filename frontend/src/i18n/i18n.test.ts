@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   COST_TYPES,
+  LEGACY_COST_TYPES,
   ERROR_CODES,
   FIELD_CODES,
   EVENT_DISPLAY_STATUSES,
@@ -39,6 +40,7 @@ const locales = { fi: flatten(fi as Tree), en: flatten(en as Tree) };
 
 const enumNamespaces: [string, readonly string[]][] = [
   ['costType', COST_TYPES],
+  ['legacyCostType', LEGACY_COST_TYPES],
   ['technicalSetup', TECHNICAL_SETUPS],
   ['logistics', LOGISTICS],
   ['eventStatus', EVENT_DISPLAY_STATUSES],

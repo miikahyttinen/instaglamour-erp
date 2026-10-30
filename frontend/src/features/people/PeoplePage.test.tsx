@@ -18,10 +18,10 @@ const rows = () =>
   within(list())
     .queryAllByRole('row')
     .filter((r) => r.closest('tbody'));
-/** Saved names: the inline name input of each row. */
-const nameInput = (tr: HTMLElement) => within(tr).getByRole('textbox') as HTMLInputElement;
-const names = () => rows().map((tr) => nameInput(tr).value);
-const row = (name: string) => rows().find((tr) => nameInput(tr).value === name)!;
+/** The name link of each row (the list is read-only, TASK-169). */
+const nameLink = (tr: HTMLElement) => within(tr).getByRole('link');
+const names = () => rows().map((tr) => nameLink(tr).textContent);
+const row = (name: string) => rows().find((tr) => nameLink(tr).textContent === name)!;
 
 function UrlProbe() {
   const { search } = useLocation();
@@ -62,7 +62,7 @@ describe('people register (UC-014)', () => {
 
     await user.click(screen.getByRole('button', { name: 'Ei käytössä' }));
     await waitFor(() => expect(names()).toEqual(['Person 9']));
-    expect(within(row('Person 9')).getByRole('switch', { name: 'Aktiivinen: Person 9' })).not.toBeChecked();
+    expect(within(row('Person 9')).getByText('Ei käytössä')).toHaveClass('tag');
 
     await user.click(screen.getByRole('button', { name: 'Kaikki' }));
     await waitFor(() => expect(names()).toContain('Person 1'));
@@ -70,9 +70,20 @@ describe('people register (UC-014)', () => {
     expect(screen.getByRole('button', { name: 'Kaikki' })).toHaveAttribute('aria-pressed', 'true');
   });
 
-  it('each row links to the person page', async () => {
+  it('the name links to the person page', async () => {
     const { user } = await openPeople();
-    await user.click(within(row('Person 2')).getByRole('link', { name: 'Avaa: Person 2' }));
+    const link = within(row('Person 2')).getByRole('link', { name: 'Person 2' });
+    expect(link).toHaveAttribute('href', `/people/${db.events.people.find((p) => p.name === 'Person 2')!.id}`);
+    await user.click(link);
+    expect(await screen.findByRole('heading', { name: 'Person 2', level: 1 })).toBeInTheDocument();
+  });
+
+  it('the name link works from the keyboard (Tab + Enter)', async () => {
+    const { user } = await openPeople();
+    const link = within(row('Person 2')).getByRole('link', { name: 'Person 2' });
+    link.focus();
+    expect(link).toHaveFocus();
+    await user.keyboard('{Enter}');
     expect(await screen.findByRole('heading', { name: 'Person 2', level: 1 })).toBeInTheDocument();
   });
 
@@ -128,91 +139,30 @@ describe('people register (UC-014)', () => {
     expect(screen.queryByText(/Server says no/)).not.toBeInTheDocument();
   });
 
-  it('has no Edit buttons or rename dialog: names and active switches are edited in place', async () => {
-    await openPeople();
+  it('is read-only: no name fields, active switches, role pickers or row buttons (TASK-169)', async () => {
+    await openPeople('/people?active=all');
+    const table = list();
+    expect(within(table).queryAllByRole('textbox')).toEqual([]);
+    expect(within(table).queryAllByRole('switch')).toEqual([]);
+    expect(within(table).queryAllByRole('checkbox')).toEqual([]);
+    expect(within(table).queryAllByRole('combobox')).toEqual([]);
     // Only the header sort toggles (TASK-156) are buttons; rows have none.
     expect(rows().flatMap((tr) => within(tr).queryAllByRole('button'))).toEqual([]);
     expect(screen.queryByRole('button', { name: /Muuta nimeä|Ota käyttöön|Poista käytöstä|Tallenna/ })).not.toBeInTheDocument();
-    expect(screen.getByLabelText('Nimi: Person 2')).toHaveValue('Person 2');
-    expect(screen.getByRole('switch', { name: 'Aktiivinen: Person 2' })).toBeChecked();
+    // Active status is shown as a tag.
+    expect(within(row('Person 2')).getByText('Aktiivinen')).toHaveClass('tag');
+    expect(within(row('Person 9')).getByText('Ei käytössä')).toHaveClass('tag');
+    expect(within(row('Person 2')).queryByText('Ei käytössä')).not.toBeInTheDocument();
   });
 
-  it('renames a person inline on blur; a duplicate name warns but saves', async () => {
-    const patches: unknown[] = [];
-    server.events.on('request:start', async ({ request }) => {
-      if (request.method === 'PATCH') patches.push(await request.clone().json());
-    });
-    const { user } = await openPeople();
-    const input = screen.getByLabelText('Nimi: Person 2');
-    await user.clear(input);
-    await user.type(input, 'Person 20');
-    expect(patches).toEqual([]);
-    await user.click(document.body);
-
-    await waitFor(() => expect(names()).toContain('Person 20'));
-    expect(names()).not.toContain('Person 2');
-    expect(patches).toEqual([{ name: 'Person 20' }]);
-    expect(db.events.people.some((p) => p.name === 'Person 20')).toBe(true);
-
-    await user.clear(screen.getByLabelText('Nimi: Person 20'));
-    await user.type(screen.getByLabelText('Nimi: Person 20'), 'Person 3{Enter}');
-    const warning = await screen.findByText('Samanniminen henkilö on jo olemassa.');
-    expect(warning.closest('[role="status"]')).toHaveTextContent('Nimi tallennettu: Person 3.');
-    await waitFor(() => expect(names().filter((n) => n === 'Person 3')).toHaveLength(2));
-    // Duplicate names still get unique accessible names per row.
-    expect(screen.getByLabelText('Nimi: Person 3 (1)')).toBeInTheDocument();
-    expect(screen.getByLabelText('Nimi: Person 3 (2)')).toBeInTheDocument();
-  });
-
-  it('empty name shows "required", sends nothing and Esc restores the name', async () => {
-    const patches: unknown[] = [];
-    server.events.on('request:start', ({ request }) => {
-      if (request.method === 'PATCH') patches.push('x');
-    });
-    const { user } = await openPeople();
-    const input = screen.getByLabelText('Nimi: Person 2');
-    await user.clear(input);
-    await user.click(document.body);
-    expect(await screen.findByText('Pakollinen tieto.')).toBeInTheDocument();
-    expect(input).toHaveAttribute('aria-invalid', 'true');
-    expect(patches).toHaveLength(0);
-
-    await user.click(input);
-    await user.keyboard('{Escape}');
-    expect(input).toHaveValue('Person 2');
-    expect(names()).toContain('Person 2');
-  });
-
-  it('translates a server error on rename under the field', async () => {
-    server.use(
-      http.patch('/api/people/:id', () =>
-        HttpResponse.json(
-          { error: { code: 'VALIDATION_ERROR', message: 'Server says no', fields: { name: 'TOO_LONG' } } },
-          { status: 400 },
-        ),
-      ),
-    );
-    const { user } = await openPeople();
-    const input = screen.getByLabelText('Nimi: Person 2');
-    await user.type(input, 'x{Enter}');
-    expect(await screen.findByText('Teksti on liian pitkä.')).toBeInTheDocument();
-    expect(input).toHaveValue('Person 2x');
-    expect(screen.queryByText(/Server says no/)).not.toBeInTheDocument();
-  });
-
-  it('the active switch saves on change (deactivate and activate)', async () => {
-    const { user } = await openPeople();
-    await user.click(screen.getByRole('switch', { name: 'Aktiivinen: Person 2' }));
-    expect(await screen.findByText('Person 2 poistettu käytöstä.')).toBeInTheDocument();
-    await waitFor(() => expect(names()).not.toContain('Person 2'));
-    expect(db.events.people.find((p) => p.name === 'Person 2')!.active).toBe(false);
-
-    await user.click(screen.getByRole('button', { name: 'Ei käytössä' }));
-    await waitFor(() => expect(names()).toContain('Person 2'));
-    await user.click(screen.getByRole('switch', { name: 'Aktiivinen: Person 2' }));
-    expect(await screen.findByText('Person 2 otettu käyttöön.')).toBeInTheDocument();
-    await waitFor(() => expect(names()).not.toContain('Person 2'));
-    expect(db.events.people.find((p) => p.name === 'Person 2')!.active).toBe(true);
+  it('duplicate names get unique accessible link names per row', async () => {
+    db.events.people.find((p) => p.name === 'Person 2')!.name = 'Person 3';
+    await openPeople();
+    const links = rows()
+      .map((tr) => nameLink(tr))
+      .filter((a) => a.textContent === 'Person 3');
+    expect(links.map((a) => a.getAttribute('aria-label'))).toEqual(['Person 3 (1)', 'Person 3 (2)']);
+    expect(within(row('Person 1')).getByRole('link')).not.toHaveAttribute('aria-label');
   });
 
   it('shows an Osakas tag on partners and the "only partners" checkbox filters (UC-032 AC-5)', async () => {
@@ -277,6 +227,13 @@ describe('people register (UC-014)', () => {
     const { user } = await openPeople();
     const roleSelect = screen.getByRole('combobox', { name: 'Rooli' });
     expect(roleSelect).toHaveDisplayValue('Kaikki roolit');
+    // Removed roles (Role cleanup) are not offered; MIX is "Miksaus".
+    const options = within(roleSelect).getAllByRole('option').map((o) => o.textContent);
+    expect(options).toContain('Miksaus');
+    expect(options).not.toEqual(expect.arrayContaining([expect.stringMatching(/Puhallin|Teknikko/)]));
+    expect(within(roleSelect).getAllByRole('option').map((o) => (o as HTMLOptionElement).value)).not.toEqual(
+      expect.arrayContaining(['HORN_1', 'HORN_2', 'TECHNICIAN']),
+    );
     await user.selectOptions(roleSelect, 'Basso');
     await waitFor(() => expect(names()).toEqual(['Person 2']));
     expect(queries.at(-1)).toContain('role=BASS');
@@ -293,6 +250,12 @@ describe('people register (UC-014)', () => {
     await user.selectOptions(roleSelect, 'Kaikki roolit');
     await waitFor(() => expect(names()).toEqual(['Partner A', 'Partner B', 'Partner C']));
     expect(new URLSearchParams(queries.at(-1)).has('role')).toBe(false);
+  });
+
+  it('ignores a removed role in the URL (no role filter)', async () => {
+    await openPeople('/people?role=HORN_1');
+    expect(screen.getByRole('combobox', { name: 'Rooli' })).toHaveDisplayValue('Kaikki roolit');
+    expect(names()).toContain('Person 1');
   });
 
   it('reads the filters from the URL', async () => {

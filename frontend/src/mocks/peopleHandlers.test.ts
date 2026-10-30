@@ -144,6 +144,11 @@ describe('people roles and event count mock (contract → People: roles and even
     expect((await peopleApi.update(id, { roles: [] })).person.roles).toEqual([]);
     expect((await apiError(peopleApi.update(id, { roles: ['BASS', 'BASS'] }))).fields).toEqual({ roles: 'INVALID_VALUE' });
     expect((await apiError(peopleApi.update(id, { roles: ['OFFICE' as never] }))).fields).toEqual({ roles: 'INVALID_VALUE' });
+    // Removed roles (Role cleanup) are rejected like any unknown code.
+    for (const code of ['HORN_1', 'HORN_2', 'TECHNICIAN']) {
+      expect((await apiError(peopleApi.update(id, { roles: [code as never] }))).fields).toEqual({ roles: 'INVALID_VALUE' });
+      expect((await apiError(peopleApi.list('all', undefined, code as never))).fields).toEqual({ role: 'INVALID_VALUE' });
+    }
     expect(person('Person 2').roles).toEqual([]);
   });
 });
