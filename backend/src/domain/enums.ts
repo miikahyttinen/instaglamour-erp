@@ -21,14 +21,11 @@ export const MUSICIAN_ROLES = [
   'KEYS',
   'PIANO',
   'MIX',
-  'HORN_1',
-  'HORN_2',
   'SAX',
   'TRUMPET',
   'TROMBONE',
   'VIOLIN',
   'DJ',
-  'TECHNICIAN',
   'OTHER_ROLE',
 ] as const satisfies readonly CostType[];
 
@@ -67,6 +64,35 @@ export function isMusicianRole(type: string): type is MusicianRole {
 export function normalizeRoles(roles: readonly string[]): MusicianRole[] {
   const set = new Set(roles);
   return MUSICIAN_ROLES.filter((r) => set.has(r));
+}
+
+/**
+ * Musician roles removed on 2026-10-30 (TASK-041). The API rejects them (400 INVALID_VALUE); seed
+ * and import files may still contain them and are converted like the migration
+ * 20261030120000_remove_legacy_roles did with the stored data.
+ */
+export const LEGACY_ROLES = ['HORN_1', 'HORN_2', 'TECHNICIAN'] as const;
+export type LegacyRole = (typeof LEGACY_ROLES)[number];
+
+const legacyRoleSet: ReadonlySet<string> = new Set(LEGACY_ROLES);
+
+export function isLegacyRole(code: unknown): code is LegacyRole {
+  return typeof code === 'string' && legacyRoleSet.has(code);
+}
+
+/**
+ * The current code for a removed role: HORN_1 → TRUMPET, TECHNICIAN → MIX, HORN_2 → SAX when the
+ * person's roles contain SAX but not TROMBONE, otherwise TROMBONE (also when there is no person).
+ */
+export function convertLegacyRole(code: LegacyRole, personRoles: readonly unknown[] = []): MusicianRole {
+  switch (code) {
+    case 'HORN_1':
+      return 'TRUMPET';
+    case 'TECHNICIAN':
+      return 'MIX';
+    case 'HORN_2':
+      return personRoles.includes('SAX') && !personRoles.includes('TROMBONE') ? 'SAX' : 'TROMBONE';
+  }
 }
 
 /** Cost types whose line needs a free-text description. */

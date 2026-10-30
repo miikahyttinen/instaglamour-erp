@@ -147,6 +147,18 @@ returns as-is are renamed too (offer history `CONVERTED {gigId}` → `{eventId}`
 (`seed/README.md`). Older migrations and their tests (`test/migration*.test.ts`) keep the old names
 because they run against the schema as it was then.
 
+## Role cleanup: Horn 1/2 and Technician removed (TASK-041)
+
+`HORN_1`, `HORN_2` and `TECHNICIAN` are no longer in `CostType` / `MUSICIAN_ROLES` (api-contract "Role
+cleanup"); requests that use them get 400 `INVALID_VALUE`. Migration `20261030120000_remove_legacy_roles`
+converts the stored data, then recreates the Postgres enum without them: `HORN_1` → `TRUMPET`,
+`TECHNICIAN` → `MIX`, `HORN_2` → `SAX` if the line's person has `SAX` but not `TROMBONE` in roles,
+otherwise `TROMBONE`. Converted: cost lines, purchase order lines (person = the PO's person), lineup
+template roles (no person → `TROMBONE`) and person roles (de-duplicated, `MUSICIAN_ROLES` order).
+`updated_at` is not touched; history JSON keeps the old codes. Seed/import files with the old codes
+still load and are converted the same way (`seed/README.md`, `convertLegacyRole` in
+`src/domain/enums.ts`).
+
 ## Layout
 
 ```

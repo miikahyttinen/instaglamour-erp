@@ -372,7 +372,7 @@ describe('loadSeed', () => {
     expect(event.lineupName).toBe('Template C');
     const types = event.costLines.map((c) => c.type);
     expect(types.slice(-3)).toEqual(['OFFICE', 'SALES', 'PRODUCTION']);
-    expect(types).toHaveLength(13);
+    expect(types).toHaveLength(12); // 9 template roles + 3 internal
     expect(event.costLines[0]).toMatchObject({ type: 'VOC', personId: null, joinsLoadIn: true, budgetedCents: 30000 });
     expect(event.costLines.find((c) => c.type === 'SALES')?.personId).toBe(event.seller.personId);
     expect(event.costLines.find((c) => c.type === 'PRODUCTION')?.personId).toBe(event.producer.personId);

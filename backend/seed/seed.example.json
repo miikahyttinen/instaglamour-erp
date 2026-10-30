@@ -47,10 +47,9 @@
         { "role": "BASS", "defaultFeeCents": 30000 },
         { "role": "DRUMS", "defaultFeeCents": 30000 },
         { "role": "KEYS", "defaultFeeCents": 30000 },
-        { "role": "HORN_1", "defaultFeeCents": 30000 },
-        { "role": "HORN_2", "defaultFeeCents": 30000 },
-        { "role": "MIX", "defaultFeeCents": 30000 },
-        { "role": "TECHNICIAN", "defaultFeeCents": 20000 }
+        { "role": "TRUMPET", "defaultFeeCents": 30000 },
+        { "role": "TROMBONE", "defaultFeeCents": 30000 },
+        { "role": "MIX", "defaultFeeCents": 30000 }
       ]
     }
   ],

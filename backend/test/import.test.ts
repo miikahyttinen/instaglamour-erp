@@ -192,6 +192,22 @@ describe('POST /api/import', () => {
     expect((await snapshot()).event).toBeGreaterThanOrEqual((events as unknown[]).length);
   });
 
+  it('accepts removed role codes and converts them (TASK-041)', async () => {
+    const doc = example() as Doc & { people: Record<string, unknown>[]; lineupTemplates: { name: string; roles: { role: string }[] }[] };
+    doc.people[2]!.roles = ['SAX', 'HORN_2', 'TECHNICIAN'];
+    doc.lineupTemplates[0]!.roles.push({ role: 'HORN_1' }, { role: 'HORN_2' });
+    for (const r of doc.lineupTemplates[0]!.roles.slice(-2)) Object.assign(r, { defaultFeeCents: 10000 });
+    const res = await post(doc, '?filename=old.json');
+    expect(res.statusCode).toBe(200);
+    const db = testDb();
+    expect((await db.person.findFirstOrThrow({ where: { name: doc.people[2]!.name as string } })).roles).toEqual(['MIX', 'SAX']);
+    const template = await db.lineupTemplate.findFirstOrThrow({
+      where: { name: doc.lineupTemplates[0]!.name },
+      include: { roles: { orderBy: { position: 'asc' } } },
+    });
+    expect(template.roles.slice(-2).map((r) => r.role)).toEqual(['TRUMPET', 'TROMBONE']);
+  });
+
   it('rejects a document with both `events` and `gigs` and imports nothing (TASK-032)', async () => {
     const before = await snapshot();
     const res = await post({ ...example(), gigs: [] });

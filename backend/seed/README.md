@@ -220,6 +220,23 @@ as `events`. Older files still load: a top-level `gigs` list is read as `events`
 say `events.N…`). A file with **both** `events` and `gigs` is rejected. Renaming the key in your
 `seed.local.json` is recommended but not required.
 
+### Removed roles: Horn 1/2 and Technician (TASK-041)
+
+The musician roles `HORN_1`, `HORN_2` and `TECHNICIAN` no longer exist (`MIX` covers mixing and technician
+work). Older files that use them **still load**: in person `roles`, lineup template `role` and cost line
+`type` they are converted the same way the migration `20261030120000_remove_legacy_roles` converted the
+stored data:
+
+| Old code | New code |
+|---|---|
+| `HORN_1` | `TRUMPET` |
+| `TECHNICIAN` | `MIX` |
+| `HORN_2` | `SAX` if the person's `roles` **in the file** contain `SAX` but not `TROMBONE` (cost lines: the line's `person`; person roles: that person's own list), otherwise `TROMBONE` (also for template roles and lines without a person) |
+
+A person's converted roles are de-duplicated (`["HORN_1", "TRUMPET"]` → `["TRUMPET"]`); a list that
+already repeats a code is still an error. Updating your `seed.local.json` to the new codes is recommended
+but not required.
+
 ## Making your local seed
 
 ```bash
