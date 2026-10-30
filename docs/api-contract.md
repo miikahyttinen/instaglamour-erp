@@ -545,7 +545,19 @@ Definitions: `total = totalPriceCents`; `invoiced = Σ SENT + PAID rows`; `paid 
 - Colours: Needs invoices = warn (amber); Fully invoiced = ok (light green); Open invoices = info (blue); Partly paid = accent (purple tag, new); Fully paid = ok-strong (dark green). "–" plain.
 - `EventSummary`/`EventDetail`: `invoiceState` is **removed**; add `invoiceCoverage`, `paymentState` (keep `invoicedCents`, `paidCents`, `balanceCents`; add `openCents`). Filters `?invoiceCoverage=` and `?paymentState=` (repeatable) replace `?invoiceState=`.
 
+## Invoicing: one label (owner decision 2026-10-31) — replaces `invoiceCoverage` + `paymentState`
+One derived value **`invoiceState`** = the next invoicing action; first match wins (total = totalPriceCents, paid/ready/open as before):
+1. `PAID` — rows exist and paid ≥ total → "Maksettu / Paid" (ok-strong, dark green)
+2. `ROWS_TO_INVOICE` — readyCents > 0 → "Laskutettavia rivejä / Rows to be invoiced" (info, blue)
+3. `OPEN_INVOICES` — openCents > 0 → "Avoimia laskuja / Open invoices" (warn, amber)
+4. `NEEDS_INVOICES` — invoiced < total → "Laskuttamatta / Needs invoices" (danger, red)
+5. `NONE` — otherwise (e.g. total 0 and no rows) → "–"
+- `EventSummary`/`EventDetail`: remove `invoiceCoverage` and `paymentState`; add `invoiceState`; keep `invoicedCents`, `paidCents`, `openCents`, `readyCents`, `balanceCents`.
+- Filter `?invoiceState=` (repeatable, OR; unknown → 400) replaces `?invoiceCoverage=` / `?paymentState=`.
+- UI: the same single tag in the Keikat table (one line), phone cards and at the top of the gig page Laskutus card; one "Laskutus" filter. The purple tone is no longer used for invoicing (keep the token).
+
 ## Change log
+- 2026-10-31 – Invoicing back to one label (next action): PAID / ROWS_TO_INVOICE / OPEN_INVOICES / NEEDS_INVOICES / NONE (PM)
 - 2026-10-31 – invoiceState split into invoiceCoverage + paymentState (owner states, colours) (PM)
 - 2026-10-31 – Invoice rows per gig (READY/SENT/PAID), balance from paid rows, derived invoiceState; gig invoice status + prepayment removed (PM)
 - 2026-10-31 – Invoice status (NONE/READY/PREPAYMENT_PAID/INVOICED/PAID), prepayment and balance replace the ready-for-invoice flag (PM)
