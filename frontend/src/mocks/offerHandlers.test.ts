@@ -240,6 +240,25 @@ describe('offers mock (contract → Offers, BR-102…BR-106)', () => {
     expect(history[1]!.details).toEqual({ from: 'PENDING', to: 'LOST_OTHER' });
   });
 
+  it('year is optional: all years, newest created first; stats default to the current year (contract)', async () => {
+    db.offers.offers.length = 0;
+    const old = addMockOffer({ clientId, eventName: 'Old', eventDate: `${TEST_YEAR - 4}-01-01` });
+    old.createdAt = `${TEST_YEAR - 5}-01-15T10:00:00.000Z`;
+    const later = addMockOffer({ clientId, eventName: 'Later', eventDate: `${TEST_YEAR + 1}-01-01` });
+    later.createdAt = `${TEST_YEAR - 1}-01-15T10:00:00.000Z`;
+    expect((await offersApi.list({})).offers.map((o) => o.eventName)).toEqual(['Later', 'Old']);
+    // With a year: that year only.
+    expect((await offersApi.list({ year: TEST_YEAR + 1 })).offers.map((o) => o.eventName)).toEqual(['Later']);
+
+    const year = Number(todayIso().slice(0, 4));
+    const stats = await offersApi.stats();
+    const range = [-3, -2, -1, 0, 1, 2].map((i) => year + i);
+    expect(stats.averageByCreatedYear.map((y) => y.year)).toEqual(range);
+    expect(stats.byEventYear.map((y) => y.year)).toEqual(range);
+    expect(stats.openValueByEventYear.map((y) => y.year)).toEqual(range);
+    await expectApiError(offersApi.list({ year: 12 }), 400, 'VALIDATION_ERROR');
+  });
+
   it('serves the seeded demo link', async () => {
     expect((await publicOffersApi.get(DEMO_OFFER_TOKEN)).eventName).toBe('Summer Party X');
   });

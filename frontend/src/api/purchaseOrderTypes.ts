@@ -61,7 +61,7 @@ export interface PurchaseOrder {
 }
 
 export interface PurchaseOrderListQuery {
-  /** Required unless `q` is given (then ignored: all years are searched). */
+  /** Optional: without it all years; ignored with `q` (all years are searched). */
   year?: number;
   q?: string;
   status?: PurchaseOrderStatus;

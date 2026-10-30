@@ -8,6 +8,7 @@ import { SectionLabel } from '../../components/SectionLabel';
 import { apiErrorMessage, offerEventTypeLabel } from '../../i18n/labels';
 import { useLang } from '../../i18n/useLang';
 import { formatMoneyWhole, formatPercentWhole } from '../../lib/format';
+import { currentYear } from '../../lib/years';
 import { useOfferStats } from './queries';
 import './offerKpis.css';
 
@@ -28,14 +29,22 @@ function monthLong(month: string, lang: Language): string {
   return new Intl.DateTimeFormat(LOCALES[lang], { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(date);
 }
 
+/** The default bar of a year series: the current year, else the series' "year" (year−3 … year+2). */
+function defaultYear(series: { year: number }[]): number {
+  const now = currentYear();
+  if (series.some((y) => y.year === now)) return now;
+  return series[Math.min(3, series.length - 1)]?.year ?? now;
+}
+
 /**
  * Offer statistics (BR-122, contract "Offer statistics"): six KPI cards above the offer table.
- * All years; ignores the table filters. `year` is the selected year of the app.
+ * All years; ignores the table filters. The year cards show year−3 … year+2 around the current
+ * year, with the current year selected by default (contract "Year is no longer global").
  */
-export function OfferKpis({ year }: { year: number }) {
+export function OfferKpis() {
   const { t } = useTranslation();
   const titleId = useId();
-  const stats = useOfferStats(year);
+  const stats = useOfferStats();
   return (
     <section className="offer-kpis" aria-labelledby={titleId}>
       <SectionLabel id={titleId}>{t('offers.kpi.title')}</SectionLabel>
@@ -54,22 +63,21 @@ export function OfferKpis({ year }: { year: number }) {
           </Button>
         </Notice>
       )}
-      {/* key: a new selected year resets the bar selections to their defaults. */}
-      {stats.data && <KpiCards key={year} stats={stats.data} year={year} />}
+      {stats.data && <KpiCards stats={stats.data} />}
     </section>
   );
 }
 
-function KpiCards({ stats, year }: { stats: OfferStats; year: number }) {
+function KpiCards({ stats }: { stats: OfferStats }) {
   const { t } = useTranslation();
   const lang = useLang();
   const money = (cents: number | null) => formatMoneyWhole(cents, lang);
   const months = stats.createdByMonth;
 
   const [month, setMonth] = useState(months[months.length - 1]?.month ?? '');
-  const [avgYear, setAvgYear] = useState(year);
-  const [eventYear, setEventYear] = useState(year);
-  const [openYear, setOpenYear] = useState(year);
+  const [avgYear, setAvgYear] = useState(() => defaultYear(stats.averageByCreatedYear));
+  const [eventYear, setEventYear] = useState(() => defaultYear(stats.byEventYear));
+  const [openYear, setOpenYear] = useState(() => defaultYear(stats.openValueByEventYear));
 
   const monthItem = months.find((m) => m.month === month);
   const avgItem = stats.averageByCreatedYear.find((y) => y.year === avgYear);

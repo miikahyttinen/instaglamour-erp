@@ -13,7 +13,7 @@ export const peopleKeys = {
   all: ['people'] as const,
   list: (filter: PeopleActiveFilter, partner?: PeoplePartnerFilter, role?: MusicianRole) =>
     ['people', 'list', filter, partner ?? 'any', role ?? 'any'] as const,
-  costLines: (id: Id, year: number) => [...rootKeys.personCostLines, id, year] as const,
+  costLines: (id: Id) => [...rootKeys.personCostLines, id] as const,
 };
 
 export function usePeopleList(
@@ -28,10 +28,11 @@ export function usePeopleList(
   });
 }
 
-export function usePersonCostLines(id: Id, year: number) {
+/** All years, newest event first (contract "Year is no longer global"). */
+export function usePersonCostLines(id: Id) {
   return useQuery({
-    queryKey: peopleKeys.costLines(id, year),
-    queryFn: () => peopleApi.costLines(id, year),
+    queryKey: peopleKeys.costLines(id),
+    queryFn: () => peopleApi.costLines(id),
   });
 }
 

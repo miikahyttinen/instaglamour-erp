@@ -10,7 +10,7 @@ export const rootKeys = {
   years: ['years'],
   /** Event lists: ['events', 'list', query]. */
   eventLists: ['events', 'list'],
-  /** Cost lines on the person page: ['people', 'cost-lines', id, year]. */
+  /** Cost lines on the person page (all years): ['people', 'cost-lines', id]. */
   personCostLines: ['people', 'cost-lines'],
   /** Client list and client pages: ['clients', …] (event counts and linked events, UC-027). */
   clients: ['clients'],

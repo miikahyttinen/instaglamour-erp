@@ -78,7 +78,7 @@ test('add, rename and deactivate a person; person page lists their lines', async
   await page.keyboard.press('Enter');
   await expect(page).toHaveURL(new RegExp(`/people/${person?.id}$`));
   await expect(page.getByRole('heading', { level: 1, name })).toBeVisible();
-  const lines = page.getByRole('table', { name: 'Kulurivit 2026' });
+  const lines = page.getByRole('table', { name: 'Kulurivit' });
   await expect(lines.getByRole('row', { name: new RegExp(venue) })).toContainText('Kitara');
   await expect(lines.getByRole('row', { name: new RegExp(venue) })).toContainText(fiMoney(SEED.templateB.roleFeeCents));
   // The person page has visible "Nimi" and "Aktiivinen" inline fields.

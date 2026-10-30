@@ -3,14 +3,13 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { formatDate, formatMoneyWhole } from '../../lib/format';
 import { DESKTOP_QUERY, TABLET_QUERY } from '../../lib/useMediaQuery';
 import { db } from '../../mocks/data';
+import { server } from '../../mocks/server';
 import { addMockClient, partnerB, TEST_YEAR } from '../../test/eventFixtures';
 import { installMatchMedia } from '../../test/matchMedia';
 import { addMockOffer } from '../../test/offerFixtures';
 import { renderApp, signInMock } from '../../test/renderApp';
 
 const fiMoney = (cents: number) => formatMoneyWhole(cents, 'fi').replace(/\s/g, ' ');
-/** KPI card "Avoimet tarjoukset · <year>" (BR-122; default = the selected year). */
-const openCard = () => screen.getByRole('region', { name: `Avoimet tarjoukset · ${TEST_YEAR}` });
 const table = () => screen.getByRole('table', { name: 'Tarjoukset' });
 const bodyRows = () => within(table()).getAllByRole('row').filter((r) => r.closest('tbody'));
 const eventNames = () => bodyRows().map((r) => within(r).getAllByRole('link')[0]!.textContent);
@@ -19,7 +18,9 @@ const text = (el: HTMLElement) => (el.textContent ?? '').replace(/\s/g, ' ');
 describe('offer list (UC-028)', () => {
   let clientId: string;
   beforeEach(() => {
-    signInMock().selectedYear = TEST_YEAR;
+    // The list is not tied to the selected year (contract "Year is no longer global").
+    signInMock().selectedYear = TEST_YEAR - 10;
+    db.offers.offers.length = 0;
     clientId = addMockClient('Client X').id;
   });
 
@@ -28,6 +29,14 @@ describe('offer list (UC-028)', () => {
     addMockOffer({ clientId, eventName: 'Event A', eventDate: `${TEST_YEAR}-03-01`, city: 'City Y' });
     addMockOffer({ clientId, eventName: 'Event W', eventDate: `${TEST_YEAR}-04-01`, disposition: 'WON' });
     addMockOffer({ clientId, eventName: 'Event L', eventDate: `${TEST_YEAR}-05-01`, disposition: 'LOST_PRICE' });
+    // Another year, created long ago: listed too (all years), last by creation.
+    addMockOffer({ clientId, eventName: 'Event Old', eventDate: `${TEST_YEAR - 5}-05-01` }).createdAt =
+      `${TEST_YEAR - 6}-01-15T10:00:00.000Z`;
+    const listUrls: string[] = [];
+    const onRequest = ({ request }: { request: Request }) => {
+      if (new URL(request.url).pathname === '/api/offers') listUrls.push(request.url);
+    };
+    server.events.on('request:start', onRequest);
 
     installMatchMedia({ [DESKTOP_QUERY]: true });
     const { user } = renderApp('/');
@@ -38,11 +47,11 @@ describe('offer list (UC-028)', () => {
     expect(offers).toHaveTextContent('Tarjoukset');
     await user.click(offers);
 
-    expect(await screen.findByRole('heading', { level: 1, name: `Tarjoukset ${TEST_YEAR}` })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Tarjoukset' })).toBeInTheDocument();
+    expect(screen.queryByRole('combobox', { name: 'Valittu vuosi' })).toBeNull();
     expect(screen.getByRole('heading', { level: 2, name: 'Tarjoustilastot' })).toBeInTheDocument();
-    expect(text(await screen.findByRole('region', { name: `Avoimet tarjoukset · ${TEST_YEAR}` }))).toContain(
-      fiMoney(300000),
-    );
+    // Open offers (by type, all years; Event Old is past): B 2 000 € + A 1 000 €.
+    expect(text(await screen.findByRole('region', { name: 'Tapahtumatyypeittäin' }))).toContain(fiMoney(300000));
     expect(screen.getByRole('region', { name: 'Voittoprosentti' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Uusi tarjous' })).toHaveAttribute('href', '/offers/new');
 
@@ -67,7 +76,11 @@ describe('offer list (UC-028)', () => {
       '1', '1', '2', '1', '1', '1', '1', '2', '3', '3', '2', '2', '1',
     ]);
     // Default sort (UC-028 change 2026-10-22): newest created first.
-    expect(eventNames()).toEqual(['Event L', 'Event W', 'Event A', 'Event B']);
+    expect(eventNames()).toEqual(['Event L', 'Event W', 'Event A', 'Event B', 'Event Old']);
+    // No year is sent (contract "Year is no longer global").
+    expect(listUrls.length).toBeGreaterThan(0);
+    for (const url of listUrls) expect(new URL(url).searchParams.has('year')).toBe(false);
+    server.events.removeListener('request:start', onRequest);
     expect(bodyRows()[2]).toHaveTextContent('Venue X, City Y');
     expect(within(table()).getByRole('columnheader', { name: /Luotu/ })).toHaveAttribute('aria-sort', 'descending');
     // Created date formatted like the other dates (local date of the creation time).
@@ -122,7 +135,7 @@ describe('offer list (UC-028)', () => {
     await waitFor(() => expect(offer.disposition).toBe('LOST_PRICE'));
     await waitFor(() => expect(bodyRows()[0]).toHaveTextContent('Hylätty'));
     // The open value KPI follows (BR-122).
-    await waitFor(() => expect(text(openCard())).toContain(fiMoney(0)));
+    await waitFor(() => expect(screen.getByRole('region', { name: 'Tapahtumatyypeittäin' })).toHaveTextContent('Ei avoimia tarjouksia'));
     expect(db.offers.events.filter((e) => e.offerId === offer.id).map((e) => e.type)).toEqual([
       'CREATED',
       'UPDATED',
@@ -133,7 +146,6 @@ describe('offer list (UC-028)', () => {
 
   it('filters in the column headers (status incl. expired, seller, outcome), combined with AND and the search', async () => {
     // A past year: the pending offer is expired.
-    db.partners[0]!.selectedYear = 2020;
     addMockOffer({ clientId, eventName: 'Expired one', eventDate: '2020-02-01' });
     addMockOffer({ clientId, eventName: 'Lost one', eventDate: '2020-02-15', disposition: 'LOST_OTHER' });
     addMockOffer({ clientId, eventName: 'Won one', eventDate: '2020-03-01', disposition: 'WON', sellerId: partnerB().id });
@@ -200,9 +212,7 @@ describe('offer list (UC-028)', () => {
     await screen.findByRole('table', { name: 'Tarjoukset' });
     // "(tyhjä)" = offers without a source.
     expect(eventNames()).toEqual(['Event 2']);
-    expect(text(await screen.findByRole('region', { name: `Avoimet tarjoukset · ${TEST_YEAR}` }))).toContain(
-      fiMoney(300000),
-    );
+    expect(text(await screen.findByRole('region', { name: 'Tapahtumatyypeittäin' }))).toContain(fiMoney(300000));
     expect(within(table()).getByRole('columnheader', { name: /Hinta/ })).toHaveAttribute('aria-sort', 'descending');
 
     await user.click(within(table()).getByRole('button', { name: 'Suodata: Lähde' }));
@@ -220,7 +230,7 @@ describe('offer list (UC-028)', () => {
     await user.click(screen.getByRole('button', { name: 'OK' }));
     expect(eventNames()).toEqual(['Event 1']);
     await user.click(screen.getByRole('button', { name: 'Poistetut' }));
-    expect(await screen.findByText(`Ei poistettuja tarjouksia vuodelle ${TEST_YEAR}.`)).toBeInTheDocument();
+    expect(await screen.findByText('Ei poistettuja tarjouksia.')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Tarjoukset' }));
     await screen.findByRole('table', { name: 'Tarjoukset' });
     expect(eventNames()).toEqual(['Event 1']);
@@ -228,7 +238,7 @@ describe('offer list (UC-028)', () => {
 
   it('shows an empty state with New offer (E1)', async () => {
     renderApp('/offers');
-    expect(await screen.findByText(`Ei tarjouksia vuodelle ${TEST_YEAR}.`)).toBeInTheDocument();
+    expect(await screen.findByText('Ei tarjouksia.')).toBeInTheDocument();
     expect(screen.getAllByRole('link', { name: 'Uusi tarjous' })).toHaveLength(2);
   });
 
@@ -302,7 +312,7 @@ describe('offer list (UC-028)', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Poista tarjous' }));
     expect(await screen.findByText('Tarjous poistettu: Event 1.')).toBeInTheDocument();
     expect(offer.deletedAt).not.toBeNull();
-    expect(await screen.findByText(`Ei tarjouksia vuodelle ${TEST_YEAR}.`)).toBeInTheDocument();
+    expect(await screen.findByText('Ei tarjouksia.')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Poistetut' }));
     const deleted = await screen.findByRole('table', { name: 'Poistetut' });

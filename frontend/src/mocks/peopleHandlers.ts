@@ -219,19 +219,17 @@ export const peopleHandlers = [
 
   http.get('/api/people/:id/cost-lines', ({ request, params }) => {
     if (!currentPartner()) return unauthenticated();
-    const year = new URL(request.url).searchParams.get('year') ?? '';
-    if (!/^\d{4}$/.test(year)) return validationError({ year: 'INVALID_VALUE' });
+    // `year` is optional (contract "Year is no longer global"): without it, all years, newest event first.
+    const year = new URL(request.url).searchParams.get('year');
+    if (year !== null && !/^\d{4}$/.test(year)) return validationError({ year: 'INVALID_VALUE' });
     const person = findPerson(params.id);
     if (!person) return notFound();
 
+    const oldestFirst = (a: (typeof db.events.events)[number], b: (typeof db.events.events)[number]) =>
+      a.startDate.localeCompare(b.startDate) || a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id);
     const events = db.events.events
-      .filter((g) => g.deletedAt === null && g.startDate.startsWith(`${year}-`))
-      .sort(
-        (a, b) =>
-          a.startDate.localeCompare(b.startDate) ||
-          a.createdAt.localeCompare(b.createdAt) ||
-          a.id.localeCompare(b.id),
-      );
+      .filter((g) => g.deletedAt === null && (year === null || g.startDate.startsWith(`${year}-`)))
+      .sort((a, b) => (year === null ? oldestFirst(b, a) : oldestFirst(a, b)));
     const lines: PersonCostLine[] = [];
     const totals = { budgetedCents: 0, actualCents: 0 };
     for (const event of events) {

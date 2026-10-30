@@ -1,9 +1,10 @@
 import { screen, within } from '@testing-library/react';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { setLanguage } from '../../i18n';
 import { formatMoneyWhole } from '../../lib/format';
 import { db } from '../../mocks/data';
 import { offerStats } from '../../mocks/offerStore';
+import { server } from '../../mocks/server';
 import { addMockClient, TEST_YEAR } from '../../test/eventFixtures';
 import { addMockOffer } from '../../test/offerFixtures';
 import { renderApp, signInMock } from '../../test/renderApp';
@@ -26,7 +27,10 @@ const inMonth = (month: string) => `${month}-15T10:00:00.000Z`;
 describe('offer KPI cards (BR-122, TASK-157)', () => {
   let clientId: string;
   beforeEach(() => {
-    signInMock().selectedYear = TEST_YEAR;
+    // "Now" is in TEST_YEAR, before the fixtures' event dates (so they are open). The year cards
+    // follow the current year, not the partner's selected year (contract "Year is no longer global").
+    vi.useFakeTimers({ toFake: ['Date'], now: new Date(`${TEST_YEAR}-03-15T12:00:00.000Z`) });
+    signInMock().selectedYear = TEST_YEAR - 10;
     db.offers.offers.length = 0;
     clientId = addMockClient('Client X').id;
   });
@@ -60,6 +64,23 @@ describe('offer KPI cards (BR-122, TASK-157)', () => {
     return { last, earlier };
   }
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('asks for the stats without a year', async () => {
+    const urls: string[] = [];
+    const listener = ({ request }: { request: Request }) => {
+      if (new URL(request.url).pathname === '/api/offers/stats') urls.push(request.url);
+    };
+    server.events.on('request:start', listener);
+    renderApp('/offers');
+    await screen.findByRole('region', { name: /^Luodut tarjoukset/ });
+    expect(urls.length).toBeGreaterThan(0);
+    for (const url of urls) expect(new URL(url).searchParams.has('year')).toBe(false);
+    server.events.removeListener('request:start', listener);
+  });
+
   it('shows the six cards with their figures, in FI', async () => {
     const { last } = seed();
     renderApp('/offers');
@@ -75,9 +96,9 @@ describe('offer KPI cards (BR-122, TASK-157)', () => {
     expect(plain(monthBars[5]!.getAttribute('aria-label'))).toContain(`2 kpl, ${fiMoney(300000)}`);
     expect(monthBars[5]).toHaveAttribute('title', monthBars[5]!.getAttribute('aria-label'));
 
-    // 2 Average: the selected year has no offers created → "–"; TEST_YEAR-2 has one priced offer.
+    // 2 Average: the current year (TEST_YEAR) has A and B created last month; TEST_YEAR-2 has one priced offer.
     const avg = region(new RegExp(`^Keskiarvo · ${TEST_YEAR}$`));
-    expect(within(avg).getByText('–')).toBeInTheDocument();
+    expect(plain(avg.textContent)).toContain(fiMoney(150000));
     expect(within(avg).getAllByRole('button')).toHaveLength(6);
     expect(plain(within(avg).getByRole('button', { name: new RegExp(`^${TEST_YEAR - 2}:`) }).getAttribute('aria-label'))).toBe(
       `${TEST_YEAR - 2}: ${fiMoney(300000)}`,
@@ -87,13 +108,21 @@ describe('offer KPI cards (BR-122, TASK-157)', () => {
     const byYear = region(new RegExp(`^Tarjoukset vuodelle \\(tapahtuman päivä\\) · ${TEST_YEAR}$`));
     expect(plain(byYear.textContent)).toContain(`4${fiMoney(350000)}Yhteensä`);
 
-    // 4 Open offers value: selected year … +3.
+    // 4 Open offers value: current year − 3 … + 2, the current year selected.
     const open = region(new RegExp(`^Avoimet tarjoukset · ${TEST_YEAR}$`));
     expect(plain(open.textContent)).toContain(fiMoney(350000));
     expect(open).toHaveTextContent('Määrä 3');
-    expect(within(open).getAllByRole('button').map((b) => b.getAttribute('aria-label')?.slice(0, 4))).toEqual(
-      [0, 1, 2, 3].map((i) => String(TEST_YEAR + i)),
+    const openBars = within(open).getAllByRole('button');
+    expect(openBars.map((b) => b.getAttribute('aria-label')?.slice(0, 4))).toEqual(
+      [-3, -2, -1, 0, 1, 2].map((i) => String(TEST_YEAR + i)),
     );
+    expect(openBars[3]).toHaveAttribute('aria-pressed', 'true');
+    // The other year cards use the same range.
+    for (const card of [avg, byYear]) {
+      expect(within(card).getAllByRole('button').map((b) => b.getAttribute('aria-label')?.slice(0, 4))).toEqual(
+        [-3, -2, -1, 0, 1, 2].map((i) => String(TEST_YEAR + i)),
+      );
+    }
 
     // 5 By event type (open offers), value desc.
     const types = region(/^Tapahtumatyypeittäin$/);
@@ -183,7 +212,7 @@ describe('offer KPI cards (BR-122, TASK-157)', () => {
 
   it('is in English for English users', async () => {
     seed();
-    signInMock('partner.b@example.com').selectedYear = TEST_YEAR;
+    signInMock('partner.b@example.com').selectedYear = TEST_YEAR - 10;
     setLanguage('en');
     renderApp('/offers');
     expect(await screen.findByRole('heading', { level: 2, name: 'Offer statistics' })).toBeInTheDocument();

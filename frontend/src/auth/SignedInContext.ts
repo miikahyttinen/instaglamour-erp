@@ -13,7 +13,10 @@ export function useSignedInPartner(): Partner {
   return partner;
 }
 
-/** The partner's selected year (BR-081). All year-based pages use this. */
+/**
+ * The partner's selected year (BR-081 revised): shared by the year pages only (Vuosi, Budjetti,
+ * Tunnit, Keikat), which change it with PageYearSelector. Other pages show all years.
+ */
 export function useSelectedYear(): number {
   return useSignedInPartner().selectedYear;
 }

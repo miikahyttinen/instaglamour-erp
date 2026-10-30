@@ -11,10 +11,9 @@
  */
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { AppDeps } from '../app.js';
-import { notFound, validationError } from '../http/errors.js';
+import { notFound } from '../http/errors.js';
 import { publicGuard } from '../http/publicGuard.js';
 import type { FixedWindowRateLimiter } from '../http/rateLimit.js';
-import { isUuid } from '../events/store.js';
 import { sameToken } from '../offers/shareToken.js';
 import {
   createPurchaseOrder,
@@ -22,6 +21,7 @@ import {
   loadFreelancerView,
   toPublicPurchaseOrderDto,
 } from '../purchaseOrders/store.js';
+import { parseCostLineIds } from '../purchaseOrders/input.js';
 import { isWellFormedFreelancerToken } from '../purchaseOrders/token.js';
 
 export const PUBLIC_FREELANCER_ROUTE = '/api/public/freelancers/:token';
@@ -29,25 +29,7 @@ export const PUBLIC_FREELANCER_PO_ROUTE = '/api/public/freelancers/:token/purcha
 /** Freelancer route patterns reachable without a session (auth gate in app.ts). */
 export const PUBLIC_FREELANCER_ROUTES: readonly string[] = [PUBLIC_FREELANCER_ROUTE, PUBLIC_FREELANCER_PO_ROUTE];
 
-export const MAX_PO_LINES = 200;
-
 type TokenParams = { Params: { token: string } };
-
-/** `{ costLineIds: [uuid…] }`, 1…200 unique ids; missing → REQUIRED, anything else → INVALID_VALUE. */
-function parseCostLineIds(body: unknown): string[] {
-  const value = body !== null && typeof body === 'object' ? (body as Record<string, unknown>).costLineIds : undefined;
-  if (value === undefined || value === null) throw validationError({ costLineIds: 'REQUIRED' });
-  if (
-    !Array.isArray(value) ||
-    value.length < 1 ||
-    value.length > MAX_PO_LINES ||
-    !value.every(isUuid) ||
-    new Set(value.map((v) => v.toLowerCase())).size !== value.length
-  ) {
-    throw validationError({ costLineIds: 'INVALID_VALUE' });
-  }
-  return value.map((v) => v.toLowerCase());
-}
 
 export function publicFreelancerRoutes(app: FastifyInstance, deps: AppDeps, pageLimiter: FixedWindowRateLimiter): void {
   const { db } = deps;
@@ -83,6 +65,8 @@ export function publicFreelancerRoutes(app: FastifyInstance, deps: AppDeps, page
       costLineIds,
       // Re-checked under the lock: the link may have been regenerated or the person deactivated.
       isCurrent: (p) => isLinkUsable(p) && sameToken(p.freelancerToken, token),
+      eligibility: 'FREELANCER',
+      createdBy: null,
     });
     return reply.status(201).send(toPublicPurchaseOrderDto(po));
   });

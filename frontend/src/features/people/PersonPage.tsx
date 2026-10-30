@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
 import type { Id, PersonCostLine } from '../../api/types';
-import { useSelectedYear } from '../../auth/SignedInContext';
 import { Button } from '../../components/Button';
 import { DataTable, type DataTableColumn } from '../../components/DataTable';
 import { FieldList } from '../../components/FieldList';
@@ -29,7 +28,7 @@ const TOTALS_SPAN: GridSpan = { base: 6, lg: 3 };
 
 /**
  * One person: name, active, partner status and roles edited in place (NFR-8, UC-032), the played
- * event count, and their cost lines in the selected year (UC-014 A2).
+ * event count, and their cost lines of every year, newest event first (UC-014 A2).
  */
 export function PersonPage() {
   const { t } = useTranslation();
@@ -101,9 +100,8 @@ export function PersonPage() {
 function CostLines({ personId }: { personId: Id }) {
   const { t } = useTranslation();
   const lang = useLang();
-  const year = useSelectedYear();
-  const query = usePersonCostLines(personId, year);
-  const title = t('people.lines.title', { year });
+  const query = usePersonCostLines(personId);
+  const title = t('people.lines.title');
   const heading = (
     <SectionLabel id="person-lines-title">
       {title}
@@ -195,19 +193,19 @@ function CostLines({ personId }: { personId: Id }) {
     <>
       {heading}
       {lines.length === 0 ? (
-        <p className="empty">{t('people.lines.empty', { year })}</p>
+        <p className="empty">{t('people.lines.empty')}</p>
       ) : (
         <>
           <StatGrid className="person-totals">
             <StatTile
               span={TOTALS_SPAN}
-              label={t('people.lines.totalBudgeted', { year })}
+              label={t('people.lines.totalBudgeted')}
               value={money(totals.budgetedCents)}
               caption={t('people.lines.lineCount', { count: lines.length })}
             />
             <StatTile
               span={TOTALS_SPAN}
-              label={t('people.lines.totalActual', { year })}
+              label={t('people.lines.totalActual')}
               value={money(totals.actualCents)}
               caption={t('people.lines.paidCount', { count: paidCount })}
             />

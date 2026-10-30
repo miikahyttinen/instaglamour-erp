@@ -607,7 +607,8 @@ export interface OfferDetail extends OfferSummary {
 }
 
 export interface OfferListQuery {
-  year: number;
+  /** Optional: without it, every year (the UI sends none). */
+  year?: number;
   q?: string;
   /** OPEN includes expired; EXPIRED = open and past (BR-102). */
   status?: OfferStatusFilter;
@@ -631,11 +632,11 @@ export interface OfferYearSummary {
 export interface OfferStats {
   /** The 6 most recent completed months (createdAt, Europe/Helsinki), oldest first. */
   createdByMonth: { month: string; count: number; valueCents: Cents }[];
-  /** year-5 … year; average over priced offers, `null` when none. */
+  /** year-3 … year+2; average over priced offers, `null` when none. */
   averageByCreatedYear: { year: number; averageCents: Cents | null; count: number }[];
   /** year-3 … year+2 by event date, all statuses. */
   byEventYear: { year: number; count: number; valueCents: Cents }[];
-  /** year … year+3, open offers by event date. */
+  /** year-3 … year+2, open offers by event date. */
   openValueByEventYear: { year: number; valueCents: Cents; count: number }[];
   /** All open offers, sorted by value desc (`null` = no type). */
   openByEventType: { eventType: OfferEventType | null; count: number; valueCents: Cents }[];

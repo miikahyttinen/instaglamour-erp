@@ -41,7 +41,7 @@ test('switch language to English and change the year', async ({ page }) => {
   ).toBeVisible();
   await expectNoHorizontalScroll(page, 'year page (EN)');
 
-  // Year switch with the top-bar buttons and the picker.
+  // Year switch with the page-level buttons and picker (year page, then Gigs; BR-081 revised).
   await page.getByRole('button', { name: 'Next year' }).click();
   await expect(page.getByRole('heading', { level: 1, name: `Year ${CURRENT_YEAR + 1}` })).toBeVisible();
   await expect(page.getByRole('combobox', { name: 'Selected year' })).toHaveValue(String(CURRENT_YEAR + 1));

@@ -99,6 +99,13 @@ spoof it and bypass the limit).
   id — all or nothing (409 `COST_LINE_NOT_ELIGIBLE`, `details.costLineIds`). FUEL lines are never
   eligible (and not shown) because they can't be paid. Numbers: name slug + `purchase_order_seq`
   (global, never reused; gaps are possible after a failed request).
+- **Manual POs by partners** (2026-10-31, TASK-043): `POST /api/purchase-orders` `{ personId, costLineIds }`
+  uses the same `createPurchaseOrder` (same lock, numbering, snapshots, all-or-nothing) with
+  `eligibility: 'PARTNER'` — upcoming SOLD events are allowed (no "played" rule) — and records the partner
+  on the CREATED event. Any existing person (also inactive or a partner) may get one; unknown/malformed
+  `personId` → 400 `UNKNOWN_REFERENCE`, field errors for `personId` and `costLineIds` come together.
+  `GET /api/people/{id}/po-eligible-lines?eventId=` lists the same eligible set, newest event first;
+  an unknown or malformed `eventId` gives `[]`. The freelancer link keeps the played-only rule (BR-114).
 - **One active PO per cost line:** `purchase_order_line.active` is true while the PO is OPEN/PAID; the
   partial unique index `purchase_order_line_active_cost_line_key` backs the code check. Line snapshots
   (`cost_line_ref`, event, type, description, amount) keep cancelled POs intact if a freed cost line is
@@ -109,7 +116,7 @@ spoof it and bypass the limit).
   Changing an event's seller/producer doesn't move SALES/PRODUCTION lines that are on a PO (BR-027).
 - **Pay / unpay** update the cost lines and write event history entries `COST_PAID` / `COST_UNPAID` with
   `details.purchaseOrderNumber`. Every PO change appends a `purchase_order_event` (CREATED has
-  `partner_id` null = the freelancer).
+  `partner_id` null = the freelancer via the link, else the partner who created it by hand).
 - **List year** = year of `created_at` in Europe/Helsinki and optional (without it: all years, newest
   first); `q` (number or current person name, case-insensitive) searches all years.
 
@@ -191,8 +198,10 @@ src/routes/publicOffers.ts  GET /api/public/offers/{token} and its token-scoped 
                    each (in-memory, 429 RATE_LIMITED); every photo miss is the same 404
 src/purchaseOrders/ purchase orders (UC-033/034, BR-113…119): number slug + global sequence (number.ts),
                    freelancer link tokens (token.ts; the DB column default gives every new person one),
-                   create / pay / unpay / cancel + serializers (store.ts), BR-118 lock checks (lock.ts)
-src/routes/purchaseOrders.ts  partner PO endpoints + /api/people/{id}/freelancer-link(/regenerate)
+                   create / pay / unpay / cancel + serializers (store.ts), BR-118 lock checks (lock.ts),
+                   costLineIds parsing shared by both create endpoints (input.ts)
+src/routes/purchaseOrders.ts  partner PO endpoints (incl. manual create, po-eligible-lines)
+                   + /api/people/{id}/freelancer-link(/regenerate)
 src/routes/publicFreelancers.ts  public freelancer view + create PO (no session; noindex; shared limiter)
 src/http/publicGuard.ts  noindex/no-store headers + per-IP limit for all public routes
 src/partners/      partner status grant/revoke (UC-032): advisory-locked transaction, session revocation
