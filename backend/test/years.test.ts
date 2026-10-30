@@ -135,7 +135,7 @@ describe('GET /api/years/{year}', () => {
       expect(body.upcomingEvents.map((g: { id: string }) => g.id)).toEqual(expected);
     }
     const [first] = (await get('/api/years/2026')).upcomingEvents;
-    const { costLines: _lines, attachments: _attachments, invoiceRows: _invoiceRows, ...summary } = today;
+    const { costLines: _lines, invoiceRows: _invoiceRows, ...summary } = today;
     expect(first).toEqual(summary); // a EventSummary, incl. notFullyStaffed
     expect(first.notFullyStaffed).toBe(true);
     expect(first.played).toBe(false);

@@ -61,8 +61,8 @@ describe('POST /api/events', () => {
       marginActualPct: 100,
       notFullyStaffed: true,
       deletedAt: null,
-      attachments: [],
     });
+    expect(event).not.toHaveProperty('attachments');
     expect(lineTypes(event)).toEqual(['VOC', 'BASS', 'OFFICE', 'SALES', 'PRODUCTION']);
     const [voc, bass, office, sales, production] = event.costLines;
     expect(voc).toEqual({
@@ -200,6 +200,31 @@ describe('GET /api/events/{id}', () => {
     const res = await call(s, 'GET', `/api/events/${id}`);
     expect(res.statusCode).toBe(404);
     expect(res.json().error.code).toBe('NOT_FOUND');
+  });
+});
+
+describe('attachments removed (api-contract "Attachments removed")', () => {
+  it('EventDetail has no attachments even with an old attachment row; the endpoints are 404', async () => {
+    const event = await createEvent(s);
+    const old = await testDb().attachment.create({
+      data: {
+        eventId: event.id,
+        filename: 'contract.pdf',
+        contentType: 'application/pdf',
+        sizeBytes: 5,
+        storageKey: 'old-attachment-key',
+        uploadedById: s.world.a.id,
+      },
+    });
+    const detail = await call(s, 'GET', `/api/events/${event.id}`);
+    expect(detail.statusCode).toBe(200);
+    expect(detail.json()).not.toHaveProperty('attachments');
+    expect((await call(s, 'GET', `/api/events/${event.id}/attachments`)).statusCode).toBe(404);
+    expect((await call(s, 'POST', `/api/events/${event.id}/attachments`, {})).statusCode).toBe(404);
+    expect((await call(s, 'GET', `/api/attachments/${old.id}/download`)).statusCode).toBe(404);
+    expect((await call(s, 'DELETE', `/api/attachments/${old.id}`)).statusCode).toBe(404);
+    // The row is kept (no data deleted).
+    expect(await testDb().attachment.count()).toBe(1);
   });
 });
 

@@ -7,7 +7,6 @@ import type { AppConfig } from './config.js';
 import type { Db } from './db.js';
 import { registerErrorHandling, unauthenticated } from './http/errors.js';
 import { registerFrontend, spaFallback } from './http/frontend.js';
-import { attachmentRoutes } from './routes/attachments.js';
 import { authRoutes } from './routes/auth.js';
 import { budgetRoutes } from './routes/budget.js';
 import { budgetCategoryRoutes } from './routes/budgetCategories.js';
@@ -67,7 +66,7 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
   const app = Fastify({ logger: options.logger ?? false, trustProxy: true });
 
   await app.register(cookie, { secret: deps.config.sessionSecret });
-  // Attachments are streamed to disk; size and file count limits are set per request.
+  // Reference photos are streamed to disk; size and file count limits are set per request.
   await app.register(multipart);
   // Single-service production: serve the built frontend with an SPA fallback (dev: Vite serves it).
   const { staticDir } = deps.config;
@@ -103,7 +102,6 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
   eventRoutes(app, deps);
   costLineRoutes(app, deps);
   invoiceRowRoutes(app, deps);
-  attachmentRoutes(app, deps);
   yearRoutes(app, deps);
   peopleRoutes(app, deps);
   taskRoutes(app, deps);

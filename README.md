@@ -65,7 +65,7 @@ Event list for the selected year with a year summary, search and filters (table 
 | ![](docs/screenshots/gigs-dark.png) | ![](docs/screenshots/gigs-light.png) |
 
 ### Event page — everything edited in place
-Click any field to edit; it saves when it loses focus (click outside or Enter), Esc reverts. Basic info, price and additional sales, economics, the cost & staffing list (load-in switch, mark paid), attachments and the full change history.
+Click any field to edit; it saves when it loses focus (click outside or Enter), Esc reverts. Basic info, price and additional sales, economics, the cost & staffing list (load-in switch, mark paid) and the full change history.
 
 | Dark | Light |
 |---|---|
@@ -128,7 +128,6 @@ Fixed costs and income per category: budget, actual and variance; every cell sav
 | **Price** | Price + additional sales; total, margin and margin % calculated live. |
 | **Costs & staffing** | One cost list per event: musicians, internal fees (office/sales/production) and expenses. Load-in & soundcheck switch deducts a configured amount; *mark paid* records time and partner; fuel is an estimate only; performer double-booking warnings; unpaid sales/production lines follow a seller/producer change. |
 | **Technical setup & logistics** | Technical setup (house tech, own PA set A/B/C), logistics (own van, rental van, taxi, other), house technician yes/no. |
-| **Attachments** | Contracts and other files per event (PDF, DOCX, PNG, JPG); customer and invoicing details live in the contract, not in the database. |
 | **History** | Every change on an event is logged (who, when, old → new) and cannot be edited. |
 | **People, tasks, hours** | Simple people register; shared to-do list; hours as spreadsheet-style tables (date, partner, comment, hours) with partner filter and totals. |
 | **Budget** | Partners add, rename and remove budget rows; budget and actual per row and year; copy budget from the previous year. |
@@ -312,7 +311,7 @@ Use cases by area:
 | Area | Use cases |
 |---|---|
 | Access & home | UC-001 Sign in · UC-022 Year page |
-| Events | UC-002 Create · UC-003 List · UC-004 View & edit · UC-005 Costs & staffing · UC-007 Price · UC-008 Attachments · UC-009 Move · UC-010 Cancel · UC-012 Uncancel · UC-013 History · UC-025 Delete & restore |
+| Events | UC-002 Create · UC-003 List · UC-004 View & edit · UC-005 Costs & staffing · UC-007 Price · UC-009 Move · UC-010 Cancel · UC-012 Uncancel · UC-013 History · UC-025 Delete & restore |
 | People, tasks, hours | UC-014 People · UC-017 Tasks · UC-018 Log hours · UC-019 Hours totals |
 | Budget | UC-020 Yearly budget |
 | Clients & offers | UC-027 Clients · UC-028 Offer list · UC-029 Create & edit offer (+ references) · UC-030 Public offer link · UC-031 Convert offer to event |
@@ -366,7 +365,7 @@ flowchart LR
 |---|---|---|
 | Specs | Owner interviews, simplification, approval of 19 UCs, API contract | PM |
 | 1 Foundation | Backend scaffold, schema, seed, Google auth · UI scaffold, i18n, shell | 2 |
-| 2 Events | Event/cost/history/attachment API · all event screens | 2 |
+| 2 Events | Event/cost/history API · all event screens | 2 |
 | 3 Rest | Year/people/tasks/hours/budget API · five UI screens | 6 |
 | 4 Integration | Playwright e2e on the real stack · UI integration polish · fixes | 2–3 |
 | 5 Design system | Tokens, dark/light, fonts, logo, shared components → six screen restyles | 1 → 6 |

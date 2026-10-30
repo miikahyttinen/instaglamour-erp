@@ -1,5 +1,5 @@
 /**
- * Files in UPLOAD_DIR (attachments, reference photos). Every stored file is named by a random UUID
+ * Files in UPLOAD_DIR (reference photos; old attachment files are kept unused). Every stored file is named by a random UUID
  * (its storage key); the real type is sniffed from the first bytes, never taken from the browser.
  */
 import { randomUUID } from 'node:crypto';
