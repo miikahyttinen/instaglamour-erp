@@ -62,7 +62,13 @@ const entries: EventHistoryEntry[] = [
   { ...base, type: 'COST_PAID', details: { costLineId: 'l', type: 'BASS', actualCents: 10000 } },
   { ...base, type: 'COST_UNPAID', details: { costLineId: 'l', type: 'BASS', previousActualCents: 10000 } },
   { ...base, type: 'ATTACHMENT_ADDED', details: { attachmentId: 'a', filename: 'contract.pdf' } },
-  { ...base, type: 'ATTACHMENT_REMOVED', details: { attachmentId: 'a', filename: 'contract.pdf' } },
+  { ...base, type: 'ATTACHMENT_REMOVED', details: { attachmentId: 'a', filename: 'contract.pdf' } },  { ...base, type: 'INVOICE_ROW_ADDED', details: { invoiceRowId: 'r', description: 'Invoice', amountCents: 10000, status: 'READY' } },
+  {
+    ...base,
+    type: 'INVOICE_ROW_UPDATED',
+    details: { invoiceRowId: 'r', description: 'Invoice', changes: [{ field: 'status', from: 'READY', to: 'SENT' }] },
+  },
+  { ...base, type: 'INVOICE_ROW_REMOVED', details: { invoiceRowId: 'r', description: 'Invoice', amountCents: 10000, status: 'SENT' } },
 ];
 
 const describeAll = (lang: 'fi' | 'en') =>
@@ -94,6 +100,9 @@ describe('history descriptions (UC-013)', () => {
       'Maksumerkintä poistettu | Basso: aiemmin maksettu 100,00 €',
       'Liite lisätty | contract.pdf',
       'Liite poistettu | contract.pdf',
+      'Laskurivi lisätty | Invoice · 100,00 € · Valmis laskutukseen',
+      'Laskuriviä muutettu | Invoice: Tila: Valmis laskutukseen → Lähetetty',
+      'Laskurivi poistettu | Invoice · 100,00 € · Lähetetty',
     ]);
   });
 
@@ -161,7 +170,7 @@ describe('history descriptions (UC-013)', () => {
     expect(en(removed)).toMatch(/^Horn 2 · /);
   });
 
-  it('describes invoice status and prepayment changes (TASK-172)', () => {
+  it('old entries keep their invoice status and prepayment texts (TASK-172)', () => {
     const entry: EventHistoryEntry = {
       ...base,
       type: 'UPDATED',
@@ -188,6 +197,44 @@ describe('history descriptions (UC-013)', () => {
     ]);
   });
 
+  it('describes invoice row added / updated / removed (TASK-173)', () => {
+    const row = { invoiceRowId: 'r1', description: 'Prepayment', amountCents: 50000, status: 'READY' as const };
+    const list: EventHistoryEntry[] = [
+      { ...base, type: 'INVOICE_ROW_ADDED', details: row },
+      {
+        ...base,
+        type: 'INVOICE_ROW_UPDATED',
+        details: {
+          ...row,
+          status: 'PAID',
+          changes: [
+            { field: 'status', from: 'SENT', to: 'PAID' },
+            { field: 'amountCents', from: 50000, to: 60000 },
+          ],
+        },
+      },
+      { ...base, type: 'INVOICE_ROW_REMOVED', details: { ...row, status: 'SENT' } },
+      // Missing snapshot fields degrade gracefully.
+      { ...base, type: 'INVOICE_ROW_REMOVED', details: {} },
+    ];
+    const describe = (lang: 'fi' | 'en') =>
+      list.map((e) => {
+        const d = describeEntry(i18n.getFixedT(lang), lang, e, ctx);
+        return [d.title, ...d.lines.map((l) => l.replace(/\s/g, ' '))];
+      });
+    expect(describe('fi')).toEqual([
+      ['Laskurivi lisätty', 'Prepayment · 500,00 € · Valmis laskutukseen'],
+      ['Laskuriviä muutettu', 'Prepayment: Tila: Lähetetty → Maksettu; Summa: 500,00 € → 600,00 €'],
+      ['Laskurivi poistettu', 'Prepayment · 500,00 € · Lähetetty'],
+      ['Laskurivi poistettu'],
+    ]);
+    expect(describe('en')[1]).toEqual([
+      'Invoice row changed',
+      'Prepayment: Status: Invoice sent → Paid; Amount: €500.00 → €600.00',
+    ]);
+    expect(list.every((e) => matchesFilter(e, 'details'))).toBe(true);
+  });
+
   it('filters by category', () => {
     const types = (filter: Parameters<typeof matchesFilter>[1]) =>
       entries.filter((e) => matchesFilter(e, filter)).map((e) => e.type);
@@ -201,7 +248,7 @@ describe('history descriptions (UC-013)', () => {
       'READY_FOR_INVOICE',
       'READY_FOR_INVOICE_CLEARED',
     ]);
-    expect(types('details')).toEqual(['UPDATED']);
+    expect(types('details')).toEqual(['UPDATED', 'INVOICE_ROW_ADDED', 'INVOICE_ROW_UPDATED', 'INVOICE_ROW_REMOVED']);
     expect(types('attachments')).toEqual(['ATTACHMENT_ADDED', 'ATTACHMENT_REMOVED']);
     expect(types('all')).toHaveLength(entries.length);
   });

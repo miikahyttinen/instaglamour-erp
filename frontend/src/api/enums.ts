@@ -64,9 +64,20 @@ export type EventStatus = (typeof EVENT_STATUSES)[number];
 export const EVENT_DISPLAY_STATUSES = ['SOLD', 'PLAYED', 'CANCELLED'] as const;
 export type EventDisplayStatus = (typeof EVENT_DISPLAY_STATUSES)[number];
 
-/** Invoicing status of a gig, in workflow order (api-contract "Invoice status, prepayment and balance"). */
-export const INVOICE_STATUSES = ['NONE', 'READY', 'PREPAYMENT_PAID', 'INVOICED', 'PAID'] as const;
-export type InvoiceStatus = (typeof INVOICE_STATUSES)[number];
+/**
+ * Former gig-level invoicing status (removed by api-contract "Invoice rows"). Only old history
+ * entries (UPDATED field `invoiceStatus`) still hold these codes.
+ */
+export const LEGACY_INVOICE_STATUSES = ['NONE', 'READY', 'PREPAYMENT_PAID', 'INVOICED', 'PAID'] as const;
+export type LegacyInvoiceStatus = (typeof LEGACY_INVOICE_STATUSES)[number];
+
+/** Status of one invoice row, in workflow order (api-contract "Invoice rows"). */
+export const INVOICE_ROW_STATUSES = ['READY', 'SENT', 'PAID'] as const;
+export type InvoiceRowStatus = (typeof INVOICE_ROW_STATUSES)[number];
+
+/** Gig invoicing state derived from its rows, in workflow order (api-contract "Invoice rows"). */
+export const INVOICE_STATES = ['NONE', 'READY', 'SENT', 'PARTLY_PAID', 'PAID'] as const;
+export type InvoiceState = (typeof INVOICE_STATES)[number];
 
 export const TASK_STATUSES = ['OPEN', 'DONE'] as const;
 export type TaskStatus = (typeof TASK_STATUSES)[number];
@@ -81,6 +92,9 @@ export const EVENT_HISTORY_TYPES = [
   'RESTORED',
   'READY_FOR_INVOICE',
   'READY_FOR_INVOICE_CLEARED',
+  'INVOICE_ROW_ADDED',
+  'INVOICE_ROW_UPDATED',
+  'INVOICE_ROW_REMOVED',
   'COST_ADDED',
   'COST_UPDATED',
   'COST_REMOVED',

@@ -3,7 +3,7 @@ import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } f
 import { useTranslation } from 'react-i18next';
 import { Plus, RotateCcw, Search } from 'lucide-react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
-import { INVOICE_STATUSES, type EventDisplayStatus, type InvoiceStatus } from '../../api/enums';
+import { INVOICE_STATES, type EventDisplayStatus, type InvoiceState } from '../../api/enums';
 import { eventsApi } from '../../api/endpoints';
 import type { EventListQuery, EventSummary, Partner, YearEventTotals } from '../../api/types';
 import { useSelectedYear } from '../../auth/SignedInContext';
@@ -23,11 +23,11 @@ import { PageYearSelector } from '../../components/PageYearSelector';
 import { SectionLabel } from '../../components/SectionLabel';
 import { StatGrid, StatTile } from '../../components/StatTile';
 import { StatusTag } from '../../components/StatusTag';
-import { apiErrorMessage, eventDisplayStatus, invoiceStatusLabel } from '../../i18n/labels';
+import { apiErrorMessage, eventDisplayStatus, invoiceStateLabel } from '../../i18n/labels';
 import { useLang } from '../../i18n/useLang';
 import { formatDate, formatDateRange, formatMoney, formatPercent, todayIso } from '../../lib/format';
 import { useReference } from '../../reference/useReference';
-import { EventStatusTag, InvoiceStatusTag } from './EventStatusTag';
+import { EventStatusTag, InvoiceStateTag } from './EventStatusTag';
 import { useApplyEvent, useEventList } from './queries';
 import './eventList.css';
 
@@ -395,15 +395,15 @@ function EventTable({ events, partners, lang, tableState }: EventTableProps) {
       cell: (g) => <EventStatusTag status={eventDisplayStatus(g)} />,
     },
     {
-      key: 'invoiceStatus',
-      label: t('events.columns.invoiceStatus'),
+      key: 'invoiceState',
+      label: t('events.columns.invoiceState'),
       priority: 2,
       className: 'event-col-invoice excel-col-fit',
-      sortValue: (g) => INVOICE_STATUSES.indexOf(g.invoiceStatus),
-      filterValue: (g) => g.invoiceStatus,
-      filterLabel: (v) => invoiceStatusLabel(t, v as InvoiceStatus),
-      filterCompare: byCodeOrder(INVOICE_STATUSES),
-      cell: (g) => <InvoiceStatusTag status={g.invoiceStatus} />,
+      sortValue: (g) => INVOICE_STATES.indexOf(g.invoiceState),
+      filterValue: (g) => g.invoiceState,
+      filterLabel: (v) => invoiceStateLabel(t, v as InvoiceState),
+      filterCompare: byCodeOrder(INVOICE_STATES),
+      cell: (g) => <InvoiceStateTag state={g.invoiceState} />,
     },
     {
       key: 'staffing',

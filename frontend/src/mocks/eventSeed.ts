@@ -6,6 +6,7 @@ import type { EventState, MockClient, MockPerson, NewEventInput } from './eventS
 import {
   addAttachment,
   addCostLine,
+  addInvoiceRow,
   createEvent,
   linesOf,
   logEvent,
@@ -107,8 +108,8 @@ export function seedEventState(
   linesOf(state, g1.id).forEach((line) => payCostLine(state, line, line.budgetedCents, a.id));
   // An old-style history entry (before invoice statuses) still renders its own text.
   logEvent(state, g1.id, 'READY_FOR_INVOICE', a.id);
-  // Seeded statuses have no who / when (as in the backend seed).
-  g1.invoiceStatus = 'READY';
+  // Seeded invoice rows have no who / when (as in the backend seed).
+  addInvoiceRow(state, g1, { description: 'Lasku', amountCents: 200000, status: 'READY' }, null);
 
   // 2. Two-day event with additional sales; keys not staffed.
   const g2 = createEvent(
@@ -131,8 +132,15 @@ export function seedEventState(
   );
   staff(g2.id, [PERSON_IDS[0]!]);
   addCostLine(state, g2, { type: 'FUEL', personId: null, description: null, budgetedCents: 10000 }, a.id);
-  g2.invoiceStatus = 'PREPAYMENT_PAID';
-  g2.prepaymentCents = 50000;
+  // Old-style field changes (before invoice rows) keep their own texts.
+  logEvent(state, g2.id, 'UPDATED', b.id, {
+    changes: [
+      { field: 'invoiceStatus', from: 'NONE', to: 'PREPAYMENT_PAID' },
+      { field: 'prepaymentCents', from: 0, to: 50000 },
+    ],
+    movedCostLineIds: [],
+  });
+  addInvoiceRow(state, g2, { description: 'Ennakkomaksu', amountCents: 50000, status: 'PAID' }, null);
 
   // 3. Cancelled; price adjusted to what is still billed.
   const g3 = createEvent(
@@ -143,7 +151,7 @@ export function seedEventState(
   );
   g3.status = 'CANCELLED';
   logEvent(state, g3.id, 'CANCELLED', b.id, {}, 'Event called off by the client.');
-  g3.invoiceStatus = 'INVOICED';
+  addInvoiceRow(state, g3, { description: 'Lasku', amountCents: 10000, status: 'SENT' }, null);
 
   // 4. Deleted by mistake (shows in Events → Deleted).
   const g4 = createEvent(

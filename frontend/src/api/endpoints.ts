@@ -18,6 +18,8 @@ import type {
   CostLineUpdate,
   DevLoginRequest,
   EventCreate,
+  InvoiceRowCreate,
+  InvoiceRowUpdate,
   EventDetail,
   EventHistoryEntry,
   EventListQuery,
@@ -161,6 +163,17 @@ export const costLinesApi = {
   pay: (id: Id, body: CostLinePayRequest = {}) =>
     apiRequest<EventWithWarnings>(`/cost-lines/${id}/pay`, { method: 'POST', body }),
   unpay: (id: Id) => apiRequest<EventWithWarnings>(`/cost-lines/${id}/unpay`, { method: 'POST' }),
+};
+
+// ---------- Invoice rows ----------
+
+/** Invoice rows of a gig (api-contract "Invoice rows"); every call returns the whole gig. */
+export const invoiceRowsApi = {
+  create: (eventId: Id, body: InvoiceRowCreate) =>
+    apiRequest<EventDetail>(`/events/${eventId}/invoice-rows`, { method: 'POST', body }),
+  update: (id: Id, body: InvoiceRowUpdate) =>
+    apiRequest<EventDetail>(`/invoice-rows/${id}`, { method: 'PATCH', body }),
+  remove: (id: Id) => apiRequest<EventDetail>(`/invoice-rows/${id}`, { method: 'DELETE' }),
 };
 
 // ---------- Attachments ----------

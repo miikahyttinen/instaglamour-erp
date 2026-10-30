@@ -33,7 +33,7 @@ const FILTER_TYPES: Record<Exclude<HistoryFilter, 'all'>, EventHistoryType[]> = 
     'READY_FOR_INVOICE',
     'READY_FOR_INVOICE_CLEARED',
   ],
-  details: ['UPDATED'],
+  details: ['UPDATED', 'INVOICE_ROW_ADDED', 'INVOICE_ROW_UPDATED', 'INVOICE_ROW_REMOVED'],
   costs: ['COST_ADDED', 'COST_UPDATED', 'COST_REMOVED', 'COST_PAID', 'COST_UNPAID'],
   attachments: ['ATTACHMENT_ADDED', 'ATTACHMENT_REMOVED'],
 };
@@ -48,7 +48,9 @@ const MONEY_FIELDS = new Set([
   'budgetedCents',
   'actualCents',
   'loadInDeductionAppliedCents',
+  // Old entries only (gig prepayment before invoice rows).
   'prepaymentCents',
+  'amountCents',
 ]);
 const PARTNER_FIELDS = new Set(['sellerId', 'producerId', 'paidBy']);
 
@@ -88,8 +90,12 @@ export function formatValue(
           });
     return codes.map(label).join(', ');
   }
+  // Old entries only: the gig-level invoice status before invoice rows.
   if (field === 'invoiceStatus' && typeof value === 'string') {
     return t(`invoiceStatus.${value}`, { defaultValue: value });
+  }
+  if (field === 'invoiceRowStatus' && typeof value === 'string') {
+    return t(`invoiceRowStatus.${value}`, { defaultValue: value });
   }
   if (typeof value === 'boolean') return value ? t('history.yes') : t('history.no');
   return String(value);
@@ -176,6 +182,28 @@ export function describeEntry(
         lines.push(t('purchaseOrders.historyNumber', { number: entry.details.purchaseOrderNumber }));
       }
       break;
+    case 'INVOICE_ROW_ADDED':
+    case 'INVOICE_ROW_REMOVED': {
+      const d = entry.details;
+      const parts = [
+        d.description,
+        d.amountCents === undefined ? undefined : formatMoney(d.amountCents, lang),
+        d.status === undefined ? undefined : formatValue(t, lang, 'invoiceRowStatus', d.status, ctx),
+      ].filter((p): p is string => p !== undefined && p !== '');
+      if (parts.length > 0) lines.push(parts.join(' · '));
+      break;
+    }
+    case 'INVOICE_ROW_UPDATED': {
+      // A row's `status` change is labelled as the invoice row status (not the gig status).
+      const changes = (entry.details.changes ?? []).map((c) =>
+        c.field === 'status' ? { ...c, field: 'invoiceRowStatus' } : c,
+      );
+      const text = changeLines(t, lang, changes, ctx).join('; ');
+      const name = entry.details.description;
+      if (text) lines.push(name ? `${name}: ${text}` : text);
+      else if (name) lines.push(name);
+      break;
+    }
     case 'ATTACHMENT_ADDED':
     case 'ATTACHMENT_REMOVED':
       lines.push(entry.details.filename);

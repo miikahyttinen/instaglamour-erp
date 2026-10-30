@@ -764,7 +764,136 @@
   color: var(--label);
 }
 
-/* "Laskutus" card (TASK-172): negative balance in warn colour with a note under it. */
+/* "Laskutus" card (TASK-173): invoice rows table, add form, totals and the balance. */
+/* The card is narrow in the two-column layout: keep the columns compact so the table fits. */
+.event-page .invoice-table td.invoice-row-description .inline-field {
+  min-width: 5.5rem;
+}
+.event-page .invoice-table td.invoice-row-amount .inline-field {
+  width: 6.5rem;
+  margin-left: auto;
+}
+@media (min-width: 600px) {
+  .event-page .invoice-table :is(th, td) {
+    padding-left: var(--space-2);
+    padding-right: var(--space-2);
+  }
+  .event-page .invoice-table :is(th, td):first-child {
+    padding-left: var(--space-4);
+  }
+}
+/* Status select with the last change (who / when) under it. */
+.event-page .invoice-table .invoice-row-status-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+}
+.event-page .invoice-table .invoice-row-changed {
+  color: var(--text-muted);
+}
+.event-page .invoice-table td.invoice-row-actions {
+  width: 1%;
+  text-align: right;
+}
+/* Status select drawn as its colour tag (design.md: Valmis laskutukseen light green, Lähetetty
+   amber, Maksettu solid dark green); hover / focus keep the usual inline outline. */
+.event-page .invoice-row-status select.inline-input {
+  /* Sized to the chosen label (the table is narrow in the two-column layout). */
+  field-sizing: content;
+  width: auto;
+  min-width: max-content;
+  min-height: 0;
+  font-family: var(--font-mono);
+  font-size: var(--fs-meta);
+  font-weight: var(--fw-medium);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+}
+.event-page .invoice-row-status.tone-ok select.inline-input {
+  color: var(--ok-fg);
+  background-color: var(--ok-bg);
+  border-color: var(--ok-border);
+}
+.event-page .invoice-row-status.tone-warn select.inline-input {
+  color: var(--warn-fg);
+  background-color: var(--warn-bg);
+  border-color: var(--warn-border);
+}
+.event-page .invoice-row-status.tone-ok-strong select.inline-input {
+  color: var(--ok-strong-fg);
+  background-color: var(--ok-strong-bg);
+  border-color: var(--ok-strong-border);
+}
+.event-page .invoice-row-status select.inline-input:focus {
+  border-color: var(--accent);
+}
+.event-page .invoice-row-status select.inline-input option {
+  color: var(--text);
+  background: var(--surface);
+  text-transform: none;
+}
+.event-page .invoice-rows-empty {
+  margin: 0 0 var(--space-3);
+}
+.event-page .invoice-add-form {
+  margin-top: var(--space-3);
+}
+.event-page .invoice-add-title {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  font-weight: var(--fw-regular);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  color: var(--label);
+}
+.event-page .invoice-add-button {
+  margin-top: var(--space-3);
+}
+.event-page .invoice-totals {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-3) var(--space-6);
+  margin: var(--space-4) 0 0;
+}
+.event-page .invoice-totals > div {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-1);
+}
+.event-page .invoice-totals dt {
+  font-family: var(--font-mono);
+  font-weight: var(--fw-medium);
+  font-size: var(--fs-meta);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  color: var(--label);
+}
+.event-page .invoice-totals dd {
+  margin: 0;
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-bold);
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width: 599px) {
+  .event-page .invoice-table td.invoice-row-description > .inline-field,
+  .event-page .invoice-table td.invoice-row-amount > .inline-field,
+  .event-page .invoice-table .invoice-row-status-wrap {
+    align-items: flex-end;
+  }
+  .event-page .invoice-table td.invoice-row-amount,
+  .event-page .invoice-table td.invoice-row-status-cell {
+    align-items: center;
+  }
+  .event-page .invoice-table td.invoice-row-actions {
+    width: auto;
+  }
+}
+
+/* Negative balance in warn colour with a note under it. */
 .event-page .event-balance-negative .event-fields-total-value {
   color: var(--warn-fg);
 }
