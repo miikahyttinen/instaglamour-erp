@@ -129,6 +129,32 @@ describe('history descriptions (UC-013)', () => {
     );
   });
 
+  it('still labels removed roles (HORN_1, HORN_2, TECHNICIAN) in old entries (Role cleanup)', () => {
+    const added: EventHistoryEntry = {
+      ...base,
+      type: 'COST_ADDED',
+      details: { costLineId: 'l', type: 'HORN_1', personId: 'p1', budgetedCents: 10000 },
+    };
+    const updated: EventHistoryEntry = {
+      ...base,
+      type: 'COST_UPDATED',
+      details: { costLineId: 'l', type: 'TECHNICIAN', changes: [{ field: 'personId', from: null, to: 'p1' }] },
+    };
+    const removed: EventHistoryEntry = {
+      ...base,
+      type: 'COST_REMOVED',
+      details: { costLineId: 'l', type: 'HORN_2', personId: null, budgetedCents: 0 },
+    };
+    const fi = (e: EventHistoryEntry) => describeEntry(i18n.getFixedT('fi'), 'fi', e, ctx).lines[0];
+    const en = (e: EventHistoryEntry) => describeEntry(i18n.getFixedT('en'), 'en', e, ctx).lines[0];
+    expect(fi(added)).toMatch(/^Puhallin 1 · Person 1 · /);
+    expect(fi(updated)).toMatch(/^Teknikko: /);
+    expect(fi(removed)).toMatch(/^Puhallin 2 · – · /);
+    expect(en(added)).toMatch(/^Horn 1 · /);
+    expect(en(updated)).toMatch(/^Technician: /);
+    expect(en(removed)).toMatch(/^Horn 2 · /);
+  });
+
   it('filters by category', () => {
     const types = (filter: Parameters<typeof matchesFilter>[1]) =>
       entries.filter((e) => matchesFilter(e, filter)).map((e) => e.type);

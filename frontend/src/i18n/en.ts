@@ -135,14 +135,11 @@ const en: Resources = {
     KEYS: 'Keys',
     PIANO: 'Piano',
     MIX: 'Mixing',
-    HORN_1: 'Horn 1',
-    HORN_2: 'Horn 2',
     SAX: 'Saxophone',
     TRUMPET: 'Trumpet',
     TROMBONE: 'Trombone',
     VIOLIN: 'Violin',
     DJ: 'DJ',
-    TECHNICIAN: 'Technician',
     OTHER_ROLE: 'Other role',
     OFFICE: 'Office',
     SALES: 'Sales',
@@ -438,6 +435,12 @@ const en: Resources = {
     no: 'no',
   },
   /** History only: technicalSetup codes from before 2026-10-05 (multi-choice). */
+  // Removed roles (2026-10-30): only old history entries show these.
+  legacyCostType: {
+    HORN_1: 'Horn 1',
+    HORN_2: 'Horn 2',
+    TECHNICIAN: 'Technician',
+  },
   legacyTechnicalSetup: {
     HOUSE_TECHNICIAN: 'House technician',
     OWN_PA: 'Own PA',
