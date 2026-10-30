@@ -11,7 +11,6 @@ import { StatusTag } from '../../components/StatusTag';
 import { apiErrorMessage, costTypeLabel, eventDisplayStatus } from '../../i18n/labels';
 import { useLang } from '../../i18n/useLang';
 import { formatDate, formatDateRange, formatMoney, formatPercent } from '../../lib/format';
-import { Attachments } from './Attachments';
 import { CostList } from './CostList';
 import { EventActions } from './EventActions';
 import { EventBasicFields, EventPriceFields } from './EventInfoFields';
@@ -182,11 +181,8 @@ export function EventPage() {
           <CostList event={event} people={people} readOnly={readOnly} onWarnings={setWarnings} />
         </Section>
 
-        <Section title={t('event.sections.attachments')}>
-          <Attachments event={event} readOnly={readOnly} />
-        </Section>
-
-        <Section title={t('event.sections.history')}>
+        {/* Wide: it is the last section and has no partner card since attachments were removed. */}
+        <Section title={t('event.sections.history')} wide>
           <History eventId={event.id} people={people} />
         </Section>
       </div>

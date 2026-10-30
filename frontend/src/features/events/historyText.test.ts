@@ -248,8 +248,14 @@ describe('history descriptions (UC-013)', () => {
       'READY_FOR_INVOICE',
       'READY_FOR_INVOICE_CLEARED',
     ]);
-    expect(types('details')).toEqual(['UPDATED', 'INVOICE_ROW_ADDED', 'INVOICE_ROW_UPDATED', 'INVOICE_ROW_REMOVED']);
-    expect(types('attachments')).toEqual(['ATTACHMENT_ADDED', 'ATTACHMENT_REMOVED']);
+    expect(types('details')).toEqual([
+      'UPDATED',
+      'ATTACHMENT_ADDED',
+      'ATTACHMENT_REMOVED',
+      'INVOICE_ROW_ADDED',
+      'INVOICE_ROW_UPDATED',
+      'INVOICE_ROW_REMOVED',
+    ]);
     expect(types('all')).toHaveLength(entries.length);
   });
 

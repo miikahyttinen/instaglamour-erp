@@ -2,7 +2,6 @@
 import { apiRequest, buildUrl } from './client';
 import type { MusicianRole } from './enums';
 import type {
-  Attachment,
   BudgetCategory,
   BudgetCategoryInput,
   BudgetResponse,
@@ -174,18 +173,6 @@ export const invoiceRowsApi = {
   update: (id: Id, body: InvoiceRowUpdate) =>
     apiRequest<EventDetail>(`/invoice-rows/${id}`, { method: 'PATCH', body }),
   remove: (id: Id) => apiRequest<EventDetail>(`/invoice-rows/${id}`, { method: 'DELETE' }),
-};
-
-// ---------- Attachments ----------
-
-export const attachmentsApi = {
-  upload: (eventId: Id, file: File) => {
-    const form = new FormData();
-    form.append('file', file);
-    return apiRequest<Attachment>(`/events/${eventId}/attachments`, { method: 'POST', body: form });
-  },
-  downloadUrl: (id: Id) => buildUrl(`/attachments/${id}/download`),
-  remove: (id: Id) => apiRequest<void>(`/attachments/${id}`, { method: 'DELETE' }),
 };
 
 // ---------- People ----------

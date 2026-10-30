@@ -161,17 +161,6 @@ export interface CostLine {
   purchaseOrder: CostLinePurchaseOrder | null;
 }
 
-export interface Attachment {
-  id: Id;
-  eventId: Id;
-  filename: string;
-  contentType: string;
-  sizeBytes: number;
-  /** Partner id */
-  uploadedBy: Id;
-  uploadedAt: IsoTimestamp;
-}
-
 /** One invoice of a gig (api-contract "Invoice rows"). */
 export interface InvoiceRow {
   id: Id;
@@ -204,7 +193,6 @@ export interface InvoiceRowUpdate {
 
 export interface EventDetail extends EventSummary {
   costLines: CostLine[];
-  attachments: Attachment[];
   /** Creation order. */
   invoiceRows: InvoiceRow[];
 }

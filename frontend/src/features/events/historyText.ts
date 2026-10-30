@@ -19,8 +19,8 @@ export interface HistoryContext {
   clients?: ClientListItem[] | undefined;
 }
 
-export type HistoryFilter = 'all' | 'status' | 'details' | 'costs' | 'attachments';
-export const HISTORY_FILTERS: HistoryFilter[] = ['all', 'status', 'details', 'costs', 'attachments'];
+export type HistoryFilter = 'all' | 'status' | 'details' | 'costs';
+export const HISTORY_FILTERS: HistoryFilter[] = ['all', 'status', 'details', 'costs'];
 
 const FILTER_TYPES: Record<Exclude<HistoryFilter, 'all'>, EventHistoryType[]> = {
   status: [
@@ -33,9 +33,16 @@ const FILTER_TYPES: Record<Exclude<HistoryFilter, 'all'>, EventHistoryType[]> = 
     'READY_FOR_INVOICE',
     'READY_FOR_INVOICE_CLEARED',
   ],
-  details: ['UPDATED', 'INVOICE_ROW_ADDED', 'INVOICE_ROW_UPDATED', 'INVOICE_ROW_REMOVED'],
+  // Attachments were removed from the app; their old history entries count as details.
+  details: [
+    'UPDATED',
+    'INVOICE_ROW_ADDED',
+    'INVOICE_ROW_UPDATED',
+    'INVOICE_ROW_REMOVED',
+    'ATTACHMENT_ADDED',
+    'ATTACHMENT_REMOVED',
+  ],
   costs: ['COST_ADDED', 'COST_UPDATED', 'COST_REMOVED', 'COST_PAID', 'COST_UNPAID'],
-  attachments: ['ATTACHMENT_ADDED', 'ATTACHMENT_REMOVED'],
 };
 
 export function matchesFilter(entry: EventHistoryEntry, filter: HistoryFilter): boolean {

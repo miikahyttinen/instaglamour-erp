@@ -26,9 +26,12 @@ describe('event page (UC-004, UC-007)', () => {
     expect(await screen.findByRole('heading', { name: 'Template A · Venue X', level: 1 })).toBeInTheDocument();
     expect(screen.getByText('1.6.2030')).toBeInTheDocument();
     expect(screen.getByText('Tuleva')).toBeInTheDocument();
-    for (const name of ['Perustiedot', 'Hinta ja lisämyynti', 'Talous', 'Kulut ja miehitys', 'Liitteet', 'Muutoshistoria']) {
+    for (const name of ['Perustiedot', 'Hinta ja lisämyynti', 'Talous', 'Kulut ja miehitys', 'Muutoshistoria']) {
       expect(section(name)).toHaveAttribute('open');
     }
+    // Attachments were removed (api-contract "Attachments removed").
+    expect(screen.queryByRole('heading', { name: 'Liitteet' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Lisää tiedosto' })).not.toBeInTheDocument();
     const basicInfo = within(section('Perustiedot'));
     expect(basicInfo.getByRole('combobox', { name: 'Tekniikka' })).toHaveDisplayValue('Setti B');
     expect(basicInfo.getByRole('combobox', { name: 'Logistiikka' })).toHaveDisplayValue('Taksi');
