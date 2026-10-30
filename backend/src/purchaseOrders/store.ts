@@ -6,7 +6,11 @@
  *   eligibility (BR-114) and creates everything or nothing (BR-115).
  * - Pay / unpay / cancel (partners) lock the PO row, check the state (BR-117) and update the cost
  *   lines with event history entries carrying the PO number.
- * - Every change appends a PurchaseOrderEvent (BR-119); CREATED has partnerId null (freelancer).
+ * - Partners can also create a PO for one person by hand (api-contract "Purchase orders created by
+ *   partners", 2026-10-31): same path, but upcoming SOLD events are eligible too and the CREATED
+ *   event carries the partner's id.
+ * - Every change appends a PurchaseOrderEvent (BR-119); CREATED has partnerId null when the
+ *   freelancer created it via the link.
  */
 import type { Db } from '../db.js';
 import { isoFromDate, todayIso } from '../domain/dates.js';
@@ -204,8 +208,53 @@ export const isLinkUsable = (person: { active: boolean; partner: { active: boole
 const uuidList = (ids: readonly string[]) => Prisma.join(ids.map((id) => Prisma.sql`${id}::uuid`));
 
 /**
+ * Which lines may go on a new PO:
+ * - `FREELANCER` (BR-114): the event must have been played (start date < today).
+ * - `PARTNER` (manual PO, 2026-10-31): played or upcoming.
+ * Both: own line, event SOLD and not deleted, unpaid, amount > 0, not FUEL, not on an OPEN/PAID PO.
+ */
+export type PoEligibility = 'FREELANCER' | 'PARTNER';
+
+/** Cost lines a partner may put on a manual PO for this person (optionally one event only). */
+const partnerEligibleWhere = (personId: string, eventId?: string): Prisma.CostLineWhereInput => ({
+  personId,
+  budgetedCents: { gt: 0 },
+  type: { not: 'FUEL' },
+  paidAt: null,
+  purchaseOrderLines: { none: { active: true } },
+  event: { status: 'SOLD', deletedAt: null },
+  ...(eventId !== undefined && { eventId }),
+});
+
+/** `GET /api/people/{id}/po-eligible-lines`: newest event first, an event's lines in contract order. */
+export async function loadPartnerEligibleLines(db: Db, personId: string, eventId?: string) {
+  const lines = await db.costLine.findMany({
+    where: partnerEligibleWhere(personId, eventId),
+    include: { event: { select: { id: true, startDate: true, venue: true, lineupName: true, createdAt: true } } },
+  });
+  lines.sort(
+    (a, b) =>
+      b.event.startDate.getTime() - a.event.startDate.getTime() ||
+      b.event.createdAt.getTime() - a.event.createdAt.getTime() ||
+      (a.event.id < b.event.id ? -1 : a.event.id > b.event.id ? 1 : 0) ||
+      compareCostLines(a, b),
+  );
+  return lines.map((line) => ({
+    costLineId: line.id,
+    eventId: line.event.id,
+    eventStartDate: isoFromDate(line.event.startDate),
+    eventVenue: line.event.venue,
+    eventLineupName: line.event.lineupName,
+    type: line.type,
+    description: line.description,
+    amountCents: line.budgetedCents,
+  }));
+}
+
+/**
  * Create one PO from the given cost lines, all or nothing. `isCurrent` re-checks inside the lock
- * that the link is still valid (person active, not an active partner, token not regenerated meanwhile).
+ * that the person may still get a PO this way (freelancer link: person active, not an active partner,
+ * token not regenerated meanwhile). `createdBy` = the partner creating it by hand, null = freelancer.
  */
 export async function createPurchaseOrder(
   db: Db,
@@ -213,10 +262,13 @@ export async function createPurchaseOrder(
     personId: string;
     costLineIds: readonly string[];
     isCurrent: (person: LinkPerson) => boolean;
+    eligibility: PoEligibility;
+    createdBy: string | null;
     today?: string;
   },
 ): Promise<PurchaseOrderWithLines> {
   const today = input.today ?? todayIso();
+  const requirePlayed = input.eligibility === 'FREELANCER';
   const ids = [...input.costLineIds];
   return db.$transaction(async (tx) => {
     await lockPerson(tx, input.personId);
@@ -242,7 +294,7 @@ export async function createPurchaseOrder(
         line.personId !== person.id ||
         line.event.status !== 'SOLD' ||
         line.event.deletedAt !== null ||
-        !(isoFromDate(line.event.startDate) < today) ||
+        (requirePlayed && !(isoFromDate(line.event.startDate) < today)) ||
         line.paidAt !== null ||
         line.budgetedCents <= 0 ||
         !isPayable(line.type) ||
@@ -281,7 +333,7 @@ export async function createPurchaseOrder(
             position,
           })),
         },
-        events: { create: { type: 'CREATED', partnerId: null, details: {} } },
+        events: { create: { type: 'CREATED', partnerId: input.createdBy, details: {} } },
       },
     });
     return requirePurchaseOrder(tx, po.id);
