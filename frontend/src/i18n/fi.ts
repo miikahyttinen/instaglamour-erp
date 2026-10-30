@@ -170,7 +170,7 @@ const fi = {
     OTHER: 'Muu',
   },
   eventStatus: {
-    SOLD: 'Myyty',
+    SOLD: 'Tuleva',
     PLAYED: 'Soitettu',
     CANCELLED: 'Peruttu',
   },
@@ -201,6 +201,8 @@ const fi = {
     UNCANCELLED: 'Palautettu myydyksi',
     DELETED: 'Poistettu',
     RESTORED: 'Palautettu poistosta',
+    READY_FOR_INVOICE: 'Merkitty valmiiksi laskutukseen',
+    READY_FOR_INVOICE_CLEARED: 'Valmis laskutukseen -merkintä peruttu',
     COST_ADDED: 'Kulurivi lisätty',
     COST_UPDATED: 'Kuluriviä muutettu',
     COST_REMOVED: 'Kulurivi poistettu',
@@ -279,6 +281,7 @@ const fi = {
       lineup: 'Kokoonpano',
       venue: 'Paikka',
       status: 'Tila',
+      readyForInvoice: 'Valmis laskutukseen',
     },
     staffingFilter: {
       yes: 'Kyllä',
@@ -321,6 +324,15 @@ const fi = {
     back: 'Keikat',
     restore: 'Palauta keikka',
     deletedBanner: 'Keikka on poistettu. Tiedot näytetään vain luettavina.',
+    readyForInvoice: {
+      label: 'Valmis laskutukseen',
+      mark: 'Valmis laskutukseen',
+      by: '{{name}} {{date}} klo {{time}}',
+      undo: 'Peru',
+      undoTitle: 'Peru valmis laskutukseen -merkintä',
+      undoIntro: 'Keikka ei enää näy valmiina laskutukseen. Merkinnän voi tehdä uudelleen.',
+      confirmUndo: 'Peru merkintä',
+    },
     actions: {
       label: 'Toiminnot',
       move: 'Siirrä',

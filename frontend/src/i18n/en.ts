@@ -168,7 +168,7 @@ const en: Resources = {
     OTHER: 'Other',
   },
   eventStatus: {
-    SOLD: 'Sold',
+    SOLD: 'Upcoming',
     PLAYED: 'Played',
     CANCELLED: 'Cancelled',
   },
@@ -199,6 +199,8 @@ const en: Resources = {
     UNCANCELLED: 'Uncancelled',
     DELETED: 'Deleted',
     RESTORED: 'Restored',
+    READY_FOR_INVOICE: 'Marked ready to be invoiced',
+    READY_FOR_INVOICE_CLEARED: 'Ready to be invoiced undone',
     COST_ADDED: 'Cost line added',
     COST_UPDATED: 'Cost line changed',
     COST_REMOVED: 'Cost line removed',
@@ -276,6 +278,7 @@ const en: Resources = {
       lineup: 'Lineup',
       venue: 'Venue',
       status: 'Status',
+      readyForInvoice: 'Ready to be invoiced',
     },
     staffingFilter: {
       yes: 'Yes',
@@ -318,6 +321,15 @@ const en: Resources = {
     back: 'Gigs',
     restore: 'Restore gig',
     deletedBanner: 'This gig is deleted. Its data is shown read-only.',
+    readyForInvoice: {
+      label: 'Ready to be invoiced',
+      mark: 'Ready to be invoiced',
+      by: '{{name}} {{date}} at {{time}}',
+      undo: 'Undo',
+      undoTitle: 'Undo ready to be invoiced',
+      undoIntro: 'The gig is no longer shown as ready to be invoiced. You can mark it again.',
+      confirmUndo: 'Undo',
+    },
     actions: {
       label: 'Actions',
       move: 'Move',

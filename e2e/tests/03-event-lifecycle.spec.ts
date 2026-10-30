@@ -129,7 +129,7 @@ test('edit price, move, cancel, uncancel, delete, restore — all in history', a
   await uncancelDialog.getByRole('button', { name: 'Palauta myydyksi' }).click();
   await expect(uncancelDialog).toBeHidden();
   await expect(page.getByRole('status').filter({ hasText: 'Keikka palautettu myydyksi.' })).toBeVisible();
-  await expect(pageHead(page)).toContainText('Myyty');
+  await expect(pageHead(page)).toContainText('Tuleva');
   await expect(pageHead(page)).not.toContainText('Peruttu');
 
   // Delete (UC-025) → lands on the event list with a notice; the event is in the deleted view.

@@ -54,8 +54,8 @@ const COLOR_TOKENS = [
 const STATUS_TOKENS = ['info', 'ok', 'warn', 'danger'] as const;
 const SPACING = [1, 2, 3, 4, 5, 6, 7] as const;
 const TONES: { tone: StatusTone; text: string; use: string }[] = [
-  { tone: 'info', text: 'Sold', use: 'Sold / Played' },
-  { tone: 'ok', text: 'Done', use: 'Done / Paid' },
+  { tone: 'info', text: 'Upcoming', use: 'Upcoming gig / Open' },
+  { tone: 'ok', text: 'Played', use: 'Played gig / Done / Paid / Ready to be invoiced' },
   { tone: 'warn', text: 'Not fully staffed', use: 'Overdue / staffing / contract warnings' },
   { tone: 'danger', text: 'Cancelled', use: 'Cancelled / Deleted' },
   { tone: 'muted', text: 'Inactive', use: 'neutral facts' },
@@ -82,10 +82,10 @@ interface DemoEvent {
 }
 
 const DEMO_EVENTS: DemoEvent[] = [
-  { id: 1, date: '2030-02-14', name: 'Event 1', venue: 'Venue X', status: 'info', statusText: 'Sold', price: 200000 },
+  { id: 1, date: '2030-02-14', name: 'Event 1', venue: 'Venue X', status: 'info', statusText: 'Upcoming', price: 200000 },
   { id: 2, date: '2030-03-01', name: 'Event 2', venue: 'Venue Y', status: 'warn', statusText: 'Not fully staffed', price: 150000 },
   { id: 3, date: '2030-01-20', name: 'Event 3', venue: 'Venue Z', status: 'danger', statusText: 'Cancelled', price: 100000 },
-  { id: 4, date: '2030-04-05', name: 'Event 4', venue: 'Venue X', status: 'info', statusText: 'Played', price: 300000 },
+  { id: 4, date: '2030-04-05', name: 'Event 4', venue: 'Venue X', status: 'ok', statusText: 'Played', price: 300000 },
 ];
 
 const MONTH_BARS = [

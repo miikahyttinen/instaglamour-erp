@@ -758,3 +758,16 @@
 .event-page .event-offer-link svg {
   color: var(--label);
 }
+
+/* "Valmis laskutukseen" (api-contract 2026-10-31): button, or green tag + who / when + Peru. */
+.event-page .event-ready-for-invoice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  margin: 0 0 var(--space-5);
+}
+.event-page .event-ready-for-invoice > .notice {
+  flex-basis: 100%;
+  margin: 0;
+}

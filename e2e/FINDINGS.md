@@ -249,7 +249,7 @@ and 1280 px from a fresh database (`instaglamour_e2e_t024`). New finding: F-010 
 - **Where:** `frontend/src/features/gigs/GigListPage.tsx` → `useDefaultStatusFilter()` together
   with `ColumnFilterPanel.apply()` (`frontend/src/components/ColumnFilter.tsx`), which turns "every
   value checked" into *no filter* (`undefined`) and so removes `f.status` from the URL.
-- **Steps:** Keikat (default: Myyty + Soitettu) → "Suodata: Tila" → tick "Peruttu" → OK (the
+- **Steps:** Keikat (default: Tuleva + Soitettu) → "Suodata: Tila" → tick "Peruttu" → OK (the
   cancelled gig appears; every value is checked, so the URL has no `f.status`) → reload.
 - **Expected:** the cancelled gig is still shown (the same rows as before the reload).
 - **Actual:** the URL has no status filter, so the default status filter applies again and the

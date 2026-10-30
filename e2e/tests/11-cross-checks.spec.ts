@@ -114,7 +114,7 @@ test('event list search and the Tila filter: cancelled events only after ticking
   const viaApi = await api(page).get(`/events?year=${CURRENT_YEAR}&status=ALL&q=venue%20z`);
   expect(viaApi.events.map((g: { venue: string; status: string }) => [g.venue, g.status])).toEqual([['Venue Z', 'CANCELLED']]);
 
-  // A fresh visit with the same search: the default Tila filter (Myyty + Soitettu) hides it.
+  // A fresh visit with the same search: the default Tila filter (Tuleva + Soitettu) hides it.
   await page.goto('/gigs?q=venue%20z');
   await expect(page.getByText('Ei suodattimia vastaavia keikkoja.')).toBeVisible();
   await expect(rows).toHaveCount(0);

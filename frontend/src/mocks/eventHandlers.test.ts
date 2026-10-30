@@ -247,6 +247,38 @@ describe('event mocks', () => {
     });
   });
 
+  it('sets and clears "ready to be invoiced" by hand, with no-ops and 409s (2026-10-31)', async () => {
+    const event = await eventsApi.create(eventInput());
+    expect(event.readyForInvoiceAt).toBeNull();
+    expect(event.readyForInvoiceBy).toBeNull();
+    const set = await eventsApi.markReadyForInvoice(event.id);
+    expect(set.readyForInvoiceAt).not.toBeNull();
+    expect(set.readyForInvoiceBy).toBe(partnerA().id);
+    // Already set → no-op (same timestamp, no new history entry).
+    expect((await eventsApi.markReadyForInvoice(event.id)).readyForInvoiceAt).toBe(set.readyForInvoiceAt);
+    const listed = (await eventsApi.list({ year: YEAR })).events.find((g) => g.id === event.id)!;
+    expect(listed.readyForInvoiceAt).toBe(set.readyForInvoiceAt);
+    const cleared = await eventsApi.clearReadyForInvoice(event.id);
+    expect(cleared.readyForInvoiceAt).toBeNull();
+    expect(cleared.readyForInvoiceBy).toBeNull();
+    await eventsApi.clearReadyForInvoice(event.id);
+    const types = (await eventsApi.history(event.id)).map((h) => h.type);
+    expect(types.filter((t) => t.startsWith('READY_FOR_INVOICE'))).toEqual([
+      'READY_FOR_INVOICE_CLEARED',
+      'READY_FOR_INVOICE',
+    ]);
+
+    await eventsApi.markReadyForInvoice(event.id);
+    await eventsApi.cancel(event.id, { reason: 'Called off' });
+    // Cancelling keeps the values.
+    expect((await eventsApi.get(event.id)).readyForInvoiceAt).not.toBeNull();
+    expect((await expectError(eventsApi.markReadyForInvoice(event.id))).code).toBe('INVALID_STATUS_TRANSITION');
+    await eventsApi.uncancel(event.id, { reason: 'Back on' });
+    await eventsApi.delete(event.id, { reason: 'Duplicate' });
+    expect((await expectError(eventsApi.markReadyForInvoice(event.id))).code).toBe('EVENT_DELETED');
+    expect((await expectError(eventsApi.clearReadyForInvoice(event.id))).code).toBe('EVENT_DELETED');
+  });
+
   it('enforces status transitions, deletion and restore', async () => {
     const event = await eventsApi.create(eventInput());
     expect((await expectError(eventsApi.cancel(event.id, { reason: ' ' }))).fields).toEqual({ reason: 'REQUIRED' });

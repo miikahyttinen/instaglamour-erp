@@ -21,8 +21,8 @@ interface DemoRow {
 }
 
 const STATUS: Record<DemoRow['status'], { tone: StatusTone; text: string }> = {
-  SOLD: { tone: 'info', text: 'Sold' },
-  PLAYED: { tone: 'info', text: 'Played' },
+  SOLD: { tone: 'info', text: 'Upcoming' },
+  PLAYED: { tone: 'ok', text: 'Played' },
   CANCELLED: { tone: 'danger', text: 'Cancelled' },
 };
 const STATUS_ORDER = ['SOLD', 'PLAYED', 'CANCELLED'];

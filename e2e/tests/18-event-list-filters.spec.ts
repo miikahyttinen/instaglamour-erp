@@ -1,5 +1,5 @@
 import type { Page, TestInfo } from '@playwright/test';
-import { api, expect, signIn, tagOf, test } from './helpers';
+import { api, expect, expectNoHorizontalScroll, pageHead, signIn, tagOf, test } from './helpers';
 import { createEventViaApi, eventListRows, suffix } from './events';
 import {
   applyColumnFilter,
@@ -92,20 +92,20 @@ test('event list: cancelled hidden by default, Tila filter shows them, Paikka fi
     await expect(page.getByRole('main').getByRole('button', { name: 'Suodattimet', exact: true })).toBeVisible();
   }
 
-  // The Tila form: default ticks (Myyty + Soitettu, not Peruttu),
+  // The Tila form: default ticks (Tuleva + Soitettu, not Peruttu),
   // "Valitse kaikki" / "Tyhjennä" / OK / "Peruuta"; nothing checked → OK disabled; Cancel changes nothing.
   let form = await openColumnFilter(page, 'Tila');
   if (hasHeaderFilters(page)) await expect(form).toHaveAccessibleName('Suodata: Tila');
   for (const name of ['Valitse kaikki', 'Tyhjennä', 'OK', 'Peruuta']) {
     await expect(form.getByRole('button', { name, exact: true })).toBeVisible();
   }
-  await expect(filterValue(form, 'Myyty')).toBeChecked();
+  await expect(filterValue(form, 'Tuleva')).toBeChecked();
   await expect(filterValue(form, 'Peruttu')).not.toBeChecked();
   await form.getByRole('button', { name: 'Tyhjennä', exact: true }).click();
-  await expect(filterValue(form, 'Myyty')).not.toBeChecked();
+  await expect(filterValue(form, 'Tuleva')).not.toBeChecked();
   await expect(form.getByRole('button', { name: 'OK', exact: true })).toBeDisabled();
   await form.getByRole('button', { name: 'Valitse kaikki', exact: true }).click();
-  await expect(filterValue(form, 'Myyty')).toBeChecked();
+  await expect(filterValue(form, 'Tuleva')).toBeChecked();
   await expect(filterValue(form, 'Peruttu')).toBeChecked();
   await cancelColumnFilter(page, form);
   if (hasHeaderFilters(page)) await expect(filterButton(page, 'Tila')).toBeFocused();
@@ -219,4 +219,58 @@ test('Kate-%: the actual percentage is always on a second line', async ({ page }
     expect(actual.top, `${w} px: actual under the budget`).toBeGreaterThanOrEqual(budget.bottom - 1);
     for (const part of parts) expect(part.oneLine, `${w} px: "${part.text}" on one line`).toBe(true);
   }
+});
+
+// Gig statuses and "Valmis laskutukseen" (owner decision 2026-10-31): Tuleva = blue (info),
+// Soitettu = green (ok), Peruttu = red (danger); the ready flag is set by hand on the gig page,
+// shown as a green check box in the list (accessible text "Kyllä"), filterable (f.readyForInvoice).
+test('gig statuses and "Valmis laskutukseen": mark on the gig page, list column + filter, undo', async ({ page }, testInfo) => {
+  const { year, north } = await setup(page, testInfo);
+  const venue = `Hall ${tagOf(testInfo)}${suffix()} Ready`;
+  const gig = await createEventViaApi(page, { startDate: `${year}-08-01`, venue });
+
+  await page.goto(`/gigs/${gig.id}`);
+  await expect(pageHead(page).getByText('Tuleva', { exact: true })).toHaveClass(/tag-info/);
+  await page.getByRole('button', { name: 'Valmis laskutukseen', exact: true }).click();
+  const tag = page.locator('.event-ready-for-invoice .tag');
+  await expect(tag).toHaveText('Valmis laskutukseen');
+  await expect(tag).toHaveClass(/tag-ok/);
+  await expect(page.locator('.event-ready-for-invoice')).toContainText(/Partner A \d+\.\d+\.\d{4} klo /);
+  expect((await api(page).get(`/events/${gig.id}`)).readyForInvoiceAt).not.toBeNull();
+
+  // List: the filter "Kyllä" leaves only this gig; its cell has the green box.
+  await openList(page, year, '?f.readyForInvoice=yes');
+  await expect(eventListRows(page)).toHaveCount(1);
+  const row = eventListRows(page).first();
+  await expect(row).toContainText(venue);
+  await expect(row.locator('td.event-col-ready .tag')).toHaveClass(/tag-ok/);
+  await expect(row.locator('td.event-col-ready')).toContainText('Kyllä');
+  await expect(row.getByText('Tuleva', { exact: true })).toHaveClass(/tag-info/);
+  await openList(page, year, '?f.readyForInvoice=no');
+  await expect.poll(() => rowVenues(page, [north, venue])).not.toContain(venue);
+
+  // Cancelled = red "Peruttu".
+  await openList(page, year, '?f.status=CANCELLED');
+  await expect(eventListRows(page).first().getByText('Peruttu', { exact: true })).toHaveClass(/tag-danger/);
+
+  // The new column fits without sideways scroll (table rows from 600 px; phones are cards).
+  const widths = tagOf(testInfo) === 'M' ? [375] : [600, 900, 1100, 1280, 1440, 1600, 1920];
+  for (const w of widths) {
+    await page.setViewportSize({ width: w, height: 800 });
+    await openList(page, year, '?f.allStatuses=1');
+    await expectNoHorizontalScroll(page, `event list at ${w} px`);
+    const overflow = await page
+      .getByRole('table', { name: 'Keikkalista', exact: true })
+      .evaluate((table) => table.scrollWidth - table.parentElement!.clientWidth);
+    expect(overflow, `${w} px: table wider than its container`).toBeLessThanOrEqual(1);
+  }
+
+  // Undo with a confirmation.
+  await page.goto(`/gigs/${gig.id}`);
+  await page.getByRole('button', { name: 'Peru', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Peru valmis laskutukseen -merkintä' });
+  await dialog.getByRole('button', { name: 'Peru merkintä', exact: true }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page.getByRole('button', { name: 'Valmis laskutukseen', exact: true })).toBeVisible();
+  expect((await api(page).get(`/events/${gig.id}`)).readyForInvoiceAt).toBeNull();
 });

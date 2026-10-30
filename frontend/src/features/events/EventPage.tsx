@@ -18,6 +18,7 @@ import { EventBasicFields, EventPriceFields } from './EventInfoFields';
 import { EventDeletedTag, EventStatusTag } from './EventStatusTag';
 import { EventOfferLink } from './EventOfferLink';
 import { History } from './History';
+import { ReadyForInvoice } from './ReadyForInvoice';
 import { personName, useEvent, usePeople } from './queries';
 import './eventPage.css';
 
@@ -108,6 +109,8 @@ export function EventPage() {
           />
         }
       />
+
+      <ReadyForInvoice event={event} />
 
       {event.offerId && <EventOfferLink offerId={event.offerId} />}
 

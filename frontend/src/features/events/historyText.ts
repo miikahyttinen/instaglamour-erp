@@ -23,7 +23,16 @@ export type HistoryFilter = 'all' | 'status' | 'details' | 'costs' | 'attachment
 export const HISTORY_FILTERS: HistoryFilter[] = ['all', 'status', 'details', 'costs', 'attachments'];
 
 const FILTER_TYPES: Record<Exclude<HistoryFilter, 'all'>, EventHistoryType[]> = {
-  status: ['CREATED', 'MOVED', 'CANCELLED', 'UNCANCELLED', 'DELETED', 'RESTORED'],
+  status: [
+    'CREATED',
+    'MOVED',
+    'CANCELLED',
+    'UNCANCELLED',
+    'DELETED',
+    'RESTORED',
+    'READY_FOR_INVOICE',
+    'READY_FOR_INVOICE_CLEARED',
+  ],
   details: ['UPDATED'],
   costs: ['COST_ADDED', 'COST_UPDATED', 'COST_REMOVED', 'COST_PAID', 'COST_UNPAID'],
   attachments: ['ATTACHMENT_ADDED', 'ATTACHMENT_REMOVED'],

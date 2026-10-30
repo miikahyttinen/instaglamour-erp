@@ -42,6 +42,8 @@ const entries: EventHistoryEntry[] = [
   { ...base, type: 'UNCANCELLED', reason: 'Back on', details: {} },
   { ...base, type: 'DELETED', reason: 'Duplicate', details: {} },
   { ...base, type: 'RESTORED', details: {} },
+  { ...base, type: 'READY_FOR_INVOICE', details: {} },
+  { ...base, type: 'READY_FOR_INVOICE_CLEARED', details: {} },
   { ...base, type: 'COST_ADDED', details: { costLineId: 'l', type: 'BASS', personId: 'p1', budgetedCents: 10000 } },
   {
     ...base,
@@ -83,6 +85,8 @@ describe('history descriptions (UC-013)', () => {
       'Palautettu myydyksi | Syy: Back on',
       'Poistettu | Syy: Duplicate',
       'Palautettu poistosta',
+      'Merkitty valmiiksi laskutukseen',
+      'Valmis laskutukseen -merkintä peruttu',
       'Kulurivi lisätty | Basso · Person 1 · 100,00 €',
       'Kuluriviä muutettu | Basso: Budjetti: 100,00 € → 90,00 €; Roudaus ja soundcheck: kyllä → ei; Henkilö: – → Person 1',
       'Kulurivi poistettu | Polttoaine · – · 100,00 €',
@@ -99,7 +103,9 @@ describe('history descriptions (UC-013)', () => {
       'Details changed | Price: €1,000.00 → €2,000.00 | Seller: Partner A → Partner B | Technical setup: – → Set A | Logistics: Own van → Rental van | House technician: no → yes | Notes: – → Note | Sales / Production lines moved: 1',
     );
     expect(en[2]).toBe('Moved | 1 Jun 2030 → 1 Jul 2030–2 Jul 2030 | Reason: Venue asked');
-    expect(en[8]).toBe(
+    expect(en[7]).toBe('Marked ready to be invoiced');
+    expect(en[8]).toBe('Ready to be invoiced undone');
+    expect(en[10]).toBe(
       'Cost line changed | Bass: Budget: €100.00 → €90.00; Load-in & soundcheck: yes → no; Person: – → Person 1',
     );
   });
@@ -158,7 +164,16 @@ describe('history descriptions (UC-013)', () => {
   it('filters by category', () => {
     const types = (filter: Parameters<typeof matchesFilter>[1]) =>
       entries.filter((e) => matchesFilter(e, filter)).map((e) => e.type);
-    expect(types('status')).toEqual(['CREATED', 'MOVED', 'CANCELLED', 'UNCANCELLED', 'DELETED', 'RESTORED']);
+    expect(types('status')).toEqual([
+      'CREATED',
+      'MOVED',
+      'CANCELLED',
+      'UNCANCELLED',
+      'DELETED',
+      'RESTORED',
+      'READY_FOR_INVOICE',
+      'READY_FOR_INVOICE_CLEARED',
+    ]);
     expect(types('details')).toEqual(['UPDATED']);
     expect(types('attachments')).toEqual(['ATTACHMENT_ADDED', 'ATTACHMENT_REMOVED']);
     expect(types('all')).toHaveLength(entries.length);

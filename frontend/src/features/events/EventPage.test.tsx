@@ -25,7 +25,7 @@ describe('event page (UC-004, UC-007)', () => {
     const { user } = renderApp(`/gigs/${event.id}`);
     expect(await screen.findByRole('heading', { name: 'Template A · Venue X', level: 1 })).toBeInTheDocument();
     expect(screen.getByText('1.6.2030')).toBeInTheDocument();
-    expect(screen.getByText('Myyty')).toBeInTheDocument();
+    expect(screen.getByText('Tuleva')).toBeInTheDocument();
     for (const name of ['Perustiedot', 'Hinta ja lisämyynti', 'Talous', 'Kulut ja miehitys', 'Liitteet', 'Muutoshistoria']) {
       expect(section(name)).toHaveAttribute('open');
     }
@@ -198,6 +198,49 @@ describe('event page (UC-004, UC-007)', () => {
     expect(historyItems()[1]).toHaveTextContent(/Hinta: 1\s000,00\s€ → 100,00\s€/);
     expect(historyItems()[2]).toHaveTextContent('Peruttu');
     expect(historyItems()[2]).toHaveTextContent('Syy: Client called off');
+  });
+
+  it('marks a gig ready to be invoiced by hand and undoes it with a confirmation (2026-10-31)', async () => {
+    const event = addMockEvent();
+    const { user } = renderApp(`/gigs/${event.id}`);
+    // Upcoming gigs can be marked too; the status tag is blue "Tuleva".
+    expect(await screen.findByText('Tuleva', { selector: '.tag' })).toHaveClass('tag-info');
+    await user.click(await screen.findByRole('button', { name: 'Valmis laskutukseen' }));
+
+    const tag = await screen.findByText('Valmis laskutukseen', { selector: '.tag' });
+    expect(tag).toHaveClass('tag-ok');
+    expect(event.readyForInvoiceBy).toBe(partnerA().id);
+    expect(screen.getByText(new RegExp(`^${partnerA().name} \\d+\\.\\d+\\.\\d{4} klo `))).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Valmis laskutukseen' })).not.toBeInTheDocument();
+    await waitFor(() => expect(historyItems()[0]).toHaveTextContent('Merkitty valmiiksi laskutukseen'));
+
+    await user.click(screen.getByRole('button', { name: 'Peru' }));
+    const dialog = screen.getByRole('dialog', { name: 'Peru valmis laskutukseen -merkintä' });
+    await user.click(within(dialog).getByRole('button', { name: 'Peru merkintä' }));
+    expect(await screen.findByRole('button', { name: 'Valmis laskutukseen' })).toBeInTheDocument();
+    expect(event.readyForInvoiceAt).toBeNull();
+    await waitFor(() => expect(historyItems()[0]).toHaveTextContent('Valmis laskutukseen -merkintä peruttu'));
+  });
+
+  it('offers no ready-to-be-invoiced action on a cancelled or deleted gig', async () => {
+    const cancelled = addMockEvent({ venue: 'Venue Gone' });
+    cancelled.status = 'CANCELLED';
+    cancelled.readyForInvoiceAt = '2030-06-02T10:00:00Z';
+    cancelled.readyForInvoiceBy = partnerA().id;
+    renderApp(`/gigs/${cancelled.id}`);
+    expect(await screen.findByText('Peruttu', { selector: '.tag' })).toHaveClass('tag-danger');
+    expect(screen.queryByRole('button', { name: 'Valmis laskutukseen' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Valmis laskutukseen')).not.toBeInTheDocument();
+  });
+
+  it('deleted gigs: no mark button, a set flag is shown read-only', async () => {
+    const deleted = addMockEvent({ venue: 'Venue Del' });
+    deleted.deletedAt = '2030-06-03T10:00:00Z';
+    deleted.readyForInvoiceAt = '2030-06-02T10:00:00Z';
+    deleted.readyForInvoiceBy = partnerA().id;
+    renderApp(`/gigs/${deleted.id}`);
+    expect(await screen.findByText('Valmis laskutukseen', { selector: '.tag' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Peru' })).not.toBeInTheDocument();
   });
 
   it('moves an event, shows overlap warnings and logs old and new dates (UC-009)', async () => {
