@@ -17,6 +17,7 @@ import { formatDate, formatMoney, formatTime } from '../../lib/format';
 import { parseMoneyField } from '../../lib/moneyField';
 import { usePartner } from '../../reference/useReference';
 import { ConfirmDialog } from '../offers/offerParts';
+import { InvoicingTags } from './EventStatusTag';
 import { INVOICE_ROW_STATUS_TONE } from './eventStatusTone';
 import { useApplyEvent } from './queries';
 
@@ -30,9 +31,10 @@ interface Props {
 }
 
 /**
- * "Laskutus" card under the price card (api-contract "Invoice rows", TASK-173): one row per
- * invoice (description, amount, status, last change), an add form, and the totals Laskutettu
- * (sent + paid), Maksettu (paid) and Saldo (total − paid; warns when negative). Editable on
+ * "Laskutus" card under the price card (api-contract "Invoice rows", "Invoicing state: coverage +
+ * payment"): the coverage and payment tags on top, one row per invoice (description, amount,
+ * status, last change), an add form, and the totals Laskutettu (sent + paid), Avoimet (sent, not
+ * paid), Maksettu (paid) and Saldo (total − paid; warns when negative). Editable on
  * upcoming, played and cancelled gigs (cancellation fees can be invoiced).
  */
 export function EventInvoicing({ event, readOnly }: Props) {
@@ -46,6 +48,9 @@ export function EventInvoicing({ event, readOnly }: Props) {
 
   return (
     <Card as="div" className="event-invoicing">
+      <div className="invoice-state" role="group" aria-label={t('event.invoicing.state')}>
+        <InvoicingTags coverage={event.invoiceCoverage} payment={event.paymentState} />
+      </div>
       {rows.length === 0 ? (
         <p className="table-empty invoice-rows-empty">{t('event.invoicing.empty')}</p>
       ) : (
@@ -95,6 +100,10 @@ export function EventInvoicing({ event, readOnly }: Props) {
         <div>
           <dt>{t('event.invoicing.invoiced')}</dt>
           <dd>{formatMoney(event.invoicedCents, lang)}</dd>
+        </div>
+        <div>
+          <dt>{t('event.invoicing.open')}</dt>
+          <dd>{formatMoney(event.openCents, lang)}</dd>
         </div>
         <div>
           <dt>{t('event.invoicing.paid')}</dt>

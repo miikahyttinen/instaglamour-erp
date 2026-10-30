@@ -135,6 +135,10 @@
   --ok-strong-fg: #ecfdf5;
   --ok-strong-bg: #065f46;
   --ok-strong-border: #047857;
+  /* Purple ("Osittain maksettu" / partly paid): c4a5ff on 1e1530 = 8.4:1 */
+  --purple-fg: #c4a5ff;
+  --purple-bg: #1e1530;
+  --purple-border: #4a2f7a;
   --warn-fg: #fbbf24;
   --warn-bg: #2a2210;
   --warn-border: #5c4a14;
@@ -168,6 +172,10 @@
   --ok-strong-fg: #ffffff;
   --ok-strong-bg: #047857;
   --ok-strong-border: #065f46;
+  /* Purple ("Osittain maksettu" / partly paid): 6d28d9 on f3edff = 6.2:1 */
+  --purple-fg: #6d28d9;
+  --purple-bg: #f3edff;
+  --purple-border: #d4c2f7;
   --warn-fg: #a16207;
   --warn-bg: #fdf6e3;
   --warn-border: #ecd9a3;

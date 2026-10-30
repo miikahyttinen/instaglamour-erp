@@ -10,9 +10,10 @@ import type {
   EventStatus,
   InternalRole,
   InvoiceRowStatus,
-  InvoiceState,
+  InvoiceCoverage,
   Language,
   MusicianRole,
+  PaymentState,
   ExpenseCategory,
   OfferDisposition,
   OfferEventType,
@@ -132,8 +133,14 @@ export interface EventSummary {
   paidCents: Cents;
   /** totalPriceCents − paidCents; negative when more has been paid than the total. */
   balanceCents: Cents;
-  /** Derived from the invoice rows (api-contract "Invoice rows"). */
-  invoiceState: InvoiceState;
+  /** Σ amountCents of READY invoice rows (drafts; the Keikat table shows "Laskutettavia rivejä"). */
+  readyCents: Cents;
+  /** Σ amountCents of SENT invoice rows (sent, not paid; "Avoimet"). */
+  openCents: Cents;
+  /** Derived from the total and the rows (api-contract "Invoicing state: coverage + payment"). */
+  invoiceCoverage: InvoiceCoverage;
+  /** Derived from the rows (same contract section). */
+  paymentState: PaymentState;
   deletedAt: IsoTimestamp | null;
   createdAt: IsoTimestamp;
   updatedAt: IsoTimestamp;

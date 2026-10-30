@@ -213,8 +213,14 @@ describe('event page (UC-004, UC-007)', () => {
     expect(card.getByText('Ei laskurivejä.')).toBeInTheDocument();
     const total = (name: string) => card.getByText(name, { selector: 'dt' }).nextElementSibling!;
     expect(total('Laskutettu')).toHaveTextContent(/0,00\s€/);
+    expect(total('Avoimet')).toHaveTextContent(/0,00\s€/);
     expect(total('Maksettu')).toHaveTextContent(/0,00\s€/);
     expect(card.getByRole('group', { name: 'Saldo' })).toHaveTextContent(/1\s000,00\s€/);
+    // Invoicing state tags on top: coverage (line 1) + payment (line 2).
+    const state = () => within(card.getByRole('group', { name: 'Laskutuksen tila' }));
+    const stateTags = () => [...card.getByRole('group', { name: 'Laskutuksen tila' }).querySelectorAll('.invoicing-tags > span')];
+    expect(state().getByText('Laskuttamatta')).toHaveClass('tag', 'tag-warn');
+    expect(stateTags()[1]).toHaveTextContent('–');
 
     // Add: required fields checked client-side; status defaults to "Valmis laskutukseen".
     await user.click(card.getByRole('button', { name: '+ Lisää laskurivi' }));
@@ -235,23 +241,31 @@ describe('event page (UC-004, UC-007)', () => {
       'Lähetetty',
       'Maksettu',
     ]);
-    expect(status.closest('.inline-field')).toHaveClass('tone-ok');
+    expect(status.closest('.inline-field')).toHaveClass('tone-info');
     expect(within(row).getByText(new RegExp(`^${partnerA().name} \\d+\\.\\d+\\.\\d{4} klo `))).toBeInTheDocument();
     await waitFor(() => expect(historyItems()[0]).toHaveTextContent(/Laskurivi lisätty.*Ennakko · 400,00\s€ · Valmis laskutukseen/));
 
     // Status → Maksettu: dark green, paid and invoiced totals follow, balance = total − paid.
+    await user.selectOptions(status, 'Lähetetty');
+    await waitFor(() => expect(total('Avoimet')).toHaveTextContent(/400,00\s€/));
+    expect(state().getByText('Laskuttamatta')).toHaveClass('tag-warn');
+    expect(state().getByText('Avoimia laskuja')).toHaveClass('tag', 'tag-info');
     await user.selectOptions(status, 'Maksettu');
     await waitFor(() => expect(total('Maksettu')).toHaveTextContent(/400,00\s€/));
+    expect(total('Avoimet')).toHaveTextContent(/0,00\s€/);
+    expect(state().getByText('Osittain maksettu')).toHaveClass('tag', 'tag-purple');
     expect(total('Laskutettu')).toHaveTextContent(/400,00\s€/);
     expect(card.getByRole('group', { name: 'Saldo' })).toHaveTextContent(/600,00\s€/);
     expect(status.closest('.inline-field')).toHaveClass('tone-ok-strong');
-    await waitFor(() => expect(historyItems()[0]).toHaveTextContent('Ennakko: Tila: Valmis laskutukseen → Maksettu'));
+    await waitFor(() => expect(historyItems()[0]).toHaveTextContent('Ennakko: Tila: Lähetetty → Maksettu'));
 
     // Amount and description edit inline; more paid than the total → negative balance warning.
     const amount = within(row).getByRole('textbox', { name: 'Summa: Ennakko' });
     await user.clear(amount);
     await user.type(amount, '1200{Enter}');
     await waitFor(() => expect(card.getByRole('group', { name: 'Saldo' })).toHaveTextContent(/[-−]200,00\s€/));
+    expect(state().getByText('Laskutettu kokonaan')).toHaveClass('tag', 'tag-ok');
+    expect(state().getByText('Maksettu kokonaan')).toHaveClass('tag', 'tag-ok-strong');
     expect(card.getByRole('group', { name: 'Saldo' })).toHaveClass('event-balance-negative');
     expect(card.getByRole('note')).toHaveTextContent('Maksettu enemmän kuin kokonaishinta.');
     // Zero is blocked client-side.

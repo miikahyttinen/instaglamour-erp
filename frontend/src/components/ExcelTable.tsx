@@ -104,6 +104,9 @@ export function ExcelTable<T>(props: ExcelTableProps<T>) {
       </Button>
     ) : null;
   const hasFilters = columns.some((c) => c.filterValue);
+  // filterOnly columns: no header / cell, only a filter button in their host column's header.
+  const shown = columns.filter((c) => !c.filterOnly);
+  const filterColumn = (key: string) => columns.find((c) => c.key === key && c.filterValue);
   const showBar = rowCount || clearButton || (!wide && hasFilters);
 
   return (
@@ -145,18 +148,25 @@ export function ExcelTable<T>(props: ExcelTableProps<T>) {
             <caption className="visually-hidden">{caption}</caption>
             <thead>
               <tr>
-                {columns.map((col) => (
+                {shown.map((col) => (
                   <HeaderCell
                     key={col.key}
                     column={col}
                     sortDir={sort?.key === col.key ? sort.dir : undefined}
                     onSort={() => onSortChange(nextSort(sort, col.key))}
-                    filterable={wide && Boolean(col.filterValue)}
-                    filterActive={filters[col.key] !== undefined}
-                    filterOpen={openFilter?.key === col.key}
-                    onFilter={(anchor) =>
-                      setOpenFilter((cur) => (cur?.key === col.key ? null : { key: col.key, anchor }))
+                    filters={
+                      wide
+                        ? [col, ...(col.extraFilters ?? []).map(filterColumn)]
+                            .filter((c): c is ExcelColumn<T> => Boolean(c?.filterValue))
+                            .map((c) => ({
+                              key: c.key,
+                              label: c.label,
+                              active: filters[c.key] !== undefined,
+                              open: openFilter?.key === c.key,
+                            }))
+                        : []
                     }
+                    onFilter={(key, anchor) => setOpenFilter((cur) => (cur?.key === key ? null : { key, anchor }))}
                   />
                 ))}
               </tr>
@@ -164,7 +174,7 @@ export function ExcelTable<T>(props: ExcelTableProps<T>) {
             <tbody>
               {visible.map((row) => (
                 <tr key={rowKey(row)} className={rowClassName?.(row)}>
-                  {columns.map((col) => (
+                  {shown.map((col) => (
                     <td key={col.key} className={cellClass(col)} data-label={col.label} data-priority={col.priority ?? 1}>
                       {col.cell(row)}
                     </td>
@@ -216,19 +226,24 @@ export function ExcelTable<T>(props: ExcelTableProps<T>) {
   );
 }
 
+/** One filter button of a header: the column's own filter and any `extraFilters`. */
+interface HeaderFilter {
+  key: string;
+  label: string;
+  active: boolean;
+  open: boolean;
+}
+
 interface HeaderCellProps<T> {
   column: ExcelColumn<T>;
   sortDir: SortDir | undefined;
   onSort: () => void;
-  filterable: boolean;
-  filterActive: boolean;
-  filterOpen: boolean;
-  onFilter: (anchor: HTMLElement) => void;
+  /** Filter buttons to show (none on phones). */
+  filters: HeaderFilter[];
+  onFilter: (key: string, anchor: HTMLElement) => void;
 }
 
-function HeaderCell<T>({ column, sortDir, onSort, filterable, filterActive, filterOpen, onFilter }: HeaderCellProps<T>) {
-  const { t } = useTranslation();
-  const activeId = useId();
+function HeaderCell<T>({ column, sortDir, onSort, filters, onFilter }: HeaderCellProps<T>) {
   const title = column.header ?? column.label;
   const sortable = Boolean(column.sortValue);
   return (
@@ -247,27 +262,37 @@ function HeaderCell<T>({ column, sortDir, onSort, filterable, filterActive, filt
         ) : (
           <span className="excel-th-label">{title}</span>
         )}
-        {filterable && (
-          <button
-            type="button"
-            className={['excel-filter-btn', filterActive && 'is-active'].filter(Boolean).join(' ')}
-            aria-label={t('table.filterColumn', { column: column.label })}
-            title={t('table.filterColumn', { column: column.label })}
-            aria-haspopup="dialog"
-            aria-expanded={filterOpen}
-            aria-describedby={filterActive ? activeId : undefined}
-            onClick={(e) => onFilter(e.currentTarget)}
-          >
-            <Filter />
-            {filterActive && (
-              <span id={activeId} className="visually-hidden">
-                {t('table.filterActive')}
-              </span>
-            )}
-          </button>
-        )}
+        {filters.map((f) => (
+          <FilterButton key={f.key} filter={f} onFilter={(anchor) => onFilter(f.key, anchor)} />
+        ))}
       </div>
     </th>
+  );
+}
+
+function FilterButton({ filter, onFilter }: { filter: HeaderFilter; onFilter: (anchor: HTMLElement) => void }) {
+  const { t } = useTranslation();
+  const activeId = useId();
+  const name = t('table.filterColumn', { column: filter.label });
+  return (
+    <button
+      type="button"
+      className={['excel-filter-btn', filter.active && 'is-active'].filter(Boolean).join(' ')}
+      aria-label={name}
+      title={name}
+      aria-haspopup="dialog"
+      aria-expanded={filter.open}
+      aria-describedby={filter.active ? activeId : undefined}
+      data-filter={filter.key}
+      onClick={(e) => onFilter(e.currentTarget)}
+    >
+      <Filter />
+      {filter.active && (
+        <span id={activeId} className="visually-hidden">
+          {t('table.filterActive')}
+        </span>
+      )}
+    </button>
   );
 }
 

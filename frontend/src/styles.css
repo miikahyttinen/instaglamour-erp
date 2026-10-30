@@ -791,6 +791,11 @@ label.switch.inline-switch {
   background: var(--ok-strong-bg);
   border-color: var(--ok-strong-border);
 }
+.tag-purple {
+  color: var(--purple-fg);
+  background: var(--purple-bg);
+  border-color: var(--purple-border);
+}
 .tag-warn {
   color: var(--warn-fg);
   background: var(--warn-bg);
@@ -800,6 +805,18 @@ label.switch.inline-switch {
   color: var(--danger-fg);
   background: var(--danger-bg);
   border-color: var(--danger-border);
+}
+/* Invoicing tags of a gig (InvoicingTags): coverage on line 1, payment on line 2, always two
+   lines (like Kate-%); each tag stays on one line. */
+.invoicing-tags {
+  display: block;
+}
+.invoicing-tags > span {
+  display: block;
+  white-space: nowrap;
+}
+.invoicing-tags > span + span {
+  margin-top: var(--space-1);
 }
 
 .notice {

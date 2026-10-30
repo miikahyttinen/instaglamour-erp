@@ -796,7 +796,7 @@
   width: 1%;
   text-align: right;
 }
-/* Status select drawn as its colour tag (design.md: Valmis laskutukseen light green, Lähetetty
+/* Status select drawn as its colour tag (owner 2026-10-31: Valmis laskutukseen blue, Lähetetty
    amber, Maksettu solid dark green); hover / focus keep the usual inline outline. */
 .event-page .invoice-row-status select.inline-input {
   /* Sized to the chosen label (the table is narrow in the two-column layout). */
@@ -809,6 +809,11 @@
   font-weight: var(--fw-medium);
   letter-spacing: var(--ls-label);
   text-transform: uppercase;
+}
+.event-page .invoice-row-status.tone-info select.inline-input {
+  color: var(--info-fg);
+  background-color: var(--info-bg);
+  border-color: var(--info-border);
 }
 .event-page .invoice-row-status.tone-ok select.inline-input {
   color: var(--ok-fg);
@@ -850,6 +855,9 @@
 }
 .event-page .invoice-add-button {
   margin-top: var(--space-3);
+}
+.event-page .invoice-state {
+  margin: 0 0 var(--space-3);
 }
 .event-page .invoice-totals {
   display: flex;

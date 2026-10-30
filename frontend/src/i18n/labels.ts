@@ -4,7 +4,8 @@ import type {
   CostType,
   FieldCode,
   InvoiceRowStatus,
-  InvoiceState,
+  InvoiceCoverage,
+  PaymentState,
   EventDisplayStatus,
   EventHistoryType,
   Language,
@@ -43,7 +44,8 @@ export const signInErrorLabel = (t: TFunction, code: SignInErrorCode) =>
   t(`signIn.errors.${code}`);
 
 export const invoiceRowStatusLabel = (t: TFunction, code: InvoiceRowStatus) => t(`invoiceRowStatus.${code}`);
-export const invoiceStateLabel = (t: TFunction, code: InvoiceState) => t(`invoiceState.${code}`);
+export const invoiceCoverageLabel = (t: TFunction, code: InvoiceCoverage) => t(`invoiceCoverage.${code}`);
+export const paymentStateLabel = (t: TFunction, code: PaymentState) => t(`paymentState.${code}`);
 
 /** Display status of an event: SOLD with a past date is shown as PLAYED (BR-010). */
 export function eventDisplayStatus(event: Pick<EventSummary, 'status' | 'played'>): EventDisplayStatus {

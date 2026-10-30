@@ -2,7 +2,7 @@
 // Business logic lives in eventStore.ts.
 import { http, HttpResponse } from 'msw';
 import type { CostType, FieldCode, Logistics, TechnicalSetup } from '../api/enums';
-import { COST_TYPES, INVOICE_ROW_STATUSES, INVOICE_STATES, isMusicianRole, LOGISTICS, TECHNICAL_SETUPS } from '../api/enums';
+import { COST_TYPES, INVOICE_COVERAGES, INVOICE_ROW_STATUSES, isMusicianRole, PAYMENT_STATES, LOGISTICS, TECHNICAL_SETUPS } from '../api/enums';
 import type {
   CostLine,
   CostLineCreate,
@@ -249,10 +249,15 @@ export const eventHandlers = [
     const notFullyStaffed = params.get('notFullyStaffed') === 'true';
     const deleted = params.get('deleted') === 'true';
     const q = (params.get('q') ?? '').trim().toLowerCase();
-    // Repeatable ?invoiceState= (any of); an unknown value → 400 (the UI filters client-side).
-    const invoiceStates = params.getAll('invoiceState');
-    if (invoiceStates.some((v) => !(INVOICE_STATES as readonly string[]).includes(v))) {
-      return validationError({ invoiceState: 'INVALID_VALUE' });
+    // Repeatable ?invoiceCoverage= / ?paymentState= (any of); an unknown value → 400 (the UI
+    // filters client-side).
+    const coverages = params.getAll('invoiceCoverage');
+    if (coverages.some((v) => !(INVOICE_COVERAGES as readonly string[]).includes(v))) {
+      return validationError({ invoiceCoverage: 'INVALID_VALUE' });
+    }
+    const paymentStates = params.getAll('paymentState');
+    if (paymentStates.some((v) => !(PAYMENT_STATES as readonly string[]).includes(v))) {
+      return validationError({ paymentState: 'INVALID_VALUE' });
     }
     const today = todayIso();
 
@@ -272,7 +277,8 @@ export const eventHandlers = [
       })
       .map((g) => toSummary(db.events, g, today))
       .filter((g) => !notFullyStaffed || g.notFullyStaffed)
-      .filter((g) => invoiceStates.length === 0 || invoiceStates.includes(g.invoiceState))
+      .filter((g) => coverages.length === 0 || coverages.includes(g.invoiceCoverage))
+      .filter((g) => paymentStates.length === 0 || paymentStates.includes(g.paymentState))
       .sort((a, b) => a.startDate.localeCompare(b.startDate));
 
     const body: EventListResponse = { events, yearSummary: yearTotals(db.events, year) };
