@@ -4,7 +4,6 @@ import type { MusicianRole } from '../api/enums';
 import type { LineupTemplate, Partner, Settings } from '../api/types';
 import type { EventState, MockClient, MockPerson, NewEventInput } from './eventStore';
 import {
-  addAttachment,
   addCostLine,
   addInvoiceRow,
   createEvent,
@@ -172,16 +171,8 @@ export function seedEventState(
   );
   staff(g5.id, PERSON_IDS.slice(0, 4));
   addCostLine(state, g5, { type: 'FOOD', personId: null, description: 'Catering', budgetedCents: 10000 }, a.id);
-  addAttachment(
-    state,
-    g5,
-    {
-      filename: 'contract.pdf',
-      contentType: 'application/pdf',
-      content: new Blob(['%PDF-1.4 synthetic test file'], { type: 'application/pdf' }),
-    },
-    a.id,
-  );
+  // Old history entry from before attachments were removed (api-contract "Attachments removed").
+  logEvent(state, g5.id, 'ATTACHMENT_ADDED', a.id, { attachmentId: 'old-attachment', filename: 'contract.pdf' });
   createEvent(
     state,
     { ...base, startDate: `${year}-11-20`, lineupTemplateId: templateB?.id ?? null, venue: 'Venue W', sellerId: b.id, producerId: b.id },

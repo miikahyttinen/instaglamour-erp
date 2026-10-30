@@ -1,9 +1,8 @@
 // The event mocks follow the contract's rules, so the UI behaves like the real backend.
 import { beforeEach, describe, expect, it } from 'vitest';
-import { attachmentsApi, costLinesApi, eventsApi, invoiceRowsApi, peopleApi } from '../api/endpoints';
+import { costLinesApi, eventsApi, invoiceRowsApi, peopleApi } from '../api/endpoints';
 import type { ApiError } from '../api/client';
 import type { EventCreate, EventDetail } from '../api/types';
-import { testFile } from '../test/files';
 import { signInMock } from '../test/renderApp';
 import { db } from './data';
 
@@ -415,22 +414,12 @@ describe('event mocks', () => {
     expect(yearSummary).toMatchObject({ eventCount: 1, cancelledCount: 1, soldEventsSumCents: 110000 });
   });
 
-  it('accepts allowed attachments and rejects others', async () => {
+  it('event detail has no attachments (api-contract "Attachments removed")', async () => {
     const event = await eventsApi.create(eventInput());
-    const pdf = testFile('contract.pdf', 'application/pdf');
-    const attachment = await attachmentsApi.upload(event.id, pdf);
-    expect(attachment).toMatchObject({ filename: 'contract.pdf', uploadedBy: partnerA().id });
-    const error = await expectError(
-      attachmentsApi.upload(event.id, testFile('notes.txt', 'text/plain')),
-    );
-    expect(error.code).toBe('UNSUPPORTED_FILE_TYPE');
-    await attachmentsApi.remove(attachment.id);
-    expect((await eventsApi.get(event.id)).attachments).toEqual([]);
-    const types = (await eventsApi.history(event.id)).map((e) => e.type);
-    expect(types).toEqual(['ATTACHMENT_REMOVED', 'ATTACHMENT_ADDED', 'CREATED']);
+    expect('attachments' in (await eventsApi.get(event.id))).toBe(false);
   });
 
-  it('no-op requests write no history; type is not editable; upload needs a file', async () => {
+  it('no-op requests write no history; type is not editable', async () => {
     const event = await eventsApi.create(eventInput());
     await eventsApi.update(event.id, { venue: 'Venue X' });
     await costLinesApi.update(line(event, 'VOC').id, { joinsLoadIn: true });
@@ -441,10 +430,6 @@ describe('event mocks', () => {
       costLinesApi.update(line(event, 'VOC').id, { type: 'BASS' } as never),
     );
     expect(typeError.fields).toEqual({ type: 'NOT_EDITABLE' });
-
-    const res = await fetch(`/api/events/${event.id}/attachments`, { method: 'POST', body: new FormData() });
-    expect(res.status).toBe(400);
-    expect(await res.json()).toMatchObject({ error: { fields: { file: 'REQUIRED' } } });
   });
 
   it('lists active people and creates people with a duplicate warning', async () => {

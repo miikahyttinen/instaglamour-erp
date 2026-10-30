@@ -1,4 +1,4 @@
-// Mock handlers for docs/api-contract.md: Events, Cost lines, Attachments (People: peopleHandlers.ts).
+// Mock handlers for docs/api-contract.md: Events, Cost lines, Invoice rows (People: peopleHandlers.ts).
 // Business logic lives in eventStore.ts.
 import { http, HttpResponse } from 'msw';
 import type { CostType, FieldCode, Logistics, TechnicalSetup } from '../api/enums';
@@ -23,7 +23,6 @@ import { todayIso } from '../lib/format';
 import { db } from './data';
 import type { MockEvent, NewEventInput } from './eventStore';
 import {
-  addAttachment,
   addCostLine,
   addInvoiceRow,
   createEvent,
@@ -33,7 +32,6 @@ import {
   logEvent,
   nowTs,
   payCostLine,
-  publicAttachment,
   removeCostLine,
   removeInvoiceRow,
   toDetail,
@@ -50,14 +48,6 @@ type Fields = Record<string, FieldCode>;
 
 const MAX_STRING = 500;
 const MAX_TEXT = 5000;
-export const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
-const ALLOWED_TYPES_DOCX = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-const ALLOWED_TYPES: Record<string, string> = {
-  'application/pdf': 'pdf',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
-  'image/png': 'png',
-  'image/jpeg': 'jpg',
-};
 
 const isDate = (v: unknown): v is string =>
   typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) && !Number.isNaN(Date.parse(v));
@@ -557,77 +547,6 @@ export const costLineHandlers = [
     unpayCostLine(db.events, found.line, me.id);
     touch(found.event);
     return withWarnings(found.event);
-  }),
-];
-
-// ---------- Attachments ----------
-
-function detectType(file: File): string | null {
-  if (ALLOWED_TYPES[file.type]) return file.type;
-  const ext = file.name.toLowerCase().split('.').pop() ?? '';
-  const byExt: Record<string, string> = {
-    pdf: 'application/pdf',
-    docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    png: 'image/png',
-    jpg: 'image/jpeg',
-    jpeg: 'image/jpeg',
-  };
-  return file.type === '' || file.type === 'application/octet-stream' ? (byExt[ext] ?? null) : null;
-}
-
-export const attachmentHandlers = [
-  http.post('/api/events/:id/attachments', async ({ params, request }) => {
-    const me = currentPartner();
-    if (!me) return unauthenticated();
-    const event = findEvent(params.id);
-    if (!event) return notFound();
-    if (event.deletedAt) return eventDeleted();
-    let file: FormDataEntryValue | null;
-    try {
-      file = (await request.formData()).get('file');
-    } catch {
-      file = null;
-    }
-    if (!file || typeof file === 'string') return validationError({ file: 'REQUIRED' });
-    if (file.size > MAX_UPLOAD_BYTES) return errorResponse(413, 'FILE_TOO_LARGE', 'Too large');
-    const contentType = detectType(file);
-    if (!contentType) return errorResponse(415, 'UNSUPPORTED_FILE_TYPE', 'Unsupported type');
-    const attachment = addAttachment(
-      db.events,
-      event,
-      { filename: file.name || 'file', contentType, content: file },
-      me.id,
-    );
-    touch(event);
-    return HttpResponse.json(publicAttachment(attachment), { status: 201 });
-  }),
-
-  http.get('/api/attachments/:id/download', ({ params }) => {
-    if (!currentPartner()) return unauthenticated();
-    const attachment = db.events.attachments.find((a) => a.id === params.id && a.deletedAt === null);
-    if (!attachment) return notFound();
-    const inline = attachment.contentType !== ALLOWED_TYPES_DOCX;
-    return new HttpResponse(attachment.content, {
-      headers: {
-        'Content-Type': attachment.contentType,
-        'Content-Disposition': `${inline ? 'inline' : 'attachment'}; filename="${attachment.filename}"`,
-      },
-    });
-  }),
-
-  http.delete('/api/attachments/:id', ({ params }) => {
-    const me = currentPartner();
-    if (!me) return unauthenticated();
-    const attachment = db.events.attachments.find((a) => a.id === params.id && a.deletedAt === null);
-    if (!attachment) return notFound();
-    const event = findEvent(attachment.eventId);
-    if (event?.deletedAt) return eventDeleted();
-    attachment.deletedAt = nowTs();
-    logEvent(db.events, attachment.eventId, 'ATTACHMENT_REMOVED', me.id, {
-      attachmentId: attachment.id,
-      filename: attachment.filename,
-    });
-    return new HttpResponse(null, { status: 204 });
   }),
 ];
 

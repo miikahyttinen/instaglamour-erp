@@ -1,6 +1,6 @@
-// In-memory mock of the event domain (events, cost lines, attachments, history, people, clients).
+// In-memory mock of the event domain (events, cost lines, history, people, clients).
 // Offers live in offerStore.ts (db.offers).
-// Implements the rules of docs/api-contract.md (Events, Cost lines, Attachments) so the UI
+// Implements the rules of docs/api-contract.md (Events, Cost lines, Invoice rows) so the UI
 // behaves like the real backend: economics, played, notFullyStaffed, BR-020/021 line creation,
 // BR-022 double booking, BR-026 load-in switch, BR-027 seller/producer change, history events.
 // Synthetic data only (BR-090). This file does not import mocks/data.ts (no import cycle):
@@ -16,7 +16,6 @@ import type {
 } from '../api/enums';
 import { isMusicianRole } from '../api/enums';
 import type {
-  Attachment,
   CostLine,
   FieldChange,
   EventDetail,
@@ -65,12 +64,6 @@ export interface MockClient {
   deletedAt: string | null;
 }
 
-export interface MockAttachment extends Attachment {
-  deletedAt: string | null;
-  /** File content for the download endpoint. */
-  content: Blob;
-}
-
 /**
  * A stored person; `partner` is derived from `db.partners` and `eventCount` from the events when the
  * API returns it (UC-032, people roles).
@@ -83,14 +76,13 @@ export interface EventState {
   events: MockEvent[];
   /** Kept in creation order (contract: lines ordered by creation time). */
   costLines: CostLine[];
-  attachments: MockAttachment[];
   /** Kept in creation order (contract: invoice rows in creation order). */
   invoiceRows: InvoiceRow[];
   history: EventHistoryEntry[];
 }
 
 export function emptyEventState(): EventState {
-  return { people: [], clients: [], events: [], costLines: [], attachments: [], invoiceRows: [], history: [] };
+  return { people: [], clients: [], events: [], costLines: [], invoiceRows: [], history: [] };
 }
 
 let idCounter = 0;
@@ -219,24 +211,7 @@ export function toDetail(state: EventState, event: MockEvent): EventDetail {
   return {
     ...toSummary(state, event),
     costLines: linesOf(state, event.id).map((l) => ({ ...l })),
-    attachments: state.attachments
-      .filter((a) => a.eventId === event.id && a.deletedAt === null)
-      .sort((a, b) => b.uploadedAt.localeCompare(a.uploadedAt))
-      .map(publicAttachment),
     invoiceRows: invoiceRowsOf(state, event.id).map((r) => ({ ...r })),
-  };
-}
-
-/** Attachment as the API returns it (without mock-only fields). */
-export function publicAttachment(a: MockAttachment): Attachment {
-  return {
-    id: a.id,
-    eventId: a.eventId,
-    filename: a.filename,
-    contentType: a.contentType,
-    sizeBytes: a.sizeBytes,
-    uploadedBy: a.uploadedBy,
-    uploadedAt: a.uploadedAt,
   };
 }
 
@@ -584,31 +559,6 @@ export function updateEvent(
     logEvent(state, event.id, 'UPDATED', actorId, { changes, movedCostLineIds });
   }
   return { changes, movedCostLineIds };
-}
-
-export function addAttachment(
-  state: EventState,
-  event: MockEvent,
-  file: { filename: string; contentType: string; content: Blob },
-  actorId: Id,
-): MockAttachment {
-  const attachment: MockAttachment = {
-    id: mockId(),
-    eventId: event.id,
-    filename: file.filename,
-    contentType: file.contentType,
-    sizeBytes: file.content.size,
-    uploadedBy: actorId,
-    uploadedAt: nowTs(),
-    deletedAt: null,
-    content: file.content,
-  };
-  state.attachments.push(attachment);
-  logEvent(state, event.id, 'ATTACHMENT_ADDED', actorId, {
-    attachmentId: attachment.id,
-    filename: attachment.filename,
-  });
-  return attachment;
 }
 
 // ---------- Invoice rows (api-contract "Invoice rows") ----------
