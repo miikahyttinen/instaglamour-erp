@@ -122,3 +122,12 @@ describe('label helpers', () => {
     expect(eventDisplayStatus({ status: 'CANCELLED', played: false })).toBe('CANCELLED');
   });
 });
+
+describe('OTHER_ROLE label', () => {
+  it('is labelled "Oma rooli" / "Custom role"; the OTHER expense label is unchanged', () => {
+    expect(locales.fi['costType.OTHER_ROLE']).toBe('Oma rooli');
+    expect(locales.en['costType.OTHER_ROLE']).toBe('Custom role');
+    expect(locales.fi['costType.OTHER']).toBe('Muu kulu');
+    expect(locales.en['costType.OTHER']).toBe('Other expense');
+  });
+});

@@ -140,7 +140,7 @@ const en: Resources = {
     TROMBONE: 'Trombone',
     VIOLIN: 'Violin',
     DJ: 'DJ',
-    OTHER_ROLE: 'Other role',
+    OTHER_ROLE: 'Custom role',
     OFFICE: 'Office',
     SALES: 'Sales',
     PRODUCTION: 'Production',
