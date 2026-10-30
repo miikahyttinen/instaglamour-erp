@@ -531,6 +531,7 @@ For exceptions, partners can create a PO for one person by hand.
   - `DELETE /api/invoice-rows/{id}`
   - Allowed on SOLD and CANCELLED gigs; deleted gig → 409 `EVENT_DELETED`. Validation 400 `REQUIRED` / `INVALID_VALUE` / `TOO_LONG`.
 - `GET /api/events?invoiceState=` (repeatable) filter.
+- Details (TASK-046): open rows win — any READY/SENT row gives READY/SENT even if paid rows cover the total; PAID/PARTLY_PAID only when every row is PAID. History details: ADDED/REMOVED `{ invoiceRowId, description, amountCents, status }`, UPDATED `{ invoiceRowId, description, changes }`. `createdBy`/`statusBy` may be null (migrated/seeded rows). Converted balance rows are described "Lasku". Old PATCH keys/filter are ignored like unknown keys. List items carry derived fields only; `invoiceRows` in EventDetail.
 - **Removed:** `invoiceStatus`, `invoiceStatusAt`, `invoiceStatusBy`, `prepaymentCents` (fields, PATCH keys, `?invoiceStatus=` filter). Migration converts existing data into rows: `prepayment_cents > 0` → PAID row "Ennakkomaksu" (that amount); then by old status: READY → READY row "Lasku" for the balance; INVOICED → SENT row for the balance; PAID → PAID row for the balance; PREPAYMENT_PAID / NONE → nothing more. Rows only when the amount > 0. Old history entries keep their texts.
 - Seed/import: optional `invoiceRows: [{ description, amountCents, status }]` per gig; legacy `invoiceStatus`/`prepaymentCents` accepted and converted the same way.
 
