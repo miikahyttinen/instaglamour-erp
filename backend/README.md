@@ -177,8 +177,8 @@ Replace the TASK-045 event invoice status and prepayment (and, before that, the 
   api-contract "Invoicing state: coverage + payment"; `invoiceState` was removed):
   `balanceCents = totalPriceCents − Σ PAID`, `invoicedCents = Σ SENT + PAID`, `paidCents = Σ PAID`,
   `openCents = Σ SENT` (READY rows are drafts) and two states:
-  - `invoiceCoverage`: NONE (total 0 and no rows) · NEEDS_INVOICES (invoiced < total) · FULLY_INVOICED
-    (invoiced ≥ total; also total 0 with e.g. only READY rows).
+  - `invoiceCoverage`: NONE (total 0 and no SENT/PAID rows — READY drafts don't count) · NEEDS_INVOICES
+    (invoiced < total) · FULLY_INVOICED (invoiced ≥ total).
   - `paymentState`: NONE (no SENT/PAID rows) · OPEN_INVOICES (open > 0) · PARTLY_PAID (open 0, 0 < paid < total)
     · FULLY_PAID (open 0, paid ≥ total, incl. overpaid and PAID rows on a total of 0).
   Same formulas for cancelled events.

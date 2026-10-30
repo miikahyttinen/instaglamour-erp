@@ -59,9 +59,13 @@ describe('EventSummary / EventDetail fields', () => {
     expect(summary).not.toHaveProperty('invoiceState');
   });
 
-  it('an event with total 0 and no rows: coverage NONE', async () => {
+  it('an event with total 0: coverage NONE without rows and with READY drafts only; SENT → FULLY_INVOICED', async () => {
     const event = await createEvent(s, { priceCents: 0, additionalSalesCents: 0 });
     expect(event).toMatchObject({ totalPriceCents: 0, invoiceCoverage: 'NONE', paymentState: 'NONE', openCents: 0 });
+    let e = await added(event.id, { description: 'Lasku', amountCents: 1000 });
+    expect(e).toMatchObject({ invoiceCoverage: 'NONE', paymentState: 'NONE', invoicedCents: 0 });
+    e = (await patchRow(lastRow(e).id, { status: 'SENT' })).json();
+    expect(e).toMatchObject({ invoiceCoverage: 'FULLY_INVOICED', paymentState: 'OPEN_INVOICES', openCents: 1000 });
   });
 
   it('derived fields follow the rows (list and detail)', async () => {
@@ -356,6 +360,7 @@ describe('GET /api/events ?invoiceCoverage= / ?paymentState=', () => {
   async function world() {
     const rows: [string, number, [string, number][]][] = [
       ['Venue A', 0, []], // NONE / NONE
+      ['Venue G', 0, [['READY', 1000]]], // NONE / NONE (drafts only)
       ['Venue B', 100000, [['READY', 100000]]], // NEEDS_INVOICES / NONE
       ['Venue C', 100000, [['READY', 1000], ['SENT', 1000]]], // NEEDS_INVOICES / OPEN_INVOICES
       ['Venue D', 100000, [['PAID', 1000]]], // NEEDS_INVOICES / PARTLY_PAID
@@ -370,12 +375,12 @@ describe('GET /api/events ?invoiceCoverage= / ?paymentState=', () => {
 
   it('filters by one or several (repeated) values; both filters combine with AND; without them, all', async () => {
     await world();
-    expect(await venues('')).toEqual(['Venue A', 'Venue B', 'Venue C', 'Venue D', 'Venue E', 'Venue F']);
-    expect(await venues('&invoiceCoverage=NONE')).toEqual(['Venue A']);
+    expect(await venues('')).toEqual(['Venue A', 'Venue B', 'Venue C', 'Venue D', 'Venue E', 'Venue F', 'Venue G']);
+    expect(await venues('&invoiceCoverage=NONE')).toEqual(['Venue A', 'Venue G']);
     expect(await venues('&invoiceCoverage=NEEDS_INVOICES')).toEqual(['Venue B', 'Venue C', 'Venue D']);
     expect(await venues('&invoiceCoverage=FULLY_INVOICED')).toEqual(['Venue E', 'Venue F']);
-    expect(await venues('&invoiceCoverage=NONE&invoiceCoverage=FULLY_INVOICED')).toEqual(['Venue A', 'Venue E', 'Venue F']);
-    expect(await venues('&paymentState=NONE')).toEqual(['Venue A', 'Venue B']);
+    expect(await venues('&invoiceCoverage=NONE&invoiceCoverage=FULLY_INVOICED')).toEqual(['Venue A', 'Venue E', 'Venue F', 'Venue G']);
+    expect(await venues('&paymentState=NONE')).toEqual(['Venue A', 'Venue B', 'Venue G']);
     expect(await venues('&paymentState=OPEN_INVOICES')).toEqual(['Venue C', 'Venue F']);
     expect(await venues('&paymentState=PARTLY_PAID')).toEqual(['Venue D']);
     expect(await venues('&paymentState=FULLY_PAID')).toEqual(['Venue E']);
@@ -386,7 +391,7 @@ describe('GET /api/events ?invoiceCoverage= / ?paymentState=', () => {
 
   it('the removed ?invoiceState= is ignored like any unknown key', async () => {
     await world();
-    expect(await venues('&invoiceState=PAID')).toHaveLength(6);
+    expect(await venues('&invoiceState=PAID')).toHaveLength(7);
   });
 
   it('combines with the status filter (cancelled events too)', async () => {

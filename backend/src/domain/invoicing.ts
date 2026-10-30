@@ -25,8 +25,8 @@ export interface Invoicing {
 
 /**
  * Sums and the two derived states:
- * - invoiceCoverage: NONE (total 0 and no rows) · NEEDS_INVOICES (invoiced < total) ·
- *   FULLY_INVOICED (invoiced ≥ total). A total of 0 with (e.g. READY-only) rows is FULLY_INVOICED.
+ * - invoiceCoverage: NONE (total 0 and no SENT/PAID rows; READY drafts don't count) ·
+ *   NEEDS_INVOICES (invoiced < total) · FULLY_INVOICED (invoiced ≥ total).
  * - paymentState: NONE (no SENT/PAID rows) · OPEN_INVOICES (open > 0) · PARTLY_PAID (open 0,
  *   0 < paid < total) · FULLY_PAID (open 0, paid ≥ total). The contract says "paid ≥ total > 0";
  *   the only case outside it — PAID rows on an event whose total is 0 — is also FULLY_PAID
@@ -42,13 +42,15 @@ export function invoicing(totalPriceCents: number, rows: readonly InvoicingRow[]
   const invoicedCents = openCents + paidCents;
   const balanceCents = totalPriceCents - paidCents;
 
+  const hasInvoices = rows.some((r) => r.status === 'SENT' || r.status === 'PAID');
+
   let invoiceCoverage: InvoiceCoverage;
-  if (totalPriceCents === 0 && rows.length === 0) invoiceCoverage = 'NONE';
+  if (totalPriceCents === 0 && !hasInvoices) invoiceCoverage = 'NONE';
   else if (invoicedCents < totalPriceCents) invoiceCoverage = 'NEEDS_INVOICES';
   else invoiceCoverage = 'FULLY_INVOICED';
 
   let paymentState: PaymentState;
-  if (!rows.some((r) => r.status === 'SENT' || r.status === 'PAID')) paymentState = 'NONE';
+  if (!hasInvoices) paymentState = 'NONE';
   else if (openCents > 0) paymentState = 'OPEN_INVOICES';
   else if (paidCents < totalPriceCents) paymentState = 'PARTLY_PAID';
   else paymentState = 'FULLY_PAID';

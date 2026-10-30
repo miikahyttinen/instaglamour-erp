@@ -25,7 +25,9 @@ describe('invoicing()', () => {
   it.each([
     // total 0
     ['total 0, no rows', 0, [], 'NONE', 'NONE'],
-    ['total 0, READY-only', 0, [row('READY', 1000)], 'FULLY_INVOICED', 'NONE'],
+    ['total 0, READY-only (drafts)', 0, [row('READY', 1000)], 'NONE', 'NONE'],
+    ['total 0, several READY drafts', 0, [row('READY', 1000), row('READY', 2000)], 'NONE', 'NONE'],
+    ['total 0, READY + SENT', 0, [row('READY', 1000), row('SENT', 1000)], 'FULLY_INVOICED', 'OPEN_INVOICES'],
     ['total 0, SENT', 0, [row('SENT', 1000)], 'FULLY_INVOICED', 'OPEN_INVOICES'],
     ['total 0, PAID (paid ≥ total)', 0, [row('PAID', 1000)], 'FULLY_INVOICED', 'FULLY_PAID'],
     // no invoices yet
