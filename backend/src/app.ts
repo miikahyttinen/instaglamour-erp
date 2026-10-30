@@ -6,6 +6,7 @@ import { resolveSession, type PartnerWithPerson } from './auth/session.js';
 import type { AppConfig } from './config.js';
 import type { Db } from './db.js';
 import { registerErrorHandling, unauthenticated } from './http/errors.js';
+import { registerFrontend, spaFallback } from './http/frontend.js';
 import { authRoutes } from './routes/auth.js';
 import { budgetRoutes } from './routes/budget.js';
 import { budgetCategoryRoutes } from './routes/budgetCategories.js';
@@ -13,6 +14,7 @@ import { clientRoutes } from './routes/clients.js';
 import { costLineRoutes } from './routes/costLines.js';
 import { invoiceRowRoutes } from './routes/invoiceRows.js';
 import { eventRoutes } from './routes/events.js';
+import { HEALTH_ROUTE, healthRoutes } from './routes/health.js';
 import { hourRoutes } from './routes/hours.js';
 import { importRoutes } from './routes/import.js';
 import { meRoutes } from './routes/me.js';
@@ -66,7 +68,10 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
   await app.register(cookie, { secret: deps.config.sessionSecret });
   // Reference photos are streamed to disk; size and file count limits are set per request.
   await app.register(multipart);
-  registerErrorHandling(app);
+  // Single-service production: serve the built frontend with an SPA fallback (dev: Vite serves it).
+  const { staticDir } = deps.config;
+  if (staticDir) await registerFrontend(app, staticDir);
+  registerErrorHandling(app, staticDir ? { notFoundFallback: spaFallback } : {});
 
   app.decorateRequest('partner', null);
   app.decorateRequest('requirePartner', function (this: { partner: PartnerWithPerson | null }) {
@@ -80,6 +85,8 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
     // Public offer (UC-030), its token-scoped reference photos (BR-108) and the freelancer link
     // (UC-033): only these exact matched route patterns; other /api/public/* paths need a session.
     if (request.routeOptions.url !== undefined && PUBLIC_ROUTES.has(request.routeOptions.url)) return;
+    // Platform healthcheck: answers only { ok } and needs no session.
+    if (request.routeOptions.url === HEALTH_ROUTE) return;
     // Decide by the matched route pattern when there is one (not the raw URL), else by the path.
     const path = request.routeOptions.url ?? request.url.split('?', 1)[0] ?? '';
     if (path.startsWith(PUBLIC_PREFIX) || !(path === '/api' || path.startsWith('/api/'))) return;
@@ -88,6 +95,7 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
     request.partner = partner;
   });
 
+  healthRoutes(app, deps);
   authRoutes(app, deps);
   meRoutes(app, deps);
   referenceRoutes(app, deps);

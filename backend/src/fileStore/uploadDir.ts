@@ -44,6 +44,17 @@ export async function readHead(file: string, length = SNIFF_BYTES): Promise<Buff
   }
 }
 
+/** Create UPLOAD_DIR (e.g. a fresh Railway volume mount) if missing; fails fast if it can't. */
+export async function ensureUploadDir(dir: string): Promise<string> {
+  const root = path.resolve(dir);
+  try {
+    await mkdir(root, { recursive: true });
+  } catch (err) {
+    throw new Error(`UPLOAD_DIR ${root} could not be created: ${(err as Error).message}`, { cause: err });
+  }
+  return root;
+}
+
 export class UploadDir {
   readonly root: string;
 

@@ -560,6 +560,9 @@ One derived value **`invoiceState`** = the next invoicing action; first match wi
 - `POST/GET/DELETE /api/events/{id}/attachments…` and the download endpoint are **removed** (404). `EventDetail.attachments` is removed. History types `ATTACHMENT_ADDED/REMOVED` stay for old entries (UI keeps their texts).
 - The `attachment` table and files on disk are **kept unused** (no data deleted); a later cleanup can drop them. Reference photos still use `UPLOAD_DIR`.
 
+## Health check (TASK-047)
+`GET /api/health` (no session) → 200 `{ ok: true }` when the database answers, else 503 `{ ok: false }` (plain body, not the error format); `Cache-Control: no-store`. In production the backend also serves the built frontend (SPA fallback for non-`/api` GETs).
+
 ## Change log
 - 2026-10-31 – Gig file attachments removed from the app (PM)
 - 2026-10-31 – Invoicing back to one label (next action): PAID / ROWS_TO_INVOICE / OPEN_INVOICES / NEEDS_INVOICES / NONE (PM)

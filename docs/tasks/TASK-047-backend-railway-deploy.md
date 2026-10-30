@@ -1,5 +1,5 @@
 # TASK-047: Make the app deployable on Railway (single service)
-- **owner:** backend (+ root files; may touch frontend build config only) · **status:** todo · **spec:** owner request 2026-10-31
+- **owner:** backend (+ root files; may touch frontend build config only) · **status:** done · **spec:** owner request 2026-10-31
 ## Acceptance criteria
 - [ ] **One service:** in production the backend serves the built frontend (`frontend/dist`) with `@fastify/static` + SPA fallback (all non-`/api` GETs → `index.html`; long cache for hashed assets, no-cache for index.html). `/api/*` unchanged. Dev setup (Vite proxy) unchanged.
 - [ ] Root build/start: a root `package.json` (or `railway.json` + nixpacks config) so Railway builds both: install backend + frontend, `npm run build` in frontend (production env, no mocks/dev login), `npm run build` in backend; start = backend `npm start`. Node version pinned (engines / `.nvmrc`). `railway.json` with `deploy.preDeployCommand: "cd backend && npm run db:migrate"`, healthcheck path, restart policy.

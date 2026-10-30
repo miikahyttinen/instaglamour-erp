@@ -46,7 +46,10 @@ outside local development.**
 
 | Variable | Meaning |
 |---|---|
+| `NODE_ENV` | `production` = serve the built frontend (`FRONTEND_DIST_DIR`) with SPA fallback, `HOST` default `0.0.0.0`, and refuse unsafe config (`DEV_LOGIN_ENABLED=true`, non-https `FRONTEND_URL`). See root README, "Deploy to Railway" |
 | `PORT` | API port (default 3000) |
+| `HOST` | Bind address (default `127.0.0.1`; `0.0.0.0` with `NODE_ENV=production`) |
+| `FRONTEND_DIST_DIR` | Production only: built frontend (default `../frontend/dist`, relative to `backend/`) |
 | `DATABASE_URL` / `TEST_DATABASE_URL` | Dev and test databases (must differ — tests empty theirs) |
 | `SESSION_SECRET` | Signs cookies; ≥ 16 chars, e.g. `openssl rand -hex 32` |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Google OAuth "Web application" client |
@@ -54,7 +57,10 @@ outside local development.**
 | `AUTH_ALLOWED_DOMAIN` | Only verified Google accounts in this domain may sign in (BR-070) |
 | `DEV_LOGIN_ENABLED` | `true` registers `POST /api/auth/dev-login` (otherwise 404) |
 | `FRONTEND_URL` | Where the Google callback redirects (`/` or `/login?error=…`), e.g. `http://localhost:5173` |
-| `UPLOAD_DIR` | Reference photo storage (old event attachment files stay there unused), outside the repository (created on first upload; tests use a temp dir; `npm run db:seed` copies seed photos here) |
+| `UPLOAD_DIR` | Reference photo storage (old event attachment files stay there unused), outside the repository (created at startup if missing; on Railway a volume path such as `/data/uploads`; tests use a temp dir; `npm run db:seed` copies seed photos here) |
+
+`GET /api/health` (no session) → `200 { "ok": true }` after a `SELECT 1`, `503 { "ok": false }` when the
+database is unreachable; used as the platform healthcheck.
 
 ## Sign-in
 
