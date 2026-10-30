@@ -1,6 +1,6 @@
 // The event mocks follow the contract's rules, so the UI behaves like the real backend.
 import { beforeEach, describe, expect, it } from 'vitest';
-import { attachmentsApi, costLinesApi, eventsApi, peopleApi } from '../api/endpoints';
+import { attachmentsApi, costLinesApi, eventsApi, invoiceRowsApi, peopleApi } from '../api/endpoints';
 import type { ApiError } from '../api/client';
 import type { EventCreate, EventDetail } from '../api/types';
 import { testFile } from '../test/files';
@@ -247,52 +247,96 @@ describe('event mocks', () => {
     });
   });
 
-  it('PATCHes invoice status and prepayment; logs UPDATED and the last status change (TASK-172)', async () => {
+  it('invoice rows: add / patch / remove, derived figures and state, history, 409 when deleted (TASK-173)', async () => {
     const event = await eventsApi.create(eventInput());
+    const total = event.totalPriceCents;
     expect(event).toMatchObject({
-      invoiceStatus: 'NONE',
-      invoiceStatusAt: null,
-      invoiceStatusBy: null,
-      prepaymentCents: 0,
-      balanceCents: event.totalPriceCents,
+      invoiceRows: [],
+      invoicedCents: 0,
+      paidCents: 0,
+      balanceCents: total,
+      invoiceState: 'NONE',
     });
-    const { event: ready } = await eventsApi.update(event.id, { invoiceStatus: 'READY' });
-    expect(ready.invoiceStatus).toBe('READY');
-    expect(ready.invoiceStatusAt).not.toBeNull();
-    expect(ready.invoiceStatusBy).toBe(partnerA().id);
-    const { event: paid } = await eventsApi.update(event.id, { prepaymentCents: event.totalPriceCents + 100 });
-    expect(paid.balanceCents).toBe(-100);
-    // A prepayment change alone keeps the status timestamp.
-    expect(paid.invoiceStatusAt).toBe(ready.invoiceStatusAt);
+
+    // Default status READY; who / when set; creation order kept.
+    const first = await invoiceRowsApi.create(event.id, { description: ' Prepayment ', amountCents: 10000 });
+    expect(first.invoiceRows).toHaveLength(1);
+    expect(first.invoiceRows[0]).toMatchObject({
+      description: 'Prepayment',
+      amountCents: 10000,
+      status: 'READY',
+      statusBy: partnerA().id,
+      createdBy: partnerA().id,
+    });
+    expect(first.invoiceState).toBe('READY');
+    const rowA = first.invoiceRows[0]!;
+    const second = await invoiceRowsApi.create(event.id, { description: 'Invoice', amountCents: total - 10000, status: 'SENT' });
+    expect(second.invoiceRows.map((r) => r.description)).toEqual(['Prepayment', 'Invoice']);
+    expect(second).toMatchObject({ invoicedCents: total - 10000, paidCents: 0, invoiceState: 'SENT' });
+    const rowB = second.invoiceRows[1]!;
+
+    // Paid prepayment, invoice still sent → SENT; invoice paid as well → PAID (balance 0).
+    const paidA = await invoiceRowsApi.update(rowA.id, { status: 'PAID' });
+    expect(paidA).toMatchObject({ paidCents: 10000, balanceCents: total - 10000, invoicedCents: total, invoiceState: 'SENT' });
+    const paidAll = await invoiceRowsApi.update(rowB.id, { status: 'PAID' });
+    expect(paidAll).toMatchObject({ paidCents: total, balanceCents: 0, invoiceState: 'PAID' });
+    // Only some paid, no open rows → PARTLY_PAID; more paid than the total → negative balance, PAID.
+    const partly = await invoiceRowsApi.remove(rowB.id);
+    expect(partly).toMatchObject({ invoiceRows: [expect.objectContaining({ id: rowA.id })], invoiceState: 'PARTLY_PAID' });
+    const over = await invoiceRowsApi.update(rowA.id, { amountCents: total + 500, description: 'All' });
+    expect(over).toMatchObject({ balanceCents: -500, invoiceState: 'PAID' });
+
     const listed = (await eventsApi.list({ year: YEAR })).events.find((g) => g.id === event.id)!;
-    expect(listed).toMatchObject({ invoiceStatus: 'READY', balanceCents: -100 });
-    const updates = (await eventsApi.history(event.id)).filter((h) => h.type === 'UPDATED');
-    expect(updates.map((h) => (h.details as { changes: { field: string }[] }).changes[0]!.field)).toEqual([
-      'prepaymentCents',
-      'invoiceStatus',
-    ]);
-
-    expect((await expectError(eventsApi.update(event.id, { prepaymentCents: -1 }))).fields).toEqual({
-      prepaymentCents: 'INVALID_VALUE',
-    });
-    expect(
-      (await expectError(eventsApi.update(event.id, { invoiceStatus: 'NOPE' as never }))).fields,
-    ).toEqual({ invoiceStatus: 'INVALID_VALUE' });
-
-    const listed2 = async (query: string) => {
+    expect(listed).toMatchObject({ invoiceState: 'PAID', balanceCents: -500, paidCents: total + 500 });
+    const filtered = async (query: string) => {
       const res = await fetch(`/api/events?year=${YEAR}&${query}`);
       return { status: res.status, ids: res.ok ? ((await res.json()) as { events: { id: string }[] }).events.map((g) => g.id) : [] };
     };
-    expect((await listed2('invoiceStatus=READY')).ids).toContain(event.id);
-    expect((await listed2('invoiceStatus=NONE&invoiceStatus=PAID')).ids).not.toContain(event.id);
-    expect((await listed2('invoiceStatus=NOPE')).status).toBe(400);
+    expect((await filtered('invoiceState=PAID')).ids).toContain(event.id);
+    expect((await filtered('invoiceState=NONE&invoiceState=SENT')).ids).not.toContain(event.id);
+    expect((await filtered('invoiceState=NOPE')).status).toBe(400);
+
+    const history = (await eventsApi.history(event.id)).filter((h) => h.type.startsWith('INVOICE_ROW'));
+    expect(history.map((h) => h.type)).toEqual([
+      'INVOICE_ROW_UPDATED',
+      'INVOICE_ROW_REMOVED',
+      'INVOICE_ROW_UPDATED',
+      'INVOICE_ROW_UPDATED',
+      'INVOICE_ROW_ADDED',
+      'INVOICE_ROW_ADDED',
+    ]);
+    expect(history[0]!.details).toMatchObject({
+      invoiceRowId: rowA.id,
+      description: 'All',
+      changes: [
+        { field: 'description', from: 'Prepayment', to: 'All' },
+        { field: 'amountCents', from: 10000, to: total + 500 },
+      ],
+    });
+
+    // Validation.
+    expect((await expectError(invoiceRowsApi.create(event.id, { description: ' ', amountCents: 0 }))).fields).toEqual({
+      description: 'REQUIRED',
+      amountCents: 'INVALID_VALUE',
+    });
+    expect(
+      (await expectError(invoiceRowsApi.create(event.id, { description: 'x'.repeat(501), amountCents: 1, status: 'NOPE' as never })))
+        .fields,
+    ).toEqual({ description: 'TOO_LONG', status: 'INVALID_VALUE' });
+    expect((await expectError(invoiceRowsApi.update(rowA.id, { amountCents: -1 }))).fields).toEqual({
+      amountCents: 'INVALID_VALUE',
+    });
 
     // Allowed on cancelled gigs; deleted → 409.
     await eventsApi.cancel(event.id, { reason: 'Called off' });
-    expect((await eventsApi.update(event.id, { invoiceStatus: 'INVOICED' })).event.invoiceStatus).toBe('INVOICED');
+    expect((await invoiceRowsApi.update(rowA.id, { status: 'SENT' })).invoiceState).toBe('SENT');
     await eventsApi.uncancel(event.id, { reason: 'Back on' });
     await eventsApi.delete(event.id, { reason: 'Duplicate' });
-    expect((await expectError(eventsApi.update(event.id, { invoiceStatus: 'PAID' }))).code).toBe('EVENT_DELETED');
+    expect((await expectError(invoiceRowsApi.update(rowA.id, { status: 'PAID' }))).code).toBe('EVENT_DELETED');
+    expect((await expectError(invoiceRowsApi.remove(rowA.id))).code).toBe('EVENT_DELETED');
+    expect((await expectError(invoiceRowsApi.create(event.id, { description: 'x', amountCents: 1 }))).code).toBe(
+      'EVENT_DELETED',
+    );
   });
 
   it('enforces status transitions, deletion and restore', async () => {

@@ -9,7 +9,8 @@ import type {
   EventHistoryType,
   EventStatus,
   InternalRole,
-  InvoiceStatus,
+  InvoiceRowStatus,
+  InvoiceState,
   Language,
   MusicianRole,
   ExpenseCategory,
@@ -125,15 +126,14 @@ export interface EventSummary {
   clientName: string | null;
   /** Offer the event was converted from (UC-031), or null. */
   offerId: Id | null;
-  /** Invoicing status, set by hand on the gig page ("Laskutus"). */
-  invoiceStatus: InvoiceStatus;
-  /** Last invoice status change: when and by which partner. */
-  invoiceStatusAt: IsoTimestamp | null;
-  invoiceStatusBy: Id | null;
-  /** Prepayment received (≥ 0). */
-  prepaymentCents: Cents;
-  /** totalPriceCents − prepaymentCents; negative if the prepayment exceeds the total. */
+  /** Σ amountCents of SENT + PAID invoice rows ("Laskutettu"). */
+  invoicedCents: Cents;
+  /** Σ amountCents of PAID invoice rows ("Maksettu"). */
+  paidCents: Cents;
+  /** totalPriceCents − paidCents; negative when more has been paid than the total. */
   balanceCents: Cents;
+  /** Derived from the invoice rows (api-contract "Invoice rows"). */
+  invoiceState: InvoiceState;
   deletedAt: IsoTimestamp | null;
   createdAt: IsoTimestamp;
   updatedAt: IsoTimestamp;
@@ -168,9 +168,41 @@ export interface Attachment {
   uploadedAt: IsoTimestamp;
 }
 
+/** One invoice of a gig (api-contract "Invoice rows"). */
+export interface InvoiceRow {
+  id: Id;
+  eventId: Id;
+  description: string;
+  /** > 0 */
+  amountCents: Cents;
+  status: InvoiceRowStatus;
+  /** Last status change: when and by which partner (null = migrated / imported). */
+  statusAt: IsoTimestamp | null;
+  statusBy: Id | null;
+  createdAt: IsoTimestamp;
+  createdBy: Id | null;
+}
+
+export interface InvoiceRowCreate {
+  /** 1–500 chars */
+  description: string;
+  /** Integer > 0 */
+  amountCents: Cents;
+  /** Default READY */
+  status?: InvoiceRowStatus;
+}
+
+export interface InvoiceRowUpdate {
+  description?: string;
+  amountCents?: Cents;
+  status?: InvoiceRowStatus;
+}
+
 export interface EventDetail extends EventSummary {
   costLines: CostLine[];
   attachments: Attachment[];
+  /** Creation order. */
+  invoiceRows: InvoiceRow[];
 }
 
 export interface FieldChange {
@@ -196,6 +228,17 @@ interface EventHistoryEntryBase<T extends EventHistoryType, D> {
 
 type EmptyDetails = Record<string, never>;
 
+/**
+ * Details of INVOICE_ROW_* history entries. The contract only names `changes` (UPDATED); the row
+ * snapshot fields are optional so the texts degrade gracefully if the backend omits them.
+ */
+export interface InvoiceRowHistoryDetails {
+  invoiceRowId?: Id;
+  description?: string;
+  amountCents?: Cents;
+  status?: InvoiceRowStatus;
+}
+
 /** History keeps the codes it was written with, including removed roles (Role cleanup). */
 export type HistoryCostType = CostType | LegacyCostType;
 
@@ -220,6 +263,8 @@ export type EventHistoryEntry =
       'COST_UNPAID',
       { costLineId: Id; type: HistoryCostType; previousActualCents: Cents; purchaseOrderNumber?: string }
     >
+  | EventHistoryEntryBase<'INVOICE_ROW_ADDED' | 'INVOICE_ROW_REMOVED', InvoiceRowHistoryDetails>
+  | EventHistoryEntryBase<'INVOICE_ROW_UPDATED', InvoiceRowHistoryDetails & { changes?: FieldChange[] }>
   | EventHistoryEntryBase<'ATTACHMENT_ADDED' | 'ATTACHMENT_REMOVED', { attachmentId: Id; filename: string }>;
 
 export interface Task {
@@ -421,9 +466,6 @@ export interface EventUpdate {
   notes?: string | null;
   /** null clears the client. */
   clientId?: Id | null;
-  invoiceStatus?: InvoiceStatus;
-  /** Integer ≥ 0. */
-  prepaymentCents?: Cents;
 }
 
 export interface EventUpdateResponse {

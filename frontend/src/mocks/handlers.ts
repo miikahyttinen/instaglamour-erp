@@ -6,7 +6,7 @@ import { budgetCategoryHandlers, budgetHandlers } from './budgetHandlers';
 import { clientHandlers } from './clientHandlers';
 import { db, setMockSession } from './data';
 import { freelancerHandlers } from './freelancerHandlers';
-import { attachmentHandlers, costLineHandlers, eventHandlers } from './eventHandlers';
+import { attachmentHandlers, costLineHandlers, eventHandlers, invoiceRowHandlers } from './eventHandlers';
 import { hoursHandlers } from './hoursHandlers';
 import { importHandlers } from './importHandlers';
 import { offerHandlers } from './offerHandlers';
@@ -82,6 +82,7 @@ export const handlers = [
   ...yearHandlers,
   ...eventHandlers,
   ...costLineHandlers,
+  ...invoiceRowHandlers,
   ...attachmentHandlers,
   ...purchaseOrderHandlers,
   ...clientHandlers,

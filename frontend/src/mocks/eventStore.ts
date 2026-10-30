@@ -5,7 +5,15 @@
 // BR-022 double booking, BR-026 load-in switch, BR-027 seller/producer change, history events.
 // Synthetic data only (BR-090). This file does not import mocks/data.ts (no import cycle):
 // callers pass in the settings and templates they need.
-import type { CostType, EventHistoryType, EventStatus, InvoiceStatus, Logistics, TechnicalSetup } from '../api/enums';
+import type {
+  CostType,
+  EventHistoryType,
+  EventStatus,
+  InvoiceRowStatus,
+  InvoiceState,
+  Logistics,
+  TechnicalSetup,
+} from '../api/enums';
 import { isMusicianRole } from '../api/enums';
 import type {
   Attachment,
@@ -15,6 +23,7 @@ import type {
   EventHistoryEntry,
   EventSummary,
   Id,
+  InvoiceRow,
   IsoDate,
   LineupTemplate,
   Person,
@@ -43,10 +52,6 @@ export interface MockEvent {
   notes: string | null;
   clientId: Id | null;
   offerId: Id | null;
-  invoiceStatus: InvoiceStatus;
-  invoiceStatusAt: string | null;
-  invoiceStatusBy: Id | null;
-  prepaymentCents: number;
   deletedAt: string | null;
   createdAt: string;
   updatedAt: string;
@@ -79,11 +84,13 @@ export interface EventState {
   /** Kept in creation order (contract: lines ordered by creation time). */
   costLines: CostLine[];
   attachments: MockAttachment[];
+  /** Kept in creation order (contract: invoice rows in creation order). */
+  invoiceRows: InvoiceRow[];
   history: EventHistoryEntry[];
 }
 
 export function emptyEventState(): EventState {
-  return { people: [], clients: [], events: [], costLines: [], attachments: [], history: [] };
+  return { people: [], clients: [], events: [], costLines: [], attachments: [], invoiceRows: [], history: [] };
 }
 
 let idCounter = 0;
@@ -113,6 +120,33 @@ export function pct(margin: number, total: number): number | null {
 
 export function linesOf(state: EventState, eventId: Id): CostLine[] {
   return state.costLines.filter((l) => l.eventId === eventId);
+}
+
+export function invoiceRowsOf(state: EventState, eventId: Id): InvoiceRow[] {
+  return state.invoiceRows.filter((r) => r.eventId === eventId);
+}
+
+/** Derived invoicing figures of a gig (api-contract "Invoice rows"). */
+export function invoiceFigures(
+  rows: InvoiceRow[],
+  totalPriceCents: number,
+): { invoicedCents: number; paidCents: number; balanceCents: number; invoiceState: InvoiceState } {
+  const sum = (statuses: InvoiceRowStatus[]) =>
+    rows.filter((r) => statuses.includes(r.status)).reduce((s, r) => s + r.amountCents, 0);
+  const paidCents = sum(['PAID']);
+  const balanceCents = totalPriceCents - paidCents;
+  const has = (status: InvoiceRowStatus) => rows.some((r) => r.status === status);
+  const invoiceState: InvoiceState =
+    rows.length === 0
+      ? 'NONE'
+      : has('SENT')
+        ? 'SENT'
+        : has('READY')
+          ? 'READY'
+          : balanceCents > 0
+            ? 'PARTLY_PAID'
+            : 'PAID';
+  return { invoicedCents: sum(['SENT', 'PAID']), paidCents, balanceCents, invoiceState };
 }
 
 export function toSummary(state: EventState, event: MockEvent, today = todayIso()): EventSummary {
@@ -155,11 +189,7 @@ export function toSummary(state: EventState, event: MockEvent, today = todayIso(
     clientId: event.clientId,
     clientName: state.clients.find((c) => c.id === event.clientId)?.name ?? null,
     offerId: event.offerId,
-    invoiceStatus: event.invoiceStatus,
-    invoiceStatusAt: event.invoiceStatusAt,
-    invoiceStatusBy: event.invoiceStatusBy,
-    prepaymentCents: event.prepaymentCents,
-    balanceCents: totalPriceCents - event.prepaymentCents,
+    ...invoiceFigures(invoiceRowsOf(state, event.id), totalPriceCents),
     deletedAt: event.deletedAt,
     createdAt: event.createdAt,
     updatedAt: event.updatedAt,
@@ -174,6 +204,7 @@ export function toDetail(state: EventState, event: MockEvent): EventDetail {
       .filter((a) => a.eventId === event.id && a.deletedAt === null)
       .sort((a, b) => b.uploadedAt.localeCompare(a.uploadedAt))
       .map(publicAttachment),
+    invoiceRows: invoiceRowsOf(state, event.id).map((r) => ({ ...r })),
   };
 }
 
@@ -335,10 +366,6 @@ export function createEvent(
     notes: input.notes,
     clientId: input.clientId ?? null,
     offerId: null,
-    invoiceStatus: 'NONE',
-    invoiceStatusAt: null,
-    invoiceStatusBy: null,
-    prepaymentCents: 0,
     deletedAt: null,
     createdAt: ts,
     updatedAt: ts,
@@ -478,9 +505,7 @@ export type EventPatchField =
   | 'additionalSalesCents'
   | 'additionalSalesDescription'
   | 'notes'
-  | 'clientId'
-  | 'invoiceStatus'
-  | 'prepaymentCents';
+  | 'clientId';
 
 export const EVENT_PATCH_FIELDS: EventPatchField[] = [
   'lineupName',
@@ -495,8 +520,6 @@ export const EVENT_PATCH_FIELDS: EventPatchField[] = [
   'additionalSalesDescription',
   'notes',
   'clientId',
-  'invoiceStatus',
-  'prepaymentCents',
 ];
 
 function sameValue(a: unknown, b: unknown): boolean {
@@ -535,11 +558,6 @@ export function updateEvent(
       movedCostLineIds.push(line.id);
     }
   };
-  // Invoice status changes record who / when (api-contract "Invoice status, prepayment and balance").
-  if (changes.some((c) => c.field === 'invoiceStatus')) {
-    event.invoiceStatusAt = nowTs();
-    event.invoiceStatusBy = actorId;
-  }
   moveLines('SALES', oldSeller, event.sellerId);
   moveLines('PRODUCTION', oldProducer, event.producerId);
   if (changes.length > 0) {
@@ -572,4 +590,69 @@ export function addAttachment(
     filename: attachment.filename,
   });
   return attachment;
+}
+
+// ---------- Invoice rows (api-contract "Invoice rows") ----------
+
+const rowSnapshot = (row: InvoiceRow) => ({
+  invoiceRowId: row.id,
+  description: row.description,
+  amountCents: row.amountCents,
+  status: row.status,
+});
+
+export function addInvoiceRow(
+  state: EventState,
+  event: MockEvent,
+  input: { description: string; amountCents: number; status?: InvoiceRowStatus },
+  actorId: Id | null,
+): InvoiceRow {
+  const ts = nowTs();
+  const row: InvoiceRow = {
+    id: mockId(),
+    eventId: event.id,
+    description: input.description,
+    amountCents: input.amountCents,
+    status: input.status ?? 'READY',
+    statusAt: actorId ? ts : null,
+    statusBy: actorId,
+    createdAt: ts,
+    createdBy: actorId,
+  };
+  state.invoiceRows.push(row);
+  event.updatedAt = ts;
+  if (actorId) logEvent(state, event.id, 'INVOICE_ROW_ADDED', actorId, rowSnapshot(row));
+  return row;
+}
+
+/** Applies a row PATCH; a status change sets statusAt/By. Logs INVOICE_ROW_UPDATED with the changes. */
+export function updateInvoiceRow(
+  state: EventState,
+  event: MockEvent,
+  row: InvoiceRow,
+  patch: { description?: string; amountCents?: number; status?: InvoiceRowStatus },
+  actorId: Id,
+): FieldChange[] {
+  const changes: FieldChange[] = [];
+  for (const field of ['description', 'amountCents', 'status'] as const) {
+    const value = patch[field];
+    if (value === undefined || row[field] === value) continue;
+    changes.push({ field, from: row[field], to: value });
+    (row as unknown as Record<string, unknown>)[field] = value;
+  }
+  if (changes.some((c) => c.field === 'status')) {
+    row.statusAt = nowTs();
+    row.statusBy = actorId;
+  }
+  if (changes.length > 0) {
+    event.updatedAt = nowTs();
+    logEvent(state, event.id, 'INVOICE_ROW_UPDATED', actorId, { ...rowSnapshot(row), changes });
+  }
+  return changes;
+}
+
+export function removeInvoiceRow(state: EventState, event: MockEvent, row: InvoiceRow, actorId: Id): void {
+  state.invoiceRows = state.invoiceRows.filter((r) => r.id !== row.id);
+  event.updatedAt = nowTs();
+  logEvent(state, event.id, 'INVOICE_ROW_REMOVED', actorId, rowSnapshot(row));
 }

@@ -2,7 +2,7 @@
 // Business logic lives in eventStore.ts.
 import { http, HttpResponse } from 'msw';
 import type { CostType, FieldCode, Logistics, TechnicalSetup } from '../api/enums';
-import { COST_TYPES, INVOICE_STATUSES, isMusicianRole, LOGISTICS, TECHNICAL_SETUPS } from '../api/enums';
+import { COST_TYPES, INVOICE_ROW_STATUSES, INVOICE_STATES, isMusicianRole, LOGISTICS, TECHNICAL_SETUPS } from '../api/enums';
 import type {
   CostLine,
   CostLineCreate,
@@ -13,6 +13,9 @@ import type {
   EventUpdate,
   EventUpdateResponse,
   EventWithWarnings,
+  InvoiceRow,
+  InvoiceRowCreate,
+  InvoiceRowUpdate,
   ReasonRequest,
   Warning,
 } from '../api/types';
@@ -22,6 +25,7 @@ import type { MockEvent, NewEventInput } from './eventStore';
 import {
   addAttachment,
   addCostLine,
+  addInvoiceRow,
   createEvent,
   doubleBookingWarnings,
   EVENT_PATCH_FIELDS,
@@ -31,11 +35,13 @@ import {
   payCostLine,
   publicAttachment,
   removeCostLine,
+  removeInvoiceRow,
   toDetail,
   toSummary,
   unpayCostLine,
   updateCostLine,
   updateEvent,
+  updateInvoiceRow,
   yearTotals,
 } from './eventStore';
 import { currentPartner, errorResponse, unauthenticated, validationError } from './util';
@@ -243,10 +249,10 @@ export const eventHandlers = [
     const notFullyStaffed = params.get('notFullyStaffed') === 'true';
     const deleted = params.get('deleted') === 'true';
     const q = (params.get('q') ?? '').trim().toLowerCase();
-    // Repeatable ?invoiceStatus= (any of); an unknown value → 400 (the UI filters client-side).
-    const invoiceStatuses = params.getAll('invoiceStatus');
-    if (invoiceStatuses.some((v) => !(INVOICE_STATUSES as readonly string[]).includes(v))) {
-      return validationError({ invoiceStatus: 'INVALID_VALUE' });
+    // Repeatable ?invoiceState= (any of); an unknown value → 400 (the UI filters client-side).
+    const invoiceStates = params.getAll('invoiceState');
+    if (invoiceStates.some((v) => !(INVOICE_STATES as readonly string[]).includes(v))) {
+      return validationError({ invoiceState: 'INVALID_VALUE' });
     }
     const today = todayIso();
 
@@ -257,7 +263,6 @@ export const eventHandlers = [
       .filter((g) => when === 'all' || (when === 'upcoming' ? g.startDate >= today : g.startDate < today))
       .filter((g) => !sellerId || g.sellerId === sellerId)
       .filter((g) => !producerId || g.producerId === producerId)
-      .filter((g) => invoiceStatuses.length === 0 || invoiceStatuses.includes(g.invoiceStatus))
       .filter((g) => {
         if (!q) return true;
         const clientName = db.events.clients.find((c) => c.id === g.clientId)?.name ?? '';
@@ -267,6 +272,7 @@ export const eventHandlers = [
       })
       .map((g) => toSummary(db.events, g, today))
       .filter((g) => !notFullyStaffed || g.notFullyStaffed)
+      .filter((g) => invoiceStates.length === 0 || invoiceStates.includes(g.invoiceState))
       .sort((a, b) => a.startDate.localeCompare(b.startDate));
 
     const body: EventListResponse = { events, yearSummary: yearTotals(db.events, year) };
@@ -310,15 +316,6 @@ export const eventHandlers = [
     checkString(fields, 'additionalSalesDescription', body.additionalSalesDescription, false);
     checkString(fields, 'notes', body.notes, false, MAX_TEXT);
     checkClient(fields, body.clientId);
-    if (body.invoiceStatus !== undefined && !(INVOICE_STATUSES as readonly unknown[]).includes(body.invoiceStatus)) {
-      fields.invoiceStatus = 'INVALID_VALUE';
-    }
-    if (
-      body.prepaymentCents !== undefined &&
-      (typeof body.prepaymentCents !== 'number' || !Number.isInteger(body.prepaymentCents) || body.prepaymentCents < 0)
-    ) {
-      fields.prepaymentCents = 'INVALID_VALUE';
-    }
     if (Object.keys(fields).length > 0) return validationError(fields);
 
     const patch: Record<string, unknown> = {};
@@ -631,5 +628,80 @@ export const attachmentHandlers = [
       filename: attachment.filename,
     });
     return new HttpResponse(null, { status: 204 });
+  }),
+];
+
+// ---------- Invoice rows (api-contract "Invoice rows") ----------
+
+function checkInvoiceRow(fields: Fields, body: Partial<InvoiceRowUpdate>, create: boolean): void {
+  if (create || body.description !== undefined) checkString(fields, 'description', body.description, true);
+  if (create || body.amountCents !== undefined) {
+    const v = body.amountCents;
+    if (v === undefined || v === null) fields.amountCents = 'REQUIRED';
+    else if (typeof v !== 'number' || !Number.isInteger(v) || v <= 0) fields.amountCents = 'INVALID_VALUE';
+  }
+  if (body.status !== undefined && !(INVOICE_ROW_STATUSES as readonly unknown[]).includes(body.status)) {
+    fields.status = 'INVALID_VALUE';
+  }
+}
+
+function invoiceRowWithEvent(id: unknown): { row: InvoiceRow; event: MockEvent } | Response {
+  const row = db.events.invoiceRows.find((r) => r.id === id);
+  const event = row ? findEvent(row.eventId) : undefined;
+  if (!row || !event) return notFound();
+  if (event.deletedAt) return eventDeleted();
+  return { row, event };
+}
+
+export const invoiceRowHandlers = [
+  http.post('/api/events/:id/invoice-rows', async ({ params, request }) => {
+    const me = currentPartner();
+    if (!me) return unauthenticated();
+    const event = findEvent(params.id);
+    if (!event) return notFound();
+    if (event.deletedAt) return eventDeleted();
+    const body = await readJson<InvoiceRowCreate>(request);
+    const fields: Fields = {};
+    checkInvoiceRow(fields, body, true);
+    if (Object.keys(fields).length > 0) return validationError(fields);
+    addInvoiceRow(
+      db.events,
+      event,
+      { description: body.description!.trim(), amountCents: body.amountCents!, status: body.status },
+      me.id,
+    );
+    return HttpResponse.json(toDetail(db.events, event));
+  }),
+
+  http.patch('/api/invoice-rows/:id', async ({ params, request }) => {
+    const me = currentPartner();
+    if (!me) return unauthenticated();
+    const found = invoiceRowWithEvent(params.id);
+    if (found instanceof Response) return found;
+    const body = await readJson<InvoiceRowUpdate>(request);
+    const fields: Fields = {};
+    checkInvoiceRow(fields, body, false);
+    if (Object.keys(fields).length > 0) return validationError(fields);
+    updateInvoiceRow(
+      db.events,
+      found.event,
+      found.row,
+      {
+        description: typeof body.description === 'string' ? body.description.trim() : undefined,
+        amountCents: body.amountCents,
+        status: body.status,
+      },
+      me.id,
+    );
+    return HttpResponse.json(toDetail(db.events, found.event));
+  }),
+
+  http.delete('/api/invoice-rows/:id', ({ params }) => {
+    const me = currentPartner();
+    if (!me) return unauthenticated();
+    const found = invoiceRowWithEvent(params.id);
+    if (found instanceof Response) return found;
+    removeInvoiceRow(db.events, found.event, found.row, me.id);
+    return HttpResponse.json(toDetail(db.events, found.event));
   }),
 ];
