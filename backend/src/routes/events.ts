@@ -28,7 +28,7 @@ import {
   logHistory,
   requireEventDetail,
 } from '../events/store.js';
-import { INVOICE_STATES } from '../domain/enums.js';
+import { INVOICE_COVERAGES, PAYMENT_STATES } from '../domain/enums.js';
 import { invoicing } from '../domain/invoicing.js';
 import { findActiveClient } from '../clients/store.js';
 import { assertCostLineNotOnPurchaseOrder, assertEventHasNoOpenPurchaseOrder } from '../purchaseOrders/lock.js';
@@ -36,6 +36,13 @@ import { insertEvent, prepareEventCreate } from '../events/create.js';
 import { loadFeeSettings } from './reference.js';
 
 type IdParams = { Params: { id: string } };
+
+function repeatableEnum<const T extends readonly [string, ...string[]]>(values: T) {
+  return z
+    .union([z.enum(values), z.array(z.enum(values))], { message: 'INVALID_VALUE' })
+    .transform((v): T[number][] => (Array.isArray(v) ? v : [v]))
+    .optional();
+}
 
 const listQuery = z.object({
   year: yearString,
@@ -46,11 +53,10 @@ const listQuery = z.object({
   notFullyStaffed: z.enum(['true', 'false'], { message: 'INVALID_VALUE' }).optional(),
   q: z.string().max(500).optional(),
   deleted: z.enum(['true', 'false'], { message: 'INVALID_VALUE' }).optional(),
-  // Repeatable (`?invoiceState=READY&invoiceState=SENT`): any of the given derived states.
-  invoiceState: z
-    .union([z.enum(INVOICE_STATES), z.array(z.enum(INVOICE_STATES))], { message: 'INVALID_VALUE' })
-    .transform((v) => (Array.isArray(v) ? v : [v]))
-    .optional(),
+  // Repeatable (`?paymentState=OPEN_INVOICES&paymentState=PARTLY_PAID`): any of the given derived
+  // values; both filters given → both must match.
+  invoiceCoverage: repeatableEnum(INVOICE_COVERAGES),
+  paymentState: repeatableEnum(PAYMENT_STATES),
 });
 
 const eventUpdateBody = z.object({
@@ -127,8 +133,11 @@ export function eventRoutes(app: FastifyInstance, deps: AppDeps): void {
       if (query.sellerId && g.sellerId !== query.sellerId) return false;
       if (query.producerId && g.producerId !== query.producerId) return false;
       if (query.notFullyStaffed === 'true' && !isNotFullyStaffed(g.costLines)) return false;
-      if (query.invoiceState && !query.invoiceState.includes(invoicing(eventEconomics(g).totalPriceCents, g.invoiceRows).invoiceState))
-        return false;
+      if (query.invoiceCoverage || query.paymentState) {
+        const inv = invoicing(eventEconomics(g).totalPriceCents, g.invoiceRows);
+        if (query.invoiceCoverage && !query.invoiceCoverage.includes(inv.invoiceCoverage)) return false;
+        if (query.paymentState && !query.paymentState.includes(inv.paymentState)) return false;
+      }
       if (q && ![g.venue, g.lineupName, g.notes ?? '', g.client?.name ?? ''].some((s) => s.toLowerCase().includes(q)))
         return false;
       return true;

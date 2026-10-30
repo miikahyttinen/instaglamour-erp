@@ -340,7 +340,7 @@ model Event {
 }
 
 /// One invoice row of an event (api-contract "Invoice rows", TASK-046). Balance, invoiced/paid sums and
-/// the event's invoiceState are derived from the rows. amount_cents > 0 (DB check
+/// the event's invoiceCoverage / paymentState are derived from the rows. amount_cents > 0 (DB check
 /// "invoice_row_amount_positive"). status_at/by = last status change (creation counts);
 /// created_by / status_by are null for rows from the TASK-046 migration or the seed/import.
 model InvoiceRow {
