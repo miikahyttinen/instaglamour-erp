@@ -22,12 +22,13 @@ const rowOf = (number: string, name?: string) => bodyRows(name).find((r) => r.te
 
 describe('purchase order list (UC-034)', () => {
   beforeEach(() => {
-    signInMock().selectedYear = TEST_YEAR;
+    // The list is not tied to the selected year (contract "Year is no longer global").
+    signInMock().selectedYear = TEST_YEAR - 10;
     clearPurchaseOrders();
     installMatchMedia({ [TABLET_QUERY]: true, [DESKTOP_QUERY]: true });
   });
 
-  it('is in the menu after Keikat and lists the selected year by creation date with every column', async () => {
+  it('is in the menu after Keikat and lists every year, newest created first, with every column', async () => {
     const event = addMockEvent({ startDate: `${TEST_YEAR}-06-01`, venue: 'Venue X' });
     const second = addMockEvent({ startDate: `${TEST_YEAR}-07-15`, venue: 'Venue Y' });
     staffMockEvent(event, ['Person 1']);
@@ -36,7 +37,12 @@ describe('purchase order list (UC-034)', () => {
     // One PO with two events, made through the store like the freelancer would.
     const two = addPurchaseOrder(db.freelancer, db.events, person('Person 1').id, lineIds, localTs(TEST_YEAR, 8, 1, 9, 5));
     const paid = addMockPurchaseOrder({ personName: 'Person 2', status: 'PAID', paidAt: localTs(TEST_YEAR, 10, 16, 14, 32) }).po;
-    addMockPurchaseOrder({ personName: 'Person 3', createdAt: localTs(TEST_YEAR + 1, 1, 2) }); // next year
+    const next = addMockPurchaseOrder({ personName: 'Person 3', createdAt: localTs(TEST_YEAR + 1, 1, 2) }).po; // next year
+    const listUrls: string[] = [];
+    const onRequest = ({ request }: { request: Request }) => {
+      if (new URL(request.url).pathname === '/api/purchase-orders') listUrls.push(request.url);
+    };
+    server.events.on('request:start', onRequest);
 
     const { user } = renderApp('/');
     const nav = await screen.findByRole('navigation', { name: 'Päävalikko' });
@@ -44,7 +50,8 @@ describe('purchase order list (UC-034)', () => {
     expect(labels.indexOf('Ostotilaukset')).toBe(labels.indexOf('Keikat') + 1);
     await user.click(within(nav).getByRole('link', { name: 'Ostotilaukset' }));
 
-    expect(await screen.findByRole('heading', { level: 1, name: `Ostotilaukset ${TEST_YEAR}` })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Ostotilaukset' })).toBeInTheDocument();
+    expect(screen.queryByRole('combobox', { name: 'Valittu vuosi' })).toBeNull();
     await screen.findByRole('table', { name: 'Ostotilaukset' });
     expect(within(table()).getAllByRole('columnheader').map((h) => h.textContent)).toEqual([
       'Numero',
@@ -54,8 +61,15 @@ describe('purchase order list (UC-034)', () => {
       'Summa',
       'Tila',
     ]);
-    // Newest first; the next year's PO is not in this year.
-    expect(bodyRows().map((r) => within(r).getAllByRole('link')[0]!.textContent)).toEqual([two.number, paid.number]);
+    // Every year, newest first; no year is sent.
+    expect(bodyRows().map((r) => within(r).getAllByRole('link')[0]!.textContent)).toEqual([
+      next.number,
+      two.number,
+      paid.number,
+    ]);
+    expect(listUrls.length).toBeGreaterThan(0);
+    for (const url of listUrls) expect(new URL(url).searchParams.has('year')).toBe(false);
+    server.events.removeListener('request:start', onRequest);
     const row = rowOf(two.number);
     expect(within(row).getByRole('link', { name: two.number })).toHaveAttribute('href', `/purchase-orders/${two.id}`);
     expect(text(row)).toContain('Person 1');
@@ -120,16 +134,14 @@ describe('purchase order list (UC-034)', () => {
     expect(text(bodyRows()[0]!)).toContain(cancelled.number);
   });
 
-  it('search finds POs by number or name across every year, says so and keeps it in the URL', async () => {
+  it('search finds POs by number or name across every year and keeps it in the URL', async () => {
     const old = addMockPurchaseOrder({ personName: 'Person 4', createdAt: localTs(TEST_YEAR - 3, 2, 1) }).po;
     addMockPurchaseOrder({ personName: 'Person 5' });
     const { user } = renderApp('/purchase-orders');
     await screen.findByRole('table', { name: 'Ostotilaukset' });
-    expect(bodyRows().map((r) => r.textContent)).not.toContainEqual(expect.stringContaining(old.number));
-    expect(screen.queryByText('Haetaan kaikilta vuosilta')).not.toBeInTheDocument();
+    expect(bodyRows()).toHaveLength(2);
 
     await user.type(screen.getByRole('searchbox', { name: 'Haku' }), old.number.slice(-4));
-    expect(await screen.findByText('Haetaan kaikilta vuosilta')).toBeInTheDocument();
     await waitFor(() => expect(bodyRows().map((r) => r.textContent)).toEqual([expect.stringContaining(old.number)]));
     expect(screen.getByRole('heading', { level: 1, name: 'Ostotilaukset' })).toBeInTheDocument();
   });
@@ -164,12 +176,12 @@ describe('purchase order list (UC-034)', () => {
   });
 
   it('is in English for an English-speaking partner', async () => {
-    signInMock(partnerB().email).selectedYear = TEST_YEAR;
+    signInMock(partnerB().email);
     const paid = addMockPurchaseOrder({ status: 'PAID', paidAt: localTs(TEST_YEAR, 10, 16, 14, 32) }).po;
     const cancelled = addMockPurchaseOrder({ personName: 'Person 2', status: 'CANCELLED' }).po;
     const open = addMockPurchaseOrder({ personName: 'Person 3' }).po;
     renderApp('/purchase-orders');
-    expect(await screen.findByRole('heading', { level: 1, name: `Purchase orders ${TEST_YEAR}` })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Purchase orders' })).toBeInTheDocument();
     await screen.findByRole('table', { name: 'Purchase orders' });
     const en = 'Purchase orders';
     expect(text(rowOf(paid.number, en))).toContain(`Paid 16 Oct ${TEST_YEAR} 14:32`);
