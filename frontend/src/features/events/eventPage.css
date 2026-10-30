@@ -765,11 +765,22 @@
 }
 
 /* "Laskutus" card (TASK-173): invoice rows table, add form, totals and the balance. */
+/* The card is narrow in the two-column layout: keep the columns compact so the table fits. */
 .event-page .invoice-table td.invoice-row-description .inline-field {
-  min-width: calc(var(--label-w) - var(--space-5));
+  min-width: 5.5rem;
 }
 .event-page .invoice-table td.invoice-row-amount .inline-field {
-  min-width: calc(var(--label-w) - var(--space-6));
+  width: 6.5rem;
+  margin-left: auto;
+}
+@media (min-width: 600px) {
+  .event-page .invoice-table :is(th, td) {
+    padding-left: var(--space-2);
+    padding-right: var(--space-2);
+  }
+  .event-page .invoice-table :is(th, td):first-child {
+    padding-left: var(--space-4);
+  }
 }
 /* Status select with the last change (who / when) under it. */
 .event-page .invoice-table .invoice-row-status-wrap {
@@ -788,6 +799,8 @@
 /* Status select drawn as its colour tag (design.md: Valmis laskutukseen light green, Lähetetty
    amber, Maksettu solid dark green); hover / focus keep the usual inline outline. */
 .event-page .invoice-row-status select.inline-input {
+  /* Sized to the chosen label (the table is narrow in the two-column layout). */
+  field-sizing: content;
   width: auto;
   min-width: max-content;
   min-height: 0;
