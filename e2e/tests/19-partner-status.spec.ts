@@ -42,12 +42,12 @@ async function openPerson(page: Page, person: Pick<ApiPerson, 'id' | 'name'>): P
   await expect(page.getByRole('heading', { level: 1, name: person.name })).toBeVisible();
 }
 
-/** The people list row of a person (its name is an input; the row has the "Avaa: <name>" link). */
+/** The people list row of a person (read-only list: the name is a link to the person page). */
 function peopleRow(page: Page, name: string) {
   return page
     .getByRole('table', { name: 'Henkilöt' })
     .getByRole('row')
-    .filter({ has: page.getByRole('link', { name: `Avaa: ${name}`, exact: true }) });
+    .filter({ has: page.getByRole('link', { name, exact: true }) });
 }
 
 /** A second browser with the project's viewport: the other partner's own session. */
@@ -135,7 +135,7 @@ test('make a person a partner: email errors, "Osakas" label on the person page a
   await expect(peopleRow(page, name)).toHaveCount(1);
   await expect(peopleRow(page, 'Person 1')).toHaveCount(0);
   const partnersApi = (await api(page).get('/people?partner=true')) as ApiPerson[];
-  await expect(page.getByRole('table', { name: 'Henkilöt' }).getByRole('link', { name: /^Avaa: / })).toHaveCount(partnersApi.length);
+  await expect(page.getByRole('table', { name: 'Henkilöt' }).getByRole('link')).toHaveCount(partnersApi.length);
   expect(partnersApi.every((p) => p.partner?.active)).toBe(true);
   await page.reload();
   await expect(onlyPartners).toBeChecked();
