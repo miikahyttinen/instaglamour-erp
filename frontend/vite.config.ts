@@ -23,6 +23,9 @@ export default defineConfig(({ mode }) => {
       environment: 'jsdom',
       setupFiles: ['./src/test/setup.ts'],
       css: false,
+      // The long UI interaction tests take ~2–4 s alone but time out at the default 5 s under
+      // full parallel load (one worker per file on a busy machine).
+      testTimeout: 15_000,
       restoreMocks: true,
       unstubEnvs: true,
     },
