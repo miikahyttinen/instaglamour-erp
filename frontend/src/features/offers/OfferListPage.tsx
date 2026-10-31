@@ -448,6 +448,7 @@ function OfferTable(props: OfferTableProps) {
     },
     {
       key: 'disposition',
+      phoneBare: true,
       label: t('offers.columns.disposition'),
       priority: 2,
       className: 'offer-col-select',

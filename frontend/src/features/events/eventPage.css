@@ -834,6 +834,10 @@
     margin-left: auto;
     align-self: center;
   }
+  /* The status select (drawn as its tag) is a 40 px touch target. */
+  .event-page .invoice-row-status select.inline-input {
+    min-height: var(--tap);
+  }
 }
 
 /* Negative balance in warn colour with a note under it. */

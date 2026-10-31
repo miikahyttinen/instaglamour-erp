@@ -2018,6 +2018,17 @@ label.switch.inline-switch {
   color: var(--text-muted);
 }
 
+/* Phones: small text links (in table rows, fact lists, back links) get a 40 px tall hit area
+   without changing the layout — vertical padding, cancelled by a negative margin (TASK-175). */
+@media (max-width: 599px) {
+  .data-table :is(td, tbody th):not(.cell-primary) a:not(.btn),
+  dd a:not(.btn),
+  :is(.back-link, .po-back, .offer-back, .event-back) a {
+    padding-block: calc((var(--tap) - 1.25em) / 2);
+    margin-block: calc((var(--tap) - 1.25em) / -2);
+  }
+}
+
 /* =========================================================================================
    ≥ 600 px
    ========================================================================================= */
