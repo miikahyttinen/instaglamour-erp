@@ -64,7 +64,7 @@
   flex-wrap: wrap;
   align-items: flex-start;
   justify-content: space-between;
-  gap: var(--space-2) var(--space-4);
+  gap: var(--space-2) var(--space-3);
 }
 .event-page .event-notice-text {
   flex: 1 1 calc(var(--label-w) * 1.5);
@@ -331,7 +331,7 @@
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
-  gap: var(--space-2) var(--space-4);
+  gap: var(--space-2) var(--space-3);
 }
 .event-page .cost-inline-form .field {
   flex: 0 1 calc(var(--label-w) + var(--space-7));
@@ -351,8 +351,8 @@
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
-  gap: var(--space-3) var(--space-6);
-  margin: var(--space-4) 0;
+  gap: var(--space-3) var(--space-4);
+  margin: var(--space-3) 0;
 }
 .event-page .cost-totals > div {
   display: flex;
@@ -536,7 +536,7 @@
         'type actions actions'
         'person budget paid';
       align-items: start;
-      gap: var(--space-2) var(--space-4);
+      gap: var(--space-2) var(--space-3);
       padding: var(--cell-pad-y) var(--cell-pad-x);
     }
     .event-page .cost-table tbody tr:hover td {
@@ -705,7 +705,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
-  margin: 0 0 var(--space-5);
+  margin: 0 0 var(--space-3);
 }
 .event-page .event-offer-link svg {
   color: var(--label);
@@ -726,7 +726,7 @@
     padding-right: var(--space-2);
   }
   .event-page .invoice-table :is(th, td):first-child {
-    padding-left: var(--space-4);
+    padding-left: var(--space-3);
   }
 }
 /* Status select with the last change (who / when) under it. */
@@ -810,8 +810,8 @@
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
-  gap: var(--space-3) var(--space-6);
-  margin: var(--space-4) 0 0;
+  gap: var(--space-3) var(--space-4);
+  margin: var(--space-3) 0 0;
 }
 .event-page .invoice-totals > div {
   display: flex;

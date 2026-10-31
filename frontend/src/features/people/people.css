@@ -114,7 +114,7 @@
   max-width: 100%;
 }
 .people-page .people-hint {
-  margin: 0 0 var(--space-4);
+  margin: 0 0 var(--space-3);
   max-width: 60ch;
 }
 

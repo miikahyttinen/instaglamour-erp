@@ -12,7 +12,7 @@
 }
 
 .budget-page .budget-hint {
-  margin: 0 0 var(--space-4);
+  margin: 0 0 var(--space-3);
 }
 
 /* Four tiles: 2 per row up to 1200 px (phones too), 4 per row from 1200 px. */
@@ -69,7 +69,7 @@
 /* Empty state (no rows yet) and the add-row form below the table. */
 .budget-page .budget-empty {
   margin: 0;
-  padding: var(--space-4) 0;
+  padding: var(--space-3) 0;
   color: var(--text-muted);
 }
 .budget-page .budget-add {

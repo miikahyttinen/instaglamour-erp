@@ -52,7 +52,7 @@ h1 {
   font-size: var(--fs-title);
   letter-spacing: var(--ls-title);
   text-transform: uppercase;
-  margin: 0 0 var(--space-3);
+  margin: 0 0 var(--space-2);
 }
 h2 {
   font-size: var(--fs-lg);
@@ -64,7 +64,7 @@ h3 {
   margin: 0 0 var(--space-1);
 }
 p {
-  margin: 0 0 var(--space-3);
+  margin: 0 0 var(--space-2);
 }
 
 a {
@@ -149,7 +149,7 @@ svg.lucide {
   justify-content: center;
   gap: var(--space-2);
   min-height: var(--control-h);
-  padding: 0 var(--space-4);
+  padding: 0 var(--space-3);
   border: var(--hairline) solid var(--border-strong);
   border-radius: var(--radius);
   background: transparent;
@@ -190,7 +190,7 @@ svg.lucide {
   background: var(--danger-bg);
 }
 .btn-sm {
-  padding: 0 var(--space-3);
+  padding: 0 var(--space-2);
 }
 .btn-block {
   display: flex;
@@ -304,8 +304,8 @@ textarea::placeholder {
   color: var(--label);
 }
 textarea {
-  padding: var(--space-2) var(--space-3);
-  min-height: 5rem;
+  padding: var(--space-1) var(--space-3);
+  min-height: 4rem;
   resize: vertical;
 }
 /* Native select with a CSS caret (currentColor, so it follows the theme). */
@@ -343,7 +343,7 @@ input[type='radio'] {
 /* Labels are mono uppercase; checkbox/switch labels stay in body text. */
 label {
   display: block;
-  margin: var(--space-4) 0 var(--space-1);
+  margin: var(--space-3) 0 var(--space-1);
   font-family: var(--font-mono);
   font-size: var(--fs-label);
   letter-spacing: var(--ls-label);
@@ -388,7 +388,7 @@ label.switch input {
 .check-group {
   border: 0;
   padding: 0;
-  margin: var(--space-4) 0 0;
+  margin: var(--space-3) 0 0;
   min-width: 0;
 }
 .check-group legend {
@@ -414,7 +414,7 @@ label.switch input {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
-  margin-top: var(--space-4);
+  margin-top: var(--space-3);
 }
 .inline-actions {
   margin-top: var(--space-2);
@@ -470,7 +470,7 @@ label.switch input {
 }
 .inline-form {
   margin-top: var(--space-2);
-  padding: var(--space-3);
+  padding: var(--space-2) var(--space-3);
   border: var(--hairline) solid var(--border);
   border-radius: var(--radius);
   background: var(--surface);
@@ -715,7 +715,7 @@ label.switch.inline-switch {
 }
 @media (min-width: 600px) {
   .field-list {
-    gap: var(--space-2);
+    gap: var(--space-1);
   }
   .field-list > :is(.field, .inline-field) {
     display: grid;
@@ -813,8 +813,8 @@ label.switch.inline-switch {
 }
 
 .notice {
-  margin: var(--space-3) 0;
-  padding: var(--space-3) var(--space-4);
+  margin: var(--space-2) 0;
+  padding: var(--space-2) var(--space-3);
   border: var(--hairline) solid var(--info-border);
   border-radius: var(--radius);
   background: var(--info-bg);
@@ -892,7 +892,7 @@ label.switch.inline-switch {
   justify-content: space-between;
   gap: var(--space-2);
   min-height: var(--topbar-h);
-  margin: 0 calc(-1 * var(--space-3)) var(--space-4);
+  margin: 0 calc(-1 * var(--space-3)) var(--space-2);
   padding: 0 var(--space-2) 0 calc(var(--space-3) + var(--space-3));
   border-bottom: var(--hairline) solid var(--border);
 }
@@ -1252,7 +1252,7 @@ label.switch.inline-switch {
 /* Page-level year selector (BR-081 revised): top of the page head, before the title; the
    left arrow lines up with the page's left edge. */
 .page-year {
-  margin: 0 0 var(--space-2) calc(-1 * var(--space-2));
+  margin: 0 0 var(--space-1) calc(-1 * var(--space-2));
 }
 .page-year-error {
   margin: var(--space-1) 0 0 var(--space-2);
@@ -1270,7 +1270,7 @@ label.switch.inline-switch {
    "Full-width, responsive tables everywhere"). Forms, notes and field groups keep their own
    readable max widths. The top bar spans the same width. */
 .page-container {
-  padding: var(--space-5) var(--page-pad) var(--space-7);
+  padding: var(--page-pad-top) var(--page-pad) var(--space-6);
 }
 /* Page wrapper: content sits directly on --bg (cards/tables bring their own surface). */
 .page {
@@ -1280,9 +1280,6 @@ label.switch.inline-switch {
 @media (min-width: 900px) {
   .topbar-inner {
     padding: 0 var(--page-pad);
-  }
-  .page-container {
-    padding-top: var(--space-6);
   }
 }
 
@@ -1295,8 +1292,8 @@ label.switch.inline-switch {
   flex-wrap: wrap;
   align-items: flex-end;
   justify-content: space-between;
-  gap: var(--space-3) var(--space-4);
-  padding-bottom: var(--space-4);
+  gap: var(--space-2) var(--space-3);
+  padding-bottom: var(--space-3);
   margin-bottom: var(--section-gap);
   border-bottom: var(--hairline) solid var(--border);
 }
@@ -1308,7 +1305,7 @@ label.switch.inline-switch {
   min-width: 0;
 }
 .page-subtitle {
-  margin: var(--space-2) 0 0;
+  margin: var(--space-1) 0 0;
   font-family: var(--font-mono);
   font-size: var(--fs-small);
   letter-spacing: 0.02em;
@@ -1322,7 +1319,7 @@ label.switch.inline-switch {
 }
 .section-label {
   display: block;
-  margin: var(--section-gap) 0 var(--space-4);
+  margin: var(--section-gap) 0 var(--stack-gap);
 }
 .section-label:first-child {
   margin-top: 0;
@@ -1360,7 +1357,7 @@ label.switch.inline-switch {
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-3);
-  margin-bottom: var(--space-4);
+  margin-bottom: var(--space-2);
 }
 .card-title {
   margin: var(--space-1) 0 0;
@@ -1401,7 +1398,7 @@ label.switch.inline-switch {
 .stat-tile {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: var(--space-1);
   min-width: 0;
   padding: var(--card-pad);
   background: var(--surface);
@@ -1409,7 +1406,7 @@ label.switch.inline-switch {
   border-radius: var(--radius);
 }
 .stat-tile-value {
-  margin: var(--space-1) 0 0;
+  margin: 0;
   font-size: var(--fs-figure);
   font-weight: var(--fw-bold);
   line-height: var(--lh-tight);
@@ -1420,7 +1417,7 @@ label.switch.inline-switch {
   align-items: baseline;
   justify-content: space-between;
   gap: var(--space-2);
-  margin: var(--space-2) 0 0;
+  margin: var(--space-1) 0 0;
 }
 .stat-tile-secondary-value {
   font-size: var(--fs-lg);
@@ -1583,7 +1580,7 @@ label.switch.inline-switch {
   color: var(--text);
 }
 .table-empty {
-  padding: var(--space-5) 0;
+  padding: var(--space-4) 0;
   color: var(--text-muted);
 }
 
@@ -1784,7 +1781,7 @@ label.switch.inline-switch {
   width: 100%;
   max-height: 92vh;
   overflow: auto;
-  padding: var(--space-4) var(--space-4) calc(var(--space-5) + env(safe-area-inset-bottom, 0px));
+  padding: var(--space-3) var(--space-3) calc(var(--space-4) + env(safe-area-inset-bottom, 0px));
   background: var(--surface);
   color: var(--text);
   border: var(--hairline) solid var(--border-strong);
@@ -1796,8 +1793,8 @@ label.switch.inline-switch {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-2);
-  padding-bottom: var(--space-3);
-  margin-bottom: var(--space-3);
+  padding-bottom: var(--space-2);
+  margin-bottom: var(--space-2);
   border-bottom: var(--hairline) solid var(--border);
 }
 .dialog-head h2 {
@@ -1892,14 +1889,14 @@ label.switch.inline-switch {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  margin-bottom: var(--space-4);
+  margin-bottom: var(--space-3);
 }
 .filters .segmented {
   align-self: flex-start;
 }
 /* Empty-state line (tasks/TasksPage). */
 .empty {
-  padding: var(--space-4) 0;
+  padding: var(--space-3) 0;
   color: var(--text-muted);
 }
 
@@ -1920,7 +1917,7 @@ label.switch.inline-switch {
   }
   .dialog {
     max-width: 560px;
-    padding: var(--space-5);
+    padding: var(--space-4);
     border-bottom: var(--hairline) solid var(--border-strong);
     border-radius: var(--radius);
   }
