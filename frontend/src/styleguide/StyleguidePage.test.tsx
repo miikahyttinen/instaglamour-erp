@@ -2,10 +2,14 @@ import { screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { renderApp } from '../test/renderApp';
 
-describe('/styleguide (dev only)', () => {
+// The page is lazy-loaded and large: under full parallel load (one worker per file) its first
+// render can take seconds, so the tests get 15 s and the first find waits up to 10 s.
+const FIRST_RENDER = { timeout: 10_000 };
+
+describe('/styleguide (dev only)', { timeout: 15_000 }, () => {
   it('renders without signing in and shows every component in both themes', async () => {
     const { container, user } = renderApp('/styleguide');
-    expect(await screen.findAllByRole('heading', { level: 1, name: 'Page title' })).toHaveLength(2);
+    expect(await screen.findAllByRole('heading', { level: 1, name: 'Page title' }, FIRST_RENDER)).toHaveLength(2);
     const panels = container.querySelectorAll<HTMLElement>('.sg-panel');
     expect([...panels].map((p) => p.dataset.theme)).toEqual(['dark', 'light']);
 
@@ -75,7 +79,7 @@ describe('/styleguide (dev only)', () => {
 
   it('interactive rail collapses, and the drawer demo opens and closes', async () => {
     const { user, container } = renderApp('/styleguide');
-    await user.click(await screen.findByRole('button', { name: 'light' }));
+    await user.click(await screen.findByRole('button', { name: 'light' }, FIRST_RENDER));
     const single = container.querySelector<HTMLElement>('.sg-shell-single')!;
     await user.click(within(single).getByRole('button', { name: 'Pienennä valikko' }));
     expect(single).toHaveClass('is-collapsed');
@@ -90,7 +94,7 @@ describe('/styleguide (dev only)', () => {
 
   it('inline demo saves on blur, and the fail toggle shows a translated field error', async () => {
     const { user } = renderApp('/styleguide');
-    await user.click(await screen.findByRole('button', { name: 'light' }));
+    await user.click(await screen.findByRole('button', { name: 'light' }, FIRST_RENDER));
     const venue = screen.getByRole('textbox', { name: 'InlineText · venue' });
     await user.type(venue, '!');
     await user.tab();

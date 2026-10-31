@@ -346,7 +346,7 @@ describe('event list (UC-003)', () => {
     expect(within(table()).getByRole('button', { name: 'Suodata: Laskutus' })).toHaveAccessibleDescription('Suodatin käytössä');
   });
 
-  it('phone rows (TASK-175): lineup, status + invoicing tags and total on line 1, the one invoicing state tag, low-priority money hidden', async () => {
+  it('phone rows (TASK-175): lineup, status tag, total and invoicing tag on line 1, the one invoicing state tag, low-priority money hidden', async () => {
     signInMock().selectedYear = 2020;
     const e = addMockEvent({ startDate: '2020-02-01', venue: 'Venue Card', priceCents: 100000 });
     addInvoiceRow(db.events, e, { description: 'Invoice', amountCents: 100000, status: 'SENT' }, partnerA().id);
@@ -357,16 +357,18 @@ describe('event list (UC-003)', () => {
     const invoicing = within(card).getAllByRole('cell').find((c) => c.getAttribute('data-label') === 'Laskutus')!;
     expect(invoicing.querySelectorAll('.tag')).toHaveLength(1);
     expect(within(invoicing).getByText('Avoimia laskuja')).toHaveClass('tag', 'tag-warn');
-    // Line 1: lineup … status tag, invoicing tag, total (the tags sit between the name and the price).
-    expect(invoicing).toHaveClass('cell-inline');
+    // Line 1: lineup … status tag, total, invoicing tag (far right, after the price).
+    expect(invoicing).toHaveClass('cell-end');
     const cellOf = (label: string) => within(card).getAllByRole('cell').find((c) => c.getAttribute('data-label') === label)!;
     expect(cellOf('Kokoonpano')).toHaveClass('cell-primary');
     expect(within(cellOf('Kokoonpano')).getByRole('link')).toBeInTheDocument();
     expect(cellOf('Kokonaishinta')).toHaveClass('cell-main');
     expect(cellOf('Tila')).toHaveClass('cell-inline');
     expect(cellOf('Tila').querySelector('.tag')).not.toBeNull();
-    const line1 = within(card).getAllByRole('cell').filter((c) => c.matches('.cell-primary, .cell-inline, .cell-main'));
-    expect(line1.map((c) => c.getAttribute('data-label'))).toEqual(['Kokoonpano', 'Tila', 'Laskutus', 'Kokonaishinta']);
+    // Visual order on line 1 comes from the CSS order: title 0 · inline 1 · main 2 · end 3.
+    const rank = (c: Element) => ['cell-primary', 'cell-inline', 'cell-main', 'cell-end'].findIndex((k) => c.classList.contains(k));
+    const line1 = within(card).getAllByRole('cell').filter((c) => rank(c) >= 0).sort((a, b) => rank(a) - rank(b));
+    expect(line1.map((c) => c.getAttribute('data-label'))).toEqual(['Kokoonpano', 'Tila', 'Kokonaishinta', 'Laskutus']);
     // The full lineup name stays available when the title truncates.
     expect(within(cellOf('Kokoonpano')).getByRole('link')).toHaveAttribute('title');
     for (const line2 of ['Päivä', 'Paikka']) expect(cellOf(line2), line2).toHaveClass('cell-bare');
