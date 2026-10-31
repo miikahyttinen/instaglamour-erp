@@ -161,22 +161,20 @@
 }
 
 @media (max-width: 599px) {
-  /* Cards: hide the empty select cell of rows that can't be selected. */
+  /* Phone rows (TASK-175): the checkbox first on line 1; hide the empty select cell of rows
+     that can't be selected. */
   .freelancer-fees td.freelancer-select:empty {
     display: none;
   }
   .freelancer-fees td.freelancer-select {
+    order: -1;
     width: auto;
-    align-items: center;
+    align-self: center;
   }
-  /* Fee rows inside a PO card: flat, separated by hairlines instead of nested cards. */
+  /* Fee rows inside a PO card: no inner side padding, hairlines between rows. */
   .freelancer-order-lines.data-table-cards tr {
-    margin: 0;
-    padding: var(--space-2) 0;
-    background: transparent;
-    border: 0;
-    border-top: var(--hairline) solid var(--border);
-    border-radius: 0;
+    padding-left: 0;
+    padding-right: 0;
   }
 }
 

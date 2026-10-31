@@ -426,7 +426,7 @@ test('no horizontal scroll: purchase order list, PO page and freelancer page', a
 // next to the expanded sidebar the Tila column and its "Merkitse maksetuksi" button stay on the
 // page — no sideways scroll at 600 / 900 / 1200 / 1440 px.
 test('F-010: a long PO number does not push the list wider than the page (600–1440 px, sidebar expanded)', async ({ page, request }, testInfo) => {
-  test.skip(isMobile(testInfo), 'Desktop sidebar widths only; phones show the list as cards.');
+  test.skip(isMobile(testInfo), 'Desktop sidebar widths only; phones show the list as compact rows.');
   await signIn(page);
   const setup = await personWithPlayedFee(page, testInfo, 'PO Layout With A Rather Long Freelancer Name', { month: '08' });
   const po = await createPoPublic(request, setup.sharePath, [setup.lineId]);

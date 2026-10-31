@@ -379,7 +379,7 @@ function Showcase({ theme }: { theme: Theme }) {
         <MiniBars bars={YEAR_BARS} label="Events per year" height={64} />
       </Card>
 
-      <SectionLabel>Data table (DataTable; phone &lt; 600 px = cards)</SectionLabel>
+      <SectionLabel>Data table (DataTable; phone &lt; 600 px = compact rows)</SectionLabel>
       <DataTable
         caption="Demo events"
         columns={columns}
@@ -400,7 +400,7 @@ function Showcase({ theme }: { theme: Theme }) {
 
       <SectionLabel>Excel table (ExcelTable: sort, column filters, column priorities)</SectionLabel>
       <p className="meta sg-note">
-        Filter icon = Excel-style value list; accent when filtered. Phone: cards + Filters sheet. Local state here; pages
+        Filter icon = Excel-style value list; accent when filtered. Phone: compact rows + Filters sheet. Local state here; pages
         use useUrlTableState().
       </p>
       <ExcelTableShowcase />

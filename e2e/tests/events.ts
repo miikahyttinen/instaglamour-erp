@@ -117,13 +117,13 @@ export function costField(page: Page, field: 'Budjetti' | 'Kuvaus' | 'Maksettu s
 
 /**
  * The event list (TASK-144): one Excel-style table "Keikkalista" at every width; below 600 px the
- * same table is laid out as cards (CSS), so rows are always table rows.
+ * same table is laid out as compact rows (CSS), so rows are always table rows.
  */
 export function eventTable(page: Page): Locator {
   return page.getByRole('table', { name: 'Keikkalista', exact: true });
 }
 
-/** Data rows of the event list (cards on phones are the same rows). */
+/** Data rows of the event list (the phone rows are the same rows). */
 export function eventListRows(page: Page): Locator {
   return eventTable(page).getByRole('row').filter({ has: page.getByRole('cell') });
 }

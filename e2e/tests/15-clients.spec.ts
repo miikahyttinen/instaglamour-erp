@@ -250,7 +250,7 @@ test('attach a client to an event: event page select, "New client…", new event
   await expect(page.getByRole('heading', { level: 1, name: `${SEED.templateB.name} · ${venue}` })).toBeVisible();
   await expect(page.getByRole('main').getByLabel('Asiakas', { exact: true }).locator('option:checked')).toHaveText(formClient);
 
-  // Event list: the client column (a card line on phones; may be hidden on narrow tables, TASK-147), linking to the client; search by client.
+  // Event list: the client column (an item on the second line of the phone row; may be hidden on narrow tables, TASK-147), linking to the client; search by client.
   await page.goto('/gigs');
   await expect(page.getByRole('heading', { level: 1, name: `Keikat ${year}` })).toBeVisible();
   const rows = eventListRows(page);
