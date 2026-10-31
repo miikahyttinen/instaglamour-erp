@@ -142,34 +142,17 @@
 .tasks-page .task-overdue .task-due .inline-input {
   color: var(--warn-fg);
 }
-@media (max-width: 599px) {
-  /* Phone: one label column (as wide as the longer label) beside the values, so each field is
-     one control row instead of label + control. */
-  .tasks-page .task-meta {
-    display: grid;
-    grid-template-columns: max-content minmax(0, 1fr);
-    column-gap: var(--space-3);
-    align-items: center;
-  }
-  .tasks-page .task-meta > .inline-field {
-    display: contents;
-  }
-  .tasks-page .task-meta > .inline-field > :not(label) {
-    grid-column: 2;
-  }
+/* Owner and due date side by side in two equal columns, labels above (top-aligned) — phones too
+   (TASK-175: small fields side by side instead of stacked). */
+.tasks-page .task-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  column-gap: var(--space-3);
+  margin-top: var(--space-1);
 }
-@media (min-width: 600px) {
-  /* Owner and due date side by side in two equal columns, labels above (top-aligned). */
-  .tasks-page .task-meta {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    align-items: start;
-    column-gap: var(--space-4);
-    margin-top: var(--space-1);
-  }
-  .tasks-page .task-meta .inline-field > label {
-    margin-bottom: var(--space-1);
-  }
+.tasks-page .task-meta .inline-field > label {
+  margin-bottom: var(--space-1);
 }
 
 .tasks-page .task-tags {

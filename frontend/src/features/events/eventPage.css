@@ -3,8 +3,8 @@
    - Sections: 1 column; 2 columns from 1200 px (the 232 px sidebar leaves ~590 px at 900 px).
    - Basic info / price: Card + FieldList (one label column).
    - Economics: 2 tiles per row, 4 from 1200 px.
-   - Cost table: phone cards < 600 px; compact two-line rows while .cost-list is narrower than
-     the full table; full table when it fits. */
+   - Cost table: compact rows while .cost-list is narrower than the full table (two columns on
+     phones); full table when it fits. */
 
 /* ---------- Header ---------- */
 
@@ -146,11 +146,11 @@
 
 /* ---------- Basic info / price (Card + FieldList, inline fields, NFR-8) ---------- */
 
-/* Phones: FieldList stacks label above control; the first label starts at the card padding. */
+/* The first label starts at the card padding. */
 .event-page .event-fields .field-list > :first-child > label {
   margin-top: 0;
 }
-/* Seller change hint: under the seller / producer controls (control column from 600 px). */
+/* Seller change hint: under the seller / producer controls (control column). */
 .event-page .event-fields-note {
   margin: 0;
 }
@@ -166,15 +166,14 @@
   padding-top: var(--space-3);
   border-top: var(--hairline) solid var(--border);
 }
-@media (min-width: 600px) {
-  .event-page .event-fields-note {
-    padding-left: calc(var(--field-label-w) + var(--space-4));
-  }
-  .event-page .event-fields-total {
-    display: grid;
-    grid-template-columns: var(--field-label-w) minmax(0, 1fr);
-    column-gap: var(--space-4);
-  }
+/* FieldList is label | value at every width (TASK-175). */
+.event-page .event-fields-note {
+  padding-left: calc(var(--field-label-w) + var(--space-4));
+}
+.event-page .event-fields-total {
+  display: grid;
+  grid-template-columns: var(--field-label-w) minmax(0, 1fr);
+  column-gap: var(--space-4);
 }
 .event-page .event-fields-total-label {
   font-family: var(--font-mono);
@@ -387,74 +386,15 @@
   color: var(--label);
 }
 
-/* Phone: each line is a card (shared .data-table-cards); load-in and actions get full rows. */
+/* Phone: the add-line form and the totals stack (the lines use the compact rows below). */
 @media (max-width: 599px) {
-  .event-page .cost-table td.cost-loadin.is-empty {
-    display: none;
-  }
-  .event-page .cost-table td.cost-person {
-    align-items: center;
-  }
-  .event-page .cost-table td.cost-person {
-    flex-wrap: wrap;
-  }
-  .event-page .cost-table td.cost-person > .inline-field,
-  .event-page .cost-table td.cost-budget > .inline-field {
-    flex: 1 1 auto;
-    min-width: 0;
-    max-width: 70%;
-  }
-  .event-page .cost-table td.cost-person > .person-create {
-    flex: 1 1 100%;
-    min-width: 0;
-  }
-  .event-page .cost-table td.cost-budget {
-    align-items: center;
-  }
-  .event-page .cost-table td.cost-paid {
-    align-items: center;
-  }
-  .event-page .cost-table .cost-paid-edit {
-    align-items: flex-end;
-    min-width: 0;
-    max-width: 70%;
-  }
-  .event-page .cost-table td.cost-loadin,
-  .event-page .cost-table td.cost-actions {
-    display: block;
-    text-align: left;
-  }
-  .event-page .cost-actions-inner {
-    justify-content: flex-start;
-    flex-wrap: wrap;
-    padding: var(--space-2) 0 var(--space-1);
-    border-top: var(--hairline) solid var(--border);
-  }
-  .event-page .cost-table td.cost-actions:empty {
-    display: none;
-  }
-  .event-page .cost-table tbody tr:has(+ .cost-extra-row) {
-    margin-bottom: 0;
-    border-bottom-left-radius: 0;
-    border-bottom-right-radius: 0;
-  }
-  .event-page .cost-table tr.cost-extra-row {
-    border-top: 0;
-    border-top-left-radius: 0;
-    border-top-right-radius: 0;
-    background: var(--surface-2);
-  }
-  .event-page .cost-table tr.cost-extra-row td {
-    display: block;
-    text-align: left;
-  }
   .event-page .cost-inline-form .field,
   .event-page .cost-inline-form .form-row {
     flex: 1 1 100%;
   }
   .event-page .cost-totals {
     flex-direction: column;
-    gap: var(--space-2);
+    gap: var(--space-1);
   }
   .event-page .cost-totals > div {
     flex-direction: row;
@@ -509,136 +449,174 @@
   }
 }
 
-/* Compact rows (≥ 600 px viewport, but the list narrower than the full table, ~1120 px; e.g.
-   600–1439 px with the sidebar expanded). Each line keeps the table surface and hairlines, on
-   three equal columns: type + actions, then person · budget · actual with their own small
-   labels, then the load-in switch (musician lines). */
-@media (min-width: 600px) {
-  @container cost-list (max-width: 1119px) {
-    .event-page .cost-table,
-    .event-page .cost-table tbody {
-      display: block;
-    }
-    .event-page .cost-table thead {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      overflow: hidden;
-      clip: rect(0 0 0 0);
-    }
-    .event-page .cost-table tbody:not(:last-of-type) {
-      border-bottom: var(--hairline) solid var(--border);
-    }
-    .event-page .cost-table tbody tr:not(.cost-extra-row) {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      grid-template-areas:
-        'type actions actions'
-        'person budget paid';
-      align-items: start;
-      gap: var(--space-2) var(--space-3);
-      padding: var(--cell-pad-y) var(--cell-pad-x);
-    }
-    .event-page .cost-table tbody tr:hover td {
-      background: transparent;
-    }
-    .event-page .cost-table td,
-    .event-page .cost-table tbody:not(:last-of-type) tr:last-child td {
-      height: auto;
-      padding: 0;
-      border: 0;
-    }
-    .event-page .cost-table td.cost-type {
-      grid-area: type;
-      align-self: center;
-    }
-    .event-page .cost-table td.cost-person {
-      grid-area: person;
-    }
-    /* Musician lines only: a third row under the person. */
-    .event-page .cost-table td.cost-loadin {
-      grid-row: 3;
-      grid-column: 1;
-    }
-    .event-page .cost-table td.cost-loadin.is-empty {
-      display: none;
-    }
-    .event-page .cost-table td.cost-budget {
-      grid-area: budget;
-    }
-    .event-page .cost-table td.cost-paid {
-      grid-area: paid;
-    }
-    .event-page .cost-table td.cost-actions {
-      grid-area: actions;
-      width: auto;
-      align-self: center;
-    }
-    /* Column header text moves into each cell (same label style as the table head). */
-    .event-page .cost-table td[data-label]::before {
-      content: attr(data-label);
-      display: block;
-      margin-bottom: var(--space-1);
-      font-family: var(--font-mono);
-      font-size: var(--fs-meta);
-      letter-spacing: var(--ls-label);
-      text-transform: uppercase;
-      color: var(--label);
-      white-space: nowrap;
-    }
-    /* Inline values need room for their hover / focus outline on the left. */
-    .event-page .cost-table .cost-description,
-    .event-page .cost-table td.cost-person .inline-field,
-    .event-page .cost-table td.cost-budget .inline-field,
-    .event-page .cost-table .cost-paid-edit,
-    .event-page .cost-table td.cost-person .person-create {
-      min-width: 0;
-    }
-    .event-page .cost-table .cost-description {
-      max-width: calc(var(--label-w) * 2);
-    }
-    /* Label row + control row, so tags and switches centre on the inputs' row. */
-    .event-page .cost-table td.cost-paid {
-      display: grid;
-      grid-template-rows: auto minmax(var(--control-h), auto);
-      align-items: center;
-      justify-items: start;
-    }
-    /* Load-in: the switch's own text becomes the small label above the switch. */
-    .event-page .cost-table .cost-loadin-switch .inline-switch {
-      display: grid;
-      grid-template-rows: auto var(--control-h);
-      align-items: center;
-      justify-items: start;
-      gap: 0;
-      min-height: 0;
-    }
-    .event-page .cost-table .cost-loadin-switch .inline-switch input {
-      grid-row: 2;
-    }
-    .event-page .cost-table .cost-loadin-switch .inline-switch > span {
-      position: static;
-      width: auto;
-      height: auto;
-      overflow: visible;
-      clip: auto;
-      grid-row: 1;
-      margin-bottom: var(--space-1);
-      font-family: var(--font-mono);
-      font-size: var(--fs-meta);
-      letter-spacing: var(--ls-label);
-      text-transform: uppercase;
-      color: var(--label);
-      white-space: nowrap;
-    }
-    .event-page .cost-table tr.cost-extra-row {
-      display: block;
-    }
-    .event-page .cost-table tr.cost-extra-row td {
-      display: block;
-      padding: var(--cell-pad-y) var(--cell-pad-x);
-      border-top: var(--hairline) solid var(--border);
-    }
+/* Compact rows while the list is narrower than the full table (~1120 px): phones (TASK-175: no
+   cards) and e.g. 600–1439 px with the sidebar expanded. Each line keeps the table surface and
+   hairlines, on three equal columns: type · load-in switch (musician lines) · actions, then
+   person · budget · actual with their own small labels. Phones: two columns, see below. */
+@container cost-list (max-width: 1119px) {
+  .event-page .cost-table,
+  .event-page .cost-table tbody {
+    display: block;
+  }
+  .event-page .cost-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+  .event-page .cost-table tbody:not(:last-of-type) {
+    border-bottom: var(--hairline) solid var(--border);
+  }
+  .event-page .cost-table tbody tr:not(.cost-extra-row) {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-areas:
+      'type loadin actions'
+      'person budget paid';
+    align-items: start;
+    gap: var(--space-2) var(--space-3);
+    padding: var(--cell-pad-y) var(--cell-pad-x);
+  }
+  .event-page .cost-table tbody tr:hover td {
+    background: transparent;
+  }
+  .event-page .cost-table td,
+  .event-page .cost-table tbody:not(:last-of-type) tr:last-child td {
+    height: auto;
+    padding: 0;
+    border: 0;
+  }
+  .event-page .cost-table td.cost-type {
+    grid-area: type;
+    align-self: center;
+  }
+  .event-page .cost-table td.cost-person {
+    grid-area: person;
+  }
+  /* Musician lines only: the load-in switch next to the type (compact density, TASK-175; was a
+     third row under the person). */
+  .event-page .cost-table td.cost-loadin {
+    grid-area: loadin;
+  }
+  .event-page .cost-table td.cost-loadin.is-empty {
+    display: none;
+  }
+  .event-page .cost-table td.cost-budget {
+    grid-area: budget;
+  }
+  .event-page .cost-table td.cost-paid {
+    grid-area: paid;
+  }
+  .event-page .cost-table td.cost-actions {
+    grid-area: actions;
+    width: auto;
+    align-self: center;
+    justify-self: end;
+  }
+  /* Column header text moves into each cell (same label style as the table head). */
+  .event-page .cost-table td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: var(--space-1);
+    font-family: var(--font-mono);
+    font-size: var(--fs-meta);
+    letter-spacing: var(--ls-label);
+    text-transform: uppercase;
+    color: var(--label);
+    white-space: nowrap;
+  }
+  /* Inline values need room for their hover / focus outline on the left. */
+  .event-page .cost-table .cost-description,
+  .event-page .cost-table td.cost-person .inline-field,
+  .event-page .cost-table td.cost-budget .inline-field,
+  .event-page .cost-table .cost-paid-edit,
+  .event-page .cost-table td.cost-person .person-create {
+    min-width: 0;
+  }
+  .event-page .cost-table .cost-description {
+    max-width: calc(var(--label-w) * 2);
+  }
+  /* Label row + control row, so tags and switches centre on the inputs' row. */
+  .event-page .cost-table td.cost-paid {
+    display: grid;
+    grid-template-rows: auto minmax(var(--control-h), auto);
+    align-items: center;
+    justify-items: start;
+  }
+  /* Load-in: the switch's own text becomes the small label above the switch. */
+  .event-page .cost-table .cost-loadin-switch .inline-switch {
+    display: grid;
+    grid-template-rows: auto var(--control-h);
+    align-items: center;
+    justify-items: start;
+    gap: 0;
+    min-height: 0;
+  }
+  .event-page .cost-table .cost-loadin-switch .inline-switch input {
+    grid-row: 2;
+  }
+  .event-page .cost-table .cost-loadin-switch .inline-switch > span {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip: auto;
+    grid-row: 1;
+    margin-bottom: var(--space-1);
+    font-family: var(--font-mono);
+    font-size: var(--fs-meta);
+    letter-spacing: var(--ls-label);
+    text-transform: uppercase;
+    color: var(--label);
+    white-space: nowrap;
+  }
+  .event-page .cost-table tr.cost-extra-row {
+    display: block;
+  }
+  .event-page .cost-table tr.cost-extra-row td {
+    display: block;
+    padding: var(--cell-pad-y) var(--cell-pad-x);
+    border-top: var(--hairline) solid var(--border);
+  }
+}
+
+/* Phones (list < 600 px): two columns — type · budget, person · actual, then the load-in switch
+   (label beside it) and the actions on their own lines, right-aligned on one line. */
+@container cost-list (max-width: 599px) {
+  .event-page .cost-table tbody tr:not(.cost-extra-row) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-areas:
+      'type budget'
+      'person paid'
+      'loadin loadin'
+      'actions actions';
+    gap: var(--space-1) var(--space-3);
+    padding: var(--list-row-pad-y) var(--cell-pad-x);
+  }
+  .event-page .cost-table td.cost-loadin {
+    grid-area: loadin;
+  }
+  .event-page .cost-table td.cost-actions {
+    justify-self: end;
+  }
+  .event-page .cost-table td.cost-actions:empty {
+    display: none;
+  }
+  .event-page .cost-actions-inner {
+    flex-wrap: nowrap;
+    justify-content: flex-end;
+  }
+  .event-page .cost-table td.cost-paid {
+    grid-template-rows: auto auto;
+  }
+  .event-page .cost-table .cost-loadin-switch .inline-switch {
+    display: flex;
+    gap: var(--space-2);
+    min-height: var(--control-h);
+  }
+  .event-page .cost-table .cost-loadin-switch .inline-switch > span {
+    margin-bottom: 0;
   }
 }
 
@@ -658,7 +636,7 @@
   border-top: var(--hairline) solid var(--border);
 }
 .event-page .history-item {
-  padding: var(--space-3) 0;
+  padding: var(--space-2) 0;
   border-bottom: var(--hairline) solid var(--border);
 }
 .event-page .history-title {
@@ -833,18 +811,28 @@
   font-weight: var(--fw-bold);
   font-variant-numeric: tabular-nums;
 }
+/* Phone rows (TASK-175): description … amount on line 1; status (+ changed time) and the remove
+   button on line 2. */
 @media (max-width: 599px) {
-  .event-page .invoice-table td.invoice-row-description > .inline-field,
-  .event-page .invoice-table td.invoice-row-amount > .inline-field,
-  .event-page .invoice-table .invoice-row-status-wrap {
-    align-items: flex-end;
+  .event-page .invoice-table td.invoice-row-description {
+    align-self: center;
   }
-  .event-page .invoice-table td.invoice-row-amount,
-  .event-page .invoice-table td.invoice-row-status-cell {
+  .event-page .invoice-table td.invoice-row-amount {
+    align-self: center;
+  }
+  .event-page .invoice-table .invoice-row-status-wrap {
+    flex-direction: row;
+    flex-wrap: wrap;
     align-items: center;
+    gap: var(--space-2);
+  }
+  .event-page .invoice-table td.invoice-row-status-cell {
+    align-self: center;
   }
   .event-page .invoice-table td.invoice-row-actions {
     width: auto;
+    margin-left: auto;
+    align-self: center;
   }
 }
 

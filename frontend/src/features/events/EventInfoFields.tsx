@@ -11,7 +11,7 @@ import {
   type InlineSelectOption,
 } from '../../components/inline';
 import { Card } from '../../components/Card';
-import { FieldList } from '../../components/FieldList';
+import { FieldList, FieldPair } from '../../components/FieldList';
 import { useLang } from '../../i18n/useLang';
 import { formatMoney } from '../../lib/format';
 import { partnerOptions } from '../../reference/partners';
@@ -95,22 +95,24 @@ export function EventBasicFields({
           disabled={readOnly}
           onSave={(clientId) => patch({ clientId })}
         />
-        <InlineSelect<TechnicalSetup | null>
-          label={t('eventForm.technicalSetup')}
-          value={event.technicalSetup}
-          field="technicalSetup"
-          disabled={readOnly}
-          options={withCurrent([{ value: null, label: NONE_LABEL }, ...technicalSetupOptions], event.technicalSetup)}
-          onSave={(technicalSetup) => patch({ technicalSetup })}
-        />
-        <InlineSelect<Logistics | null>
-          label={t('eventForm.logistics')}
-          value={event.logistics}
-          field="logistics"
-          disabled={readOnly}
-          options={withCurrent([{ value: null, label: NONE_LABEL }, ...logisticsOptions], event.logistics)}
-          onSave={(logistics) => patch({ logistics })}
-        />
+        <FieldPair>
+          <InlineSelect<TechnicalSetup | null>
+            label={t('eventForm.technicalSetup')}
+            value={event.technicalSetup}
+            field="technicalSetup"
+            disabled={readOnly}
+            options={withCurrent([{ value: null, label: NONE_LABEL }, ...technicalSetupOptions], event.technicalSetup)}
+            onSave={(technicalSetup) => patch({ technicalSetup })}
+          />
+          <InlineSelect<Logistics | null>
+            label={t('eventForm.logistics')}
+            value={event.logistics}
+            field="logistics"
+            disabled={readOnly}
+            options={withCurrent([{ value: null, label: NONE_LABEL }, ...logisticsOptions], event.logistics)}
+            onSave={(logistics) => patch({ logistics })}
+          />
+        </FieldPair>
         <InlineSwitch
           label={t('eventForm.houseTechnician')}
           value={event.houseTechnician}
@@ -118,22 +120,24 @@ export function EventBasicFields({
           disabled={readOnly}
           onSave={(houseTechnician) => patch({ houseTechnician })}
         />
-        <InlineSelect
-          label={t('eventForm.seller')}
-          value={event.sellerId}
-          field="sellerId"
-          disabled={readOnly}
-          options={sellerOptions}
-          onSave={(sellerId) => savePartner({ sellerId })}
-        />
-        <InlineSelect
-          label={t('eventForm.producer')}
-          value={event.producerId}
-          field="producerId"
-          disabled={readOnly}
-          options={producerOptions}
-          onSave={(producerId) => savePartner({ producerId })}
-        />
+        <FieldPair>
+          <InlineSelect
+            label={t('eventForm.seller')}
+            value={event.sellerId}
+            field="sellerId"
+            disabled={readOnly}
+            options={sellerOptions}
+            onSave={(sellerId) => savePartner({ sellerId })}
+          />
+          <InlineSelect
+            label={t('eventForm.producer')}
+            value={event.producerId}
+            field="producerId"
+            disabled={readOnly}
+            options={producerOptions}
+            onSave={(producerId) => savePartner({ producerId })}
+          />
+        </FieldPair>
         {!readOnly && <p className="muted small event-fields-note">{t('event.sellerChangeHint')}</p>}
         <InlineTextarea
           label={t('eventForm.notes')}

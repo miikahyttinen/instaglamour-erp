@@ -724,8 +724,25 @@ label.switch.inline-switch {
 }
 .field-list {
   gap: var(--space-1);
+  container: field-list / inline-size;
 }
-.field-list > :is(.field, .inline-field) {
+/* FieldPair: two rows (contents) until the list is wide enough (680 px) for both on one line. */
+.field-list > .field-list-pair {
+  display: contents;
+}
+@container field-list (min-width: 680px) {
+  .field-list > .field-list-pair {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: var(--space-5);
+  }
+  /* The second field's label only takes its own width. */
+  .field-list-pair > :is(.field, .inline-field):nth-child(2) {
+    grid-template-columns: max-content minmax(0, 1fr);
+  }
+}
+.field-list > :is(.field, .inline-field),
+.field-list-pair > :is(.field, .inline-field) {
   display: grid;
   grid-template-columns: var(--field-label-w) minmax(0, 1fr);
   column-gap: var(--space-4);
@@ -733,14 +750,16 @@ label.switch.inline-switch {
   margin: 0;
 }
 /* Label: column 1, vertically centred on the first control row, top-aligned when it wraps. */
-.field-list > :is(.field, .inline-field) > label:not(.visually-hidden) {
+.field-list > :is(.field, .inline-field) > label:not(.visually-hidden),
+.field-list-pair > :is(.field, .inline-field) > label:not(.visually-hidden) {
   grid-column: 1;
   display: flex;
   align-items: center;
   min-height: var(--control-h);
   margin: 0;
 }
-.field-list > :is(.field, .inline-field) > :not(label, [role='status']) {
+.field-list > :is(.field, .inline-field) > :not(label, [role='status']),
+.field-list-pair > :is(.field, .inline-field) > :not(label, [role='status']) {
   grid-column: 2;
 }
 /* Checkbox / switch rows: the box sits in the control column. */

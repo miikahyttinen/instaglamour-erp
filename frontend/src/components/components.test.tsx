@@ -11,7 +11,7 @@ import { Logo } from './Logo';
 import { MiniBars } from './MiniBars';
 import { PageHead } from './PageHead';
 import { SectionLabel } from './SectionLabel';
-import { FieldList } from './FieldList';
+import { FieldList, FieldPair } from './FieldList';
 import { Field, MoneyInput } from './fields';
 import { spanStyle } from './grid';
 import { StatGrid, StatTile } from './StatTile';
@@ -364,5 +364,20 @@ describe('FieldList', () => {
       </FieldList>,
     );
     expect(container.firstElementChild).toHaveClass('field-list', 'field-list-lg', 'x');
+  });
+
+  it('FieldPair groups two small fields (side by side when the list is wide, TASK-175)', () => {
+    const { container } = render(
+      <FieldList>
+        <FieldPair>
+          <Field label="Seller">{(f) => <input {...f} type="text" />}</Field>
+          <Field label="Producer">{(f) => <input {...f} type="text" />}</Field>
+        </FieldPair>
+      </FieldList>,
+    );
+    const pair = container.querySelector('.field-list > .field-list-pair')!;
+    expect(pair).not.toBeNull();
+    expect(within(pair as HTMLElement).getByRole('textbox', { name: 'Seller' })).toBeInTheDocument();
+    expect(within(pair as HTMLElement).getByRole('textbox', { name: 'Producer' })).toBeInTheDocument();
   });
 });

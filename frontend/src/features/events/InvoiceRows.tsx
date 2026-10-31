@@ -167,7 +167,7 @@ function InvoiceRowItem({
           />
         )}
       </td>
-      <td className="num invoice-row-amount" data-label={t('event.invoicing.amount')}>
+      <td className="num cell-main invoice-row-amount" data-label={t('event.invoicing.amount')}>
         {readOnly ? (
           formatMoney(row.amountCents, lang)
         ) : (
@@ -182,7 +182,7 @@ function InvoiceRowItem({
           />
         )}
       </td>
-      <td className="invoice-row-status-cell" data-label={t('event.invoicing.status')}>
+      <td className="cell-bare invoice-row-status-cell" data-label={t('event.invoicing.status')}>
         <div className="invoice-row-status-wrap">
           {readOnly ? (
             <StatusTag tone={INVOICE_ROW_STATUS_TONE[row.status]}>{statusLabel}</StatusTag>
