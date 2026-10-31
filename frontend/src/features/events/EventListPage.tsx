@@ -328,7 +328,7 @@ function TableDateRange({ start, end, lang }: { start: string; end: string | nul
  * 600 px it fills the width without scrolling sideways; columns with priority 2 / 3 are hidden on
  * narrower tables (TASK-147: 1 lineup, date, venue, status, total, margin · 2 client, invoicing,
  * seller, staffing · 3 producer, balance, budgeted, actual costs). Phones (< 600 px): one compact
- * row per event (line 1: lineup, status tag … total, invoicing tag at the right edge; line 2: date, venue, client, staffing, margin) + the "Suodattimet" sheet. Scrolls the first upcoming visible event into view.
+ * row per event (line 1: lineup, status tag … invoicing tag, total at the right edge; line 2: date, venue, client, staffing, margin values without a label) + the "Suodattimet" sheet. Scrolls the first upcoming visible event into view.
  */
 function EventTable({ events, partners, lang, tableState }: EventTableProps) {
   const { t } = useTranslation();
@@ -402,7 +402,7 @@ function EventTable({ events, partners, lang, tableState }: EventTableProps) {
     {
       // "Laskutus": one tag = the gig's next invoicing action (api-contract "Invoicing: one label").
       key: 'invoiceState',
-      phoneEnd: true, // phone rows: line 1, after the total at the far right
+      phoneEnd: true, // phone rows: line 1, right before the total at the right edge
       label: t('events.columns.invoiceState'),
       priority: 2,
       className: 'event-col-invoice excel-col-fit',
@@ -490,6 +490,7 @@ function EventTable({ events, partners, lang, tableState }: EventTableProps) {
     },
     {
       key: 'margin',
+      phoneBare: true, // phone rows: just the values ("10,0 % tot. 12,0 %"), no "Kate-%" label
       label: t('events.marginPct'),
       numeric: true,
       className: 'event-col-margin',
