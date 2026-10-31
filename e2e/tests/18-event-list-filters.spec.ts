@@ -373,13 +373,14 @@ test('gig statuses and "Laskutus": invoice rows, one invoicing state tag on the 
   await expect(paidTag).toHaveClass(/tag-ok-strong/);
 });
 
-// Phone rows (owner requests 2026-10-31): line 1 = lineup name … status tag · total · invoicing
-// tag at the far right end of the row (without an invoicing tag the total is last, right-aligned).
-// At 320–430 px the tags and the total never wrap; a long lineup name truncates
+// Phone rows (owner requests 2026-10-31): line 1 = "Lineup STATUS ——— total INVOICING": the status
+// tag directly after the lineup name, a flexible gap, then the total and the invoicing tag together
+// at the right edge (without an invoicing tag the total is at the right edge). The name truncates
+// first; the gap shrinks to the minimum (8 px) before it does. At 320–430 px the tags and the total never wrap; a long lineup name truncates
 // with an ellipsis and keeps its full text in the link's accessible name and title. Worst case
 // here: the longest invoicing tag ("Laskutettavia rivejä") and a six-figure total; only at 320 px,
 // once the name is down to its minimum, may that tag truncate too.
-test('phone rows: line 1 = lineup name, status tag, total, invoicing tag at the far right', async ({ page }, testInfo) => {
+test('phone rows: line 1 = lineup name + status tag on the left, total + invoicing tag at the right edge', async ({ page }, testInfo) => {
   test.skip(tagOf(testInfo) !== 'M', 'phone layout only');
   const { year } = await setup(page, testInfo);
   const venue = `Hall ${tagOf(testInfo)}${suffix()} Line1`;
@@ -425,10 +426,14 @@ test('phone rows: line 1 = lineup name, status tag, total, invoicing tag at the 
       expect(b.h, `${w} px: ${name} on one line`).toBeLessThan(m.lineH * 1.5);
       expect(m.dateTop, `${w} px: line 2 under the ${name}`).toBeGreaterThanOrEqual(b.bottom - 1);
     }
-    // Order: title … status, total, invoicing; the invoicing tag at the right edge.
+    // Order: title, status … total, invoicing; the invoicing tag at the right edge. Long name: it
+    // is truncated, so every gap is down to the minimum.
     expect(status.left, `${w} px: status after the title`).toBeGreaterThanOrEqual(title.right - 1);
+    expect(status.left - title.right, `${w} px: status hugs the title`).toBeLessThanOrEqual(MIN_GAP);
     expect(total.left, `${w} px: total after the status`).toBeGreaterThanOrEqual(status.right - 1);
+    expect(total.left - status.right, `${w} px: gap at its minimum (name truncated)`).toBeLessThanOrEqual(MIN_GAP);
     expect(invoice.left, `${w} px: invoicing after the total`).toBeGreaterThanOrEqual(total.right - 1);
+    expect(invoice.left - total.right, `${w} px: invoicing hugs the total`).toBeLessThanOrEqual(MIN_GAP);
     expect(Math.abs(invoice.right - m.rowRight), `${w} px: invoicing tag at the far right`).toBeLessThanOrEqual(1);
     expect(title.h, `${w} px: title on one line`).toBeLessThan(m.lineH * 1.5);
     expect(m.truncated, `${w} px: long name truncated`).toBe(true);
@@ -445,13 +450,18 @@ test('phone rows: line 1 = lineup name, status tag, total, invoicing tag at the 
       const rowRight = tr.getBoundingClientRect().right - parseFloat(getComputedStyle(tr).paddingRight);
       return { titleRight: title.right, titleTop: title.top, titleBottom: title.bottom, status: status.left, statusRight: status.right, totalLeft: total.left, totalRight: total.right, totalMid: (total.top + total.bottom) / 2, rowRight };
     });
+    // Short name ("Template B"): status right after it, then a wide flexible gap before the total.
     expect(p.status, `${w} px: status after the title (no invoicing)`).toBeGreaterThanOrEqual(p.titleRight - 1);
-    expect(p.totalLeft, `${w} px: total after the status (no invoicing)`).toBeGreaterThanOrEqual(p.statusRight - 1);
+    expect(p.status - p.titleRight, `${w} px: status hugs the title (no invoicing)`).toBeLessThanOrEqual(MIN_GAP);
+    expect(p.totalLeft - p.statusRight, `${w} px: flexible gap before the total`).toBeGreaterThan(MIN_GAP * 3);
     expect(p.totalMid, `${w} px: total on line 1 (no invoicing)`).toBeLessThan(p.titleBottom);
     expect(Math.abs(p.totalRight - p.rowRight), `${w} px: total last, right-aligned`).toBeLessThanOrEqual(1);
     await expectNoHorizontalScroll(page, `gig list ${w} px`);
   }
 });
+
+/** Minimum gap between line-1 items on phone rows (`--space-2`) + rounding. */
+const MIN_GAP = 9;
 
 interface Box {
   left: number;
