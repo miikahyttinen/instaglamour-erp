@@ -1,5 +1,5 @@
 /* Offer KPI cards (BR-122, TASK-157). Tokens only; works in dark and light. The grid follows the
-   width of the section (container query): 1 per row on phones, then 2, 3 and 5 per row. */
+   width of the section (container query): 1 per row on phones, then 2, 3, 5 and 6 per row. */
 
 .offer-kpis {
   container-type: inline-size;
@@ -25,6 +25,12 @@
     grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 }
+/* Compact density (TASK-175): all six cards in one row once each gets ≥ ~180 px. */
+@container (min-width: 1140px) {
+  .offer-kpi-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
 
 .offer-kpi {
   min-width: 0;
@@ -47,7 +53,7 @@
   display: flex;
   align-items: stretch;
   gap: var(--space-1);
-  height: 48px;
+  height: 48px; /* 40 px on phones (TASK-175) */
   border-bottom: var(--hairline) solid var(--border);
 }
 .offer-kpi-bar {
@@ -151,7 +157,7 @@
 .offer-kpi-ring-row {
   display: flex;
   align-items: center;
-  gap: var(--space-4);
+  gap: var(--space-3);
   margin-top: var(--space-1);
 }
 .offer-kpi-ring {
@@ -187,4 +193,11 @@
 }
 .offer-kpi-ring-row .stat-tile-value {
   margin: 0;
+}
+
+/* Phones (one card per row, TASK-175): lower bars, still 40 px tall tap targets. */
+@media (max-width: 599px) {
+  .offer-kpi-plot {
+    height: calc(var(--tap) + var(--hairline)); /* + the baseline hairline */
+  }
 }

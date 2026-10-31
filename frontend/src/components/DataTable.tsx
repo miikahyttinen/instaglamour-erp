@@ -7,7 +7,7 @@ export type CardsBreakpoint = 'sm' | 'lg';
 export interface DataTableColumn<T> {
   /** Stable column id (React key). */
   key: string;
-  /** Header text; also the label in the phone card layout. */
+  /** Header text; also the label in the phone row layout. */
   label: string;
   /** Custom header content instead of `label` (the card label still uses `label`). */
   header?: ReactNode;
@@ -15,9 +15,14 @@ export interface DataTableColumn<T> {
   cell: (row: T) => ReactNode;
   /** Right-aligned, tabular figures (money, hours, counts). */
   numeric?: boolean;
-  /** Phone cards: shown as the card title (bold, no label). Use on one column, e.g. the name. */
+  /** Phone rows: the row title (line 1, no label). Use on one column, e.g. the name; a link in it
+   *  makes the whole row tappable. */
   primary?: boolean;
-  /** Not shown in the phone card layout. */
+  /** Phone rows: the main figure / tag at the right end of line 1 (no label, one line). */
+  phoneMain?: boolean;
+  /** Phone rows: shown on line 2 without its label (self-explanatory values: dates, tags). */
+  phoneBare?: boolean;
+  /** Not shown in the phone row layout. */
   hideOnPhone?: boolean;
   /** Sortable column: current direction (undefined = sortable but not sorted). Needs `onSort`. */
   sort?: SortDirection;
@@ -36,10 +41,10 @@ export interface DataTableProps<T> {
   showCaption?: boolean;
   /** Shown instead of the table when there are no rows. */
   empty?: ReactNode;
-  /** Phones (< 600 px): each row becomes a card of label/value pairs (default true). */
+  /** Phones (< 600 px): each row becomes a compact one- or two-line row (default true). */
   cardsOnPhone?: boolean;
   /**
-   * Viewport breakpoint below which rows are cards (with `cardsOnPhone`): `'sm'` = < 600 px
+   * Viewport breakpoint below which rows use the compact row layout (with `cardsOnPhone`): `'sm'` = < 600 px
    * (default), `'lg'` = < 1200 px, for wide tables that don't fit next to the sidebar at 900–1199.
    */
   cardsBelow?: CardsBreakpoint;
@@ -75,6 +80,8 @@ export function DataTable<T>({
     [
       col.numeric && 'num',
       col.primary && 'cell-primary',
+      col.phoneMain && 'cell-main',
+      col.phoneBare && 'cell-bare',
       col.hideOnPhone && 'hide-phone',
       col.className,
     ]

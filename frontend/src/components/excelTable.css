@@ -38,7 +38,7 @@
   flex-direction: column;
   align-items: flex-start;
   gap: var(--space-3);
-  padding: var(--space-6) var(--card-pad);
+  padding: var(--space-4) var(--card-pad);
   border: var(--hairline) dashed var(--border);
   border-radius: var(--radius);
   color: var(--text-muted);
@@ -48,7 +48,7 @@
 }
 /* From 600 px the message sits in the table frame, under the header (F-009). */
 .excel-table-empty.excel-table-empty-inline {
-  padding: var(--space-5) var(--cell-pad-x);
+  padding: var(--space-3) var(--cell-pad-x);
   border: 0;
   border-radius: 0;
 }
@@ -198,7 +198,7 @@
 .excel-sheet-panel {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: var(--space-3);
 }
 .excel-sheet-panel > .btn {
   align-self: flex-start;
@@ -314,7 +314,8 @@
 
   /* `.excel-col-fit` (column className): as narrow as its one-line content (dates, money, tags,
      icon buttons), so the spare width goes to the text columns. Its header stays on one line on
-     very wide tables (from 1600 px); otherwise it may wrap / hyphenate like the others. */
+     very wide tables (from 1800 px; was 1600 px before the compact page padding, TASK-175);
+     otherwise it may wrap / hyphenate like the others. */
   .data-table.excel-table-grid .excel-col-fit {
     width: 1%;
   }
@@ -322,7 +323,7 @@
   .data-table.excel-table-grid.is-empty .excel-col-fit {
     width: auto;
   }
-  @container excel-table (min-width: 1600px) {
+  @container excel-table (min-width: 1800px) {
     .data-table.excel-table-grid th.excel-col-fit :is(.th-sort, .excel-th-label) {
       white-space: nowrap;
     }

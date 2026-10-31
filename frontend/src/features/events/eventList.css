@@ -29,8 +29,8 @@
 .event-list-page .event-toolbar {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
-  margin: 0 0 var(--space-6);
+  gap: var(--space-3);
+  margin: 0 0 var(--space-4);
 }
 .event-list-page .event-view-switch {
   align-self: flex-start;
@@ -55,7 +55,7 @@
 
 /* ---------- Notices, loading, empty ---------- */
 .event-list-page > .notice {
-  margin: 0 0 var(--space-5);
+  margin: 0 0 var(--space-3);
 }
 .event-list-page .event-list-error {
   display: flex;
@@ -68,7 +68,7 @@
   flex-direction: column;
   align-items: flex-start;
   gap: var(--space-3);
-  padding: var(--space-6) var(--card-pad);
+  padding: var(--space-4) var(--card-pad);
   border: var(--hairline) dashed var(--border);
   border-radius: var(--radius);
   color: var(--text-muted);
@@ -184,7 +184,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: var(--space-2) var(--space-4);
+  gap: var(--space-2) var(--space-3);
   min-height: var(--row-h);
   padding: var(--cell-pad-y) var(--cell-pad-x);
   border-bottom: var(--hairline) solid var(--border);
@@ -242,5 +242,28 @@
 @media (min-width: 600px) {
   .event-list-page .event-search {
     max-width: calc(var(--label-w) * 2.5);
+  }
+}
+
+/* ---------- < 600 px: compact rows (TASK-175) ----------
+   Line 1: lineup … total; line 2: date · venue · client · tags · margin. An empty client /
+   invoicing / staffing cell ("–") is left out; the two margins sit side by side. */
+@media (max-width: 599px) {
+  .event-list-page .event-table td:is(.event-col-invoice, .event-col-staffing):not(:has(.tag)),
+  .event-list-page .event-table td.event-col-client:not(:has(a)) {
+    display: none;
+  }
+  .event-list-page .event-table td.event-col-date {
+    font-family: var(--font-mono);
+    font-size: var(--fs-label);
+    letter-spacing: 0.06em;
+    font-variant-numeric: tabular-nums;
+  }
+  .event-list-page .event-table td.event-col-margin .event-margin-budget,
+  .event-list-page .event-table td.event-col-margin .event-margin-actual {
+    display: inline;
+  }
+  .event-list-page .event-table td.event-col-margin .event-margin-budget {
+    color: var(--text);
   }
 }

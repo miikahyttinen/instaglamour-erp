@@ -101,7 +101,7 @@ test('hours saved for another year show a notice and are not added to this year'
 test('event list search and the Tila filter: cancelled events only after ticking "Peruttu"', async ({ page }) => {
   await signIn(page);
   await page.goto('/gigs');
-  const rows = eventListRows(page); // one table "Keikkalista"; cards below 600 px
+  const rows = eventListRows(page); // one table "Keikkalista"; compact rows below 600 px
   // "Näytä myös perutut" is gone: the Tila column filter replaces it (TASK-144).
   await expect(page.getByLabel('Näytä myös perutut')).toHaveCount(0);
   await tickColumnValues(page, 'Tila', ['Peruttu']);

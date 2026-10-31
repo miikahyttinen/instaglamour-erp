@@ -41,7 +41,7 @@
 }
 /* House technician switch: under the technical setup / logistics pair. */
 .new-event-page .new-event-switch {
-  margin-top: var(--space-4);
+  margin-top: var(--space-3);
 }
 
 /* ---------- Sections ---------- */
@@ -60,8 +60,8 @@
   align-items: baseline;
   justify-content: space-between;
   gap: var(--space-2);
-  margin: var(--space-5) 0 0;
-  padding: var(--space-4) var(--card-pad);
+  margin: var(--space-3) 0 0;
+  padding: var(--space-3) var(--card-pad);
   background: var(--surface);
   border: var(--hairline) solid var(--border);
   border-radius: var(--radius);
@@ -87,11 +87,11 @@
 }
 .new-event-page .new-event-actions {
   margin-top: var(--section-gap);
-  padding-top: var(--space-5);
+  padding-top: var(--space-3);
   border-top: var(--hairline) solid var(--border);
 }
 .new-event-page .new-event-error + .new-event-actions {
-  margin-top: var(--space-5);
+  margin-top: var(--space-3);
 }
 
 /* ---------- ≥ 1200 px ---------- */

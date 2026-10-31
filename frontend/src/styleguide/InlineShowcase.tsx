@@ -190,7 +190,7 @@ export function InlineShowcase() {
         </div>
       </Card>
 
-      <p className="meta sg-note">In a table (hideLabel; phone = cards):</p>
+      <p className="meta sg-note">In a table (hideLabel; phone = compact rows):</p>
       <DataTable caption="Inline demo rows" columns={columns} rows={rows} rowKey={(r) => r.id} />
     </>
   );

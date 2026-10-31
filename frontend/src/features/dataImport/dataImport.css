@@ -1,10 +1,10 @@
-/* Data import (UC-035). Design tokens only; full-width page, tables become cards below 600 px. */
+/* Data import (UC-035). Design tokens only; full-width page, tables become compact rows below 600 px. */
 
 .import-page .import-section {
   margin-bottom: var(--section-gap);
 }
 .import-page .import-section > .notice {
-  margin-bottom: var(--space-4);
+  margin-bottom: var(--space-3);
 }
 
 /* File chooser + drop area: hairline box, accent border while a file is dragged over it. */
@@ -40,7 +40,7 @@
 
 .import-page .import-actions {
   justify-content: flex-start;
-  margin-top: var(--space-4);
+  margin-top: var(--space-3);
 }
 
 .import-page .import-problem {

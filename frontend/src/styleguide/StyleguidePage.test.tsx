@@ -26,7 +26,7 @@ describe('/styleguide (dev only)', () => {
         'Status tags',
         'Notices',
         'Stat tiles + mini bars (StatGrid / StatTile)',
-        'Data table (DataTable; phone < 600 px = cards)',
+        'Data table (DataTable; phone < 600 px = compact rows)',
         'Excel table (ExcelTable: sort, column filters, column priorities)',
         'Dialog (bottom sheet on phone)',
         'Icons (lucide-react, 16 px, stroke 1.5)',

@@ -178,7 +178,7 @@ export function fiDateWithWeekday(iso: string): string {
 
 // ---- Offer list (`/offers`) ----
 
-/** The offer table "Tarjoukset" (on phones the same table is laid out as cards). */
+/** The offer table "Tarjoukset" (on phones the same table is laid out as compact rows). */
 export function offerTable(page: Page): Locator {
   return page.getByRole('table', { name: 'Tarjoukset', exact: true });
 }

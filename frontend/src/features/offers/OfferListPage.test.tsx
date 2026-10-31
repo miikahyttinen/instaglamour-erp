@@ -86,7 +86,7 @@ describe('offer list (UC-028)', () => {
     // Created date formatted like the other dates (local date of the creation time).
     const created = db.offers.offers.find((o) => o.eventName === 'Event L')!.createdAt;
     expect(bodyRows()[0]).toHaveTextContent(formatDate(created, 'fi'));
-    // Phone cards show it too (not hidden below 600 px).
+    // Phone rows show it too (not hidden below 600 px).
     expect(bodyRows()[0]!.querySelector('td[data-label="Luotu"]')).not.toHaveClass('hide-phone');
   });
 

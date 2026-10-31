@@ -346,17 +346,25 @@ describe('event list (UC-003)', () => {
     expect(within(table()).getByRole('button', { name: 'Suodata: Laskutus' })).toHaveAccessibleDescription('Suodatin käytössä');
   });
 
-  it('phone cards show the one invoicing state tag', async () => {
+  it('phone rows (TASK-175): lineup + total on line 1, the one invoicing state tag, low-priority money hidden', async () => {
     signInMock().selectedYear = 2020;
     const e = addMockEvent({ startDate: '2020-02-01', venue: 'Venue Card', priceCents: 100000 });
     addInvoiceRow(db.events, e, { description: 'Invoice', amountCents: 100000, status: 'SENT' }, partnerA().id);
     installMatchMedia({});
     renderApp('/gigs');
     await waitFor(() => expect(venues()).toEqual(['Venue Card']));
-    const card = rows()[0]!;
+    const card = rows()[0]!; // one compact row
     const invoicing = within(card).getAllByRole('cell').find((c) => c.getAttribute('data-label') === 'Laskutus')!;
     expect(invoicing.querySelectorAll('.tag')).toHaveLength(1);
     expect(within(invoicing).getByText('Avoimia laskuja')).toHaveClass('tag', 'tag-warn');
+    expect(invoicing).toHaveClass('cell-bare');
+    const cellOf = (label: string) => within(card).getAllByRole('cell').find((c) => c.getAttribute('data-label') === label)!;
+    expect(cellOf('Kokoonpano')).toHaveClass('cell-primary');
+    expect(within(cellOf('Kokoonpano')).getByRole('link')).toBeInTheDocument();
+    expect(cellOf('Kokonaishinta')).toHaveClass('cell-main');
+    for (const hidden of ['Myyjä', 'Tuottaja', 'Saldo', 'Kulut, budjetti', 'Kulut, toteuma']) {
+      expect(cellOf(hidden), hidden).toHaveClass('hide-phone');
+    }
   });
 
   it('sorts by any column header', async () => {

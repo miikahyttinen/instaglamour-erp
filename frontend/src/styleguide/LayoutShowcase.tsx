@@ -27,11 +27,13 @@ const TYPE_SCALE = [
 ] as const;
 
 const LAYOUT_SPACE = [
-  ['--page-pad', '16 → 40', 'container side padding'],
-  ['--section-gap', '32 → 40', 'between sections (PageHead, SectionLabel, StatGrid)'],
-  ['--card-pad', '16 → 20', 'card / tile padding, table cell x'],
-  ['--grid-gap', '16', 'between tiles / cards'],
-  ['--space-6', '32', 'page top (desktop)'],
+  ['--page-pad', '12 → 24', 'container side padding'],
+  ['--page-pad-top', '12 → 16', 'container top padding'],
+  ['--section-gap', '20 → 24', 'between sections (PageHead, SectionLabel, StatGrid)'],
+  ['--card-pad', '12 → 14', 'card / tile padding, table cell x'],
+  ['--grid-gap', '8 → 12', 'between tiles / cards'],
+  ['--control-h', '40 → 32', 'buttons, inputs, inline fields'],
+  ['--row-h', '36', 'table body row min height'],
 ] as const;
 
 const SPAN_ROWS: { title: string; spans: GridSpan[] }[] = [

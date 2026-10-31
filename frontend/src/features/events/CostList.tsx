@@ -59,7 +59,7 @@ export function CostList({ event, people, readOnly, onWarnings }: Props) {
         // Hand-written .data-table (not <DataTable>): each line is its own named <tbody>, so the
         // pay form can open in a full-width row right under their line.
         <div className="table-wrap">
-          <table className="data-table data-table-cards cost-table">
+          <table className="data-table cost-table">
             <caption className="visually-hidden">{t('event.sections.costs')}</caption>
             <thead>
               <tr>

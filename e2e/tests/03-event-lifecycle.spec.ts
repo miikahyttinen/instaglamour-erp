@@ -139,7 +139,7 @@ test('edit price, move, cancel, uncancel, delete, restore — all in history', a
   await deleteDialog.getByRole('button', { name: 'Poista keikka' }).click();
   await expect(page).toHaveURL(/\/gigs$/);
   await expect(page.getByRole('status').filter({ hasText: 'Keikka poistettu.' })).toBeVisible();
-  await expect(eventListRows(page).first()).toBeVisible(); // the list has loaded (table or cards)
+  await expect(eventListRows(page).first()).toBeVisible(); // the list has loaded (table or phone rows)
   await expect(page.getByRole('link', { name: title })).toHaveCount(0);
 
   await page.getByRole('button', { name: 'Poistetut' }).click();

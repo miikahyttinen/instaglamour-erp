@@ -11,7 +11,7 @@ import { Logo } from './Logo';
 import { MiniBars } from './MiniBars';
 import { PageHead } from './PageHead';
 import { SectionLabel } from './SectionLabel';
-import { FieldList } from './FieldList';
+import { FieldList, FieldPair } from './FieldList';
 import { Field, MoneyInput } from './fields';
 import { spanStyle } from './grid';
 import { StatGrid, StatTile } from './StatTile';
@@ -202,6 +202,28 @@ describe('DataTable', () => {
     expect(within(table).getAllByRole('cell', { name: '–' })[0]).toHaveClass('hide-phone');
   });
 
+  it('phone rows: phoneMain is the figure on the title line, phoneBare drops its label (TASK-175)', () => {
+    render(
+      <DataTable
+        caption="Venues"
+        columns={[
+          { key: 'name', label: 'Venue', primary: true, cell: (r: Row) => r.name },
+          { key: 'amount', label: 'Amount', numeric: true, phoneMain: true, cell: (r: Row) => r.amount },
+          { key: 'city', label: 'City', phoneBare: true, cell: () => 'City A' },
+          { key: 'note', label: 'Note', cell: () => 'Note' },
+        ]}
+        rows={rows}
+        rowKey={(r) => r.id}
+      />,
+    );
+    const table = screen.getByRole('table', { name: 'Venues' });
+    expect(within(table).getByRole('cell', { name: '1 000 €' })).toHaveClass('cell-main', 'num');
+    expect(within(table).getAllByRole('cell', { name: 'City A' })[0]).toHaveClass('cell-bare');
+    const note = within(table).getAllByRole('cell', { name: 'Note' })[0]!;
+    expect(note).not.toHaveClass('cell-bare', 'cell-main');
+    expect(note).toHaveAttribute('data-label', 'Note');
+  });
+
   it('sortable headers expose aria-sort and call onSort', async () => {
     const onSort = vi.fn();
     render(
@@ -342,5 +364,20 @@ describe('FieldList', () => {
       </FieldList>,
     );
     expect(container.firstElementChild).toHaveClass('field-list', 'field-list-lg', 'x');
+  });
+
+  it('FieldPair groups two small fields (side by side when the list is wide, TASK-175)', () => {
+    const { container } = render(
+      <FieldList>
+        <FieldPair>
+          <Field label="Seller">{(f) => <input {...f} type="text" />}</Field>
+          <Field label="Producer">{(f) => <input {...f} type="text" />}</Field>
+        </FieldPair>
+      </FieldList>,
+    );
+    const pair = container.querySelector('.field-list > .field-list-pair')!;
+    expect(pair).not.toBeNull();
+    expect(within(pair as HTMLElement).getByRole('textbox', { name: 'Seller' })).toBeInTheDocument();
+    expect(within(pair as HTMLElement).getByRole('textbox', { name: 'Producer' })).toBeInTheDocument();
   });
 });

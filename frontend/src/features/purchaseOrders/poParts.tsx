@@ -113,6 +113,7 @@ export function PurchaseOrderEventTable({
   const columns: DataTableColumn<PurchaseOrderEvent>[] = [
     {
       key: 'time',
+      phoneBare: true,
       label: t('purchaseOrders.log.time'),
       className: 'po-col-time',
       cell: (e) => poDateTime(t, e.at, lang),
@@ -134,12 +135,14 @@ export function PurchaseOrderEventTable({
       : []),
     {
       key: 'event',
+      phoneBare: true,
       label: t('purchaseOrders.log.event'),
       primary: !showNumber,
       cell: (e) => poEventText(t, e),
     },
     {
       key: 'actor',
+      phoneBare: true,
       label: t('purchaseOrders.log.actor'),
       cell: (e) => poActorName(t, reference?.partners, e.partnerId),
     },

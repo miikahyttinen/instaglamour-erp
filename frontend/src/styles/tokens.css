@@ -3,7 +3,10 @@
    (used by /styleguide to show both themes side by side). */
 
 /* ---------- Theme-independent tokens ---------- */
-/* Layout v2 (docs/design.md → "Layout v2"): smaller type, 8 px grid, more space. */
+/* Layout v2 (docs/design.md → "Layout v2"): smaller type, 8 px grid.
+   Compact density (design.md → "Compact density", TASK-175, 2026-10-31): page padding, section
+   gaps, card / cell padding, row and control heights tightened app-wide. Old values in the
+   comments ("was …") for comparison. Touch targets stay ≥ 40 px on phones. */
 :root {
   /* Typography */
   --font-sans: 'Afacad', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
@@ -34,10 +37,12 @@
   --space-7: 48px;
 
   /* Layout (use these, not raw --space-*, for page rhythm) */
-  --page-pad: 16px; /* side padding of the content container: 16 px phone → 40 px desktop */
-  --section-gap: 32px; /* between page sections: 32 px phone → 40 px desktop */
-  --card-pad: 16px; /* inside cards, tiles, table cells (x): 16 px phone → 20 px desktop */
-  --grid-gap: 16px; /* between tiles / cards (StatGrid, card grids) */
+  --page-pad: 12px; /* side padding of the content container: 12 px phone → 24 px desktop (was 16 → 40) */
+  --page-pad-top: 12px; /* top padding of the content container: 12 px phone → 16 px desktop (was 24 → 32) */
+  --section-gap: 20px; /* between page sections: 20 px phone → 24 px desktop (was 32 → 40) */
+  --card-pad: 12px; /* inside cards, tiles, table cells (x): 12 px phone → 14 px desktop (was 16 → 20) */
+  --grid-gap: 8px; /* between tiles / cards (StatGrid, card grids): 8 px phone → 12 px desktop (was 16) */
+  --stack-gap: 8px; /* between the small blocks inside a section (label → content, toolbar rows) */
   --content-max: 1200px; /* app pages are full width (no cap); max width of the new event form grid and the styleguide showcase */
   --label-w: 160px; /* label column of FieldList (≥ 600 px) */
   --doc-max: 880px; /* reading width of customer documents (public offer page) */
@@ -47,10 +52,11 @@
   --hairline: 1px;
 
   /* Sizes */
-  --tap: 44px; /* minimum touch target on phones */
-  --control-h: 44px; /* buttons / inputs / inline fields: 44 px phone → 36 px desktop */
-  --row-h: 48px; /* DataTable body row min height */
-  --cell-pad-y: var(--space-3); /* DataTable header + cell padding (identical) */
+  --tap: 40px; /* minimum touch target on phones (was 44) */
+  --control-h: 40px; /* buttons / inputs / inline fields: 40 px phone → 32 px desktop (was 44 → 36) */
+  --row-h: 36px; /* DataTable body row min height (was 48) */
+  --cell-pad-y: 6px; /* DataTable header + cell padding (identical) (was 12) */
+  --list-row-pad-y: 6px; /* phone list rows (tables < 600 px): vertical padding of one row */
   --cell-pad-x: var(--card-pad);
   --inline-pad-x: var(--space-2); /* inner side padding of quiet inline inputs */
   /* Right of an inline money / hours unit: inner padding + border + state icon slot. Pad a plain
@@ -61,11 +67,11 @@
   --icon-stroke: 1.5;
 
   /* App shell */
-  --topbar-h: 56px;
+  --topbar-h: 48px; /* was 56 */
   --sidebar-w: 232px;
   --sidebar-w-collapsed: 64px;
   --drawer-w: min(280px, 85vw);
-  --nav-item-h: 44px; /* 44 px phone (drawer) → 40 px desktop */
+  --nav-item-h: 40px; /* 40 px phone (drawer) → 34 px desktop (was 44 → 40) */
 
   /* Motion (always also handle prefers-reduced-motion) */
   --dur: 200ms;
@@ -82,11 +88,13 @@
 @media (min-width: 900px) {
   :root {
     --fs-title: 1.375rem;
-    --page-pad: 40px;
-    --section-gap: 40px;
-    --card-pad: 20px;
-    --control-h: 36px;
-    --nav-item-h: 40px;
+    --page-pad: 24px;
+    --page-pad-top: 16px;
+    --section-gap: 24px;
+    --card-pad: 14px;
+    --grid-gap: 12px;
+    --control-h: 32px;
+    --nav-item-h: 34px;
   }
 }
 

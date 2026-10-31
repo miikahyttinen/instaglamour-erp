@@ -138,6 +138,7 @@ function PurchaseOrderTable({
     },
     {
       key: 'freelancer',
+      phoneBare: true,
       label: t('purchaseOrders.columns.freelancer'),
       className: 'po-col-freelancer',
       sortValue: (po) => po.personName,
@@ -147,6 +148,7 @@ function PurchaseOrderTable({
     },
     {
       key: 'created',
+      hideOnPhone: true,
       label: t('purchaseOrders.columns.created'),
       priority: 2,
       className: 'po-col-date excel-col-fit',
@@ -163,6 +165,7 @@ function PurchaseOrderTable({
     },
     {
       key: 'total',
+      phoneMain: true,
       label: t('purchaseOrders.columns.total'),
       numeric: true,
       className: 'po-col-total excel-col-fit',
@@ -171,6 +174,7 @@ function PurchaseOrderTable({
     },
     {
       key: 'status',
+      phoneBare: true,
       label: t('purchaseOrders.columns.status'),
       className: 'po-col-status excel-col-fit',
       sortValue: (po) => PURCHASE_ORDER_STATUSES.indexOf(po.status),

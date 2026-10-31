@@ -211,7 +211,7 @@
   font-variant-numeric: tabular-nums;
 }
 @media (max-width: 599px) {
-  /* Phone cards: no empty "staffing" line when the event is fully staffed. */
+  /* Phone rows: no empty "staffing" item when the event is fully staffed. */
   .year-upcoming-table td:empty {
     display: none;
   }

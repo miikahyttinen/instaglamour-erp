@@ -170,6 +170,7 @@ function FreelancerContent({ token, view, refetch }: { token: string; view: Free
     {
       key: 'select',
       label: t('freelancer.columns.select'),
+      phoneBare: true,
       header: (
         <input
           type="checkbox"
@@ -202,10 +203,10 @@ function FreelancerContent({ token, view, refetch }: { token: string; view: Free
       className: 'nowrap',
       cell: (line) => formatDateRange(line.eventStartDate, line.eventEndDate, lang),
     },
-    { key: 'venue', label: t('freelancer.columns.venue'), cell: (line) => line.venue },
-    { key: 'role', label: t('freelancer.columns.role'), cell: (line) => feeRoleLabel(t, line) },
-    { key: 'amount', label: t('freelancer.columns.amount'), numeric: true, cell: (line) => money(line.amountCents) },
-    { key: 'state', label: t('freelancer.columns.state'), className: 'freelancer-state-cell', cell: (line) => <LineState line={line} /> },
+    { key: 'venue', phoneBare: true, label: t('freelancer.columns.venue'), cell: (line) => line.venue },
+    { key: 'role', phoneBare: true, label: t('freelancer.columns.role'), cell: (line) => feeRoleLabel(t, line) },
+    { key: 'amount', label: t('freelancer.columns.amount'), numeric: true, phoneMain: true, cell: (line) => money(line.amountCents) },
+    { key: 'state', label: t('freelancer.columns.state'), phoneBare: true, className: 'freelancer-state-cell', cell: (line) => <LineState line={line} /> },
   ];
 
   return (
@@ -326,9 +327,9 @@ function PurchaseOrderItem({ po, isNew }: { po: PublicPurchaseOrder; isNew: bool
       className: 'nowrap',
       cell: (line) => formatDate(line.eventStartDate, lang),
     },
-    { key: 'venue', label: t('freelancer.columns.venue'), cell: (line) => line.venue },
-    { key: 'role', label: t('freelancer.columns.role'), cell: (line) => feeRoleLabel(t, line) },
-    { key: 'amount', label: t('freelancer.columns.amount'), numeric: true, cell: (line) => formatMoney(line.amountCents, lang) },
+    { key: 'venue', phoneBare: true, label: t('freelancer.columns.venue'), cell: (line) => line.venue },
+    { key: 'role', phoneBare: true, label: t('freelancer.columns.role'), cell: (line) => feeRoleLabel(t, line) },
+    { key: 'amount', label: t('freelancer.columns.amount'), numeric: true, phoneMain: true, cell: (line) => formatMoney(line.amountCents, lang) },
   ];
 
   return (

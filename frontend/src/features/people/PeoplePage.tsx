@@ -148,6 +148,7 @@ export function PeoplePage() {
     },
     {
       key: 'roles',
+      phoneBare: true,
       label: t('people.roles'),
       className: 'people-roles-cell',
       cell: (person) =>
@@ -173,6 +174,7 @@ export function PeoplePage() {
     },
     {
       key: 'partner',
+      phoneBare: true,
       label: t('people.partner.column'),
       className: 'people-partner-cell',
       ...sortProps('partner'),
@@ -180,6 +182,7 @@ export function PeoplePage() {
     },
     {
       key: 'active',
+      phoneMain: true,
       label: t('people.active'),
       className: 'people-active-cell',
       cell: (person) =>

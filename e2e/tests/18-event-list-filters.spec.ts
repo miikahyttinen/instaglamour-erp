@@ -87,7 +87,7 @@ test('event list: cancelled hidden by default, Tila filter shows them, Paikka fi
     await expect(filterButton(page, 'Tila')).toHaveAccessibleDescription('Suodatin käytössä');
     await expect(filterButton(page, 'Paikka')).not.toHaveAccessibleDescription('Suodatin käytössä');
   } else {
-    // Phones: cards, no header buttons; one "Suodattimet" button opens the sheet.
+    // Phones: compact rows, no header buttons; one "Suodattimet" button opens the sheet.
     await expect(page.getByRole('button', { name: /^Suodata: / })).toHaveCount(0);
     await expect(page.getByRole('main').getByRole('button', { name: 'Suodattimet', exact: true })).toBeVisible();
   }
@@ -196,9 +196,10 @@ test('old /events URLs redirect to /gigs and keep the query string', async ({ pa
   await expect(page.getByRole('heading', { level: 1, name: 'Uusi keikka' })).toBeVisible();
 });
 
-// Kate-%: the actual percentage ("tot. x %") is always on its own line under the budget one
-// (wide table, narrow table and phone cards); each percentage stays on one line.
-test('Kate-%: the actual percentage is always on a second line', async ({ page }, testInfo) => {
+// Kate-%: the actual percentage ("tot. x %") is on its own line under the budget one in the
+// table (wide and narrow); on phone rows (TASK-175) it follows the budget one on the same line.
+// Each percentage stays on one line.
+test('Kate-%: the actual percentage is on a second line in the table, beside it on phone rows', async ({ page }, testInfo) => {
   const { year } = await setup(page, testInfo);
   const widths = tagOf(testInfo) === 'M' ? [375] : [900, 1440];
   for (const w of widths) {
@@ -216,7 +217,8 @@ test('Kate-%: the actual percentage is always on a second line', async ({ page }
     });
     const [budget, actual] = parts as [(typeof parts)[0], (typeof parts)[0]];
     expect(actual.text.trim(), `${w} px: actual text`).toMatch(/^tot\. /);
-    expect(actual.top, `${w} px: actual under the budget`).toBeGreaterThanOrEqual(budget.bottom - 1);
+    if (w < 600) expect(actual.top, `${w} px: actual beside the budget`).toBeLessThan(budget.bottom);
+    else expect(actual.top, `${w} px: actual under the budget`).toBeGreaterThanOrEqual(budget.bottom - 1);
     for (const part of parts) expect(part.oneLine, `${w} px: "${part.text}" on one line`).toBe(true);
   }
 });
@@ -353,7 +355,7 @@ test('gig statuses and "Laskutus": invoice rows, one invoicing state tag on the 
   await page.goto(`/gigs/${gig.id}`);
 
   // Fully paid = solid dark green "Maksettu"; the columns fit without sideways scroll
-  // (table rows from 600 px; phones are cards).
+  // (table rows from 600 px; compact rows on phones).
   await api(page).post(`/events/${gig.id}/invoice-rows`, { description: 'Invoice 3', amountCents: total - half, status: 'PAID' });
   const widths = tagOf(testInfo) === 'M' ? [375] : [600, 900, 1100, 1280, 1440, 1600, 1920];
   for (const w of widths) {

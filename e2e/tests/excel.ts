@@ -4,7 +4,7 @@ import { expect } from './helpers';
 // Excel-style tables (docs/design.md → "Excel-style tables"; frontend `ExcelTable`), used by the
 // event list (Keikat) and the offer list (Tarjoukset). From 600 px each filterable column header has
 // a filter button "Suodata: <column>" that opens a non-modal popover dialog with the same name;
-// below 600 px the table is laid out as cards and a "Suodattimet" button opens the same filter
+// below 600 px the table is laid out as compact rows and a "Suodattimet" button opens the same filter
 // form per column in a sheet. Filters live in the URL as `f.<key>=<value>` (repeated per value).
 
 /** Same breakpoint as the frontend `TABLET_QUERY`: header filters from here, the sheet below. */

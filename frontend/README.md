@@ -130,7 +130,7 @@ production builds) and its texts are English on purpose.
 - Status colour only means status: Sold/Played = `info`, Done/Paid = `ok`, Overdue / Not fully
   staffed / contract warnings = `warn`, Cancelled/Deleted = `danger` (or `muted`).
 - Breakpoints: phone first; `min-width: 600px` (tablet: dialogs centred, 2-column forms, tables
-  instead of cards); `min-width: 900px` (desktop: sidebar instead of the ☰ drawer);
+  instead of compact phone rows); `min-width: 900px` (desktop: sidebar instead of the ☰ drawer);
   `min-width: 1200px` (`lg` StatGrid spans).
   `useMediaQuery(TABLET_QUERY)` / `useMediaQuery(DESKTOP_QUERY)` / `useMediaQuery(WIDE_QUERY)` from
   `src/lib/useMediaQuery.ts` give the 600 / 900 / 1200 px breakpoints in JS (don't write your own copies of the query).
@@ -167,6 +167,11 @@ production builds) and its texts are English on purpose.
   `StatGrid` use `--section-gap` (32 → 40). Don't add extra margins between sections; if a
   screen needs a different gap, use `--section-gap` / `--grid-gap` / `--space-*`.
 - Grids of tiles/cards: `StatGrid` + `span` (see below). Use `--grid-gap` for hand-made grids.
+- Compact density (TASK-175, design.md → "Compact density"): tight tokens above; phones show
+  tables as **compact rows** (line 1: `primary` title + `phoneMain` figure; line 2: the other cells
+  as small "LABEL value" items), never as cards. `FieldList` is label | value at every width
+  (104 px label column on phones); `FieldPair` puts two small fields side by side once the list is
+  ≥ 680 px wide.
 - Tables: the cell x-padding is `--cell-pad-x` (= `--card-pad`), so the first column lines up with
   the content of cards above. Header and body padding are identical. Numeric columns: `numeric`
   (right, tabular). Rows are at least `--row-h` 48 px.
@@ -186,10 +191,10 @@ production builds) and its texts are English on purpose.
 | Type size | `--fs-meta` 10, `--fs-label` 10, `--fs-small` 12, `--fs-body` 14, `--fs-lg` 16, `--fs-figure` 20, `--fs-title` 20→22, `--fs-display` 32 (customer document title) (px; → = desktop) |
 | Type other | `--lh-tight` 1.15, `--lh-body` 1.5, `--ls-label` (0.14em), `--ls-title`, `--fw-regular`, `--fw-medium`, `--fw-bold` |
 | Spacing | `--space-1` … `--space-7` = 4/8/12/16/24/32/48 px |
-| Layout | `--page-pad` 16→40, `--section-gap` 32→40, `--card-pad` 16→20, `--grid-gap` 16, `--content-max` 1200 (new event form grid + styleguide only; pages are uncapped), `--label-w` 160, `--doc-max` 880 (customer document width) |
-| Table | `--row-h` 48, `--cell-pad-y` 12, `--cell-pad-x` (= `--card-pad`) |
-| Shape / size | `--radius` (2 px, the max), `--hairline` (1 px), `--tap` 44, `--control-h` 44→36, `--inline-pad-x` 8, `--inline-num-trail` (space right of an inline money/hours unit), `--icon` 16, `--icon-nav` 18, `--icon-stroke` |
-| Shell | `--topbar-h` 56, `--sidebar-w` 232, `--sidebar-w-collapsed` 64, `--drawer-w` min(280 px, 85vw), `--nav-item-h` 44→40 |
+| Layout | `--page-pad` 12→24, `--page-pad-top` 12→16, `--section-gap` 20→24, `--card-pad` 12→14, `--grid-gap` 8→12, `--stack-gap` 8, `--content-max` 1200 (new event form grid + styleguide only; pages are uncapped), `--label-w` 160, `--doc-max` 880 (customer document width) |
+| Table | `--row-h` 36, `--cell-pad-y` 6, `--cell-pad-x` (= `--card-pad`), `--list-row-pad-y` 6 (phone rows) |
+| Shape / size | `--radius` (2 px, the max), `--hairline` (1 px), `--tap` 40, `--control-h` 40→32, `--inline-pad-x` 8, `--inline-num-trail` (space right of an inline money/hours unit), `--icon` 16, `--icon-nav` 18, `--icon-stroke` |
+| Shell | `--topbar-h` 48, `--sidebar-w` 232, `--sidebar-w-collapsed` 64, `--drawer-w` min(280 px, 85vw), `--nav-item-h` 40→34 |
 | Motion | `--dur` 200 ms, `--ease`. Always add a `prefers-reduced-motion: reduce` override. |
 | Stacking | `--z-topbar` 20, `--z-sidebar` 30, `--z-drawer` 40, `--z-popover` 45 (table filter popover), `--z-dialog` 50 |
 | Grid spans | `--span`, `--span-sm`, `--span-md`, `--span-lg` (registered, not inherited; see `StatGrid`) |
@@ -212,8 +217,8 @@ production builds) and its texts are English on purpose.
 | `MiniBars` | `bars: { label, value, current?, valueText? }[]`, `label` (accessible name), `showLabels?` (true), `height?: number \| string` (48 px; a number is px, a string any CSS length), `compact?` (bar area `--space-6` 32 px, for tiles with a secondary figure) | Bar labels must be unique. Screen readers get a "label: valueText" list. |
 | `StatusTag` | `tone?: 'info' \| 'ok' \| 'warn' \| 'danger' \| 'muted'` (muted), `children`, `title?` | Event statuses: use `EventStatusTag` (events feature). |
 | `Notice` | `tone?: 'info' \| 'ok' \| 'warn' \| 'danger'` (info), `role?: 'alert' \| 'status' \| 'note'`, `children` | Same as `.notice` / `.notice-*`. |
-| `DataTable<T>` | `columns`, `rows`, `rowKey`, `caption` (required, visually hidden unless `showCaption`), `empty?`, `cardsOnPhone?` (true), `cardsBelow?: 'sm' \| 'lg'` (`sm` = cards below 600 px; `lg` = below 1200 px, for wide tables that would scroll next to the sidebar at 900–1199 px), `rowClassName?`, `footer?` (`<tr>`s), `className?`. From 600 px the table is `width: 100%` and doesn't scroll sideways: text cells and header titles wrap between words (hyphenated only if needed), `.num` and `.tag` stay on one line; give date columns a page class with `white-space: nowrap` | Column: `key`, `label`, `cell(row)`, `header?`, `numeric?`, `primary?` (card title on phones), `hideOnPhone?`, `sort?: 'asc' \| 'desc'`, `onSort?` (makes the header a sort button; caller owns the sort state), `className?`. |
-| `ExcelTable<T>` | see "ExcelTable" below | Excel-style list: sort + per-column filter popovers, column priorities (no sideways scroll), URL state, phone cards + filter sheet. Use it for the year lists (offers, events). |
+| `DataTable<T>` | `columns`, `rows`, `rowKey`, `caption` (required, visually hidden unless `showCaption`), `empty?`, `cardsOnPhone?` (true), `cardsBelow?: 'sm' \| 'lg'` (`sm` = compact rows below 600 px; `lg` = below 1200 px, for wide tables that would scroll next to the sidebar at 900–1199 px), `rowClassName?`, `footer?` (`<tr>`s), `className?`. From 600 px the table is `width: 100%` and doesn't scroll sideways: text cells and header titles wrap between words (hyphenated only if needed), `.num` and `.tag` stay on one line; give date columns a page class with `white-space: nowrap` | Column: `key`, `label`, `cell(row)`, `header?`, `numeric?`, `primary?` (row title on phones; a link in it makes the whole row tappable), `phoneMain?` (main figure / tag at the end of the title line on phones), `phoneBare?` (phone line 2 without the label), `hideOnPhone?`, `sort?: 'asc' \| 'desc'`, `onSort?` (makes the header a sort button; caller owns the sort state), `className?`. |
+| `ExcelTable<T>` | see "ExcelTable" below | Excel-style list: sort + per-column filter popovers, column priorities (no sideways scroll), URL state, compact phone rows + filter sheet. Use it for the year lists (offers, events). |
 | `Dialog` | `title`, `onClose`, `children` | Bottom sheet on phones, centred from 600 px. Put buttons in `<div className="form-actions">`. |
 | `Field` | `label`, `error?`, `hint?`, `children(fieldProps)` | Spread `fieldProps` on the native `input`/`select`/`textarea`; they are styled globally. |
 | `MoneyInput` | `value`, `onChange`, + field props | Euro input; the € sits inside the field, so it ends at the same right edge as other fields. |
@@ -345,7 +350,7 @@ The shared Excel-style list (Tarjoukset, Keikat). Keikat opens with a default Ti
   sort of a hidden column still apply, and "Tyhjennä suodattimet" clears them. A `footer` must add
   the same classes to its cells. Column className `excel-col-fit` makes a one-line column (date,
   money, tag, icon buttons) as narrow as its content so the text columns get the spare width;
-  cell padding tightens where a tier only just fits (< 900, 1100–1199, 1400–1599 px). Phones (< 600 px): `DataTable`-style cards and a
+  cell padding tightens where a tier only just fits (< 900, 1100–1199, 1400–1599 px). Phones (< 600 px): `DataTable`-style compact rows and a
   **"Suodattimet"** button (badge = number of filtered columns) that opens a bottom sheet with the sort
   (Järjestys / Suunta) and the filterable columns ("Kaikki" / "N valittu"); a column opens the same
   filter form, OK / Peruuta return to the list.
@@ -376,10 +381,10 @@ const columns: ExcelColumn<Event>[] = [
 | `ExcelColumn<T>` | Notes |
 |---|---|
 | `key` | Stable id: React key, sort key, URL filter key (`f.<key>`). |
-| `label` | Header text, phone card label, filter names ("Suodata: <label>"). |
+| `label` | Header text, phone row label, filter names ("Suodata: <label>"). |
 | `cell(row)` | Cell content. |
 | `header?` | Custom header content (e.g. visually hidden "Actions"). |
-| `numeric?`, `primary?`, `hideOnPhone?`, `className?` | As in `DataTable`. |
+| `numeric?`, `primary?`, `phoneMain?`, `phoneBare?`, `hideOnPhone?`, `className?` | As in `DataTable`. |
 | `sortValue?(row)` | `string \| number \| null \| undefined`. Makes the column sortable. Numbers numeric, strings natural + case-insensitive; empty last. Use a display label for coded values so they sort as they read. |
 | `filterValue?(row)` | `string \| null \| undefined \| string[]`. Makes the column filterable. Return a stable key (id / code); null, '' or [] = blank. A list matches when any value is selected. |
 | `filterLabel?(value)` | Text of a value in the popover (default: the value). |
@@ -461,7 +466,7 @@ offer's link is not found there either.
   by event type, win rate (ring + per event type). Bars are buttons (`aria-pressed`, exact value in
   the accessible name and tooltip); clicking / Enter selects; selections reset when the year
   changes. Money `formatMoneyWhole`, percent `formatPercentWhole`; `–` for null. Grid by container
-  width: 1 / 2 / 3 / 5 per row; narrow cards show years as `'26`. Mock: `offerStats()` in
+  width: 1 / 2 / 3 / 5 / 6 per row; narrow cards show years as `'26`. Mock: `offerStats()` in
   `mocks/offerStore.ts` (the demo seed spreads `createdAt` over the last months).
 - **List** (`OfferListPage`): KPI cards (above), search (`?q=`, sent to the API) and an `ExcelTable` (see above):
   every column sortable (default event date ascending; ties by event date, then created), column

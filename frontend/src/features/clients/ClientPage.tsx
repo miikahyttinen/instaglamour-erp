@@ -134,15 +134,17 @@ function ClientEvents({ events }: { events: EventSummary[] }) {
         <Link to={`/gigs/${event.id}`}>{formatDateRange(event.startDate, event.endDate, lang)}</Link>
       ),
     },
-    { key: 'lineup', label: t('clients.events.lineup'), cell: (event) => event.lineupName },
-    { key: 'venue', label: t('clients.events.venue'), cell: (event) => event.venue },
+    { key: 'lineup', phoneBare: true, label: t('clients.events.lineup'), cell: (event) => event.lineupName },
+    { key: 'venue', phoneBare: true, label: t('clients.events.venue'), cell: (event) => event.venue },
     {
       key: 'status',
+      phoneBare: true,
       label: t('clients.events.status'),
       cell: (event) => <EventStatusTag status={eventDisplayStatus(event)} />,
     },
     {
       key: 'total',
+      phoneMain: true,
       label: t('clients.events.totalPrice'),
       numeric: true,
       cell: (event) => formatMoney(event.totalPriceCents, lang),
@@ -168,6 +170,7 @@ function ClientOffers({ offers }: { offers: OfferSummary[] }) {
   const columns: DataTableColumn<OfferSummary>[] = [
     {
       key: 'date',
+      phoneBare: true,
       label: t('clients.offers.eventDate'),
       className: 'client-col-date',
       cell: (offer) => formatDate(offer.eventDate, lang),
@@ -180,6 +183,7 @@ function ClientOffers({ offers }: { offers: OfferSummary[] }) {
     },
     {
       key: 'status',
+      phoneBare: true,
       label: t('clients.offers.status'),
       cell: (offer) => (
         <span className="client-offer-status">
@@ -193,6 +197,7 @@ function ClientOffers({ offers }: { offers: OfferSummary[] }) {
     },
     {
       key: 'price',
+      phoneMain: true,
       label: t('clients.offers.price'),
       numeric: true,
       cell: (offer) => (offer.priceCents === null ? '–' : formatMoney(offer.priceCents, lang)),

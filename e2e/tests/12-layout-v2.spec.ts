@@ -176,7 +176,7 @@ test.describe('desktop sidebar', () => {
   });
 
   test('event list: one Excel-style table "Keikkalista" at every desktop width (1199, 1200, 1440 px)', async ({ page }) => {
-    // TASK-144: no separate card list any more; below 600 px the same table is laid out as cards.
+    // TASK-144: no separate card list any more; below 600 px the same table is laid out as compact rows.
     for (const w of [1199, 1200, 1440]) {
       await page.setViewportSize({ width: w, height: 800 });
       await openLoaded(page, '/gigs');

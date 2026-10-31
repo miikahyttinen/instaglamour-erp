@@ -6,9 +6,9 @@
 /* ---------- Tabs (My hours / Totals) under the page head ---------- */
 .hours-page .hours-tabs {
   display: flex;
-  gap: var(--space-5);
+  gap: var(--space-3);
   /* Part of the page head: pulled up into its gap; the usual section gap below. */
-  margin: calc(var(--space-5) * -1) 0 var(--section-gap);
+  margin: calc(var(--section-gap) * -1 + var(--space-2)) 0 var(--section-gap);
   border-bottom: var(--hairline) solid var(--border);
 }
 .hours-page .hours-tabs a {
@@ -37,7 +37,7 @@
   --span: 12;
 }
 .hours-page .hours-stats {
-  margin-bottom: var(--space-5);
+  margin-bottom: var(--space-3);
 }
 
 /* ---------- Partner filter (Totals) ---------- */
@@ -45,8 +45,8 @@
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
-  gap: var(--space-2) var(--space-5);
-  margin-bottom: var(--space-4);
+  gap: var(--space-2) var(--space-3);
+  margin-bottom: var(--space-3);
 }
 .hours-page .hours-filter {
   flex: 1 1 100%;
@@ -183,7 +183,7 @@
   .hours-page .hours-table thead tr {
     display: flex;
     flex-wrap: wrap;
-    gap: 0 var(--space-4);
+    gap: 0 var(--space-3);
     padding: 0 var(--card-pad);
     background: var(--surface-2);
     border-bottom: var(--hairline) solid var(--border);
@@ -192,7 +192,7 @@
   .hours-page .hours-table thead th.hours-col-hours {
     display: block;
     width: auto;
-    padding: var(--space-2) 0;
+    padding: 0;
     border: 0;
     background: transparent;
   }
@@ -213,8 +213,8 @@
       'date partner hours'
       'comment comment actions';
     align-items: center;
-    gap: 0 var(--space-3);
-    padding: var(--space-2) var(--card-pad);
+    gap: 2px var(--space-3);
+    padding: var(--list-row-pad-y) var(--card-pad);
     border-bottom: var(--hairline) solid var(--border);
   }
   .hours-page .hours-table tbody tr:last-child {

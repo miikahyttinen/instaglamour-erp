@@ -1,4 +1,4 @@
-/* People register (UC-014). Design tokens only; tables become cards below 600 px (DataTable). */
+/* People register (UC-014). Design tokens only; tables become compact rows below 600 px (DataTable). */
 
 /* Width of the name input in the add form and in the table, so both line up. */
 .people-page {
@@ -114,7 +114,7 @@
   max-width: 100%;
 }
 .people-page .people-hint {
-  margin: 0 0 var(--space-4);
+  margin: 0 0 var(--space-3);
   max-width: 60ch;
 }
 
@@ -149,22 +149,16 @@
   display: inline-flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: flex-end;
   gap: var(--space-2);
 }
 .people-page .person-lines-total th {
   text-align: left;
 }
 
-/* Cost lines: cards below 1200 px (DataTable cardsBelow="lg"), a table from 1200 px. */
-@media (min-width: 1200px) {
-  .people-page .person-lines-lineup {
-    justify-content: flex-start;
-  }
-}
+/* Cost lines: compact rows below 1200 px (DataTable cardsBelow="lg"), a table from 1200 px. */
 @media (max-width: 1199px) {
   .people-page .person-lines.data-table tfoot th {
-    padding: var(--space-2) 0 var(--space-1);
+    padding: 0;
     border: 0;
   }
 }
@@ -215,22 +209,15 @@
 }
 
 @media (max-width: 599px) {
-  /* Cards: the tag alone (no "Osakas" label in front of it); nothing for non-partners. */
+  /* Phone rows: the partner tag alone (phoneBare); nothing for non-partners. */
   .people-page .people-table td.people-partner-cell {
     width: auto;
-    justify-content: flex-start;
-  }
-  .people-page .people-table td.people-partner-cell::before {
-    content: none;
   }
   .people-page .people-table td.people-partner-cell:not(:has(.tag)) {
     display: none;
   }
   .people-page .people-table .people-events-cell {
     width: auto;
-  }
-  .people-page .people-roles {
-    justify-content: flex-end;
   }
 }
 
@@ -244,16 +231,15 @@
 .people-page .person-event-count-value {
   font-variant-numeric: tabular-nums;
 }
-@media (min-width: 600px) {
-  .people-page .field-list > .person-event-count {
-    display: grid;
-    grid-template-columns: var(--field-label-w) minmax(0, 1fr);
-    column-gap: var(--space-4);
-    align-items: center;
-    min-height: var(--control-h);
-    margin: 0;
-  }
-  .people-page .person-event-count > .person-event-count-hint {
-    grid-column: 2;
-  }
+/* FieldList is label | value at every width (TASK-175). */
+.people-page .field-list > .person-event-count {
+  display: grid;
+  grid-template-columns: var(--field-label-w) minmax(0, 1fr);
+  column-gap: var(--space-4);
+  align-items: center;
+  min-height: var(--control-h);
+  margin: 0;
+}
+.people-page .person-event-count > .person-event-count-hint {
+  grid-column: 2;
 }

@@ -280,7 +280,7 @@ test('list: KPI cards = offer stats API (open value = BR-106); rows of every yea
   if (!isMobile(testInfo)) {
     await expect(offerTable(page).getByRole('columnheader', { name: 'Luotu', exact: true })).toHaveAttribute('aria-sort', 'descending');
   }
-  // The Luotu column is always shown (priority 1), on phone cards too (FI date format).
+  // The Luotu column is always shown (priority 1), on phone rows too (FI date format).
   const createdCell = offerRow(page, name('Alfa')).locator('td[data-label="Luotu"]');
   await expect(createdCell).toBeVisible();
   await expect(createdCell).toHaveText(/^\d{1,2}\.\d{1,2}\.\d{4}$/);
@@ -305,7 +305,7 @@ test('list: KPI cards = offer stats API (open value = BR-106); rows of every yea
   await expect(offerRow(page, name('Bravo'))).toContainText('–'); // no price
 
   // Sorting: price asc / desc (empty last), event name asc. Headers on desktop, URL on phones
-  // (the table is laid out as cards there; the sort lives in ?sort=&dir=).
+  // (the table is laid out as compact rows there; the sort lives in ?sort=&dir=).
   const byPrice = specs.filter((s) => s.price !== null).sort((a, b) => a.price! - b.price!).map((s) => name(s.key));
   const sortBy = async (column: string, key: string, dir: 'asc' | 'desc') => {
     if (isMobile(testInfo)) {
@@ -423,7 +423,8 @@ test('list: KPI cards = offer stats API (open value = BR-106); rows of every yea
 /**
  * TASK-147: the offer table hides priority 2 / 3 columns (Lähde, Tapahtumatyyppi, Lopputulos,
  * Tapahtuma…) on narrower tables. Tests that use those columns on desktop run at 1920 px with the
- * sidebar collapsed, where every column is shown. Phones show every field in the cards.
+ * sidebar collapsed, where every column is shown. Phone rows (TASK-175) leave Lähde,
+ * Tapahtumatyyppi and Myyjä out.
  */
 async function showAllOfferColumns(page: Page, testInfo: Parameters<typeof isMobile>[0]): Promise<void> {
   if (isMobile(testInfo)) return;
@@ -505,8 +506,22 @@ test('inline source, event type and disposition: saved on change, kept after rel
   const eventType = row.getByLabel(`Tapahtumatyyppi: ${ev}`, { exact: true });
   const disposition = row.getByLabel(`Lopputulos: ${ev}`, { exact: true });
 
-  expect(await selectInline(page, source, 'Instagram')).toEqual({ source: 'INSTAGRAM' });
-  expect(await selectInline(page, eventType, 'Yritystilaisuus')).toEqual({ eventType: 'CORPORATE' });
+  // Phones (TASK-175 compact rows): Lähde and Tapahtumatyyppi are left out of the phone row
+  // (priority 3, like on narrow desktop tables); there they are set through the API instead.
+  const phone = isMobile(testInfo);
+  const viaApi = async (data: Record<string, unknown>) => {
+    await api(page).patch(`/offers/${offer.id}`, data);
+    return data;
+  };
+  if (phone) {
+    await expect(source).toBeHidden();
+    await expect(eventType).toBeHidden();
+    await expect(disposition).toBeVisible();
+  }
+  expect(phone ? await viaApi({ source: 'INSTAGRAM' }) : await selectInline(page, source, 'Instagram')).toEqual({ source: 'INSTAGRAM' });
+  expect(phone ? await viaApi({ eventType: 'CORPORATE' }) : await selectInline(page, eventType, 'Yritystilaisuus')).toEqual({
+    eventType: 'CORPORATE',
+  });
   expect(await selectInline(page, disposition, DISPOSITION_FI.LOST_COMPETITOR)).toEqual({ disposition: 'LOST_COMPETITOR' });
   await expect(row).toContainText(STATUS_FI.REJECTED);
 
@@ -519,7 +534,7 @@ test('inline source, event type and disposition: saved on change, kept after rel
   // Back to pending → open; "–" clears the source.
   expect(await selectInline(page, disposition, DISPOSITION_FI.PENDING)).toEqual({ disposition: 'PENDING' });
   await expect(row).toContainText(STATUS_FI.OPEN);
-  expect(await selectInline(page, source, '–')).toEqual({ source: null });
+  expect(phone ? await viaApi({ source: null }) : await selectInline(page, source, '–')).toEqual({ source: null });
   await page.reload();
   await expect(source.locator('option:checked')).toHaveText('–');
   await expect(disposition.locator('option:checked')).toHaveText(DISPOSITION_FI.PENDING);
