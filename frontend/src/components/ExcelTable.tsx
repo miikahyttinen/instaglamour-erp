@@ -44,6 +44,7 @@ function cellClass<T>(col: ExcelColumn<T>): string | undefined {
       col.numeric && 'num',
       col.primary && 'cell-primary',
       col.phoneMain && 'cell-main',
+      col.phoneInline && 'cell-inline',
       col.phoneBare && 'cell-bare',
       col.hideOnPhone && 'hide-phone',
       (col.priority ?? 1) > 1 && `excel-prio-${col.priority}`,

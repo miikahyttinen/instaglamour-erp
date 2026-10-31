@@ -20,6 +20,9 @@ export interface DataTableColumn<T> {
   primary?: boolean;
   /** Phone rows: the main figure / tag at the right end of line 1 (no label, one line). */
   phoneMain?: boolean;
+  /** Phone rows: on line 1 between the title and the `phoneMain` cell (no label, one line, e.g.
+   *  status tags). The title then stays on one line and truncates with an ellipsis instead. */
+  phoneInline?: boolean;
   /** Phone rows: shown on line 2 without its label (self-explanatory values: dates, tags). */
   phoneBare?: boolean;
   /** Not shown in the phone row layout. */
@@ -81,6 +84,7 @@ export function DataTable<T>({
       col.numeric && 'num',
       col.primary && 'cell-primary',
       col.phoneMain && 'cell-main',
+      col.phoneInline && 'cell-inline',
       col.phoneBare && 'cell-bare',
       col.hideOnPhone && 'hide-phone',
       col.className,

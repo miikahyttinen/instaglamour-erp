@@ -328,7 +328,7 @@ function TableDateRange({ start, end, lang }: { start: string; end: string | nul
  * 600 px it fills the width without scrolling sideways; columns with priority 2 / 3 are hidden on
  * narrower tables (TASK-147: 1 lineup, date, venue, status, total, margin · 2 client, invoicing,
  * seller, staffing · 3 producer, balance, budgeted, actual costs). Phones (< 600 px): one compact
- * row per event (lineup + total; date, venue, client, tags, margin) + the "Suodattimet" sheet. Scrolls the first upcoming visible event into view.
+ * row per event (line 1: lineup … status + invoicing tags, total; line 2: date, venue, client, staffing, margin) + the "Suodattimet" sheet. Scrolls the first upcoming visible event into view.
  */
 function EventTable({ events, partners, lang, tableState }: EventTableProps) {
   const { t } = useTranslation();
@@ -347,7 +347,7 @@ function EventTable({ events, partners, lang, tableState }: EventTableProps) {
       sortValue: (g) => g.lineupName,
       filterValue: (g) => g.lineupName,
       cell: (g) => (
-        <Link to={`/gigs/${g.id}`} className="event-link">
+        <Link to={`/gigs/${g.id}`} className="event-link" title={g.lineupName}>
           {g.lineupName}{' '}
           {/* The venue has its own column; the link name stays "Lineup · Venue" (unique per event). */}
           <span className="visually-hidden">· {g.venue}</span>
@@ -390,7 +390,7 @@ function EventTable({ events, partners, lang, tableState }: EventTableProps) {
     },
     {
       key: 'status',
-      phoneBare: true,
+      phoneInline: true, // phone rows: line 1, between the lineup and the total
       label: t('events.columns.status'),
       className: 'excel-col-fit',
       sortValue: (g) => EVENT_DISPLAY_STATUSES.indexOf(eventDisplayStatus(g)),
@@ -402,7 +402,7 @@ function EventTable({ events, partners, lang, tableState }: EventTableProps) {
     {
       // "Laskutus": one tag = the gig's next invoicing action (api-contract "Invoicing: one label").
       key: 'invoiceState',
-      phoneBare: true,
+      phoneInline: true, // phone rows: line 1, between the lineup and the total
       label: t('events.columns.invoiceState'),
       priority: 2,
       className: 'event-col-invoice excel-col-fit',

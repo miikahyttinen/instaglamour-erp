@@ -1731,7 +1731,49 @@ label.switch.inline-switch {
     color: var(--text);
     white-space: nowrap;
   }
-  .data-table-cards td:is(.cell-primary, .cell-main, .cell-bare)::before,
+  /* `cell-inline` (e.g. status tags): line 1 between the title and the main figure, one line.
+     With them the title stays on one line and truncates first (ellipsis); the link's accessible
+     name / title keep the full text. Line 1 can never wrap: the inline cells have a zero basis
+     (so only the title's minimum and the main figure count for the line break) and take the free
+     space first (grow 1000, capped at their content width); the title gets what is left. Only
+     when the title is down to its minimum does a tag truncate (ellipsis). */
+  .data-table-cards td.cell-inline {
+    order: 1;
+    flex: 1000 1 0;
+    min-width: 0;
+    max-width: max-content;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+  .data-table-cards td.cell-inline > * {
+    min-width: 0;
+  }
+  .data-table-cards td.cell-inline .tag {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    /* Tighter tags so the full line fits 320 px in most cases. */
+    padding-left: var(--space-1);
+    padding-right: var(--space-1);
+    letter-spacing: 0.06em;
+  }
+  .data-table-cards tr:has(> td.cell-inline:not(.hide-phone)) {
+    column-gap: var(--space-2);
+  }
+  .data-table-cards tr:has(> td.cell-inline:not(.hide-phone)) td.cell-primary {
+    min-width: 1.5em; /* at least the first letter + "…" */
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow-wrap: normal;
+  }
+  /* Hidden text after a truncated title would sit past the right edge (its containing block is
+     the row, outside the title's clip): pin it to the row's start. */
+  .data-table-cards tr:has(> td.cell-inline:not(.hide-phone)) td.cell-primary .visually-hidden {
+    top: 0;
+    left: 0;
+  }
+  .data-table-cards td:is(.cell-primary, .cell-main, .cell-inline, .cell-bare)::before,
   .data-table-cards td:not([data-label])::before {
     content: none;
   }
@@ -1849,7 +1891,49 @@ label.switch.inline-switch {
     color: var(--text);
     white-space: nowrap;
   }
-  .data-table-cards-lg td:is(.cell-primary, .cell-main, .cell-bare)::before,
+  /* `cell-inline` (e.g. status tags): line 1 between the title and the main figure, one line.
+     With them the title stays on one line and truncates first (ellipsis); the link's accessible
+     name / title keep the full text. Line 1 can never wrap: the inline cells have a zero basis
+     (so only the title's minimum and the main figure count for the line break) and take the free
+     space first (grow 1000, capped at their content width); the title gets what is left. Only
+     when the title is down to its minimum does a tag truncate (ellipsis). */
+  .data-table-cards-lg td.cell-inline {
+    order: 1;
+    flex: 1000 1 0;
+    min-width: 0;
+    max-width: max-content;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+  .data-table-cards-lg td.cell-inline > * {
+    min-width: 0;
+  }
+  .data-table-cards-lg td.cell-inline .tag {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    /* Tighter tags so the full line fits 320 px in most cases. */
+    padding-left: var(--space-1);
+    padding-right: var(--space-1);
+    letter-spacing: 0.06em;
+  }
+  .data-table-cards-lg tr:has(> td.cell-inline:not(.hide-phone)) {
+    column-gap: var(--space-2);
+  }
+  .data-table-cards-lg tr:has(> td.cell-inline:not(.hide-phone)) td.cell-primary {
+    min-width: 1.5em; /* at least the first letter + "…" */
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow-wrap: normal;
+  }
+  /* Hidden text after a truncated title would sit past the right edge (its containing block is
+     the row, outside the title's clip): pin it to the row's start. */
+  .data-table-cards-lg tr:has(> td.cell-inline:not(.hide-phone)) td.cell-primary .visually-hidden {
+    top: 0;
+    left: 0;
+  }
+  .data-table-cards-lg td:is(.cell-primary, .cell-main, .cell-inline, .cell-bare)::before,
   .data-table-cards-lg td:not([data-label])::before {
     content: none;
   }

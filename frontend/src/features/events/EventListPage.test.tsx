@@ -346,7 +346,7 @@ describe('event list (UC-003)', () => {
     expect(within(table()).getByRole('button', { name: 'Suodata: Laskutus' })).toHaveAccessibleDescription('Suodatin käytössä');
   });
 
-  it('phone rows (TASK-175): lineup + total on line 1, the one invoicing state tag, low-priority money hidden', async () => {
+  it('phone rows (TASK-175): lineup, status + invoicing tags and total on line 1, the one invoicing state tag, low-priority money hidden', async () => {
     signInMock().selectedYear = 2020;
     const e = addMockEvent({ startDate: '2020-02-01', venue: 'Venue Card', priceCents: 100000 });
     addInvoiceRow(db.events, e, { description: 'Invoice', amountCents: 100000, status: 'SENT' }, partnerA().id);
@@ -357,11 +357,19 @@ describe('event list (UC-003)', () => {
     const invoicing = within(card).getAllByRole('cell').find((c) => c.getAttribute('data-label') === 'Laskutus')!;
     expect(invoicing.querySelectorAll('.tag')).toHaveLength(1);
     expect(within(invoicing).getByText('Avoimia laskuja')).toHaveClass('tag', 'tag-warn');
-    expect(invoicing).toHaveClass('cell-bare');
+    // Line 1: lineup … status tag, invoicing tag, total (the tags sit between the name and the price).
+    expect(invoicing).toHaveClass('cell-inline');
     const cellOf = (label: string) => within(card).getAllByRole('cell').find((c) => c.getAttribute('data-label') === label)!;
     expect(cellOf('Kokoonpano')).toHaveClass('cell-primary');
     expect(within(cellOf('Kokoonpano')).getByRole('link')).toBeInTheDocument();
     expect(cellOf('Kokonaishinta')).toHaveClass('cell-main');
+    expect(cellOf('Tila')).toHaveClass('cell-inline');
+    expect(cellOf('Tila').querySelector('.tag')).not.toBeNull();
+    const line1 = within(card).getAllByRole('cell').filter((c) => c.matches('.cell-primary, .cell-inline, .cell-main'));
+    expect(line1.map((c) => c.getAttribute('data-label'))).toEqual(['Kokoonpano', 'Tila', 'Laskutus', 'Kokonaishinta']);
+    // The full lineup name stays available when the title truncates.
+    expect(within(cellOf('Kokoonpano')).getByRole('link')).toHaveAttribute('title');
+    for (const line2 of ['Päivä', 'Paikka']) expect(cellOf(line2), line2).toHaveClass('cell-bare');
     // The client name is shown bare (no "Asiakas" label) and stays visible on phones.
     expect(cellOf('Asiakas')).toHaveClass('cell-bare');
     expect(cellOf('Asiakas')).not.toHaveClass('hide-phone');
