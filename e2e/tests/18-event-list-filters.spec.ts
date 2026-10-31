@@ -197,8 +197,8 @@ test('old /events URLs redirect to /gigs and keep the query string', async ({ pa
 });
 
 // Kate-%: the actual percentage ("tot. x %") is on its own line under the budget one in the
-// table (wide and narrow); on phone rows (TASK-175) it follows the budget one on the same line.
-// Each percentage stays on one line.
+// table (wide and narrow); on phone rows (TASK-175) it follows the budget one on the same line,
+// without the "Kate-%" label (owner request 2026-10-31). Each percentage stays on one line.
 test('Kate-%: the actual percentage is on a second line in the table, beside it on phone rows', async ({ page }, testInfo) => {
   const { year } = await setup(page, testInfo);
   const widths = tagOf(testInfo) === 'M' ? [375] : [900, 1440];
@@ -220,6 +220,11 @@ test('Kate-%: the actual percentage is on a second line in the table, beside it 
     if (w < 600) expect(actual.top, `${w} px: actual beside the budget`).toBeLessThan(budget.bottom);
     else expect(actual.top, `${w} px: actual under the budget`).toBeGreaterThanOrEqual(budget.bottom - 1);
     for (const part of parts) expect(part.oneLine, `${w} px: "${part.text}" on one line`).toBe(true);
+    if (w < 600) {
+      const label = await cell.evaluate((td) => getComputedStyle(td, '::before').content);
+      expect(label, `${w} px: no "Kate-%" label`).toBe('none');
+      await expect(cell).not.toContainText('KATE');
+    }
   }
 });
 
@@ -373,14 +378,14 @@ test('gig statuses and "Laskutus": invoice rows, one invoicing state tag on the 
   await expect(paidTag).toHaveClass(/tag-ok-strong/);
 });
 
-// Phone rows (owner requests 2026-10-31): line 1 = "Lineup STATUS ——— total INVOICING": the status
-// tag directly after the lineup name, a flexible gap, then the total and the invoicing tag together
-// at the right edge (without an invoicing tag the total is at the right edge). The name truncates
-// first; the gap shrinks to the minimum (8 px) before it does. At 320–430 px the tags and the total never wrap; a long lineup name truncates
-// with an ellipsis and keeps its full text in the link's accessible name and title. Worst case
+// Phone rows (owner requests 2026-10-31): line 1 = "Lineup STATUS ——— INVOICING total": the status
+// tag directly after the lineup name, a flexible gap, then the invoicing tag and the total together
+// at the right edge, the total last (without an invoicing tag the total is at the right edge). The
+// name truncates first; the gap shrinks to the minimum (8 px) before it does. At 320–430 px the
+// tags and the total never wrap; a long lineup name truncates with an ellipsis and keeps its full text in the link's accessible name and title. Worst case
 // here: the longest invoicing tag ("Laskutettavia rivejä") and a six-figure total; only at 320 px,
 // once the name is down to its minimum, may that tag truncate too.
-test('phone rows: line 1 = lineup name + status tag on the left, total + invoicing tag at the right edge', async ({ page }, testInfo) => {
+test('phone rows: line 1 = lineup name + status tag on the left, invoicing tag + total at the right edge', async ({ page }, testInfo) => {
   test.skip(tagOf(testInfo) !== 'M', 'phone layout only');
   const { year } = await setup(page, testInfo);
   const venue = `Hall ${tagOf(testInfo)}${suffix()} Line1`;
@@ -426,15 +431,15 @@ test('phone rows: line 1 = lineup name + status tag on the left, total + invoici
       expect(b.h, `${w} px: ${name} on one line`).toBeLessThan(m.lineH * 1.5);
       expect(m.dateTop, `${w} px: line 2 under the ${name}`).toBeGreaterThanOrEqual(b.bottom - 1);
     }
-    // Order: title, status … total, invoicing; the invoicing tag at the right edge. Long name: it
-    // is truncated, so every gap is down to the minimum.
+    // Order: title, status … invoicing, total; the total last at the right edge. Long name: it is
+    // truncated, so every gap is down to the minimum.
     expect(status.left, `${w} px: status after the title`).toBeGreaterThanOrEqual(title.right - 1);
     expect(status.left - title.right, `${w} px: status hugs the title`).toBeLessThanOrEqual(MIN_GAP);
-    expect(total.left, `${w} px: total after the status`).toBeGreaterThanOrEqual(status.right - 1);
-    expect(total.left - status.right, `${w} px: gap at its minimum (name truncated)`).toBeLessThanOrEqual(MIN_GAP);
-    expect(invoice.left, `${w} px: invoicing after the total`).toBeGreaterThanOrEqual(total.right - 1);
-    expect(invoice.left - total.right, `${w} px: invoicing hugs the total`).toBeLessThanOrEqual(MIN_GAP);
-    expect(Math.abs(invoice.right - m.rowRight), `${w} px: invoicing tag at the far right`).toBeLessThanOrEqual(1);
+    expect(invoice.left, `${w} px: invoicing after the status`).toBeGreaterThanOrEqual(status.right - 1);
+    expect(invoice.left - status.right, `${w} px: gap at its minimum (name truncated)`).toBeLessThanOrEqual(MIN_GAP);
+    expect(total.left, `${w} px: total after the invoicing`).toBeGreaterThanOrEqual(invoice.right - 1);
+    expect(total.left - invoice.right, `${w} px: total hugs the invoicing tag`).toBeLessThanOrEqual(MIN_GAP);
+    expect(Math.abs(total.right - m.rowRight), `${w} px: total last, at the right edge`).toBeLessThanOrEqual(1);
     expect(title.h, `${w} px: title on one line`).toBeLessThan(m.lineH * 1.5);
     expect(m.truncated, `${w} px: long name truncated`).toBe(true);
     expect(m.ellipsis).toBe('ellipsis');

@@ -246,7 +246,7 @@
 }
 
 /* ---------- < 600 px: compact rows (TASK-175) ----------
-   Line 1: lineup (truncates) · status tag … total · invoicing tag (right edge); line 2: date · venue · client ·
+   Line 1: lineup (truncates) · status tag … invoicing tag · total (right edge); line 2: date · venue · client ·
    staffing tag · margin. An empty client / invoicing / staffing cell ("–") is left out; the two
    margins sit side by side. */
 @media (max-width: 599px) {

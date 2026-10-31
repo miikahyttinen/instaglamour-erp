@@ -1678,7 +1678,8 @@ label.switch.inline-switch {
     border-bottom: 0;
   }
   /* Line break after line 1 (title + main figure); secondary cells follow on line 2. Order:
-     0 title · 1 inline cells · 2 main figure · 3 end cells, then this break · 4 line 2. */
+     0 title · 1 inline cells · 2 spacer (tr::before) + end cells · 3 main figure, then this
+     break · 4 line 2. */
   .data-table-cards tr::after {
     content: '';
     order: 3;
@@ -1726,31 +1727,32 @@ label.switch.inline-switch {
     overflow-wrap: anywhere;
   }
   .data-table-cards td.cell-main {
-    order: 2;
+    order: 3;
     margin-left: auto;
     font-size: var(--fs-body);
     color: var(--text);
     white-space: nowrap;
   }
-  /* `cell-inline` (e.g. status tags): line 1 between the title and the main figure, one line;
-     `cell-end`: line 1 after the main figure, at the far right end of the row.
+  /* `cell-inline` (e.g. status tags): line 1 right after the title, one line; `cell-end`: line 1
+     right before the main figure, both at the right edge ("Title INLINE ——— END main").
      With them the title stays on one line and truncates first (ellipsis); the link's accessible
      name / title keep the full text. Line 1 can never wrap: the inline cells have a zero basis
      (so only the title's minimum and the main figure count for the line break) and take the free
-     space first (grow 1000, capped at their content width); the title gets what is left (also
-     capped at its content width, so the inline cells hug it on the left). The rest is the gap
-     before the main figure (`margin-left: auto`), so the main figure and the end cells hug the
-     right edge. Only when the title is down to its minimum does a tag truncate (ellipsis). */
+     space first (grow 1000000, capped at their content width); the title gets what is left (grow
+     1000, also capped at its content width, so the inline cells hug it on the left). The rest goes
+     to a spacer (tr::before, grow 1) between the inline and the end cells, so the end cells and
+     the main figure hug the right edge. Only when the title is down to its minimum does a tag
+     truncate (ellipsis). */
   .data-table-cards td:is(.cell-inline, .cell-end) {
     order: 1;
-    flex: 1000 1 0;
+    flex: 1000000 1 0;
     min-width: 0;
     max-width: max-content;
     overflow: hidden;
     white-space: nowrap;
   }
   .data-table-cards td.cell-end {
-    order: 3;
+    order: 2;
   }
   .data-table-cards td:is(.cell-inline, .cell-end) > * {
     min-width: 0;
@@ -1767,8 +1769,21 @@ label.switch.inline-switch {
   .data-table-cards tr:has(> td:is(.cell-inline, .cell-end):not(.hide-phone)) {
     column-gap: var(--space-2);
   }
-  .data-table-cards tr:has(> td:is(.cell-inline, .cell-end):not(.hide-phone)) td.cell-primary {
+  /* The flexible gap: before the end cells (first child, so first among order 2). Its negative
+     margin cancels one column gap, so the minimum gap stays 8 px. The main figure's auto margin
+     is not needed here. */
+  .data-table-cards tr:has(> td:is(.cell-inline, .cell-end):not(.hide-phone))::before {
+    content: '';
+    order: 2;
     flex: 1 1 0;
+    min-width: 0;
+    margin-left: calc(-1 * var(--space-2));
+  }
+  .data-table-cards tr:has(> td:is(.cell-inline, .cell-end):not(.hide-phone)) td.cell-main {
+    margin-left: 0;
+  }
+  .data-table-cards tr:has(> td:is(.cell-inline, .cell-end):not(.hide-phone)) td.cell-primary {
+    flex: 1000 1 0;
     max-width: max-content;
     min-width: 1.5em; /* at least the first letter + "…" */
     overflow: hidden;
@@ -1847,7 +1862,8 @@ label.switch.inline-switch {
     border-bottom: 0;
   }
   /* Line break after line 1 (title + main figure); secondary cells follow on line 2. Order:
-     0 title · 1 inline cells · 2 main figure · 3 end cells, then this break · 4 line 2. */
+     0 title · 1 inline cells · 2 spacer (tr::before) + end cells · 3 main figure, then this
+     break · 4 line 2. */
   .data-table-cards-lg tr::after {
     content: '';
     order: 3;
@@ -1895,31 +1911,32 @@ label.switch.inline-switch {
     overflow-wrap: anywhere;
   }
   .data-table-cards-lg td.cell-main {
-    order: 2;
+    order: 3;
     margin-left: auto;
     font-size: var(--fs-body);
     color: var(--text);
     white-space: nowrap;
   }
-  /* `cell-inline` (e.g. status tags): line 1 between the title and the main figure, one line;
-     `cell-end`: line 1 after the main figure, at the far right end of the row.
+  /* `cell-inline` (e.g. status tags): line 1 right after the title, one line; `cell-end`: line 1
+     right before the main figure, both at the right edge ("Title INLINE ——— END main").
      With them the title stays on one line and truncates first (ellipsis); the link's accessible
      name / title keep the full text. Line 1 can never wrap: the inline cells have a zero basis
      (so only the title's minimum and the main figure count for the line break) and take the free
-     space first (grow 1000, capped at their content width); the title gets what is left (also
-     capped at its content width, so the inline cells hug it on the left). The rest is the gap
-     before the main figure (`margin-left: auto`), so the main figure and the end cells hug the
-     right edge. Only when the title is down to its minimum does a tag truncate (ellipsis). */
+     space first (grow 1000000, capped at their content width); the title gets what is left (grow
+     1000, also capped at its content width, so the inline cells hug it on the left). The rest goes
+     to a spacer (tr::before, grow 1) between the inline and the end cells, so the end cells and
+     the main figure hug the right edge. Only when the title is down to its minimum does a tag
+     truncate (ellipsis). */
   .data-table-cards-lg td:is(.cell-inline, .cell-end) {
     order: 1;
-    flex: 1000 1 0;
+    flex: 1000000 1 0;
     min-width: 0;
     max-width: max-content;
     overflow: hidden;
     white-space: nowrap;
   }
   .data-table-cards-lg td.cell-end {
-    order: 3;
+    order: 2;
   }
   .data-table-cards-lg td:is(.cell-inline, .cell-end) > * {
     min-width: 0;
@@ -1936,8 +1953,21 @@ label.switch.inline-switch {
   .data-table-cards-lg tr:has(> td:is(.cell-inline, .cell-end):not(.hide-phone)) {
     column-gap: var(--space-2);
   }
-  .data-table-cards-lg tr:has(> td:is(.cell-inline, .cell-end):not(.hide-phone)) td.cell-primary {
+  /* The flexible gap: before the end cells (first child, so first among order 2). Its negative
+     margin cancels one column gap, so the minimum gap stays 8 px. The main figure's auto margin
+     is not needed here. */
+  .data-table-cards-lg tr:has(> td:is(.cell-inline, .cell-end):not(.hide-phone))::before {
+    content: '';
+    order: 2;
     flex: 1 1 0;
+    min-width: 0;
+    margin-left: calc(-1 * var(--space-2));
+  }
+  .data-table-cards-lg tr:has(> td:is(.cell-inline, .cell-end):not(.hide-phone)) td.cell-main {
+    margin-left: 0;
+  }
+  .data-table-cards-lg tr:has(> td:is(.cell-inline, .cell-end):not(.hide-phone)) td.cell-primary {
+    flex: 1000 1 0;
     max-width: max-content;
     min-width: 1.5em; /* at least the first letter + "…" */
     overflow: hidden;

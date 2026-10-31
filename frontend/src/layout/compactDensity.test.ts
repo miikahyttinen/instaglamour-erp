@@ -71,31 +71,37 @@ describe('phone rows instead of cards (< 600 px)', () => {
 
   it('line 1 = title + main figure; the other cells follow on line 2', () => {
     const orderOf = (sel: string) => Number(new RegExp(`${sel}\\s*\\{[^}]*?[\\s;]order:\\s*(\\d+)`).exec(phone)?.[1]);
-    // 0 title · 1 inline cells · 2 main figure · 3 end cells, then the line break · 4 line 2.
+    // 0 title · 1 inline cells · 2 spacer + end cells · 3 main figure, then the line break · 4 line 2.
     expect(orderOf('\\.data-table-cards td\\.cell-primary')).toBe(0);
     expect(orderOf('\\.data-table-cards td:is\\(\\.cell-inline, \\.cell-end\\)')).toBe(1);
-    expect(orderOf('\\.data-table-cards td\\.cell-main')).toBe(2);
-    expect(orderOf('\\.data-table-cards td\\.cell-end')).toBe(3);
+    expect(orderOf('\\.data-table-cards td\\.cell-end')).toBe(2);
+    expect(orderOf('\\.data-table-cards tr:has\\(> td:is\\(\\.cell-inline, \\.cell-end\\):not\\(\\.hide-phone\\)\\)::before')).toBe(2);
+    expect(orderOf('\\.data-table-cards td\\.cell-main')).toBe(3);
     expect(orderOf('\\.data-table-cards tr::after')).toBe(3);
     expect(orderOf('\\.data-table-cards td,\\s*\\.data-table-cards tfoot th')).toBe(4);
     expect(phone).toMatch(/\.data-table-cards tr::after\s*\{[^}]*flex:\s*0 0 100%/);
     expect(phone).toMatch(/\.cell-bare/);
   });
 
-  it('inline / end cells (tags) sit on line 1 around the main figure; the title truncates instead', () => {
+  it('inline cells hug the title, end cells + main figure hug the right edge; the title truncates instead', () => {
     const inline = /\.data-table-cards td:is\(\.cell-inline, \.cell-end\)\s*\{([^}]*)\}/.exec(phone)?.[1] ?? '';
     expect(inline).toMatch(/white-space:\s*nowrap/);
     // Zero basis + capped growth: line 1 never wraps, the title shrinks first.
-    expect(inline).toMatch(/flex:\s*1000 1 0/);
+    expect(inline).toMatch(/flex:\s*1000000 1 0/);
     expect(inline).toMatch(/max-width:\s*max-content/);
     const title = /tr:has\(> td:is\(\.cell-inline, \.cell-end\)[^{]*td\.cell-primary\s*\{([^}]*)\}/.exec(phone)?.[1] ?? '';
     expect(title).toMatch(/text-overflow:\s*ellipsis/);
     expect(title).toMatch(/white-space:\s*nowrap/);
     expect(title).toMatch(/min-width:\s*1\.5em/);
-    // The title only takes its content width, so inline cells hug it on the left; the main
-    // figure's auto margin takes the free space, so it and the end cells hug the right edge.
-    expect(title).toMatch(/flex:\s*1 1 0/);
+    // The title only takes its content width (grows after the tags), so inline cells hug it on
+    // the left; the spacer (grow 1) takes the rest, so the end cells and the main figure hug the
+    // right edge.
+    expect(title).toMatch(/flex:\s*1000 1 0/);
     expect(title).toMatch(/max-width:\s*max-content/);
+    const spacer = /tr:has\(> td:is\(\.cell-inline, \.cell-end\):not\(\.hide-phone\)\)::before\s*\{([^}]*)\}/.exec(phone)?.[1] ?? '';
+    expect(spacer).toMatch(/flex:\s*1 1 0/);
+    expect(spacer).toMatch(/margin-left:\s*calc\(-1 \* var\(--space-2\)\)/);
+    // Rows without inline / end cells keep the main figure right-aligned with its auto margin.
     expect(phone).toMatch(/\.data-table-cards td\.cell-main\s*\{[^}]*margin-left:\s*auto/);
   });
 
