@@ -120,3 +120,8 @@ Used by the gig list (Keikat) and the offer list (Tarjoukset); same component, s
 - Forms, notes and single-record field groups keep their own readable max widths (e.g. `--client-form-w`, label columns) — only the page container is uncapped.
 - **Every table** (`DataTable`, hand-written `.data-table`, `ExcelTable`, cost list, hours tables, budget, year page) is `width: 100%` and fills its container; **no horizontal scrolling at ≥ 600 px**. Text cells wrap; numbers, dates, money, % and tags stay on one line. Where a table has too many columns, lower-priority columns hide on narrower widths (same mechanism as ExcelTable `priority`) or the table switches to its card/stacked layout.
 - Numeric columns right-aligned with tabular figures, same paddings as the Excel tables.
+
+## Compact density (owner request 2026-10-31)
+- **More on screen, less air.** Reduce spacing tokens app-wide: page padding, section gaps, card padding, table cell padding and row height, form control height (desktop 32 px, touch targets stay ≥ 40 px on phones), heading margins. Keep everything aligned and readable; no overlapping or clipped text.
+- **No cards on phones.** Lists that become cards below 600 px (ExcelTable, DataTable, people, clients, offers, purchase orders, hours, tasks, budget, cost lines) render as **compact rows**: one row per item, primary text + key figure on the first line, secondary info on a second line only when it doesn't fit. Tapping the row opens the item (or the row's link). Inline-editable lists keep their controls but in a compact row layout.
+- **One line where possible:** short label/value pairs, tags, dates and money stay on one line; group related small fields side by side instead of stacked.
