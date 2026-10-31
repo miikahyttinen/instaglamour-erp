@@ -92,6 +92,11 @@ describe('phone rows instead of cards (< 600 px)', () => {
     expect(title).toMatch(/text-overflow:\s*ellipsis/);
     expect(title).toMatch(/white-space:\s*nowrap/);
     expect(title).toMatch(/min-width:\s*1\.5em/);
+    // The title only takes its content width, so inline cells hug it on the left; the main
+    // figure's auto margin takes the free space, so it and the end cells hug the right edge.
+    expect(title).toMatch(/flex:\s*1 1 0/);
+    expect(title).toMatch(/max-width:\s*max-content/);
+    expect(phone).toMatch(/\.data-table-cards td\.cell-main\s*\{[^}]*margin-left:\s*auto/);
   });
 
   it('the title link covers the whole row; other controls stay on top', () => {
