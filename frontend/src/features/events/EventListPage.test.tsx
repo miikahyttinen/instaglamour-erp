@@ -362,6 +362,9 @@ describe('event list (UC-003)', () => {
     expect(cellOf('Kokoonpano')).toHaveClass('cell-primary');
     expect(within(cellOf('Kokoonpano')).getByRole('link')).toBeInTheDocument();
     expect(cellOf('Kokonaishinta')).toHaveClass('cell-main');
+    // The client name is shown bare (no "Asiakas" label) and stays visible on phones.
+    expect(cellOf('Asiakas')).toHaveClass('cell-bare');
+    expect(cellOf('Asiakas')).not.toHaveClass('hide-phone');
     for (const hidden of ['Myyjä', 'Tuottaja', 'Saldo', 'Kulut, budjetti', 'Kulut, toteuma']) {
       expect(cellOf(hidden), hidden).toHaveClass('hide-phone');
     }
