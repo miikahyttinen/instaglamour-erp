@@ -1,5 +1,5 @@
 # TASK-175: Compact density + rows instead of cards on phones
-- **owner:** ui · **status:** todo · **spec:** docs/design.md → "Compact density" (2026-10-31)
+- **owner:** ui · **status:** done · **spec:** docs/design.md → "Compact density" (2026-10-31)
 ## Acceptance criteria
 - [ ] Spacing tokens tightened (tokens.css / styles.css) so desktop pages show clearly more content (target: ~25–35 % more table rows visible at 1440×900 on Keikat/Tarjoukset; less padding in cards/sections/forms). Document the new values in tokens comments.
 - [ ] Phones (< 600 px): replace card layouts with compact rows in ExcelTable, DataTable and hand-made lists (people, clients, offers, purchase orders, hours, tasks, budget, cost lines on the gig page, invoice rows, year page lists). Row = line 1: title/link + main figure/tag; line 2 (only if needed): secondary fields. Whole row tappable where it links. Filters/sort sheet on phones keeps working.
