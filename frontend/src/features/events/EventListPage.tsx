@@ -372,6 +372,7 @@ function EventTable({ events, partners, lang, tableState }: EventTableProps) {
     },
     {
       key: 'client',
+      phoneBare: true, // phone rows: the client name alone, no "Asiakas" label
       label: t('clients.eventColumn'),
       priority: 2,
       className: 'event-col-client',
