@@ -328,7 +328,7 @@ function TableDateRange({ start, end, lang }: { start: string; end: string | nul
  * 600 px it fills the width without scrolling sideways; columns with priority 2 / 3 are hidden on
  * narrower tables (TASK-147: 1 lineup, date, venue, status, total, margin · 2 client, invoicing,
  * seller, staffing · 3 producer, balance, budgeted, actual costs). Phones (< 600 px): one compact
- * row per event (line 1: lineup … status + invoicing tags, total; line 2: date, venue, client, staffing, margin) + the "Suodattimet" sheet. Scrolls the first upcoming visible event into view.
+ * row per event (line 1: lineup … status tag, total, invoicing tag; line 2: date, venue, client, staffing, margin) + the "Suodattimet" sheet. Scrolls the first upcoming visible event into view.
  */
 function EventTable({ events, partners, lang, tableState }: EventTableProps) {
   const { t } = useTranslation();
@@ -402,7 +402,7 @@ function EventTable({ events, partners, lang, tableState }: EventTableProps) {
     {
       // "Laskutus": one tag = the gig's next invoicing action (api-contract "Invoicing: one label").
       key: 'invoiceState',
-      phoneInline: true, // phone rows: line 1, between the lineup and the total
+      phoneEnd: true, // phone rows: line 1, after the total at the far right
       label: t('events.columns.invoiceState'),
       priority: 2,
       className: 'event-col-invoice excel-col-fit',

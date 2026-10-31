@@ -373,12 +373,13 @@ test('gig statuses and "Laskutus": invoice rows, one invoicing state tag on the 
   await expect(paidTag).toHaveClass(/tag-ok-strong/);
 });
 
-// Phone rows (owner request 2026-10-31): line 1 = lineup name … status tag · invoicing tag · total
-// (right-aligned). At 320–430 px the tags and the total never wrap; a long lineup name truncates
+// Phone rows (owner requests 2026-10-31): line 1 = lineup name … status tag · total · invoicing
+// tag at the far right end of the row (without an invoicing tag the total is last, right-aligned).
+// At 320–430 px the tags and the total never wrap; a long lineup name truncates
 // with an ellipsis and keeps its full text in the link's accessible name and title. Worst case
 // here: the longest invoicing tag ("Laskutettavia rivejä") and a six-figure total; only at 320 px,
 // once the name is down to its minimum, may that tag truncate too.
-test('phone rows: status and invoicing tags sit on line 1 between the lineup name and the total', async ({ page }, testInfo) => {
+test('phone rows: line 1 = lineup name, status tag, total, invoicing tag at the far right', async ({ page }, testInfo) => {
   test.skip(tagOf(testInfo) !== 'M', 'phone layout only');
   const { year } = await setup(page, testInfo);
   const venue = `Hall ${tagOf(testInfo)}${suffix()} Line1`;
@@ -386,6 +387,8 @@ test('phone rows: status and invoicing tags sit on line 1 between the lineup nam
   const longName = `Lineup ${suffix()} with a very long synthetic name that cannot fit`;
   await api(page).patch(`/events/${gig.id}`, { lineupName: longName });
   await api(page).post(`/events/${gig.id}/invoice-rows`, { description: 'Invoice', amountCents: 1000, status: 'READY' });
+  const plainVenue = `Hall ${tagOf(testInfo)}${suffix()} NoInvoice`;
+  await createEventViaApi(page, { startDate: `${year}-10-01`, venue: plainVenue, priceCents: 12345600 });
 
   for (const w of [320, 375, 430]) {
     await page.setViewportSize({ width: w, height: 800 });
@@ -410,7 +413,7 @@ test('phone rows: status and invoicing tags sit on line 1 between the lineup nam
         lineH: parseFloat(getComputedStyle(total).lineHeight) || 24,
         rowRight: tr.getBoundingClientRect().right - parseFloat(getComputedStyle(tr).paddingRight),
         truncated: title.scrollWidth > title.clientWidth,
-        tagsCut: [...tr.querySelectorAll<HTMLElement>('td.cell-inline .tag')].some((t) => t.scrollWidth > t.clientWidth),
+        tagsCut: [...tr.querySelectorAll<HTMLElement>('td:is(.cell-inline, .cell-end) .tag')].some((t) => t.scrollWidth > t.clientWidth),
         ellipsis: getComputedStyle(title).textOverflow,
       };
     });
@@ -422,15 +425,30 @@ test('phone rows: status and invoicing tags sit on line 1 between the lineup nam
       expect(b.h, `${w} px: ${name} on one line`).toBeLessThan(m.lineH * 1.5);
       expect(m.dateTop, `${w} px: line 2 under the ${name}`).toBeGreaterThanOrEqual(b.bottom - 1);
     }
-    // Order: title … status, invoicing, total; the total at the right edge.
+    // Order: title … status, total, invoicing; the invoicing tag at the right edge.
     expect(status.left, `${w} px: status after the title`).toBeGreaterThanOrEqual(title.right - 1);
-    expect(invoice.left, `${w} px: invoicing after the status`).toBeGreaterThanOrEqual(status.right - 1);
-    expect(total.left, `${w} px: total after the invoicing`).toBeGreaterThanOrEqual(invoice.right - 1);
-    expect(Math.abs(total.right - m.rowRight), `${w} px: total right-aligned`).toBeLessThanOrEqual(1);
+    expect(total.left, `${w} px: total after the status`).toBeGreaterThanOrEqual(status.right - 1);
+    expect(invoice.left, `${w} px: invoicing after the total`).toBeGreaterThanOrEqual(total.right - 1);
+    expect(Math.abs(invoice.right - m.rowRight), `${w} px: invoicing tag at the far right`).toBeLessThanOrEqual(1);
     expect(title.h, `${w} px: title on one line`).toBeLessThan(m.lineH * 1.5);
     expect(m.truncated, `${w} px: long name truncated`).toBe(true);
     expect(m.ellipsis).toBe('ellipsis');
     if (w >= 375) expect(m.tagsCut, `${w} px: tags shown in full`).toBe(false);
+
+    // No invoicing tag ("–" is left out on phones): the total is the last item, right-aligned.
+    const plain = eventListRows(page).filter({ hasText: plainVenue });
+    await expect(plain.locator('td.event-col-invoice')).toBeHidden();
+    const p = await plain.evaluate((tr) => {
+      const title = tr.querySelector('td.cell-primary')!.getBoundingClientRect();
+      const status = tr.querySelector('td.cell-inline .tag')!.getBoundingClientRect();
+      const total = tr.querySelector('td.cell-main')!.getBoundingClientRect();
+      const rowRight = tr.getBoundingClientRect().right - parseFloat(getComputedStyle(tr).paddingRight);
+      return { titleRight: title.right, titleTop: title.top, titleBottom: title.bottom, status: status.left, statusRight: status.right, totalLeft: total.left, totalRight: total.right, totalMid: (total.top + total.bottom) / 2, rowRight };
+    });
+    expect(p.status, `${w} px: status after the title (no invoicing)`).toBeGreaterThanOrEqual(p.titleRight - 1);
+    expect(p.totalLeft, `${w} px: total after the status (no invoicing)`).toBeGreaterThanOrEqual(p.statusRight - 1);
+    expect(p.totalMid, `${w} px: total on line 1 (no invoicing)`).toBeLessThan(p.titleBottom);
+    expect(Math.abs(p.totalRight - p.rowRight), `${w} px: total last, right-aligned`).toBeLessThanOrEqual(1);
     await expectNoHorizontalScroll(page, `gig list ${w} px`);
   }
 });

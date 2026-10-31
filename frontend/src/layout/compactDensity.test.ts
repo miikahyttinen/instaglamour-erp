@@ -70,20 +70,25 @@ describe('phone rows instead of cards (< 600 px)', () => {
   });
 
   it('line 1 = title + main figure; the other cells follow on line 2', () => {
-    expect(phone).toMatch(/\.data-table-cards td\.cell-primary\s*\{[^}]*order:\s*0/);
-    expect(phone).toMatch(/\.data-table-cards td\.cell-main\s*\{[^}]*order:\s*1/);
+    const orderOf = (sel: string) => Number(new RegExp(`${sel}\\s*\\{[^}]*?[\\s;]order:\\s*(\\d+)`).exec(phone)?.[1]);
+    // 0 title · 1 inline cells · 2 main figure · 3 end cells, then the line break · 4 line 2.
+    expect(orderOf('\\.data-table-cards td\\.cell-primary')).toBe(0);
+    expect(orderOf('\\.data-table-cards td:is\\(\\.cell-inline, \\.cell-end\\)')).toBe(1);
+    expect(orderOf('\\.data-table-cards td\\.cell-main')).toBe(2);
+    expect(orderOf('\\.data-table-cards td\\.cell-end')).toBe(3);
+    expect(orderOf('\\.data-table-cards tr::after')).toBe(3);
+    expect(orderOf('\\.data-table-cards td,\\s*\\.data-table-cards tfoot th')).toBe(4);
     expect(phone).toMatch(/\.data-table-cards tr::after\s*\{[^}]*flex:\s*0 0 100%/);
     expect(phone).toMatch(/\.cell-bare/);
   });
 
-  it('inline cells (tags) sit on line 1 before the main figure; the title truncates instead', () => {
-    const inline = /\.data-table-cards td\.cell-inline\s*\{([^}]*)\}/.exec(phone)?.[1] ?? '';
-    expect(inline).toMatch(/order:\s*1/);
+  it('inline / end cells (tags) sit on line 1 around the main figure; the title truncates instead', () => {
+    const inline = /\.data-table-cards td:is\(\.cell-inline, \.cell-end\)\s*\{([^}]*)\}/.exec(phone)?.[1] ?? '';
     expect(inline).toMatch(/white-space:\s*nowrap/);
     // Zero basis + capped growth: line 1 never wraps, the title shrinks first.
     expect(inline).toMatch(/flex:\s*1000 1 0/);
     expect(inline).toMatch(/max-width:\s*max-content/);
-    const title = /tr:has\(> td\.cell-inline[^{]*td\.cell-primary\s*\{([^}]*)\}/.exec(phone)?.[1] ?? '';
+    const title = /tr:has\(> td:is\(\.cell-inline, \.cell-end\)[^{]*td\.cell-primary\s*\{([^}]*)\}/.exec(phone)?.[1] ?? '';
     expect(title).toMatch(/text-overflow:\s*ellipsis/);
     expect(title).toMatch(/white-space:\s*nowrap/);
     expect(title).toMatch(/min-width:\s*1\.5em/);

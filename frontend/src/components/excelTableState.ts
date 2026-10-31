@@ -47,6 +47,9 @@ export interface ExcelColumn<T> {
   /** Phone rows: on line 1 between the title and the `phoneMain` cell (no label, one line, e.g.
    *  status tags). The title then stays on one line and truncates with an ellipsis instead. */
   phoneInline?: boolean;
+  /** Phone rows: on line 1 after the `phoneMain` cell, at the far right end of the row (no label,
+   *  one line, e.g. a secondary tag). Truncates like `phoneInline`. */
+  phoneEnd?: boolean;
   /** Phone rows: shown on line 2 without its label (self-explanatory values: dates, tags). */
   phoneBare?: boolean;
   /** Not shown in the phone row layout (its filter and sort still apply). */

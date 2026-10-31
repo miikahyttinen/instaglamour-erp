@@ -1677,10 +1677,11 @@ label.switch.inline-switch {
   .data-table-cards tbody tr:last-child {
     border-bottom: 0;
   }
-  /* Line break after line 1 (title + main figure); secondary cells follow on line 2. */
+  /* Line break after line 1 (title + main figure); secondary cells follow on line 2. Order:
+     0 title · 1 inline cells · 2 main figure · 3 end cells, then this break · 4 line 2. */
   .data-table-cards tr::after {
     content: '';
-    order: 1;
+    order: 3;
     flex: 0 0 100%;
     height: 0;
   }
@@ -1693,7 +1694,7 @@ label.switch.inline-switch {
   /* Secondary cell: small "LABEL value" on line 2. */
   .data-table-cards td,
   .data-table-cards tfoot th {
-    order: 2;
+    order: 4;
     display: inline-flex;
     flex-wrap: wrap;
     align-items: baseline;
@@ -1725,19 +1726,20 @@ label.switch.inline-switch {
     overflow-wrap: anywhere;
   }
   .data-table-cards td.cell-main {
-    order: 1;
+    order: 2;
     margin-left: auto;
     font-size: var(--fs-body);
     color: var(--text);
     white-space: nowrap;
   }
-  /* `cell-inline` (e.g. status tags): line 1 between the title and the main figure, one line.
+  /* `cell-inline` (e.g. status tags): line 1 between the title and the main figure, one line;
+     `cell-end`: line 1 after the main figure, at the far right end of the row.
      With them the title stays on one line and truncates first (ellipsis); the link's accessible
      name / title keep the full text. Line 1 can never wrap: the inline cells have a zero basis
      (so only the title's minimum and the main figure count for the line break) and take the free
      space first (grow 1000, capped at their content width); the title gets what is left. Only
      when the title is down to its minimum does a tag truncate (ellipsis). */
-  .data-table-cards td.cell-inline {
+  .data-table-cards td:is(.cell-inline, .cell-end) {
     order: 1;
     flex: 1000 1 0;
     min-width: 0;
@@ -1745,10 +1747,13 @@ label.switch.inline-switch {
     overflow: hidden;
     white-space: nowrap;
   }
-  .data-table-cards td.cell-inline > * {
+  .data-table-cards td.cell-end {
+    order: 3;
+  }
+  .data-table-cards td:is(.cell-inline, .cell-end) > * {
     min-width: 0;
   }
-  .data-table-cards td.cell-inline .tag {
+  .data-table-cards td:is(.cell-inline, .cell-end) .tag {
     display: block;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -1757,10 +1762,10 @@ label.switch.inline-switch {
     padding-right: var(--space-1);
     letter-spacing: 0.06em;
   }
-  .data-table-cards tr:has(> td.cell-inline:not(.hide-phone)) {
+  .data-table-cards tr:has(> td:is(.cell-inline, .cell-end):not(.hide-phone)) {
     column-gap: var(--space-2);
   }
-  .data-table-cards tr:has(> td.cell-inline:not(.hide-phone)) td.cell-primary {
+  .data-table-cards tr:has(> td:is(.cell-inline, .cell-end):not(.hide-phone)) td.cell-primary {
     min-width: 1.5em; /* at least the first letter + "…" */
     overflow: hidden;
     white-space: nowrap;
@@ -1769,11 +1774,11 @@ label.switch.inline-switch {
   }
   /* Hidden text after a truncated title would sit past the right edge (its containing block is
      the row, outside the title's clip): pin it to the row's start. */
-  .data-table-cards tr:has(> td.cell-inline:not(.hide-phone)) td.cell-primary .visually-hidden {
+  .data-table-cards tr:has(> td:is(.cell-inline, .cell-end):not(.hide-phone)) td.cell-primary .visually-hidden {
     top: 0;
     left: 0;
   }
-  .data-table-cards td:is(.cell-primary, .cell-main, .cell-inline, .cell-bare)::before,
+  .data-table-cards td:is(.cell-primary, .cell-main, .cell-inline, .cell-end, .cell-bare)::before,
   .data-table-cards td:not([data-label])::before {
     content: none;
   }
@@ -1837,10 +1842,11 @@ label.switch.inline-switch {
   .data-table-cards-lg tbody tr:last-child {
     border-bottom: 0;
   }
-  /* Line break after line 1 (title + main figure); secondary cells follow on line 2. */
+  /* Line break after line 1 (title + main figure); secondary cells follow on line 2. Order:
+     0 title · 1 inline cells · 2 main figure · 3 end cells, then this break · 4 line 2. */
   .data-table-cards-lg tr::after {
     content: '';
-    order: 1;
+    order: 3;
     flex: 0 0 100%;
     height: 0;
   }
@@ -1853,7 +1859,7 @@ label.switch.inline-switch {
   /* Secondary cell: small "LABEL value" on line 2. */
   .data-table-cards-lg td,
   .data-table-cards-lg tfoot th {
-    order: 2;
+    order: 4;
     display: inline-flex;
     flex-wrap: wrap;
     align-items: baseline;
@@ -1885,19 +1891,20 @@ label.switch.inline-switch {
     overflow-wrap: anywhere;
   }
   .data-table-cards-lg td.cell-main {
-    order: 1;
+    order: 2;
     margin-left: auto;
     font-size: var(--fs-body);
     color: var(--text);
     white-space: nowrap;
   }
-  /* `cell-inline` (e.g. status tags): line 1 between the title and the main figure, one line.
+  /* `cell-inline` (e.g. status tags): line 1 between the title and the main figure, one line;
+     `cell-end`: line 1 after the main figure, at the far right end of the row.
      With them the title stays on one line and truncates first (ellipsis); the link's accessible
      name / title keep the full text. Line 1 can never wrap: the inline cells have a zero basis
      (so only the title's minimum and the main figure count for the line break) and take the free
      space first (grow 1000, capped at their content width); the title gets what is left. Only
      when the title is down to its minimum does a tag truncate (ellipsis). */
-  .data-table-cards-lg td.cell-inline {
+  .data-table-cards-lg td:is(.cell-inline, .cell-end) {
     order: 1;
     flex: 1000 1 0;
     min-width: 0;
@@ -1905,10 +1912,13 @@ label.switch.inline-switch {
     overflow: hidden;
     white-space: nowrap;
   }
-  .data-table-cards-lg td.cell-inline > * {
+  .data-table-cards-lg td.cell-end {
+    order: 3;
+  }
+  .data-table-cards-lg td:is(.cell-inline, .cell-end) > * {
     min-width: 0;
   }
-  .data-table-cards-lg td.cell-inline .tag {
+  .data-table-cards-lg td:is(.cell-inline, .cell-end) .tag {
     display: block;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -1917,10 +1927,10 @@ label.switch.inline-switch {
     padding-right: var(--space-1);
     letter-spacing: 0.06em;
   }
-  .data-table-cards-lg tr:has(> td.cell-inline:not(.hide-phone)) {
+  .data-table-cards-lg tr:has(> td:is(.cell-inline, .cell-end):not(.hide-phone)) {
     column-gap: var(--space-2);
   }
-  .data-table-cards-lg tr:has(> td.cell-inline:not(.hide-phone)) td.cell-primary {
+  .data-table-cards-lg tr:has(> td:is(.cell-inline, .cell-end):not(.hide-phone)) td.cell-primary {
     min-width: 1.5em; /* at least the first letter + "…" */
     overflow: hidden;
     white-space: nowrap;
@@ -1929,11 +1939,11 @@ label.switch.inline-switch {
   }
   /* Hidden text after a truncated title would sit past the right edge (its containing block is
      the row, outside the title's clip): pin it to the row's start. */
-  .data-table-cards-lg tr:has(> td.cell-inline:not(.hide-phone)) td.cell-primary .visually-hidden {
+  .data-table-cards-lg tr:has(> td:is(.cell-inline, .cell-end):not(.hide-phone)) td.cell-primary .visually-hidden {
     top: 0;
     left: 0;
   }
-  .data-table-cards-lg td:is(.cell-primary, .cell-main, .cell-inline, .cell-bare)::before,
+  .data-table-cards-lg td:is(.cell-primary, .cell-main, .cell-inline, .cell-end, .cell-bare)::before,
   .data-table-cards-lg td:not([data-label])::before {
     content: none;
   }
