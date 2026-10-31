@@ -192,7 +192,7 @@
   .hours-page .hours-table thead th.hours-col-hours {
     display: block;
     width: auto;
-    padding: var(--space-2) 0;
+    padding: 0;
     border: 0;
     background: transparent;
   }
@@ -213,8 +213,8 @@
       'date partner hours'
       'comment comment actions';
     align-items: center;
-    gap: 0 var(--space-3);
-    padding: var(--space-2) var(--card-pad);
+    gap: 2px var(--space-3);
+    padding: var(--list-row-pad-y) var(--card-pad);
     border-bottom: var(--hairline) solid var(--border);
   }
   .hours-page .hours-table tbody tr:last-child {

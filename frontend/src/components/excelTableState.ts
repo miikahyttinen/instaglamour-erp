@@ -31,7 +31,7 @@ export type ColumnPriority = 1 | 2 | 3;
 export interface ExcelColumn<T> {
   /** Stable column id: React key, sort key and URL filter key (`f.<key>`). */
   key: string;
-  /** Header text; also the phone card label and the filter name ("Suodata: <label>"). */
+  /** Header text; also the phone row label and the filter name ("Suodata: <label>"). */
   label: string;
   /** Custom header content instead of `label` (e.g. visually hidden text for an actions column). */
   header?: ReactNode;
@@ -39,9 +39,14 @@ export interface ExcelColumn<T> {
   cell: (row: T) => ReactNode;
   /** Right-aligned, tabular figures (money, hours, counts). */
   numeric?: boolean;
-  /** Phone cards: the card title. Use on one column (normally the first one). */
+  /** Phone rows: the row title (line 1). Use on one column (normally the first one); a link in it
+   *  makes the whole row tappable. */
   primary?: boolean;
-  /** Not shown in the phone card layout. */
+  /** Phone rows: the main figure / tag at the right end of line 1 (no label, one line). */
+  phoneMain?: boolean;
+  /** Phone rows: shown on line 2 without its label (self-explanatory values: dates, tags). */
+  phoneBare?: boolean;
+  /** Not shown in the phone row layout (its filter and sort still apply). */
   hideOnPhone?: boolean;
   /** Header / cell class (e.g. a width). */
   className?: string;
@@ -49,7 +54,7 @@ export interface ExcelColumn<T> {
    * Column priority from 600 px (design.md → "Excel-style tables", TASK-147): instead of scrolling
    * sideways, lower priorities are hidden as the table container narrows. 1 (default) = always
    * shown; 2 = hidden below 1100 px; 3 = hidden below 1400 px of table container width. Hiding is
-   * CSS only: a hidden column's filter and sort still apply. Phone cards show every column.
+   * CSS only: a hidden column's filter and sort still apply. Phone rows use `hideOnPhone` instead.
    */
   priority?: ColumnPriority;
   /**

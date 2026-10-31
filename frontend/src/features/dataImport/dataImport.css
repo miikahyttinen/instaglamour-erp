@@ -1,4 +1,4 @@
-/* Data import (UC-035). Design tokens only; full-width page, tables become cards below 600 px. */
+/* Data import (UC-035). Design tokens only; full-width page, tables become compact rows below 600 px. */
 
 .import-page .import-section {
   margin-bottom: var(--section-gap);

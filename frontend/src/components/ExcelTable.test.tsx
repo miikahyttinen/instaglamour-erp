@@ -410,7 +410,7 @@ describe('<ExcelTable> column priorities (TASK-147)', () => {
     expect(location()).toBe('?sort=price&dir=desc');
   });
 
-  it('phone cards keep every column (priority hiding is only from 600 px)', () => {
+  it('phone rows keep every column (priority hiding is only from 600 px)', () => {
     renderDemo('/', { columns: PRIORITY_COLUMNS });
     const firstRow = within(table()).getAllByRole('row')[1]!;
     expect(within(firstRow).getAllByRole('cell').map((c) => c.getAttribute('data-label'))).toEqual([
@@ -423,6 +423,26 @@ describe('<ExcelTable> column priorities (TASK-147)', () => {
 });
 
 describe('<ExcelTable> on phones (< 600 px)', () => {
+  it('lays rows out as compact rows: title, main figure, bare and hidden cells (TASK-175)', () => {
+    const columns: ExcelColumn<Row>[] = [
+      { ...COLUMNS[0]!, cell: (r) => <a href={`/rows/${r.id}`}>{r.name}</a> },
+      { ...COLUMNS[1]!, phoneBare: true },
+      { ...COLUMNS[2]!, phoneMain: true },
+      { ...COLUMNS[3]!, hideOnPhone: true },
+    ];
+    renderDemo('/', { columns });
+    expect(table()).toHaveClass('data-table-cards');
+    const cells = within(within(table()).getAllByRole('row')[1]!).getAllByRole('cell');
+    expect(cells[0]).toHaveClass('cell-primary');
+    expect(within(cells[0]!).getByRole('link', { name: 'Event 10' })).toBeInTheDocument();
+    expect(cells[1]).toHaveClass('cell-bare');
+    expect(cells[1]).not.toHaveClass('cell-main');
+    expect(cells[2]).toHaveClass('cell-main', 'num');
+    expect(cells[3]).toHaveClass('hide-phone');
+    // Labels stay on every cell (CSS decides where they are shown).
+    expect(cells.map((c) => c.getAttribute('data-label'))).toEqual(['Name', 'City', 'Price', 'Tags']);
+  });
+
   it('has no header filter icons; "Suodattimet" opens the filters and the sort in a sheet', async () => {
     const { user } = renderDemo();
     expect(within(table()).queryByRole('button', { name: /Suodata:/ })).not.toBeInTheDocument();

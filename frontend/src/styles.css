@@ -713,46 +713,54 @@ label.switch.inline-switch {
 .field-list-lg {
   --field-label-w: calc(var(--label-w) + 40px);
 }
-@media (min-width: 600px) {
-  .field-list {
-    gap: var(--space-1);
+/* Compact density (TASK-175): label | value on one line on phones too (was stacked below
+   600 px), with a narrower label column; long labels wrap onto two lines there. */
+@media (max-width: 599px) {
+  .field-list,
+  .field-list-sm,
+  .field-list-lg {
+    --field-label-w: 104px;
   }
-  .field-list > :is(.field, .inline-field) {
-    display: grid;
-    grid-template-columns: var(--field-label-w) minmax(0, 1fr);
-    column-gap: var(--space-4);
-    align-items: start;
-    margin: 0;
-  }
-  /* Label: column 1, vertically centred on the first control row, top-aligned when it wraps. */
-  .field-list > :is(.field, .inline-field) > label:not(.visually-hidden) {
-    grid-column: 1;
-    display: flex;
-    align-items: center;
-    min-height: var(--control-h);
-    margin: 0;
-  }
-  .field-list > :is(.field, .inline-field) > :not(label, [role='status']) {
-    grid-column: 2;
-  }
-  /* Checkbox / switch rows: the box sits in the control column. */
-  .field-list > .inline-check > .inline-control {
-    min-height: var(--control-h);
-  }
-  /* Checkbox group (fieldset): legend floats into the label column. */
-  .field-list > fieldset.inline-field {
-    display: block;
-    padding-left: calc(var(--field-label-w) + var(--space-4));
-  }
-  .field-list > fieldset.inline-field > legend:not(.visually-hidden) {
-    float: left;
-    width: var(--field-label-w);
-    min-height: var(--control-h);
-    margin: 0 0 0 calc(-1 * (var(--field-label-w) + var(--space-4)));
-  }
-  .field-list > fieldset.inline-field > .check-grid {
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  }
+}
+.field-list {
+  gap: var(--space-1);
+}
+.field-list > :is(.field, .inline-field) {
+  display: grid;
+  grid-template-columns: var(--field-label-w) minmax(0, 1fr);
+  column-gap: var(--space-4);
+  align-items: start;
+  margin: 0;
+}
+/* Label: column 1, vertically centred on the first control row, top-aligned when it wraps. */
+.field-list > :is(.field, .inline-field) > label:not(.visually-hidden) {
+  grid-column: 1;
+  display: flex;
+  align-items: center;
+  min-height: var(--control-h);
+  margin: 0;
+}
+.field-list > :is(.field, .inline-field) > :not(label, [role='status']) {
+  grid-column: 2;
+}
+/* Checkbox / switch rows: the box sits in the control column. */
+.field-list > .inline-check > .inline-control {
+  min-height: var(--control-h);
+}
+/* Checkbox group (fieldset): legend floats into the label column. */
+.field-list > fieldset.inline-field {
+  display: block;
+  padding-left: calc(var(--field-label-w) + var(--space-4));
+}
+.field-list > fieldset.inline-field > legend:not(.visually-hidden) {
+  float: left;
+  width: var(--field-label-w);
+  min-height: var(--control-h);
+  margin: 0 0 0 calc(-1 * (var(--field-label-w) + var(--space-4)));
+}
+.field-list > fieldset.inline-field > .check-grid {
+  /* Two columns even in the narrow phone control column (TASK-175). */
+  grid-template-columns: repeat(auto-fill, minmax(min(140px, 45%), 1fr));
 }
 
 /* =========================================================================================
@@ -1615,11 +1623,14 @@ label.switch.inline-switch {
   }
 }
 
-/* Phone: rows become cards of label/value pairs. */
+/* Phone (< 600 px): compact rows instead of a table (design.md → "Compact density", TASK-175).
+   One row per item: line 1 = title (`cell-primary`) + main figure / tag (`cell-main`, right);
+   line 2 = the other cells as small "LABEL value" pairs (`cell-bare` = without the label),
+   wrapping only when they don't fit. A link in the title cell covers the whole row (tap target);
+   other links / controls in the row stay clickable on top of it. The frame (--surface, hairline)
+   stays; rows are separated by hairlines. Totals (tfoot) use the same layout. */
 @media (max-width: 599px) {
   .table-wrap:has(.data-table-cards) {
-    background: transparent;
-    border: 0;
     overflow: visible;
   }
   .data-table-cards thead {
@@ -1635,66 +1646,109 @@ label.switch.inline-switch {
     display: block;
   }
   .data-table-cards tr {
+    position: relative; /* containing block of the stretched primary link */
     display: flex;
-    flex-direction: column;
-    margin-bottom: var(--space-2);
-    padding: var(--space-2) var(--card-pad);
-    background: var(--surface);
-    border: var(--hairline) solid var(--border);
-    border-radius: var(--radius);
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 2px var(--space-3);
+    min-height: var(--tap);
+    padding: var(--list-row-pad-y) var(--cell-pad-x);
+    border-bottom: var(--hairline) solid var(--border);
+  }
+  .data-table-cards tbody tr:last-child {
+    border-bottom: 0;
+  }
+  /* Line break after line 1 (title + main figure); secondary cells follow on line 2. */
+  .data-table-cards tr::after {
+    content: '';
+    order: 1;
+    flex: 0 0 100%;
+    height: 0;
   }
   .data-table-cards tbody tr:hover td {
     background: transparent;
   }
-  .data-table-cards td {
-    display: flex;
+  .data-table-cards tbody tr:hover {
+    background: var(--surface-2);
+  }
+  /* Secondary cell: small "LABEL value" on line 2. */
+  .data-table-cards td,
+  .data-table-cards tfoot th {
+    order: 2;
+    display: inline-flex;
+    flex-wrap: wrap;
     align-items: baseline;
-    justify-content: space-between;
-    gap: var(--space-3);
+    gap: 0 var(--space-1);
+    min-width: 0;
     height: auto;
-    padding: var(--space-1) 0;
+    padding: 0;
     border: 0;
-    text-align: right;
+    text-align: left;
+    font-size: var(--fs-small);
+    color: var(--text-muted);
   }
   .data-table-cards td::before {
     content: attr(data-label);
-    flex: 0 0 auto;
-    max-width: 50%;
-    text-align: left;
     font-family: var(--font-mono);
     font-size: var(--fs-meta);
     letter-spacing: var(--ls-label);
     text-transform: uppercase;
     color: var(--label);
   }
+  /* Line 1: title (wraps, takes the free width) … main figure / tag (right, one line). */
   .data-table-cards td.cell-primary {
-    order: -1; /* card title first, whatever the column order */
+    order: 0;
     display: block;
-    padding: var(--space-2) 0;
-    text-align: left;
-    font-size: var(--fs-lg);
+    flex: 1 1 0;
+    min-width: 50%;
+    font-size: var(--fs-body);
+    color: var(--text);
+    overflow-wrap: anywhere;
   }
-  .data-table-cards td.cell-primary::before,
+  .data-table-cards td.cell-main {
+    order: 1;
+    margin-left: auto;
+    font-size: var(--fs-body);
+    color: var(--text);
+    white-space: nowrap;
+  }
+  .data-table-cards td:is(.cell-primary, .cell-main, .cell-bare)::before,
   .data-table-cards td:not([data-label])::before {
     content: none;
   }
   .data-table-cards .hide-phone {
     display: none;
   }
-  .data-table-cards tfoot tr {
-    border-color: var(--border-strong);
+  .data-table-cards .tag {
+    padding-top: 0;
+    padding-bottom: 0;
+    line-height: 1.5;
   }
-  .data-table-cards tfoot td {
+  /* The whole row opens the item: the title's link covers the row; other controls stay on top. */
+  .data-table-cards tbody td.cell-primary a:first-of-type::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+  }
+  .data-table-cards tbody td:not(.cell-primary) :is(a, button, input, select, textarea, label, [tabindex]) {
+    position: relative;
+    z-index: 1;
+  }
+  .data-table-cards tfoot tr {
+    border-top: var(--hairline) solid var(--border-strong);
+    border-bottom: 0;
+  }
+  .data-table-cards tfoot :is(td, th) {
     border: 0;
+    color: var(--text);
+    font-weight: var(--fw-bold);
   }
 }
 
-/* cardsBelow="lg": the same cards up to 1199 px (900–1199 px = desktop next to the sidebar). Keep
-   in sync with the block above. */
+/* cardsBelow="lg": the same rows up to 1199 px (900–1199 px = desktop next to the sidebar). Same
+   rules as the block above (keep in sync). */
 @media (max-width: 1199px) {
   .table-wrap:has(.data-table-cards-lg) {
-    background: transparent;
-    border: 0;
     overflow: visible;
   }
   .data-table-cards-lg thead {
@@ -1710,57 +1764,102 @@ label.switch.inline-switch {
     display: block;
   }
   .data-table-cards-lg tr {
+    position: relative; /* containing block of the stretched primary link */
     display: flex;
-    flex-direction: column;
-    margin-bottom: var(--space-2);
-    padding: var(--space-2) var(--card-pad);
-    background: var(--surface);
-    border: var(--hairline) solid var(--border);
-    border-radius: var(--radius);
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 2px var(--space-3);
+    min-height: var(--tap);
+    padding: var(--list-row-pad-y) var(--cell-pad-x);
+    border-bottom: var(--hairline) solid var(--border);
+  }
+  .data-table-cards-lg tbody tr:last-child {
+    border-bottom: 0;
+  }
+  /* Line break after line 1 (title + main figure); secondary cells follow on line 2. */
+  .data-table-cards-lg tr::after {
+    content: '';
+    order: 1;
+    flex: 0 0 100%;
+    height: 0;
   }
   .data-table-cards-lg tbody tr:hover td {
     background: transparent;
   }
-  .data-table-cards-lg td {
-    display: flex;
+  .data-table-cards-lg tbody tr:hover {
+    background: var(--surface-2);
+  }
+  /* Secondary cell: small "LABEL value" on line 2. */
+  .data-table-cards-lg td,
+  .data-table-cards-lg tfoot th {
+    order: 2;
+    display: inline-flex;
+    flex-wrap: wrap;
     align-items: baseline;
-    justify-content: space-between;
-    gap: var(--space-3);
+    gap: 0 var(--space-1);
+    min-width: 0;
     height: auto;
-    padding: var(--space-1) 0;
+    padding: 0;
     border: 0;
-    text-align: right;
+    text-align: left;
+    font-size: var(--fs-small);
+    color: var(--text-muted);
   }
   .data-table-cards-lg td::before {
     content: attr(data-label);
-    flex: 0 0 auto;
-    max-width: 50%;
-    text-align: left;
     font-family: var(--font-mono);
     font-size: var(--fs-meta);
     letter-spacing: var(--ls-label);
     text-transform: uppercase;
     color: var(--label);
   }
+  /* Line 1: title (wraps, takes the free width) … main figure / tag (right, one line). */
   .data-table-cards-lg td.cell-primary {
-    order: -1; /* card title first, whatever the column order */
+    order: 0;
     display: block;
-    padding: var(--space-2) 0;
-    text-align: left;
-    font-size: var(--fs-lg);
+    flex: 1 1 0;
+    min-width: 50%;
+    font-size: var(--fs-body);
+    color: var(--text);
+    overflow-wrap: anywhere;
   }
-  .data-table-cards-lg td.cell-primary::before,
+  .data-table-cards-lg td.cell-main {
+    order: 1;
+    margin-left: auto;
+    font-size: var(--fs-body);
+    color: var(--text);
+    white-space: nowrap;
+  }
+  .data-table-cards-lg td:is(.cell-primary, .cell-main, .cell-bare)::before,
   .data-table-cards-lg td:not([data-label])::before {
     content: none;
   }
   .data-table-cards-lg .hide-phone {
     display: none;
   }
-  .data-table-cards-lg tfoot tr {
-    border-color: var(--border-strong);
+  .data-table-cards-lg .tag {
+    padding-top: 0;
+    padding-bottom: 0;
+    line-height: 1.5;
   }
-  .data-table-cards-lg tfoot td {
+  /* The whole row opens the item: the title's link covers the row; other controls stay on top. */
+  .data-table-cards-lg tbody td.cell-primary a:first-of-type::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+  }
+  .data-table-cards-lg tbody td:not(.cell-primary) :is(a, button, input, select, textarea, label, [tabindex]) {
+    position: relative;
+    z-index: 1;
+  }
+  .data-table-cards-lg tfoot tr {
+    border-top: var(--hairline) solid var(--border-strong);
+    border-bottom: 0;
+  }
+  .data-table-cards-lg tfoot :is(td, th) {
     border: 0;
+    color: var(--text);
+    font-weight: var(--fw-bold);
   }
 }
 

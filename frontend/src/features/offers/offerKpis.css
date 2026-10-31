@@ -53,7 +53,7 @@
   display: flex;
   align-items: stretch;
   gap: var(--space-1);
-  height: 48px;
+  height: 48px; /* 36 px on phones (TASK-175) */
   border-bottom: var(--hairline) solid var(--border);
 }
 .offer-kpi-bar {
@@ -193,4 +193,11 @@
 }
 .offer-kpi-ring-row .stat-tile-value {
   margin: 0;
+}
+
+/* Phones (one card per row, TASK-175): lower bars; the bars stay full-width tap targets. */
+@media (max-width: 599px) {
+  .offer-kpi-plot {
+    height: 36px;
+  }
 }

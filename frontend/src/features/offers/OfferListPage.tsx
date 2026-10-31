@@ -339,6 +339,7 @@ function OfferTable(props: OfferTableProps) {
     },
     {
       key: 'client',
+      phoneBare: true,
       label: t('offers.columns.client'),
       className: 'offer-col-text',
       sortValue: (o) => o.clientName,
@@ -348,6 +349,7 @@ function OfferTable(props: OfferTableProps) {
     },
     {
       key: 'place',
+      phoneBare: true,
       label: t('offers.columns.place'),
       className: 'offer-col-text',
       priority: 2,
@@ -357,6 +359,7 @@ function OfferTable(props: OfferTableProps) {
     },
     {
       key: 'eventDate',
+      phoneBare: true,
       label: t('offers.columns.eventDate'),
       className: 'offer-col-date excel-col-fit',
       sortValue: (o) => o.eventDate,
@@ -372,6 +375,7 @@ function OfferTable(props: OfferTableProps) {
     },
     {
       key: 'price',
+      phoneMain: true,
       label: t('offers.columns.price'),
       className: 'excel-col-fit',
       numeric: true,
@@ -380,6 +384,7 @@ function OfferTable(props: OfferTableProps) {
     },
     {
       key: 'status',
+      phoneBare: true,
       label: t('offers.columns.status'),
       className: 'excel-col-fit',
       sortValue: (o) => OFFER_DISPLAY_STATUSES.indexOf(offerDisplayStatus(o)),
@@ -390,6 +395,7 @@ function OfferTable(props: OfferTableProps) {
     },
     {
       key: 'seller',
+      hideOnPhone: true,
       label: t('offers.columns.seller'),
       className: 'offer-col-text',
       priority: 2,
@@ -400,6 +406,7 @@ function OfferTable(props: OfferTableProps) {
     },
     {
       key: 'source',
+      hideOnPhone: true,
       label: t('offers.columns.source'),
       priority: 3,
       className: 'offer-col-select',
@@ -420,6 +427,7 @@ function OfferTable(props: OfferTableProps) {
     },
     {
       key: 'eventType',
+      hideOnPhone: true,
       label: t('offers.columns.eventType'),
       priority: 3,
       className: 'offer-col-select',
@@ -460,6 +468,7 @@ function OfferTable(props: OfferTableProps) {
     },
     {
       key: 'linkedEvent',
+      phoneBare: true,
       label: t('offers.columns.linkedEvent'),
       className: 'offer-col-linked-event excel-col-fit',
       priority: 2,
@@ -471,6 +480,7 @@ function OfferTable(props: OfferTableProps) {
     },
     {
       key: 'actions',
+      phoneBare: true,
       label: t('offers.columns.actions'),
       className: 'offer-col-actions excel-col-fit',
       cell: (o) => (
@@ -525,8 +535,8 @@ function DeletedTable({
         </Link>
       ),
     },
-    { key: 'client', label: t('offers.columns.client'), cell: (o) => o.clientName },
-    { key: 'eventDate', label: t('offers.columns.eventDate'), cell: (o) => formatDate(o.eventDate, lang) },
+    { key: 'client', phoneBare: true, label: t('offers.columns.client'), cell: (o) => o.clientName },
+    { key: 'eventDate', phoneBare: true, label: t('offers.columns.eventDate'), cell: (o) => formatDate(o.eventDate, lang) },
     {
       key: 'deletedAt',
       label: t('offers.columns.deletedAt'),

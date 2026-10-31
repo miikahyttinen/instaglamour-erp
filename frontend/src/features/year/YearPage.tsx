@@ -279,6 +279,7 @@ function UpcomingSection({ data }: { data: YearPageData }) {
   const columns: DataTableColumn<EventSummary>[] = [
     {
       key: 'date',
+      phoneBare: true,
       label: t('year.upcoming.date'),
       className: 'year-upcoming-date',
       cell: (event) => formatDateRange(event.startDate, event.endDate, lang),
@@ -295,6 +296,7 @@ function UpcomingSection({ data }: { data: YearPageData }) {
     },
     {
       key: 'staffing',
+      phoneBare: true,
       label: t('year.upcoming.staffing'),
       className: 'year-upcoming-staffing',
       cell: (event) => event.notFullyStaffed && <StatusTag tone="warn">{t('year.upcoming.notFullyStaffed')}</StatusTag>,

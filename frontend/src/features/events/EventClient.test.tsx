@@ -103,12 +103,12 @@ describe('event client', () => {
     expect(db.events.events.at(-1)!.clientId).toBeNull();
   });
 
-  it('event list shows the client (table and cards) and searches by client name', async () => {
+  it('event list shows the client (table and phone rows) and searches by client name', async () => {
     const x = addMockClient('Client X');
     addMockEvent({ startDate: `${TEST_YEAR}-03-01`, venue: 'Venue X', clientId: x.id });
     addMockEvent({ startDate: `${TEST_YEAR}-04-01`, venue: 'Venue Y' });
 
-    // Cards (phones, < 600 px): the client is a labelled line of the card.
+    // Phone rows (< 600 px): the client is a labelled item on the second line.
     const first = renderApp('/gigs');
     const cardRows = () =>
       within(screen.getByRole('table', { name: 'Keikkalista' }))

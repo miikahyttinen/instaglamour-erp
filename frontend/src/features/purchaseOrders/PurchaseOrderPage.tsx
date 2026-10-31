@@ -185,17 +185,19 @@ function LinesTable({ po }: { po: PurchaseOrder }) {
       className: 'po-col-date',
       cell: (l) => formatDate(l.eventStartDate, lang),
     },
-    { key: 'venue', label: t('purchaseOrders.lines.venue'), cell: (l) => l.eventVenue },
-    { key: 'lineup', label: t('purchaseOrders.lines.lineup'), cell: (l) => l.eventLineupName },
-    { key: 'role', label: t('purchaseOrders.lines.role'), cell: role },
+    { key: 'venue', phoneBare: true, label: t('purchaseOrders.lines.venue'), cell: (l) => l.eventVenue },
+    { key: 'lineup', phoneBare: true, label: t('purchaseOrders.lines.lineup'), cell: (l) => l.eventLineupName },
+    { key: 'role', phoneBare: true, label: t('purchaseOrders.lines.role'), cell: role },
     {
       key: 'amount',
+      phoneMain: true,
       label: t('purchaseOrders.lines.amount'),
       numeric: true,
       cell: (l) => formatMoney(l.amountCents, lang),
     },
     {
       key: 'event',
+      phoneBare: true,
       label: t('purchaseOrders.lines.event'),
       cell: (l) => (
         <Link to={`/gigs/${l.eventId}`} aria-label={`${t('purchaseOrders.lines.openEvent')}: ${l.eventVenue}`}>

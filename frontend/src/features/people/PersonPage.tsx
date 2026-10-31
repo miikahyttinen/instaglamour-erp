@@ -149,6 +149,7 @@ function CostLines({ personId }: { personId: Id }) {
     },
     {
       key: 'lineup',
+      phoneBare: true,
       label: t('people.lines.lineup'),
       cell: (line) => (
         <span className="person-lines-lineup">
@@ -162,10 +163,11 @@ function CostLines({ personId }: { personId: Id }) {
         </span>
       ),
     },
-    { key: 'venue', label: t('people.lines.venue'), cell: (line) => line.eventVenue },
-    { key: 'type', label: t('people.lines.type'), cell: typeText },
+    { key: 'venue', phoneBare: true, label: t('people.lines.venue'), cell: (line) => line.eventVenue },
+    { key: 'type', phoneBare: true, label: t('people.lines.type'), cell: typeText },
     {
       key: 'budgeted',
+      phoneMain: true,
       label: t('people.lines.budgeted'),
       numeric: true,
       cell: (line) => money(line.costLine.budgetedCents),

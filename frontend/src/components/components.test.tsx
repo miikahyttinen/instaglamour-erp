@@ -202,6 +202,28 @@ describe('DataTable', () => {
     expect(within(table).getAllByRole('cell', { name: '–' })[0]).toHaveClass('hide-phone');
   });
 
+  it('phone rows: phoneMain is the figure on the title line, phoneBare drops its label (TASK-175)', () => {
+    render(
+      <DataTable
+        caption="Venues"
+        columns={[
+          { key: 'name', label: 'Venue', primary: true, cell: (r: Row) => r.name },
+          { key: 'amount', label: 'Amount', numeric: true, phoneMain: true, cell: (r: Row) => r.amount },
+          { key: 'city', label: 'City', phoneBare: true, cell: () => 'City A' },
+          { key: 'note', label: 'Note', cell: () => 'Note' },
+        ]}
+        rows={rows}
+        rowKey={(r) => r.id}
+      />,
+    );
+    const table = screen.getByRole('table', { name: 'Venues' });
+    expect(within(table).getByRole('cell', { name: '1 000 €' })).toHaveClass('cell-main', 'num');
+    expect(within(table).getAllByRole('cell', { name: 'City A' })[0]).toHaveClass('cell-bare');
+    const note = within(table).getAllByRole('cell', { name: 'Note' })[0]!;
+    expect(note).not.toHaveClass('cell-bare', 'cell-main');
+    expect(note).toHaveAttribute('data-label', 'Note');
+  });
+
   it('sortable headers expose aria-sort and call onSort', async () => {
     const onSort = vi.fn();
     render(

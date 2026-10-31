@@ -244,3 +244,26 @@
     max-width: calc(var(--label-w) * 2.5);
   }
 }
+
+/* ---------- < 600 px: compact rows (TASK-175) ----------
+   Line 1: lineup … total; line 2: date · venue · client · tags · margin. An empty client /
+   invoicing / staffing cell ("–") is left out; the two margins sit side by side. */
+@media (max-width: 599px) {
+  .event-list-page .event-table td:is(.event-col-invoice, .event-col-staffing):not(:has(.tag)),
+  .event-list-page .event-table td.event-col-client:not(:has(a)) {
+    display: none;
+  }
+  .event-list-page .event-table td.event-col-date {
+    font-family: var(--font-mono);
+    font-size: var(--fs-label);
+    letter-spacing: 0.06em;
+    font-variant-numeric: tabular-nums;
+  }
+  .event-list-page .event-table td.event-col-margin .event-margin-budget,
+  .event-list-page .event-table td.event-col-margin .event-margin-actual {
+    display: inline;
+  }
+  .event-list-page .event-table td.event-col-margin .event-margin-budget {
+    color: var(--text);
+  }
+}

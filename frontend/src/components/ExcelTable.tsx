@@ -43,6 +43,8 @@ function cellClass<T>(col: ExcelColumn<T>): string | undefined {
     [
       col.numeric && 'num',
       col.primary && 'cell-primary',
+      col.phoneMain && 'cell-main',
+      col.phoneBare && 'cell-bare',
       col.hideOnPhone && 'hide-phone',
       (col.priority ?? 1) > 1 && `excel-prio-${col.priority}`,
       col.className,
@@ -57,7 +59,7 @@ function cellClass<T>(col: ExcelColumn<T>): string | undefined {
  * filterable column with an Excel-like value popover, numbers right-aligned. From 600 px the table
  * fills its container and never scrolls sideways: text cells wrap and lower-priority columns
  * (`ExcelColumn.priority`) are hidden by container queries as the table narrows. Phones
- * (< 600 px): cards (every column) + a "Suodattimet" button that opens the same
+ * (< 600 px): compact rows (title + main figure, then the other columns) + a "Suodattimet" button that opens the same
  * filters (and the sort) in a sheet. Controlled: give it the state from `useUrlTableState()` (or
  * `useLocalTableState()`). See frontend/README.md → "ExcelTable".
  */
@@ -88,7 +90,7 @@ export function ExcelTable<T>(props: ExcelTableProps<T>) {
   const clearFilters = () => onFiltersChange({});
   const closePopover = useCallback(() => setOpenFilter(null), []);
 
-  // The popover belongs to the header layout: not shown with cards (< 600 px).
+  // The popover belongs to the header layout: not shown with phone rows (< 600 px).
   const popoverColumn = wide && openFilter?.anchor.isConnected ? columns.find((c) => c.key === openFilter.key && c.filterValue) : undefined;
 
   const rowCount =
@@ -316,7 +318,7 @@ interface FilterSheetProps<T> {
 /**
  * Phones: "Suodattimet" bottom sheet. Lists the filterable columns (with "Kaikki" / "N valittu");
  * choosing one shows the same filter form; OK / Cancel come back to the list. Sort select on top,
- * because the card layout has no headers.
+ * because the phone row layout has no headers.
  */
 function FilterSheet<T>({ columns, rows, filters, sort, onSortChange, onColumnFilter, onClear, onClose }: FilterSheetProps<T>) {
   const { t } = useTranslation();
