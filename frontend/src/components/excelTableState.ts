@@ -44,6 +44,9 @@ export interface ExcelColumn<T> {
   primary?: boolean;
   /** Phone rows: the main figure / tag at the right end of line 1 (no label, one line). */
   phoneMain?: boolean;
+  /** Phone rows: on line 1 between the title and the `phoneMain` cell (no label, one line, e.g.
+   *  status tags). The title then stays on one line and truncates with an ellipsis instead. */
+  phoneInline?: boolean;
   /** Phone rows: shown on line 2 without its label (self-explanatory values: dates, tags). */
   phoneBare?: boolean;
   /** Not shown in the phone row layout (its filter and sort still apply). */

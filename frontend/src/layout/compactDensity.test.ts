@@ -76,6 +76,19 @@ describe('phone rows instead of cards (< 600 px)', () => {
     expect(phone).toMatch(/\.cell-bare/);
   });
 
+  it('inline cells (tags) sit on line 1 before the main figure; the title truncates instead', () => {
+    const inline = /\.data-table-cards td\.cell-inline\s*\{([^}]*)\}/.exec(phone)?.[1] ?? '';
+    expect(inline).toMatch(/order:\s*1/);
+    expect(inline).toMatch(/white-space:\s*nowrap/);
+    // Zero basis + capped growth: line 1 never wraps, the title shrinks first.
+    expect(inline).toMatch(/flex:\s*1000 1 0/);
+    expect(inline).toMatch(/max-width:\s*max-content/);
+    const title = /tr:has\(> td\.cell-inline[^{]*td\.cell-primary\s*\{([^}]*)\}/.exec(phone)?.[1] ?? '';
+    expect(title).toMatch(/text-overflow:\s*ellipsis/);
+    expect(title).toMatch(/white-space:\s*nowrap/);
+    expect(title).toMatch(/min-width:\s*1\.5em/);
+  });
+
   it('the title link covers the whole row; other controls stay on top', () => {
     expect(phone).toMatch(/td\.cell-primary a:first-of-type::after\s*\{[^}]*inset:\s*0/);
     expect(phone).toMatch(/td:not\(\.cell-primary\) :is\([^)]*button[^)]*\)\s*\{[^}]*z-index:\s*1/);

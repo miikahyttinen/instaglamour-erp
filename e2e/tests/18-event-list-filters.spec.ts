@@ -372,3 +372,74 @@ test('gig statuses and "Laskutus": invoice rows, one invoicing state tag on the 
   await expect(paidTag).toHaveText('Maksettu');
   await expect(paidTag).toHaveClass(/tag-ok-strong/);
 });
+
+// Phone rows (owner request 2026-10-31): line 1 = lineup name … status tag · invoicing tag · total
+// (right-aligned). At 320–430 px the tags and the total never wrap; a long lineup name truncates
+// with an ellipsis and keeps its full text in the link's accessible name and title. Worst case
+// here: the longest invoicing tag ("Laskutettavia rivejä") and a six-figure total; only at 320 px,
+// once the name is down to its minimum, may that tag truncate too.
+test('phone rows: status and invoicing tags sit on line 1 between the lineup name and the total', async ({ page }, testInfo) => {
+  test.skip(tagOf(testInfo) !== 'M', 'phone layout only');
+  const { year } = await setup(page, testInfo);
+  const venue = `Hall ${tagOf(testInfo)}${suffix()} Line1`;
+  const gig = await createEventViaApi(page, { startDate: `${year}-09-01`, venue, priceCents: 12345600 });
+  const longName = `Lineup ${suffix()} with a very long synthetic name that cannot fit`;
+  await api(page).patch(`/events/${gig.id}`, { lineupName: longName });
+  await api(page).post(`/events/${gig.id}/invoice-rows`, { description: 'Invoice', amountCents: 1000, status: 'READY' });
+
+  for (const w of [320, 375, 430]) {
+    await page.setViewportSize({ width: w, height: 800 });
+    await openList(page, year);
+    const row = eventListRows(page).filter({ hasText: venue });
+    await expect(row).toHaveCount(1);
+    await expect(row.getByRole('link', { name: new RegExp(`^${longName}`) })).toHaveAttribute('title', longName);
+    await expect(row.getByText('Tuleva', { exact: true })).toBeVisible();
+    await expect(row.getByText('Laskutettavia rivejä', { exact: true })).toBeVisible();
+
+    const m = await row.evaluate((tr) => {
+      const rect = (el: Element) => {
+        const b = el.getBoundingClientRect();
+        return { left: b.left, right: b.right, top: b.top, bottom: b.bottom, h: b.height, mid: (b.top + b.bottom) / 2 };
+      };
+      const title = tr.querySelector<HTMLElement>('td.cell-primary')!;
+      const total = tr.querySelector('td.cell-main')!;
+      const parts = [title, tr.querySelector('td.cell-inline .tag')!, tr.querySelector('td.event-col-invoice .tag')!, total];
+      return {
+        boxes: parts.map(rect),
+        dateTop: rect(tr.querySelector('td.event-col-date')!).top,
+        lineH: parseFloat(getComputedStyle(total).lineHeight) || 24,
+        rowRight: tr.getBoundingClientRect().right - parseFloat(getComputedStyle(tr).paddingRight),
+        truncated: title.scrollWidth > title.clientWidth,
+        tagsCut: [...tr.querySelectorAll<HTMLElement>('td.cell-inline .tag')].some((t) => t.scrollWidth > t.clientWidth),
+        ellipsis: getComputedStyle(title).textOverflow,
+      };
+    });
+    const [title, status, invoice, total] = m.boxes as [Box, Box, Box, Box];
+    // One line: every line-1 part sits beside the title, and line 2 starts below them.
+    for (const [name, b] of [['status', status], ['invoicing', invoice], ['total', total]] as const) {
+      expect(b.mid, `${w} px: ${name} on line 1`).toBeGreaterThan(title.top);
+      expect(b.mid, `${w} px: ${name} on line 1`).toBeLessThan(title.bottom);
+      expect(b.h, `${w} px: ${name} on one line`).toBeLessThan(m.lineH * 1.5);
+      expect(m.dateTop, `${w} px: line 2 under the ${name}`).toBeGreaterThanOrEqual(b.bottom - 1);
+    }
+    // Order: title … status, invoicing, total; the total at the right edge.
+    expect(status.left, `${w} px: status after the title`).toBeGreaterThanOrEqual(title.right - 1);
+    expect(invoice.left, `${w} px: invoicing after the status`).toBeGreaterThanOrEqual(status.right - 1);
+    expect(total.left, `${w} px: total after the invoicing`).toBeGreaterThanOrEqual(invoice.right - 1);
+    expect(Math.abs(total.right - m.rowRight), `${w} px: total right-aligned`).toBeLessThanOrEqual(1);
+    expect(title.h, `${w} px: title on one line`).toBeLessThan(m.lineH * 1.5);
+    expect(m.truncated, `${w} px: long name truncated`).toBe(true);
+    expect(m.ellipsis).toBe('ellipsis');
+    if (w >= 375) expect(m.tagsCut, `${w} px: tags shown in full`).toBe(false);
+    await expectNoHorizontalScroll(page, `gig list ${w} px`);
+  }
+});
+
+interface Box {
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+  h: number;
+  mid: number;
+}
