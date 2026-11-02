@@ -70,6 +70,56 @@ async function openOffer(page: Page, offer: Pick<OfferSummary, 'id' | 'eventName
   await expect(page.getByRole('heading', { level: 1, name: offer.eventName })).toBeVisible();
 }
 
+/**
+ * Phone rows (< 600 px, owner request 2026-11-02, like the Keikat rows): two lines per offer.
+ * Line 1 = event name, the status tag right after it, price at the right edge; line 2 = event
+ * date, client, created (no labels). No disposition select, convert button or row icons.
+ */
+async function expectCompactPhoneRows(page: Page): Promise<void> {
+  const rows = await offerRows(page).evaluateAll((trs) =>
+    trs.map((tr) => {
+      const shown = [...tr.querySelectorAll<HTMLElement>(':scope > td')].filter((td) => getComputedStyle(td).display !== 'none');
+      const box = (label: string) => tr.querySelector<HTMLElement>(`td[data-label="${label}"]`)!.getBoundingClientRect();
+      const row = tr.getBoundingClientRect();
+      const name = box('Tapahtuma');
+      const status = box('Tila');
+      const price = box('Hinta');
+      const line2 = ['Tapahtumapäivä', 'Asiakas', 'Luotu'].map(box);
+      return {
+        event: tr.querySelector('a.offer-link')!.textContent,
+        shown: shown.map((td) => td.dataset.label),
+        labels: shown.map((td) => getComputedStyle(td, '::before').content),
+        line1Top: [name.top, status.top, price.top].map((t) => Math.round(t - row.top)),
+        statusAfterName: status.left - name.right,
+        priceGap: row.right - price.right,
+        line2Order: line2.map((b) => b.left),
+        line2Tops: line2.map((b) => Math.round(b.top)),
+        line2BelowLine1: line2[0]!.top >= name.bottom - 1,
+        lastBottom: Math.max(...shown.map((td) => td.getBoundingClientRect().bottom)),
+        lineHeight: name.height,
+        rowTop: row.top,
+      };
+    }),
+  );
+  for (const r of rows) {
+    const where = `phone row ${r.event}`;
+    expect(r.shown, where).toEqual(['Tapahtuma', 'Asiakas', 'Tapahtumapäivä', 'Luotu', 'Hinta', 'Tila']);
+    for (const c of r.labels) expect(c, `${where}: no labels`).toMatch(/^(none|normal)$/);
+    // Line 1: name, tag right after it, price at the right edge.
+    expect(Math.max(...r.line1Top) - Math.min(...r.line1Top), `${where}: line 1`).toBeLessThanOrEqual(6);
+    expect(r.statusAfterName, `${where}: tag right after the name`).toBeGreaterThanOrEqual(0);
+    expect(r.statusAfterName, `${where}: tag right after the name`).toBeLessThanOrEqual(12);
+    expect(r.priceGap, `${where}: price at the right edge`).toBeLessThanOrEqual(16);
+    // Line 2: date, client, created on one line, in that order.
+    expect(r.line2BelowLine1, `${where}: line 2`).toBe(true);
+    // (Baseline-aligned: mono dates and the client name start a few px apart.)
+    expect(Math.max(...r.line2Tops) - Math.min(...r.line2Tops), `${where}: line 2 on one line ${r.line2Tops}`).toBeLessThanOrEqual(6);
+    expect([...r.line2Order].sort((a, b) => a - b), `${where}: date, client, created`).toEqual(r.line2Order);
+    // No third line: everything ends within two lines.
+    expect(r.lastBottom - r.rowTop, `${where}: two lines`).toBeLessThanOrEqual(r.lineHeight * 2 + 24);
+  }
+}
+
 /** Public endpoint status for a share path, from a request context without cookies. */
 async function publicStatus(page: Page, sharePath: string): Promise<number> {
   const token = sharePath.replace(/^\/o\//, '');
@@ -303,6 +353,7 @@ test('list: KPI cards = offer stats API (open value = BR-106); rows of every yea
   await expect(offerRow(page, name('Foxtrot'))).toContainText(STATUS_FI.ACCEPTED);
   await expect(offerRow(page, name('Charlie'))).toContainText(STATUS_FI.REJECTED);
   await expect(offerRow(page, name('Bravo'))).toContainText('–'); // no price
+  if (isMobile(testInfo)) await expectCompactPhoneRows(page);
 
   // Sorting: price asc / desc (empty last), event name asc. Headers on desktop, URL on phones
   // (the table is laid out as compact rows there; the sort lives in ?sort=&dir=).
@@ -513,16 +564,25 @@ test('inline source, event type and disposition: saved on change, kept after rel
     await api(page).patch(`/offers/${offer.id}`, data);
     return data;
   };
+  // Since 2026-11-02 the disposition select is left out of the phone rows too (it is on the offer
+  // page, checked below); there it is set through the API and the row shown after a reload.
+  const setRowDisposition = async (code: OfferSummary['disposition']) => {
+    if (!phone) return selectInline(page, disposition, DISPOSITION_FI[code]);
+    await setDisposition(page, offer.id, code);
+    await page.reload();
+    return { disposition: code };
+  };
   if (phone) {
     await expect(source).toBeHidden();
     await expect(eventType).toBeHidden();
-    await expect(disposition).toBeVisible();
+    await expect(disposition).toHaveCount(1);
+    await expect(disposition).toBeHidden();
   }
   expect(phone ? await viaApi({ source: 'INSTAGRAM' }) : await selectInline(page, source, 'Instagram')).toEqual({ source: 'INSTAGRAM' });
   expect(phone ? await viaApi({ eventType: 'CORPORATE' }) : await selectInline(page, eventType, 'Yritystilaisuus')).toEqual({
     eventType: 'CORPORATE',
   });
-  expect(await selectInline(page, disposition, DISPOSITION_FI.LOST_COMPETITOR)).toEqual({ disposition: 'LOST_COMPETITOR' });
+  expect(await setRowDisposition('LOST_COMPETITOR')).toEqual({ disposition: 'LOST_COMPETITOR' });
   await expect(row).toContainText(STATUS_FI.REJECTED);
 
   await page.reload();
@@ -532,7 +592,7 @@ test('inline source, event type and disposition: saved on change, kept after rel
   await expect(row).toContainText(STATUS_FI.REJECTED);
 
   // Back to pending → open; "–" clears the source.
-  expect(await selectInline(page, disposition, DISPOSITION_FI.PENDING)).toEqual({ disposition: 'PENDING' });
+  expect(await setRowDisposition('PENDING')).toEqual({ disposition: 'PENDING' });
   await expect(row).toContainText(STATUS_FI.OPEN);
   expect(phone ? await viaApi({ source: null }) : await selectInline(page, source, '–')).toEqual({ source: null });
   await page.reload();
@@ -673,9 +733,16 @@ test('regenerate link, copy link, delete and restore; a deleted offer is read-on
   const again = await page.request.post(`/api/offers/${offer.id}/restore`);
   expect(again.status(), 'restore of a non-deleted offer').toBe(409);
 
-  // Delete from the list row, restore from the Deleted view.
+  // Delete from the list row (phones: no row icons, from the offer page), restore from the Deleted view.
   await openOfferList(page, `?q=${encodeURIComponent(offer.eventName)}`);
-  await offerRow(page, offer.eventName).getByRole('button', { name: `Poista tarjous: ${offer.eventName}` }).click();
+  const rowDelete = offerRow(page, offer.eventName).getByRole('button', { name: `Poista tarjous: ${offer.eventName}` });
+  if (isMobile(testInfo)) {
+    await expect(rowDelete).toBeHidden();
+    await openOffer(page, offer);
+    await page.getByRole('group', { name: 'Tarjouksen toiminnot' }).getByRole('button', { name: 'Poista tarjous' }).click();
+  } else {
+    await rowDelete.click();
+  }
   await page.getByRole('dialog', { name: 'Poista tarjous' }).getByRole('button', { name: 'Poista tarjous' }).click();
   await expect(page.getByRole('status').filter({ hasText: `Tarjous poistettu: ${offer.eventName}.` })).toBeVisible();
   await expect(offerRow(page, offer.eventName)).toHaveCount(0);
@@ -736,11 +803,23 @@ test('convert to event: prefilled editable modal → event from the edited value
   await expect(offerRow(page, ev)).toHaveCount(1);
   await expect(offerRow(page, ev).getByRole('button', { name: `Muuta keikaksi: ${ev}` })).toHaveCount(0);
   await expect(offerRow(page, ev).locator('td[data-label="Linkitetty keikka"]')).toHaveText('–');
-  // Marking it won inline shows the button at once (no reload).
-  expect(await selectInline(page, offerRow(page, ev).getByLabel(`Lopputulos: ${ev}`, { exact: true }), DISPOSITION_FI.WON)).toEqual({
-    disposition: 'WON',
-  });
-  await expect(offerRow(page, ev).getByRole('button', { name: `Muuta keikaksi: ${ev}` })).toBeVisible();
+  // Marking it won inline shows the button at once (no reload). Phones (compact rows, 2026-11-02):
+  // no disposition select and no convert button in the row; both are on the offer page.
+  const phone = isMobile(testInfo);
+  if (phone) {
+    await expect(offerRow(page, ev).getByLabel(`Lopputulos: ${ev}`, { exact: true })).toBeHidden();
+    await setDisposition(page, offer.id, 'WON');
+    await page.reload();
+    await expect(offerRow(page, ev)).toContainText(STATUS_FI.ACCEPTED);
+    const hiddenConvert = offerRow(page, ev).getByRole('button', { name: `Muuta keikaksi: ${ev}`, includeHidden: true });
+    await expect(hiddenConvert).toHaveCount(1);
+    await expect(hiddenConvert).toBeHidden();
+  } else {
+    expect(await selectInline(page, offerRow(page, ev).getByLabel(`Lopputulos: ${ev}`, { exact: true }), DISPOSITION_FI.WON)).toEqual({
+      disposition: 'WON',
+    });
+    await expect(offerRow(page, ev).getByRole('button', { name: `Muuta keikaksi: ${ev}` })).toBeVisible();
+  }
 
   // API draft per BR-105.
   expect(await api(page).get(`/offers/${offer.id}/event-draft`)).toMatchObject({
@@ -754,10 +833,14 @@ test('convert to event: prefilled editable modal → event from the edited value
     producerId: partnerB,
   });
 
-  const row = offerRow(page, ev);
-  await row.getByRole('button', { name: `Muuta keikaksi: ${ev}` }).click();
+  if (phone) {
+    await openOffer(page, offer);
+    await page.getByRole('group', { name: 'Tarjouksen toiminnot' }).getByRole('button', { name: `Muuta keikaksi: ${ev}` }).click();
+  } else {
+    await offerRow(page, ev).getByRole('button', { name: `Muuta keikaksi: ${ev}` }).click();
+  }
   await expectConvertModal(page);
-  await expect(page).toHaveURL(/\/offers(\?|$)/); // a modal, not a page
+  await expect(page).toHaveURL(phone ? new RegExp(`/offers/${offer.id}$`) : /\/offers(\?|$)/); // a modal, not a page
 
   // Prefilled from the offer (BR-105); every field editable.
   await expect(field(page, 'Alkupäivä')).toHaveValue(`${year}-09-19`);
@@ -798,13 +881,20 @@ test('convert to event: prefilled editable modal → event from the edited value
   });
   const { event, offer: converted } = (await res.json()) as { event: Record<string, unknown>; offer: OfferDetail };
   await expect(convertModal(page)).toHaveCount(0);
-  const notice = page.getByRole('main').getByRole('status').filter({ hasText: `Keikka luotu tarjouksesta ${ev}.` });
+  const notice = page
+    .getByRole('main')
+    .getByRole('status')
+    .filter({ hasText: phone ? 'Keikka luotu.' : `Keikka luotu tarjouksesta ${ev}.` });
   await expect(notice.getByRole('link', { name: 'Avaa keikka' })).toHaveAttribute('href', `/gigs/${event.id}`);
+  // Phones: the row is checked in the list, then back to the offer page (notice gone).
+  if (phone) await openOfferList(page, `?q=${encodeURIComponent(ev)}`);
   // The row: "Keikka →" instead of the convert button; disposition Voitettu, status Hyväksytty.
-  const eventLink = offerRow(page, ev).getByRole('link', { name: `Keikka: ${ev}` });
+  // (Phones: the linked-gig cell is hidden in the compact row; checked in the DOM.)
+  const eventLink = offerRow(page, ev).getByRole('link', { name: `Keikka: ${ev}`, includeHidden: phone });
   await expect(eventLink).toHaveText('Keikka →');
+  if (phone) await expect(eventLink).toBeHidden();
   await expect(eventLink).toHaveAttribute('href', `/gigs/${event.id}`);
-  await expect(offerRow(page, ev).getByRole('button', { name: `Muuta keikaksi: ${ev}` })).toHaveCount(0);
+  await expect(offerRow(page, ev).getByRole('button', { name: `Muuta keikaksi: ${ev}`, includeHidden: true })).toHaveCount(0);
   await expect(offerRow(page, ev)).toContainText(STATUS_FI.ACCEPTED);
   await expect(offerRow(page, ev).getByLabel(`Lopputulos: ${ev}`).locator('option:checked')).toHaveText(DISPOSITION_FI.WON);
   await page.waitForTimeout(500);
@@ -840,7 +930,8 @@ test('convert to event: prefilled editable modal → event from the edited value
   expect(eventsOfOffer).toHaveLength(1);
 
   // Event page: "Tarjouksesta: <event>" links back; the offer page shows the event link.
-  await notice.getByRole('link', { name: 'Avaa keikka' }).click();
+  if (phone) await page.goto(`/gigs/${event.id}`);
+  else await notice.getByRole('link', { name: 'Avaa keikka' }).click();
   await expect(page.getByRole('heading', { level: 1, name: `${ev} live · Venue Q, City Q` })).toBeVisible();
   const fromOffer = page.getByRole('main').locator('p', { hasText: 'Tarjouksesta:' });
   await expect(fromOffer.getByRole('link', { name: ev })).toHaveAttribute('href', `/offers/${offer.id}`);
