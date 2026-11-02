@@ -1,4 +1,4 @@
-import { Check, Trash2 } from 'lucide-react';
+import { Check, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Partner, Task, TaskUpdate } from '../../api/types';
@@ -18,9 +18,10 @@ interface Props {
 }
 
 /**
- * One task in the list (UC-017, NFR-8). Title, owner, due date and description are edited in
- * place and saved on blur / change (one PATCH per field). Done is a one-tap toggle; delete asks
- * for confirmation first.
+ * One task in the list (UC-017, NFR-8), on one line: done toggle, title, owner, due date,
+ * details toggle and delete. Fields are edited in place and saved on blur / change (one PATCH
+ * per field). The description (and the overdue / done tags) show only when the row is opened.
+ * Done is a one-tap toggle; delete asks for confirmation first.
  */
 export function TaskRow({ task, partners }: Props) {
   const { t } = useTranslation();
@@ -29,6 +30,7 @@ export function TaskRow({ task, partners }: Props) {
   const update = useUpdateTask();
   const remove = useDeleteTask();
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [open, setOpen] = useState(false);
   const done = task.status === 'DONE';
 
   const patch = (body: TaskUpdate) => update.mutateAsync({ id: task.id, body });
@@ -36,9 +38,18 @@ export function TaskRow({ task, partners }: Props) {
   // Active partners + the current owner even if removed (UC-032) or missing from the list.
   const ownerOptions = partnerOptions(partners, task.ownerId);
 
+  const detailsId = `task-details-${task.id}`;
+
   return (
     <li
-      className={`task-item${task.overdue ? ' task-overdue' : ''}${done ? ' task-done' : ''}`}
+      className={[
+        'task-item',
+        task.overdue && 'task-overdue',
+        done && 'task-done',
+        open && 'task-open',
+      ]
+        .filter(Boolean)
+        .join(' ')}
       data-testid="task-item"
     >
       <button
@@ -60,56 +71,75 @@ export function TaskRow({ task, partners }: Props) {
             {apiErrorMessage(t, toggle.error)}
           </p>
         )}
-        <InlineText
-          className="task-title"
-          label={t('tasks.field.title')}
-          hideLabel
-          required
-          maxLength={500}
-          value={task.title}
-          field="title"
-          onSave={(title) => patch({ title })}
-        />
-        <InlineTextarea
-          className="task-desc"
-          label={t('tasks.field.description')}
-          hideLabel
-          rows={1}
-          maxLength={5000}
-          placeholder={t('tasks.descriptionPlaceholder')}
-          value={task.description}
-          field="description"
-          onSave={(description) => patch({ description })}
-        />
-        <div className="task-meta">
-          <InlineSelect
-            className="task-owner"
-            label={t('tasks.field.owner')}
-            value={task.ownerId}
-            field="ownerId"
-            options={ownerOptions}
-            onSave={(ownerId) => patch({ ownerId })}
-          />
-          <InlineDate
-            className="task-due"
-            label={t('tasks.field.dueDate')}
-            value={task.dueDate}
-            field="dueDate"
-            onSave={(dueDate) => patch({ dueDate })}
+        {/* One line: the title truncates with an ellipsis; the full title is the tooltip. */}
+        <div className="task-title" title={task.title}>
+          <InlineText
+            label={t('tasks.field.title')}
+            hideLabel
+            required
+            maxLength={500}
+            value={task.title}
+            field="title"
+            onSave={(title) => patch({ title })}
           />
         </div>
-        {(task.overdue || (done && task.completedAt)) && (
-          <p className="task-tags">
-            {task.overdue && <StatusTag tone="warn">{t('tasks.overdue')}</StatusTag>}
-            {done && task.completedAt && (
-              <StatusTag tone="ok">
-                {t('tasks.completed', { date: formatDate(task.completedAt, lang) })}
-              </StatusTag>
+        {/* Overdue is shown by the warn rule and due date colour; named for screen readers. */}
+        {task.overdue && <span className="visually-hidden">{t('tasks.overdue')}</span>}
+        {/* Phones: the due date as plain text on the line; owner and due date fields are in the
+            opened row. */}
+        {task.dueDate && (
+          <span className="task-due-short">{formatDate(task.dueDate, lang)}</span>
+        )}
+        <InlineSelect
+          className="task-owner"
+          label={t('tasks.field.owner')}
+          value={task.ownerId}
+          field="ownerId"
+          options={ownerOptions}
+          onSave={(ownerId) => patch({ ownerId })}
+        />
+        <InlineDate
+          className="task-due"
+          label={t('tasks.field.dueDate')}
+          value={task.dueDate}
+          field="dueDate"
+          onSave={(dueDate) => patch({ dueDate })}
+        />
+        {open && (
+          <div className="task-details" id={detailsId}>
+            <InlineTextarea
+              className="task-desc"
+              label={t('tasks.field.description')}
+              hideLabel
+              rows={2}
+              maxLength={5000}
+              placeholder={t('tasks.descriptionPlaceholder')}
+              value={task.description}
+              field="description"
+              onSave={(description) => patch({ description })}
+            />
+            {(task.overdue || (done && task.completedAt)) && (
+              <p className="task-tags">
+                {task.overdue && <StatusTag tone="warn">{t('tasks.overdue')}</StatusTag>}
+                {done && task.completedAt && (
+                  <StatusTag tone="ok">
+                    {t('tasks.completed', { date: formatDate(task.completedAt, lang) })}
+                  </StatusTag>
+                )}
+              </p>
             )}
-          </p>
+          </div>
         )}
       </div>
 
+      <IconButton
+        icon={open ? ChevronUp : ChevronDown}
+        className={`task-expand${task.description ? ' task-has-desc' : ''}`}
+        label={t(open ? 'tasks.hideDetails' : 'tasks.showDetails', { title: task.title })}
+        aria-expanded={open}
+        aria-controls={open ? detailsId : undefined}
+        onClick={() => setOpen((o) => !o)}
+      />
       <IconButton
         icon={Trash2}
         className="task-delete"

@@ -20,6 +20,8 @@ export const fi = {
     markDone: 'Merkitse tehdyksi: {{title}}',
     reopen: 'Avaa uudelleen: {{title}}',
     deleteAria: 'Poista: {{title}}',
+    showDetails: 'Näytä tiedot: {{title}}',
+    hideDetails: 'Piilota tiedot: {{title}}',
     deleteTitle: 'Poista tehtävä',
     descriptionPlaceholder: 'Lisää kuvaus',
     field: {
@@ -52,6 +54,8 @@ export const en: typeof fi = {
     markDone: 'Mark done: {{title}}',
     reopen: 'Reopen: {{title}}',
     deleteAria: 'Delete: {{title}}',
+    showDetails: 'Show details: {{title}}',
+    hideDetails: 'Hide details: {{title}}',
     deleteTitle: 'Delete task',
     descriptionPlaceholder: 'Add description',
     field: {
