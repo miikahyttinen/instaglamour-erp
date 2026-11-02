@@ -312,7 +312,10 @@ interface OfferTableProps {
  * on the coded / text columns. From 600 px it fills the width without scrolling sideways; columns
  * with priority 2 / 3 are hidden on narrower tables (TASK-147, TASK-160: 1 event, date, created,
  * client, price, status, actions · 2 place, seller, disposition, event · 3 source, event type).
- * Phones (< 600 px): one card per offer + the "Suodattimet" sheet.
+ * Phones (< 600 px): compact rows (design.md "Compact density"): line 1 = event name (truncates
+ * first) + status tag, flexible gap, price at the right edge; line 2 = event date, client, created
+ * (no labels). Place, seller, source, event type, disposition, linked gig and the row actions are
+ * left out (they are on the offer page); filters and sort in the "Suodattimet" sheet.
  */
 function OfferTable(props: OfferTableProps) {
   const { offers, partners, lang, tableState, onPatch } = props;
@@ -332,16 +335,16 @@ function OfferTable(props: OfferTableProps) {
       className: 'offer-col-event',
       sortValue: (o) => o.eventName,
       cell: (o) => (
-        <Link to={`/offers/${o.id}`} className="offer-link">
+        <Link to={`/offers/${o.id}`} className="offer-link" title={o.eventName}>
           {o.eventName}
         </Link>
       ),
     },
     {
       key: 'client',
-      phoneBare: true,
+      phoneBare: true, // phone rows: line 2, after the event date, no label
       label: t('offers.columns.client'),
-      className: 'offer-col-text',
+      className: 'offer-col-text offer-col-client',
       sortValue: (o) => o.clientName,
       filterValue: (o) => o.clientId,
       filterLabel: (id) => clientNames.get(id) ?? '–',
@@ -349,7 +352,7 @@ function OfferTable(props: OfferTableProps) {
     },
     {
       key: 'place',
-      phoneBare: true,
+      hideOnPhone: true,
       label: t('offers.columns.place'),
       className: 'offer-col-text',
       priority: 2,
@@ -359,23 +362,24 @@ function OfferTable(props: OfferTableProps) {
     },
     {
       key: 'eventDate',
-      phoneBare: true,
+      phoneBare: true, // phone rows: line 2, first
       label: t('offers.columns.eventDate'),
-      className: 'offer-col-date excel-col-fit',
+      className: 'offer-col-date offer-col-event-date excel-col-fit',
       sortValue: (o) => o.eventDate,
       cell: (o) => formatDate(o.eventDate, lang),
     },
     {
       key: 'created',
+      phoneBare: true, // phone rows: line 2, last
       label: t('offers.columns.created'),
-      className: 'offer-col-date excel-col-fit',
+      className: 'offer-col-date offer-col-created excel-col-fit',
       sortValue: (o) => o.createdAt,
       // Local date of the creation time, formatted like the other dates.
       cell: (o) => formatDate(o.createdAt, lang),
     },
     {
       key: 'price',
-      phoneMain: true,
+      phoneMain: true, // phone rows: line 1, last at the right edge
       label: t('offers.columns.price'),
       className: 'excel-col-fit',
       numeric: true,
@@ -384,7 +388,7 @@ function OfferTable(props: OfferTableProps) {
     },
     {
       key: 'status',
-      phoneBare: true,
+      phoneInline: true, // phone rows: line 1, right after the event name
       label: t('offers.columns.status'),
       className: 'excel-col-fit',
       sortValue: (o) => OFFER_DISPLAY_STATUSES.indexOf(offerDisplayStatus(o)),
@@ -448,7 +452,7 @@ function OfferTable(props: OfferTableProps) {
     },
     {
       key: 'disposition',
-      phoneBare: true,
+      hideOnPhone: true, // phone rows: changed on the offer page
       label: t('offers.columns.disposition'),
       priority: 2,
       className: 'offer-col-select',
@@ -469,7 +473,7 @@ function OfferTable(props: OfferTableProps) {
     },
     {
       key: 'linkedEvent',
-      phoneBare: true,
+      hideOnPhone: true, // phone rows: convert / open the gig on the offer page
       label: t('offers.columns.linkedEvent'),
       className: 'offer-col-linked-event excel-col-fit',
       priority: 2,
@@ -481,7 +485,7 @@ function OfferTable(props: OfferTableProps) {
     },
     {
       key: 'actions',
-      phoneBare: true,
+      hideOnPhone: true, // phone rows: no room on line 2; copy link / delete on the offer page
       label: t('offers.columns.actions'),
       className: 'offer-col-actions excel-col-fit',
       cell: (o) => (

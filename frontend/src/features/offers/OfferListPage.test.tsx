@@ -90,6 +90,34 @@ describe('offer list (UC-028)', () => {
     expect(bodyRows()[0]!.querySelector('td[data-label="Luotu"]')).not.toHaveClass('hide-phone');
   });
 
+  it('phone rows (< 600 px): name + status tag … price on line 1; date, client, created bare on line 2', async () => {
+    addMockOffer({ clientId, eventName: 'Event 1', priceCents: 120000, disposition: 'WON', city: 'City Y' });
+    renderApp('/offers');
+    await screen.findByRole('table', { name: 'Tarjoukset' });
+    const row = bodyRows()[0]!;
+    const cellOf = (label: string) => row.querySelector<HTMLElement>(`td[data-label="${label}"]`)!;
+    expect(cellOf('Tapahtuma')).toHaveClass('cell-primary');
+    // The full name stays available when the title truncates.
+    expect(within(cellOf('Tapahtuma')).getByRole('link', { name: 'Event 1' })).toHaveAttribute('title', 'Event 1');
+    expect(cellOf('Tila')).toHaveClass('cell-inline');
+    expect(cellOf('Tila').querySelector('.tag')).toHaveTextContent('Hyväksytty');
+    expect(cellOf('Hinta')).toHaveClass('cell-main');
+    // Line 1 order from the CSS order: title 0 · inline 1 · end 2 · main 3 (price last).
+    const rank = (c: Element) => ['cell-primary', 'cell-inline', 'cell-end', 'cell-main'].findIndex((k) => c.classList.contains(k));
+    const line1 = [...row.querySelectorAll('td')].filter((c) => rank(c) >= 0).sort((x, y) => rank(x) - rank(y));
+    expect(line1.map((c) => c.getAttribute('data-label'))).toEqual(['Tapahtuma', 'Tila', 'Hinta']);
+    // Line 2: bare values (no labels).
+    for (const label of ['Tapahtumapäivä', 'Asiakas', 'Luotu']) {
+      expect(cellOf(label), label).toHaveClass('cell-bare');
+      expect(cellOf(label), label).not.toHaveClass('hide-phone');
+    }
+    // Left out of the phone rows (on the offer page): disposition select, convert button, icons.
+    for (const label of ['Paikka / kaupunki', 'Myyjä', 'Lähde', 'Tapahtumatyyppi', 'Lopputulos', 'Linkitetty keikka', 'Toiminnot']) {
+      expect(cellOf(label), label).toHaveClass('hide-phone');
+    }
+    expect(within(cellOf('Linkitetty keikka')).getByRole('button', { name: 'Muuta keikaksi: Event 1' })).toBeInTheDocument();
+  });
+
   it('a sort in the URL overrides the default (newest created first)', async () => {
     addMockOffer({ clientId, eventName: 'Event B', eventDate: `${TEST_YEAR}-09-01` });
     addMockOffer({ clientId, eventName: 'Event A', eventDate: `${TEST_YEAR}-03-01` });

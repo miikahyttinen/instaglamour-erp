@@ -326,30 +326,28 @@
 }
 
 /* ---------- < 600 px: compact rows (TASK-175) ----------
-   Line 1: event … price; line 2: client · place · date · status, then the disposition select,
-   the gig link / convert button and the row icons (right). */
+   Line 1: event name + status tag … price; line 2: event date · client · created (no labels).
+   Disposition, linked gig / convert and the row icons are hidden (on the offer page). */
 @media (max-width: 599px) {
   .offers-page .offer-table td.offer-col-date {
     font-family: var(--font-mono);
     font-size: var(--fs-label);
     letter-spacing: 0.06em;
     font-variant-numeric: tabular-nums;
+    white-space: nowrap;
   }
-  .offers-page .offer-table td:is(.offer-col-select, .offer-col-linked-event, .offer-col-actions) {
-    align-self: center;
-    align-items: center;
+  /* Line 2 (compact phone rows): event date · client · created, on one line. The client comes
+     after the event date (it is before it in the table) and truncates first. */
+  .offers-page .offer-table td:is(.offer-col-client, .offer-col-created) {
+    order: 5;
   }
-  .offers-page .offer-table td.offer-col-actions {
-    margin-left: auto;
-  }
-  /* No gig and no Convert button: nothing to show ("–"). */
-  .offers-page .offer-table td.offer-col-linked-event:not(:has(a, button)) {
-    display: none;
-  }
-  /* The disposition select only as wide as its value (it would grow to the row width). */
-  .offers-page .offer-table td.offer-col-select .inline-control > select {
-    flex: 0 1 auto;
-    width: auto;
-    max-width: 100%;
+  /* Zero basis (capped at its content), so line 2 never wraps: the client shrinks instead. */
+  .offers-page .offer-table td.offer-col-client {
+    display: block;
+    flex: 1 1 0;
+    max-width: max-content;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
   }
 }
