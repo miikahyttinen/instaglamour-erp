@@ -2,6 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import { http } from 'msw';
 import { afterEach, describe, expect, it } from 'vitest';
 import { setLanguage } from '../../i18n';
+import { formatDate } from '../../lib/format';
 import { errorResponse } from '../../mocks/util';
 import { db } from '../../mocks/data';
 import { server } from '../../mocks/server';
@@ -42,7 +43,6 @@ describe('tasks page', () => {
     expect(overdue).toHaveClass('task-overdue');
     expect(within(overdue).getByText('Myöhässä')).toBeInTheDocument();
     expect(within(overdue).getByLabelText('Vastuuhenkilö')).toHaveDisplayValue('Partner A');
-    expect(within(overdue).getByLabelText('Kuvaus')).toHaveValue('Description 1');
     expect(itemFor('Task 2')).not.toHaveClass('task-overdue');
     expect(within(itemFor('Task 2')).getByLabelText('Vastuuhenkilö')).toHaveDisplayValue(
       'Partner B',
@@ -63,6 +63,36 @@ describe('tasks page', () => {
       }
     }
     expect(screen.getAllByLabelText('Vastuuhenkilö', { exact: true })).toHaveLength(items().length);
+  });
+
+  it('shows each task on one line: title with full-title tooltip, description only when opened', async () => {
+    const { user } = await openPage();
+    const row = itemFor('Task 1');
+    expect(row.querySelector('.task-title')).toHaveAttribute('title', 'Task 1');
+    // Phones show the due date as text on the line (the date field is in the opened row).
+    expect(row.querySelector('.task-due-short')).toHaveTextContent(
+      formatDate(stored('Task 1').dueDate, 'fi'),
+    );
+    // Closed: no description field, no tags.
+    expect(within(row).queryByLabelText('Kuvaus')).not.toBeInTheDocument();
+    expect(row.querySelector('.task-tags')).toBeNull();
+
+    const toggle = within(row).getByRole('button', { name: 'Näytä tiedot: Task 1' });
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(toggle).toHaveClass('task-has-desc');
+    expect(within(itemFor('Task 3')).getByRole('button', { name: /Näytä tiedot/ })).not.toHaveClass(
+      'task-has-desc',
+    );
+    await user.click(toggle);
+    expect(row).toHaveClass('task-open');
+    const hide = within(row).getByRole('button', { name: 'Piilota tiedot: Task 1' });
+    expect(hide).toHaveAttribute('aria-expanded', 'true');
+    expect(hide).toHaveAttribute('aria-controls', row.querySelector('.task-details')!.id);
+    expect(within(row).getByLabelText('Kuvaus')).toHaveValue('Description 1');
+    expect(row.querySelector('.task-tags')).toHaveTextContent('Myöhässä');
+
+    await user.click(hide);
+    expect(within(row).queryByLabelText('Kuvaus')).not.toBeInTheDocument();
   });
 
   it('has no Edit buttons or edit dialog for existing tasks', async () => {
@@ -184,12 +214,14 @@ describe('tasks page', () => {
     await user.tab();
     await waitFor(() => expect(stored('Task 3').dueDate).toBe('2099-01-01'));
 
+    await user.click(within(itemFor('Task 3')).getByRole('button', { name: /Näytä tiedot/ }));
     const desc = within(itemFor('Task 3')).getByLabelText('Kuvaus');
     await user.type(desc, 'Line 1{Enter}Line 2');
     expect(patches).toHaveLength(1);
     await user.tab();
     await waitFor(() => expect(stored('Task 3').description).toBe('Line 1\nLine 2'));
 
+    await user.click(within(itemFor('Task 1')).getByRole('button', { name: /Näytä tiedot/ }));
     await user.clear(within(itemFor('Task 1')).getByLabelText('Kuvaus'));
     await user.tab();
     await waitFor(() => expect(stored('Task 1').description).toBeNull());

@@ -8,8 +8,8 @@
   margin-bottom: var(--space-3);
 }
 
-/* The list is one surface with hairline rows (like a table body), plus a column header row on
-   wide screens. */
+/* The list is one surface with hairline rows (like a table body), plus a column header row
+   from 600 px. */
 .tasks-page .tasks-table {
   background: var(--surface);
   border: var(--hairline) solid var(--border);
@@ -21,68 +21,159 @@
   padding: 0;
 }
 
-/* Row layout: a grid; .task-body is flattened so its fields share the row's columns.
-   Phone/tablet: [check] title [delete]; description, owner + due date and tags below the title. */
+/* Row layout (owner request 2026-11-02): one line per task, no taller than a people-list row.
+   A grid; .task-body is flattened so its fields share the row's columns. The row separator is an
+   inset shadow, so it adds no height.
+   Phone (< 600 px): [check] title due-date-text [details] [delete] at the 40 px touch height;
+   the owner and due date fields are in the opened row, above the description.
+   ≥ 600 px: [check] title owner due [details] [delete] at the compact 32 px control height, so a
+   row is --row-h (36 px) like the people list. */
 .tasks-page .task-item {
   /* Containing block for visually hidden labels. */
   position: relative;
   display: grid;
-  grid-template-columns: var(--tap) minmax(0, 1fr) var(--tap);
+  grid-template-columns: var(--control-h) minmax(0, 1fr) 4.5rem var(--control-h) var(--control-h);
   grid-template-areas:
-    '.     err   err'
-    'check title delete'
-    '.     desc  desc'
-    '.     meta  meta'
-    '.     tags  tags';
+    'err   err   err   err    err'
+    'check title short expand delete'
+    '.     owner owner owner  owner'
+    '.     due   due   due    due'
+    '.     det   det   det    det';
   align-items: center;
-  column-gap: var(--space-2);
-  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-1);
-  border-top: var(--hairline) solid var(--border);
+  column-gap: var(--space-1);
+  padding: 0 var(--space-1) 0 0;
   border-left: calc(var(--hairline) * 2) solid transparent;
+  box-shadow: inset 0 var(--hairline) 0 var(--border);
 }
 .tasks-page .task-item:first-child {
-  border-top: 0;
+  box-shadow: none;
 }
 .tasks-page .task-body {
   display: contents;
 }
 .tasks-page .task-body > .field-error {
   grid-area: err;
-  margin: 0 0 var(--space-1);
+  margin: var(--space-1) 0 0 var(--space-2);
 }
 .tasks-page .task-check {
   grid-area: check;
 }
 .tasks-page .task-title {
   grid-area: title;
+  min-width: 0;
 }
-.tasks-page .task-desc {
-  grid-area: desc;
+.tasks-page .task-owner {
+  grid-area: owner;
 }
-.tasks-page .task-meta {
-  grid-area: meta;
+.tasks-page .task-due {
+  grid-area: due;
 }
-.tasks-page .task-tags {
-  grid-area: tags;
+.tasks-page .task-due-short {
+  grid-area: short;
+  font-size: var(--fs-small);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+  white-space: nowrap;
+  justify-self: end;
+}
+.tasks-page .task-overdue .task-due-short {
+  color: var(--warn-fg);
+  font-weight: var(--fw-medium);
+}
+.tasks-page .task-details {
+  grid-area: det;
+  min-width: 0;
+  padding-bottom: var(--space-2);
+}
+.tasks-page .task-expand {
+  grid-area: expand;
 }
 .tasks-page .task-delete {
   grid-area: delete;
-  justify-self: end;
+}
+.tasks-page .task-expand,
+.tasks-page .task-delete {
+  padding: 0;
+}
+/* A task with a description: the details toggle is in the accent colour. */
+.tasks-page .task-has-desc {
+  color: var(--accent);
+}
+/* The title truncates with an ellipsis (full title in the row's tooltip). */
+.tasks-page .task-title .inline-input {
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-/* Overdue = warn status: a thin warn rule on the left, plus the warn tag. */
+@media (max-width: 599px) {
+  /* Closed: owner and due date fields hidden (the date is shown as text on the line). */
+  .tasks-page .task-item:not(.task-open) :is(.task-owner, .task-due) {
+    display: none;
+  }
+  .tasks-page .task-open :is(.task-owner, .task-due) {
+    padding-bottom: var(--space-2);
+  }
+  .tasks-page .task-open .task-due-short {
+    visibility: hidden;
+  }
+  .tasks-page .task-item .inline-field > label:not(.visually-hidden) {
+    margin: 0 0 var(--space-1);
+  }
+}
+
+@media (min-width: 600px) {
+  .tasks-page .task-item,
+  .tasks-page .tasks-head {
+    --control-h: 32px;
+    grid-template-columns:
+      var(--control-h) minmax(0, 1fr) minmax(0, var(--label-w)) 8.5rem
+      var(--control-h) var(--control-h);
+    column-gap: var(--space-2);
+  }
+  .tasks-page .task-item {
+    grid-template-areas:
+      'err   err   err   err .      .'
+      'check title owner due expand delete'
+      '.     det   det   det .      .';
+    min-height: var(--row-h);
+    padding: calc((var(--row-h) - var(--control-h)) / 2) var(--space-1)
+      calc((var(--row-h) - var(--control-h)) / 2) 0;
+  }
+  .tasks-page .task-due-short {
+    display: none;
+  }
+  /* The column header names the fields; the labels stay as the accessible names. */
+  .tasks-page .task-item .inline-field > label {
+    position: absolute;
+    width: var(--hairline);
+    height: var(--hairline);
+    margin: calc(-1 * var(--hairline));
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+  }
+  .tasks-page .task-details {
+    padding-bottom: var(--space-1);
+  }
+}
+
+
+/* Overdue = warn status: a thin warn rule on the left and the due date in warn colour (the warn
+   tag is in the opened details; the row also names it for screen readers). */
 .tasks-page .task-overdue {
   border-left-color: var(--warn-fg);
 }
-.tasks-page .task-done .task-title {
-  text-decoration: line-through;
-  color: var(--text-muted);
+.tasks-page .task-overdue .task-due .inline-input {
+  color: var(--warn-fg);
+  font-weight: var(--fw-medium);
 }
 
-/* Large tap target for one-tap done / reopen; the visible box is a small square. */
+/* One-tap done / reopen; the visible box is a small square. */
 .tasks-page .task-check {
-  width: var(--tap);
-  height: var(--tap);
+  width: var(--control-h);
+  height: var(--control-h);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -120,7 +211,7 @@
   outline-offset: calc(var(--space-1) * -1);
 }
 
-/* Inline fields (NFR-8): the title reads as the row heading, the description as secondary text. */
+/* The title reads as the row heading; the description as secondary text. */
 .tasks-page .task-title .inline-input {
   font-size: var(--fs-body);
   font-weight: var(--fw-medium);
@@ -135,78 +226,22 @@
   color: var(--text-muted);
 }
 
-/* Owner + due date. The global label margin is dropped inside rows. */
-.tasks-page .task-meta .inline-field > label {
-  margin: 0;
-}
-.tasks-page .task-overdue .task-due .inline-input {
-  color: var(--warn-fg);
-}
-/* Owner and due date side by side in two equal columns, labels above (top-aligned) — phones too
-   (TASK-175: small fields side by side instead of stacked). */
-.tasks-page .task-meta {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  align-items: start;
-  column-gap: var(--space-3);
-  margin-top: var(--space-1);
-}
-.tasks-page .task-meta .inline-field > label {
-  margin-bottom: var(--space-1);
-}
-
 .tasks-page .task-tags {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-1) var(--space-2);
-  margin: var(--space-1) 0 var(--space-1);
+  margin: var(--space-1) 0 0;
 }
 
-/* Column header row: only with the one-line row layout. */
+/* Column header row (≥ 600 px, same columns as the rows). */
 .tasks-page .tasks-head {
   display: none;
 }
-
-/* ≥ 1200 px (content column ≥ 888 px next to the sidebar): one line per task in aligned columns:
-   [check] title (description and tags below) | owner | due date | [delete]. */
-@media (min-width: 1200px) {
-  .tasks-page .task-item,
-  .tasks-page .tasks-head {
-    grid-template-columns: var(--tap) minmax(0, 1fr) var(--label-w) var(--label-w) var(--tap);
-    column-gap: var(--space-4);
-  }
-  .tasks-page .task-item {
-    grid-template-areas:
-      '.     err   .     .   .'
-      'check title owner due delete'
-      '.     desc  .     .   .'
-      '.     tags  .     .   .';
-  }
-  .tasks-page .task-meta {
-    display: contents;
-  }
-  .tasks-page .task-owner {
-    grid-area: owner;
-  }
-  .tasks-page .task-due {
-    grid-area: due;
-  }
-  /* The column header names the fields; the labels stay as the accessible names. */
-  .tasks-page .task-meta .inline-field > label {
-    position: absolute;
-    width: var(--hairline);
-    height: var(--hairline);
-    margin: calc(-1 * var(--hairline));
-    padding: 0;
-    overflow: hidden;
-    clip: rect(0 0 0 0);
-    white-space: nowrap;
-    border: 0;
-  }
+@media (min-width: 600px) {
   .tasks-page .tasks-head {
     display: grid;
-    grid-template-areas: '. title owner due .';
-    padding: var(--cell-pad-y) var(--space-2) var(--cell-pad-y) var(--space-1);
+    grid-template-areas: '. title owner due . .';
+    padding: var(--cell-pad-y) var(--space-1) var(--cell-pad-y) 0;
     border-bottom: var(--hairline) solid var(--border);
     border-left: calc(var(--hairline) * 2) solid transparent;
     background: var(--surface-2);
