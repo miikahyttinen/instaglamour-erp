@@ -46,7 +46,7 @@ export function importRoutes(app: FastifyInstance, deps: AppDeps): void {
 
       const document = parseDocument(request.body);
       const validation = validateSeed(document);
-      const errors = [...(validation.ok ? [] : validation.errors), ...importOnlyErrors(document, config.authAllowedDomain)];
+      const errors = [...(validation.ok ? [] : validation.errors), ...importOnlyErrors(document, config)];
       if (errors.length > 0) throw invalidImport(errors);
 
       try {

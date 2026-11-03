@@ -23,6 +23,7 @@ const envSchema = z.object({
   GOOGLE_CLIENT_SECRET: z.string().default(''),
   GOOGLE_REDIRECT_URL: z.string().default('http://localhost:3000/api/auth/google/callback'),
   AUTH_ALLOWED_DOMAIN: z.string().min(1),
+  AUTH_EXTRA_ALLOWED_EMAILS: z.string().optional(),
   DEV_LOGIN_ENABLED: booleanString,
   FRONTEND_URL: z.string().url().default('http://localhost:5173'),
   UPLOAD_DIR: z.string().min(1).default(DEFAULT_UPLOAD_DIR),
@@ -38,6 +39,11 @@ export interface AppConfig {
   sessionSecret: string;
   google: { clientId: string; clientSecret: string; redirectUrl: string };
   authAllowedDomain: string;
+  /**
+   * AUTH_EXTRA_ALLOWED_EMAILS: exact addresses (trimmed, lower case) treated as if they were in
+   * `authAllowedDomain`. Empty = no exceptions. Check with `isAllowedEmail` (auth/allowedEmail.ts).
+   */
+  authExtraAllowedEmails: string[];
   devLoginEnabled: boolean;
   frontendUrl: string;
   uploadDir: string;
@@ -48,6 +54,24 @@ export interface AppConfig {
    * deployment). Set only in production; in development the Vite dev server serves the UI.
    */
   staticDir: string | null;
+}
+
+/**
+ * Parse AUTH_EXTRA_ALLOWED_EMAILS: comma-separated, trimmed, lower-cased, empty entries ignored,
+ * duplicates removed. Throws (startup error) on any entry that is not an email address.
+ */
+export function parseExtraAllowedEmails(raw: string | undefined): string[] {
+  const entries = (raw ?? '')
+    .split(',')
+    .map((v) => v.trim().toLowerCase())
+    .filter((v) => v.length > 0);
+  const invalidCount = entries.filter((v) => !z.email().safeParse(v).success).length;
+  if (invalidCount > 0) {
+    throw new Error(
+      `Invalid environment configuration: AUTH_EXTRA_ALLOWED_EMAILS has ${invalidCount} entr${invalidCount === 1 ? 'y' : 'ies'} that ${invalidCount === 1 ? 'is' : 'are'} not an email address.`,
+    );
+  }
+  return [...new Set(entries)];
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
@@ -80,6 +104,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
       redirectUrl: e.GOOGLE_REDIRECT_URL,
     },
     authAllowedDomain: e.AUTH_ALLOWED_DOMAIN.trim().toLowerCase(),
+    authExtraAllowedEmails: parseExtraAllowedEmails(e.AUTH_EXTRA_ALLOWED_EMAILS),
     devLoginEnabled: e.DEV_LOGIN_ENABLED,
     frontendUrl,
     uploadDir: e.UPLOAD_DIR,

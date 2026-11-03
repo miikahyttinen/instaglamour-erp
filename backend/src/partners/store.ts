@@ -31,12 +31,6 @@ export function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
-/** BR-110: the email's domain must be exactly AUTH_ALLOWED_DOMAIN (no subdomains). */
-export function isInAllowedDomain(email: string, allowedDomain: string): boolean {
-  const allowed = allowedDomain.trim().toLowerCase();
-  const at = email.lastIndexOf('@');
-  return allowed.length > 0 && at > 0 && email.slice(at + 1) === allowed;
-}
 
 const duplicateEmail = () => validationError({ email: 'DUPLICATE' }, 'Email is already used by another partner');
 

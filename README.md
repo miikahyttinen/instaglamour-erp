@@ -218,6 +218,7 @@ Node is pinned to 24 (`.nvmrc`, `engines`).
 | `GOOGLE_CLIENT_SECRET` | `your-client-secret` | |
 | `GOOGLE_REDIRECT_URL` | `https://your-app.up.railway.app/api/auth/google/callback` | Must be an authorised redirect URI of the client |
 | `AUTH_ALLOWED_DOMAIN` | `example.com` | Only verified Google accounts of this domain may sign in |
+| `AUTH_EXTRA_ALLOWED_EMAILS` | *(unset)* or `someone@example.com` | Optional: comma-separated exact addresses outside the domain allowed as if they were in it (case-insensitive); still need to be active partners. An invalid entry refuses to start |
 | `FRONTEND_URL` | `https://your-app.up.railway.app` | The app's own public URL (same origin). **Must be https** in production; also turns on `Secure` cookies |
 | `UPLOAD_DIR` | `/data/uploads` | On the volume; created at startup if missing |
 | `DEV_LOGIN_ENABLED` | *(unset)* or `false` | `true` with `NODE_ENV=production` **refuses to start** |
