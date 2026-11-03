@@ -3,7 +3,7 @@
  * plus import-only safety checks. Nothing here touches the filesystem.
  */
 import type { ImportRun } from '../generated/prisma/client.js';
-import { isInAllowedDomain } from '../partners/store.js';
+import { isAllowedEmail, type AllowedEmailConfig } from '../auth/allowedEmail.js';
 import type { SeedSummary } from '../../seed/load.js';
 
 /** BR-121: the largest import file. */
@@ -19,10 +19,11 @@ const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'obj
 /**
  * Checks that apply to an import but not to the seed command (BR-121), on the raw document so they
  * are reported together with the seed validation errors:
- * - every partner email must be in AUTH_ALLOWED_DOMAIN (a partner can sign in);
+ * - every partner email must be in AUTH_ALLOWED_DOMAIN or AUTH_EXTRA_ALLOWED_EMAILS (a partner can sign in);
  * - no reference may have an `image` (the server never reads files named by an upload).
  */
-export function importOnlyErrors(input: unknown, allowedDomain: string): string[] {
+export function importOnlyErrors(input: unknown, config: AllowedEmailConfig): string[] {
+  const allowedDomain = config.authAllowedDomain;
   if (!isRecord(input)) return [];
   const errors: string[] = [];
   if (Array.isArray(input.partners)) {
@@ -30,7 +31,7 @@ export function importOnlyErrors(input: unknown, allowedDomain: string): string[
       if (!isRecord(p) || typeof p.email !== 'string') return; // reported by the seed validation
       const email = p.email.trim().toLowerCase();
       if (!email.includes('@')) return; // not an email at all: reported by the seed validation
-      if (!isInAllowedDomain(email, allowedDomain)) {
+      if (!isAllowedEmail(config, email)) {
         errors.push(`partners.${i}.email: ${email} is not in the allowed sign-in domain ${allowedDomain}`);
       }
     });

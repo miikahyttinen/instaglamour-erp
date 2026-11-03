@@ -8,7 +8,8 @@ import { requiredText, yearString } from '../events/schemas.js';
 import { compareCostLines, costLinePurchaseOrderInclude, toCostLineDto } from '../events/serialize.js';
 import { isUuid, yearDateRange } from '../events/store.js';
 import { currentSessionTokenHash } from '../auth/session.js';
-import { grantPartner, isInAllowedDomain, normalizeEmail, revokePartner } from '../partners/store.js';
+import { isAllowedEmail } from '../auth/allowedEmail.js';
+import { grantPartner, normalizeEmail, revokePartner } from '../partners/store.js';
 import { MUSICIAN_ROLES, isMusicianRole, normalizeRoles, type MusicianRole } from '../domain/enums.js';
 import { toPersonDtoWithCount, toPersonDtos } from '../people/store.js';
 import { personInclude } from '../serializers.js';
@@ -99,7 +100,7 @@ export function peopleRoutes(app: FastifyInstance, deps: AppDeps): void {
   app.put<IdParams>('/api/people/:id/partner', async (request) => {
     const me = request.requirePartner();
     const email = normalizeEmail(parseInput(partnerBody, request.body).email);
-    if (!z.email().safeParse(email).success || !isInAllowedDomain(email, deps.config.authAllowedDomain)) {
+    if (!z.email().safeParse(email).success || !isAllowedEmail(deps.config, email)) {
       throw validationError({ email: 'INVALID_VALUE' });
     }
     if (!isUuid(request.params.id)) throw notFound('Person not found');

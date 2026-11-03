@@ -1,6 +1,7 @@
 /** Auth endpoints (docs/api-contract.md "Auth & me"). All are reachable without a session. */
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import { z } from 'zod';
+import { isAllowedEmail } from '../auth/allowedEmail.js';
 import { checkGoogleIdentity } from '../auth/google.js';
 import { endSession, startSession } from '../auth/session.js';
 import { forbidden, parseInput } from '../http/errors.js';
@@ -81,7 +82,7 @@ export function authRoutes(app: FastifyInstance, deps: AppDeps): void {
       return redirectToLogin(reply, 'SIGN_IN_FAILED');
     }
 
-    const check = checkGoogleIdentity(identity, config.authAllowedDomain);
+    const check = checkGoogleIdentity(identity, config);
     if (!check.ok) return redirectToLogin(reply, check.error);
 
     const partner = await findPartnerByEmail(check.email);
@@ -94,6 +95,8 @@ export function authRoutes(app: FastifyInstance, deps: AppDeps): void {
   if (config.devLoginEnabled) {
     app.post('/api/auth/dev-login', async (request, reply) => {
       const { email } = parseInput(devLoginBody, request.body);
+      // Same allow-list as Google sign-in (domain or AUTH_EXTRA_ALLOWED_EMAILS), then active partner.
+      if (!isAllowedEmail(config, email)) throw forbidden('Email is not allowed to sign in');
       const partner = await findPartnerByEmail(email);
       if (!partner) throw forbidden('Email is not a registered partner');
       await startSession(db, config, reply, partner.id);

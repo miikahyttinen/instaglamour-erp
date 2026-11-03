@@ -55,6 +55,7 @@ outside local development.**
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Google OAuth "Web application" client |
 | `GOOGLE_REDIRECT_URL` | Must be an authorised redirect URI of that client, e.g. `http://localhost:3000/api/auth/google/callback` |
 | `AUTH_ALLOWED_DOMAIN` | Only verified Google accounts in this domain may sign in (BR-070) |
+| `AUTH_EXTRA_ALLOWED_EMAILS` | Optional: comma-separated exact addresses outside the domain treated as if they were in it (case-insensitive, trimmed), e.g. `someone@example.org`. Applies to Google sign-in, dev login and partner emails; they must still be active partners. An entry that is not an email address stops startup. Unset/empty = none |
 | `DEV_LOGIN_ENABLED` | `true` registers `POST /api/auth/dev-login` (otherwise 404) |
 | `FRONTEND_URL` | Where the Google callback redirects (`/` or `/login?error=…`), e.g. `http://localhost:5173` |
 | `UPLOAD_DIR` | Reference photo storage (old event attachment files stay there unused), outside the repository (created at startup if missing; on Railway a volume path such as `/data/uploads`; tests use a temp dir; `npm run db:seed` copies seed photos here) |
@@ -65,9 +66,11 @@ database is unreachable; used as the platform healthcheck.
 ## Sign-in
 
 `GET /api/auth/google/start` → Google (authorization code + PKCE, state in a signed short-lived
-cookie, `hd` hint) → `GET /api/auth/google/callback`: the code is exchanged server-side, the ID
-token is verified (signature, audience, expiry) and the email must be Google-verified, in
-`AUTH_ALLOWED_DOMAIN` and belong to an **active** partner. On success an httpOnly, `SameSite=Lax` session cookie
+cookie, `hd` hint unless `AUTH_EXTRA_ALLOWED_EMAILS` is set) → `GET /api/auth/google/callback`: the
+code is exchanged server-side, the ID token is verified (signature, audience, expiry) and the email must
+be Google-verified, in `AUTH_ALLOWED_DOMAIN` or listed in `AUTH_EXTRA_ALLOWED_EMAILS`, and belong to an
+**active** partner. The allow-list check is one helper, `isAllowedEmail` (`src/auth/allowedEmail.ts`),
+shared by Google sign-in, dev login and partner email validation (people endpoint and import). On success an httpOnly, `SameSite=Lax` session cookie
 is set (30 days, sliding; sessions are stored hashed in the `session` table).
 A session of a partner who is no longer active is refused (401) and deleted.
 
@@ -77,7 +80,7 @@ Partner status (UC-032, BR-110…112) is managed with `PUT/DELETE /api/people/{i
 concurrent requests. Removal deactivates the partner (the row and its id stay, so old events, offers,
 tasks and hours keep it) and deletes all its sessions in the same transaction; changing an active
 partner's email also ends its sessions (except the requester's own). The email must be in
-`AUTH_ALLOWED_DOMAIN` (checked on the server) and is unique case-insensitively (DB index
+`AUTH_ALLOWED_DOMAIN` or listed in `AUTH_EXTRA_ALLOWED_EMAILS` (checked on the server) and is unique case-insensitively (DB index
 `partner_email_lower_key`). New seller/producer/owner choices must be active partners.
 
 Every `/api/*` route except `/api/auth/*` and the exact public routes
