@@ -563,7 +563,13 @@ One derived value **`invoiceState`** = the next invoicing action; first match wi
 ## Health check (TASK-047)
 `GET /api/health` (no session) → 200 `{ ok: true }` when the database answers, else 503 `{ ok: false }` (plain body, not the error format); `Cache-Control: no-store`. In production the backend also serves the built frontend (SPA fallback for non-`/api` GETs).
 
+## Extra allowed sign-in emails (owner request 2026-11-03)
+- New optional env `AUTH_EXTRA_ALLOWED_EMAILS`: comma-separated list of exact email addresses (case-insensitive, trimmed) that are treated as if they were in `AUTH_ALLOWED_DOMAIN`.
+- Applies to: Google sign-in domain check (BR-070), dev login, and partner email validation (`PUT /api/people/{id}/partner`: such an address no longer gets `email: INVALID_VALUE`). The person must still be an **active partner** to sign in.
+- Unset/empty = no change. Invalid entries (not an email) → startup error.
+
 ## Change log
+- 2026-11-03 – AUTH_EXTRA_ALLOWED_EMAILS (exception list for sign-in outside the domain) (PM)
 - 2026-10-31 – Gig file attachments removed from the app (PM)
 - 2026-10-31 – Invoicing back to one label (next action): PAID / ROWS_TO_INVOICE / OPEN_INVOICES / NEEDS_INVOICES / NONE (PM)
 - 2026-10-31 – invoiceState split into invoiceCoverage + paymentState (owner states, colours) (PM)
