@@ -1,8 +1,8 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { http } from 'msw';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { db } from '../../mocks/data';
-import { addCostLine } from '../../mocks/eventStore';
+import { addCostLine, linesOf } from '../../mocks/eventStore';
 import { server } from '../../mocks/server';
 import { errorResponse } from '../../mocks/util';
 import { addMockEvent, mockLine, partnerA, staffMockEvent, TEST_YEAR } from '../../test/eventFixtures';
@@ -13,6 +13,10 @@ const costs = () => screen.getByRole('table', { name: 'Kulut ja miehitys' });
 const line = (name: string) => within(costs()).getByRole('rowgroup', { name });
 // Inline fields (NFR-8) are named "<field>: <line>".
 const budget = (name: string) => within(line(name)).getByRole('textbox', { name: `Budjetti: ${name}` });
+// The draft row of a new line (TASK-179) and its fields ("<field>: Uusi kulurivi").
+const draft = () => within(costs()).getByRole('rowgroup', { name: 'Uusi kulurivi' });
+const draftField = (role: 'combobox' | 'textbox', field: string) =>
+  within(draft()).getByRole(role, { name: `${field}: Uusi kulurivi` });
 const econTile = (name: string) => screen.getByRole('region', { name });
 const historyItems = () =>
   within(screen.getByRole('list', { name: 'Muutoshistoria' })).getAllByRole('listitem');
@@ -246,23 +250,33 @@ describe('cost list (UC-005)', () => {
   it('adds lines (OTHER needs a description), edits them inline and removes them', async () => {
     const event = addMockEvent();
     const { user } = await openEvent(event.id);
+    const before = linesOf(db.events, event.id).length;
     await user.click(screen.getByRole('button', { name: '+ Lisää rivi' }));
-    const form = screen.getByRole('form', { name: 'Uusi kulurivi' });
-    await user.selectOptions(within(form).getByRole('combobox', { name: 'Tyyppi' }), 'Muu kulu');
-    await user.type(within(form).getByRole('textbox', { name: 'Budjetti' }), '100');
-    await user.click(within(form).getByRole('button', { name: 'Lisää rivi' }));
-    expect(within(form).getByText('Kuvaus on pakollinen.')).toBeInTheDocument();
-    await user.type(within(form).getByRole('textbox', { name: 'Kuvaus' }), 'Stage rental');
-    await user.click(within(form).getByRole('button', { name: 'Lisää rivi' }));
+    // No separate form: an empty row at the end of the table, its type select focused.
+    expect(screen.queryByRole('form')).not.toBeInTheDocument();
+    const rows = within(costs()).getAllByRole('rowgroup').filter((g) => g.tagName === 'TBODY');
+    expect(rows.at(-1)).toBe(draft());
+    expect(draftField('combobox', 'Tyyppi')).toHaveFocus();
+    await user.selectOptions(draftField('combobox', 'Tyyppi'), 'Muu kulu');
+    await user.type(draftField('textbox', 'Budjetti'), '100');
+    // Leaving the row without the description OTHER needs: error on the field, nothing sent.
+    await user.click(document.body);
+    expect(await within(draft()).findByText('Kuvaus on pakollinen.')).toBeInTheDocument();
+    expect(draftField('textbox', 'Kuvaus')).toHaveAttribute('aria-invalid', 'true');
+    expect(linesOf(db.events, event.id)).toHaveLength(before);
+    await user.type(draftField('textbox', 'Kuvaus'), 'Stage rental');
+    await user.click(document.body);
     const added = await screen.findByRole('rowgroup', { name: 'Muu kulu (Stage rental)' });
     expect(budget('Muu kulu (Stage rental)')).toHaveValue('100,00');
+    expect(within(costs()).queryByRole('rowgroup', { name: 'Uusi kulurivi' })).not.toBeInTheDocument();
 
-    // Office default fee is suggested from settings.
+    // Office default fee is suggested from settings; Esc drops the draft.
     await user.click(screen.getByRole('button', { name: '+ Lisää rivi' }));
-    const form2 = screen.getByRole('form', { name: 'Uusi kulurivi' });
-    await user.selectOptions(within(form2).getByRole('combobox', { name: 'Tyyppi' }), 'Tuotanto');
-    expect(within(form2).getByRole('textbox', { name: 'Budjetti' })).toHaveValue('10,00');
-    await user.click(within(form2).getByRole('button', { name: 'Peruuta' }));
+    await user.selectOptions(draftField('combobox', 'Tyyppi'), 'Tuotanto');
+    expect(draftField('textbox', 'Budjetti')).toHaveValue('10,00');
+    await user.keyboard('{Escape}');
+    expect(within(costs()).queryByRole('rowgroup', { name: 'Uusi kulurivi' })).not.toBeInTheDocument();
+    expect(linesOf(db.events, event.id).filter((l) => l.type === 'PRODUCTION')).toHaveLength(1);
 
     // No Edit button: the budget is edited in place, Enter saves.
     expect(within(costs()).queryByRole('button', { name: 'Muokkaa' })).not.toBeInTheDocument();
@@ -345,5 +359,109 @@ describe('cost list (UC-005)', () => {
     const person10 = db.events.people.find((p) => p.name === 'Person 10');
     expect(person10).toBeDefined();
     await waitFor(() => expect(mockLine(event, 'VOC').personId).toBe(person10!.id));
+  });
+});
+
+describe('cost list: new line as an inline draft row (TASK-179)', () => {
+  let posts: string[];
+  beforeEach(() => {
+    signInMock().selectedYear = TEST_YEAR;
+    posts = [];
+    server.events.on('request:start', ({ request }) => {
+      if (request.method === 'POST' && request.url.includes('/cost-lines')) posts.push(request.url);
+    });
+  });
+  afterEach(() => {
+    server.events.removeAllListeners();
+  });
+  const noDraft = () => expect(within(costs()).queryByRole('rowgroup', { name: 'Uusi kulurivi' })).not.toBeInTheDocument();
+
+  it('drops a completely empty draft when the focus leaves it, without a request', async () => {
+    const event = addMockEvent();
+    const { user } = await openEvent(event.id);
+    await user.click(screen.getByRole('button', { name: '+ Lisää rivi' }));
+    expect(draftField('combobox', 'Tyyppi')).toHaveFocus();
+    await user.tab();
+    expect(draftField('textbox', 'Kuvaus')).toHaveFocus(); // still in the row: kept
+    await user.click(document.body);
+    await waitFor(noDraft);
+    expect(posts).toEqual([]);
+  });
+
+  it('keeps one draft at a time; "Lisää rivi" focuses it; the trash button drops it', async () => {
+    const event = addMockEvent();
+    const { user } = await openEvent(event.id);
+    const addButton = screen.getByRole('button', { name: '+ Lisää rivi' });
+    await user.click(addButton);
+    await user.type(draftField('textbox', 'Kuvaus'), 'Synthetic note');
+    await user.click(addButton);
+    expect(within(costs()).getAllByRole('rowgroup', { name: 'Uusi kulurivi' })).toHaveLength(1);
+    expect(draftField('combobox', 'Tyyppi')).toHaveFocus();
+    expect(draftField('textbox', 'Kuvaus')).toHaveValue('Synthetic note');
+    await user.click(within(draft()).getByRole('button', { name: 'Poista' }));
+    noDraft();
+    // A new draft starts empty.
+    await user.click(addButton);
+    expect(draftField('textbox', 'Kuvaus')).toHaveValue('');
+    expect(posts).toEqual([]);
+  });
+
+  it('keeps a filled draft without a type with "required" on the type; nothing is sent', async () => {
+    const event = addMockEvent();
+    const { user } = await openEvent(event.id);
+    await user.click(screen.getByRole('button', { name: '+ Lisää rivi' }));
+    await user.type(draftField('textbox', 'Budjetti'), '50');
+    await user.click(document.body);
+    expect(await within(draft()).findByText('Pakollinen tieto.')).toBeInTheDocument();
+    expect(draftField('combobox', 'Tyyppi')).toHaveAttribute('aria-invalid', 'true');
+    expect(posts).toEqual([]);
+    // Choosing the type clears the error; leaving saves the line (as a normal inline row).
+    await user.selectOptions(draftField('combobox', 'Tyyppi'), 'Rummut');
+    expect(within(draft()).queryByText('Pakollinen tieto.')).not.toBeInTheDocument();
+    await user.click(document.body);
+    await waitFor(noDraft);
+    expect(posts).toHaveLength(1);
+    const drums = linesOf(db.events, event.id).filter((l) => l.type === 'DRUMS');
+    expect(drums.map((l) => l.budgetedCents)).toContain(5000);
+  });
+
+  it('saves with a person and shows the double-booking warning', async () => {
+    const other = addMockEvent({ startDate: `${TEST_YEAR}-06-01`, venue: 'Venue Y', lineupTemplateId: db.reference.lineupTemplates[1]!.id });
+    staffMockEvent(other, ['Person 1']);
+    const event = addMockEvent({ sellerId: db.partners[2]!.id, producerId: db.partners[2]!.id });
+    const { user } = await openEvent(event.id);
+    await user.click(screen.getByRole('button', { name: '+ Lisää rivi' }));
+    await user.selectOptions(draftField('combobox', 'Tyyppi'), 'Oma rooli');
+    await user.type(draftField('textbox', 'Kuvaus'), 'Synthetic role');
+    await user.selectOptions(draftField('combobox', 'Henkilö'), 'Person 1');
+    await user.type(draftField('textbox', 'Budjetti'), '80');
+    await user.click(document.body);
+    expect(await screen.findByText(/Person 1 on samaan aikaan/)).toBeInTheDocument();
+    const added = await screen.findByRole('rowgroup', { name: 'Oma rooli (Synthetic role)' });
+    expect(within(added).getByRole('combobox', { name: 'Henkilö: Oma rooli (Synthetic role)' })).toHaveDisplayValue('Person 1');
+    noDraft();
+  });
+
+  it('shows a server error that has no field in the draft row and keeps it', async () => {
+    const event = addMockEvent();
+    server.use(http.post('/api/events/:id/cost-lines', () => errorResponse(404, 'NOT_FOUND', 'Server English text')));
+    const { user } = await openEvent(event.id);
+    await user.click(screen.getByRole('button', { name: '+ Lisää rivi' }));
+    await user.selectOptions(draftField('combobox', 'Tyyppi'), 'Kitara');
+    await user.click(document.body);
+    expect(await within(draft()).findByRole('alert')).toBeInTheDocument();
+    expect(screen.queryByText('Server English text')).not.toBeInTheDocument();
+    expect(draftField('combobox', 'Tyyppi')).toHaveDisplayValue('Kitara');
+  });
+
+  it('works on an event without lines (the table appears for the draft)', async () => {
+    const event = addMockEvent();
+    db.events.costLines = db.events.costLines.filter((l) => l.eventId !== event.id);
+    const { user } = renderApp(`/gigs/${event.id}`);
+    await user.click(await screen.findByRole('button', { name: '+ Lisää rivi' }));
+    expect(draftField('combobox', 'Tyyppi')).toHaveFocus();
+    expect(screen.queryByText('Ei kulurivejä.')).not.toBeInTheDocument();
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('table', { name: 'Kulut ja miehitys' })).not.toBeInTheDocument();
   });
 });

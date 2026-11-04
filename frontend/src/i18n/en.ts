@@ -443,6 +443,7 @@ const en: Resources = {
     totalBudgeted: 'Total costs, budget',
     totalActual: 'Total costs, actual',
     add: 'Add line',
+    /** Name of the draft row a new line is typed in (TASK-179); its fields are "<field>: <this>". */
     addTitle: 'New cost line',
     groupMusician: 'Musicians and crew',
     groupInternal: 'Internal',

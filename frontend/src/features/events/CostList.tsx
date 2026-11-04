@@ -1,16 +1,23 @@
 import { useMutation } from '@tanstack/react-query';
 import { Trash2 } from 'lucide-react';
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import type { CostType } from '../../api/enums';
 import { isMusicianRole, isPartnerOnlyType } from '../../api/enums';
 import { costLinesApi } from '../../api/endpoints';
-import type { CostLine, CostLineUpdate, EventDetail, EventWithWarnings, Person, Warning } from '../../api/types';
+import type {
+  CostLine,
+  CostLineCreate,
+  CostLineUpdate,
+  EventDetail,
+  EventWithWarnings,
+  Person,
+  Warning,
+} from '../../api/types';
 import { Button, IconButton } from '../../components/Button';
 import { Dialog } from '../../components/Dialog';
-import { Field, MoneyInput } from '../../components/fields';
-import { InlineMoney, InlineSwitch, InlineText } from '../../components/inline';
+import { InlineFieldFrame, InlineMoney, InlineSwitch, InlineText } from '../../components/inline';
 import { Notice } from '../../components/Notice';
 import { StatusTag } from '../../components/StatusTag';
 import { apiErrorMessage, apiFieldErrors, costTypeLabel } from '../../i18n/labels';
@@ -39,7 +46,19 @@ const DESCRIPTION_MAX = 5000;
 export function CostList({ event, people, readOnly, onWarnings }: Props) {
   const { t } = useTranslation();
   const lang = useLang();
-  const [adding, setAdding] = useState(false);
+  // The new line being typed in (TASK-179): a draft row at the end of the table, UI-only until
+  // saved. A new key mounts a fresh draft.
+  const [draftKey, setDraftKey] = useState<number | null>(null);
+  const nextDraftKey = useRef(0);
+  const draftTypeRef = useRef<HTMLSelectElement>(null);
+  const addRow = () => {
+    if (draftKey !== null) {
+      draftTypeRef.current?.focus();
+      return;
+    }
+    nextDraftKey.current += 1;
+    setDraftKey(nextDraftKey.current);
+  };
   const applyEvent = useApplyEvent();
   const onResult = (result: EventWithWarnings) => {
     applyEvent(result.event, event.id);
@@ -55,7 +74,7 @@ export function CostList({ event, people, readOnly, onWarnings }: Props) {
           <StatusTag tone="warn">{t('events.notFullyStaffed')}</StatusTag>
         </p>
       )}
-      {event.costLines.length === 0 ? (
+      {event.costLines.length === 0 && draftKey === null ? (
         <p className="table-empty">{t('costs.empty')}</p>
       ) : (
         // Hand-written .data-table (not <DataTable>): each line is its own named <tbody>, so an
@@ -91,6 +110,20 @@ export function CostList({ event, people, readOnly, onWarnings }: Props) {
                 onResult={onResult}
               />
             ))}
+            {!readOnly && draftKey !== null && (
+              <DraftCostRow
+                key={draftKey}
+                event={event}
+                people={people}
+                columnCount={columnCount}
+                typeRef={draftTypeRef}
+                onSaved={(result) => {
+                  onResult(result);
+                  setDraftKey(null);
+                }}
+                onDiscard={() => setDraftKey(null)}
+              />
+            )}
           </table>
         </div>
       )}
@@ -104,20 +137,17 @@ export function CostList({ event, people, readOnly, onWarnings }: Props) {
           <dd>{formatMoney(event.actualCostsCents, lang)}</dd>
         </div>
       </dl>
-      {!readOnly &&
-        (adding ? (
-          <AddCostLineForm
-            event={event}
-            people={people}
-            onDone={(result) => {
-              onResult(result);
-              setAdding(false);
-            }}
-            onCancel={() => setAdding(false)}
-          />
-        ) : (
-          <Button onClick={() => setAdding(true)}>+ {t('costs.add')}</Button>
-        ))}
+      {!readOnly && (
+        <Button
+          // With a draft open, keep the focus in it: the click only moves to its type select.
+          onMouseDown={(e) => {
+            if (draftKey !== null) e.preventDefault();
+          }}
+          onClick={addRow}
+        >
+          + {t('costs.add')}
+        </Button>
+      )}
     </div>
   );
 }
@@ -350,17 +380,26 @@ function CostLineItem({ line, people, readOnly, columnCount, onResult }: LinePro
   );
 }
 
-function AddCostLineForm({
-  event,
-  people,
-  onDone,
-  onCancel,
-}: {
+interface DraftProps {
   event: EventDetail;
   people: Person[] | undefined;
-  onDone: (result: EventWithWarnings) => void;
-  onCancel: () => void;
-}) {
+  columnCount: number;
+  /** The type select, so "Add line" can focus an existing draft. */
+  typeRef: RefObject<HTMLSelectElement | null>;
+  onSaved: (result: EventWithWarnings) => void;
+  onDiscard: () => void;
+}
+
+type DraftField = 'type' | 'personId' | 'description' | 'budgetedCents';
+type DraftErrors = Partial<Record<DraftField, string>>;
+
+/**
+ * New cost line typed in place (TASK-179). `type` can't be changed after create, so the row lives
+ * only in the UI until the focus leaves it: then it is saved (POST) when the type (and the
+ * description OTHER / OTHER_ROLE need) is there, dropped when it is completely empty, and
+ * otherwise kept with the field errors. Esc and the trash button drop it.
+ */
+function DraftCostRow({ event, people, columnCount, typeRef, onSaved, onDiscard }: DraftProps) {
   const { t } = useTranslation();
   const lang = useLang();
   const { data: reference } = useReference();
@@ -368,18 +407,35 @@ function AddCostLineForm({
   const [personId, setPersonId] = useState<string | null>(null);
   const [description, setDescription] = useState('');
   const [budget, setBudget] = useState('');
-  const [localErrors, setLocalErrors] = useState<Record<string, string>>({});
+  const [errors, setErrors] = useState<DraftErrors>({});
+  const [generalError, setGeneralError] = useState<string | null>(null);
+  const rowRef = useRef<HTMLTableSectionElement>(null);
+  const leaveTimer = useRef<number | undefined>(undefined);
+  const label = t('costs.addTitle');
+
   const add = useMutation({
-    mutationFn: () =>
-      costLinesApi.create(event.id, {
-        type: type as CostType,
-        personId,
-        description: description.trim() || null,
-        budgetedCents: parseMoneyField(budget, lang, true).cents ?? 0,
-      }),
-    onSuccess: onDone,
+    mutationFn: (body: CostLineCreate) => costLinesApi.create(event.id, body),
+    onSuccess: onSaved,
+    onError: (error) => {
+      const fieldErrors: DraftErrors = apiFieldErrors(t, error);
+      setErrors(fieldErrors);
+      setGeneralError(Object.keys(fieldErrors).length === 0 ? apiErrorMessage(t, error) : null);
+    },
   });
-  const errors = { ...(add.isError ? apiFieldErrors(t, add.error) : {}), ...localErrors };
+
+  useEffect(() => {
+    typeRef.current?.focus();
+    return () => window.clearTimeout(leaveTimer.current);
+  }, [typeRef]);
+
+  const clearError = (field: DraftField) => {
+    setErrors((prev) => {
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+    setGeneralError(null);
+  };
 
   const internalDefault = (code: CostType): number | null => {
     const s = reference?.settings;
@@ -390,10 +446,9 @@ function AddCostLineForm({
     return null;
   };
 
-  const partnersOnly = type !== '' && isPartnerOnlyType(type);
-
   const onTypeChange = (code: CostType | '') => {
     setType(code);
+    clearError('type');
     // SALES / PRODUCTION: drop a chosen person who isn't an active partner (it would be rejected).
     if (code && isPartnerOnlyType(code) && personId !== null) {
       if (!selectablePeople(people, null, true).some((p) => p.id === personId)) setPersonId(null);
@@ -402,17 +457,25 @@ function AddCostLineForm({
     if (fee !== null && budget.trim() === '') setBudget(centsToInput(fee, lang));
   };
 
-  const submit = (e: FormEvent) => {
-    e.preventDefault();
-    const next: Record<string, string> = {};
-    if (!type) next.type = t('fields.REQUIRED');
-    const parsed = parseMoneyField(budget, lang, true);
-    if (parsed.error) next.budgetedCents = t(`fields.${parsed.error}`);
-    if (type && needsDescription(type) && !description.trim()) {
-      next.description = t('fields.DESCRIPTION_REQUIRED');
+  /** The focus left the row: save, drop (completely empty) or show what is missing. */
+  const leave = () => {
+    if (add.isPending) return;
+    const text = description.trim();
+    if (!type && personId === null && !text && !budget.trim()) {
+      onDiscard();
+      return;
     }
-    setLocalErrors(next);
-    if (Object.keys(next).length === 0) add.mutate();
+    const next: DraftErrors = {};
+    if (!type) next.type = t('fields.REQUIRED');
+    if (type && needsDescription(type) && !text) next.description = t('fields.DESCRIPTION_REQUIRED');
+    if (text.length > DESCRIPTION_MAX) next.description = t('fields.TOO_LONG');
+    // An empty budget is saved as 0 €.
+    const parsed = parseMoneyField(budget, lang, false);
+    if (parsed.error) next.budgetedCents = t(`fields.${parsed.error}`);
+    setErrors(next);
+    setGeneralError(null);
+    if (!type || Object.keys(next).length > 0) return;
+    add.mutate({ type, personId, description: text || null, budgetedCents: parsed.cents ?? 0 });
   };
 
   const groups: [string, readonly CostType[]][] = [
@@ -422,59 +485,155 @@ function AddCostLineForm({
   ];
 
   return (
-    <form className="inline-form cost-add-form" onSubmit={submit} noValidate aria-label={t('costs.addTitle')}>
-      <h3 className="cost-add-title">{t('costs.addTitle')}</h3>
-      <div className="form-row">
-        <Field label={t('costs.type')} error={errors.type}>
-          {(p) => (
-            <select {...p} value={type} onChange={(e) => onTypeChange(e.target.value as CostType | '')}>
-              <option value="">{t('costs.chooseType')}</option>
-              {groups.map(([groupLabel, codes]) => (
-                <optgroup key={groupLabel} label={groupLabel}>
-                  {codes.map((code) => (
-                    <option key={code} value={code}>
-                      {costTypeLabel(t, code)}
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
-            </select>
-          )}
-        </Field>
-        <Field label={t('costs.person')} error={errors.personId}>
-          {(p) => (
-            <PersonSelect
-              id={p.id}
-              label={t('costs.person')}
-              value={personId}
-              people={people}
-              partnersOnly={partnersOnly}
-              onChange={setPersonId}
+    <tbody
+      ref={rowRef}
+      className="cost-group cost-draft"
+      aria-label={label}
+      aria-busy={add.isPending || undefined}
+      onBlur={(e) => {
+        if (e.relatedTarget instanceof Node && rowRef.current?.contains(e.relatedTarget)) return;
+        // Decide once the focus has settled: a control swapped inside the row (e.g. the
+        // new-person name input) keeps the focus in the row.
+        window.clearTimeout(leaveTimer.current);
+        leaveTimer.current = window.setTimeout(() => {
+          if (!rowRef.current || rowRef.current.contains(document.activeElement)) return;
+          leave();
+        });
+      }}
+      onKeyDown={(e) => {
+        if (e.key !== 'Escape' || e.nativeEvent.isComposing) return;
+        e.preventDefault();
+        window.clearTimeout(leaveTimer.current);
+        onDiscard();
+      }}
+    >
+      <tr>
+        <td className="cell-primary cost-type">
+          <InlineFieldFrame
+            label={`${t('costs.type')}: ${label}`}
+            hideLabel
+            status={errors.type ? 'error' : add.isPending ? 'saving' : 'idle'}
+            error={errors.type ?? null}
+          >
+            {(control) => (
+              <select
+                {...control}
+                ref={typeRef}
+                value={type}
+                disabled={add.isPending}
+                onChange={(e) => onTypeChange(e.target.value as CostType | '')}
+              >
+                <option value="">{t('costs.chooseType')}</option>
+                {groups.map(([groupLabel, codes]) => (
+                  <optgroup key={groupLabel} label={groupLabel}>
+                    {codes.map((code) => (
+                      <option key={code} value={code}>
+                        {costTypeLabel(t, code)}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+            )}
+          </InlineFieldFrame>
+          <InlineFieldFrame
+            label={`${t('costs.description')}: ${label}`}
+            hideLabel
+            className="cost-description"
+            status={errors.description ? 'error' : 'idle'}
+            error={errors.description ?? null}
+          >
+            {(control) => (
+              <input
+                {...control}
+                type="text"
+                autoComplete="off"
+                placeholder={t('costs.description')}
+                value={description}
+                disabled={add.isPending}
+                onChange={(e) => {
+                  setDescription(e.target.value);
+                  clearError('description');
+                }}
+              />
+            )}
+          </InlineFieldFrame>
+        </td>
+
+        <td className="cost-person" data-label={t('costs.person')}>
+          <PersonSelect
+            label={`${t('costs.person')}: ${label}`}
+            value={personId}
+            people={people}
+            partnersOnly={type !== '' && isPartnerOnlyType(type)}
+            error={errors.personId}
+            onChange={(id) => {
+              setPersonId(id);
+              clearError('personId');
+            }}
+          />
+        </td>
+
+        <td className="cost-loadin is-empty" />
+
+        <td className="num cost-budget" data-label={t('costs.budgeted')}>
+          <InlineFieldFrame
+            label={`${t('costs.budgeted')}: ${label}`}
+            hideLabel
+            className="inline-numeric"
+            status={errors.budgetedCents ? 'error' : 'idle'}
+            error={errors.budgetedCents ?? null}
+          >
+            {(control) => (
+              <span className="inline-unit">
+                <input
+                  {...control}
+                  type="text"
+                  inputMode="decimal"
+                  autoComplete="off"
+                  value={budget}
+                  disabled={add.isPending}
+                  onChange={(e) => {
+                    setBudget(e.target.value);
+                    clearError('budgetedCents');
+                  }}
+                />
+                <span aria-hidden="true">€</span>
+              </span>
+            )}
+          </InlineFieldFrame>
+        </td>
+
+        <td className="cost-paid cost-draft-paid" />
+
+        <td className="cost-actions">
+          <div className="cost-actions-inner">
+            <IconButton
+              variant="ghost"
+              icon={Trash2}
+              label={t('common.remove')}
+              className="cost-remove"
+              // Keep the focus in the row (Safari doesn't focus buttons on click): the click drops
+              // the draft; leaving the row first must not save it.
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => {
+                window.clearTimeout(leaveTimer.current);
+                onDiscard();
+              }}
             />
-          )}
-        </Field>
-      </div>
-      <div className="form-row">
-        <Field label={t('costs.budgeted')} error={errors.budgetedCents}>
-          {(p) => <MoneyInput {...p} value={budget} onChange={setBudget} />}
-        </Field>
-        <Field label={t('costs.description')} error={errors.description}>
-          {(p) => (
-            <input {...p} type="text" value={description} onChange={(e) => setDescription(e.target.value)} />
-          )}
-        </Field>
-      </div>
-      {add.isError && Object.keys(apiFieldErrors(t, add.error)).length === 0 && (
-        <Notice tone="danger" role="alert">
-          <p>{apiErrorMessage(t, add.error)}</p>
-        </Notice>
+          </div>
+        </td>
+      </tr>
+
+      {generalError && (
+        <tr className="cost-extra-row">
+          <td colSpan={columnCount}>
+            <p className="field-error" role="alert">
+              {generalError}
+            </p>
+          </td>
+        </tr>
       )}
-      <div className="form-actions">
-        <Button type="submit" variant="primary" disabled={add.isPending}>
-          {t('costs.add')}
-        </Button>
-        <Button onClick={onCancel}>{t('common.cancel')}</Button>
-      </div>
-    </form>
+    </tbody>
   );
 }
