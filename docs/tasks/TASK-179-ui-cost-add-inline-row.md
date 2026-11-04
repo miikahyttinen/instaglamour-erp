@@ -1,7 +1,7 @@
 # TASK-179: Cost list — "Lisää rivi" adds an empty inline row (no separate form)
 
 - **owner:** ui
-- **status:** todo
+- **status:** done
 - **spec:** owner request 2026-11-04
 - **depends on:** none
 
