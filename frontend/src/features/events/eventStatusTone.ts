@@ -11,24 +11,18 @@ export const EVENT_STATUS_TONE: Record<EventDisplayStatus, StatusTone> = {
 /** Tone of the "Deleted" tag on a deleted event. */
 export const EVENT_DELETED_TONE: StatusTone = 'danger';
 
-/**
- * Invoice row status tones (owner change 2026-10-31): Ready = blue (info), Sent = light green
- * (tinted `ok`), Paid = full green box (solid `ok-strong`).
- */
+/** Invoice row status tones (api-contract "Invoicing v3"): Not sent = yellow, Sent = green (ok). */
 export const INVOICE_ROW_STATUS_TONE: Record<InvoiceRowStatus, StatusTone> = {
-  READY: 'info',
+  NOT_SENT: 'yellow',
   SENT: 'ok',
-  PAID: 'ok-strong',
 };
 
 /**
- * Gig invoicing state tones (api-contract "Invoicing: one label"): Paid = dark green (solid
- * `ok-strong`), Rows to be invoiced = blue (info), Open invoices = amber (warn), Needs invoices =
- * yellow (played gigs only; owner 2026-10-31, distinct from the amber warn). NONE is a plain dash, no tag.
+ * Gig invoicing state tones (api-contract "Invoicing v3"): Open invoices = yellow, Fully invoiced =
+ * dark green (solid `ok-strong`), Partly invoiced = blue (info). NONE is a plain dash, no tag.
  */
 export const INVOICE_STATE_TONE: Record<Exclude<InvoiceState, 'NONE'>, StatusTone> = {
-  PAID: 'ok-strong',
-  ROWS_TO_INVOICE: 'info',
-  OPEN_INVOICES: 'warn',
-  NEEDS_INVOICES: 'yellow',
+  OPEN_INVOICES: 'yellow',
+  FULLY_INVOICED: 'ok-strong',
+  PARTLY_INVOICED: 'info',
 };

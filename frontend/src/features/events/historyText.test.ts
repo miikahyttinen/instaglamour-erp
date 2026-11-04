@@ -216,6 +216,13 @@ describe('history descriptions (UC-013)', () => {
       { ...base, type: 'INVOICE_ROW_REMOVED', details: { ...row, status: 'SENT' } },
       // Missing snapshot fields degrade gracefully.
       { ...base, type: 'INVOICE_ROW_REMOVED', details: {} },
+      // Invoicing v3: current statuses; the automatic final invoice is marked.
+      {
+        ...base,
+        partnerId: null,
+        type: 'INVOICE_ROW_ADDED',
+        details: { invoiceRowId: 'r2', description: 'Loppulasku', amountCents: 70000, status: 'NOT_SENT', auto: true },
+      },
     ];
     const describe = (lang: 'fi' | 'en') =>
       list.map((e) => {
@@ -227,11 +234,13 @@ describe('history descriptions (UC-013)', () => {
       ['Laskuriviä muutettu', 'Prepayment: Tila: Lähetetty → Maksettu; Summa: 500,00 € → 600,00 €'],
       ['Laskurivi poistettu', 'Prepayment · 500,00 € · Lähetetty'],
       ['Laskurivi poistettu'],
+      ['Laskurivi lisätty', 'Loppulasku · 700,00 € · Lähettämättä', 'Luotu automaattisesti'],
     ]);
     expect(describe('en')[1]).toEqual([
       'Invoice row changed',
-      'Prepayment: Status: Invoice sent → Paid; Amount: €500.00 → €600.00',
+      'Prepayment: Status: Sent → Paid; Amount: €500.00 → €600.00',
     ]);
+    expect(describe('en')[4]).toEqual(['Invoice row added', 'Loppulasku · €700.00 · Not sent', 'Created automatically']);
     expect(list.every((e) => matchesFilter(e, 'details'))).toBe(true);
   });
 

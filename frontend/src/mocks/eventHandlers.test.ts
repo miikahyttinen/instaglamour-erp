@@ -5,6 +5,7 @@ import type { ApiError } from '../api/client';
 import type { EventCreate, EventDetail } from '../api/types';
 import { signInMock } from '../test/renderApp';
 import { db } from './data';
+import { addAutoFinalInvoice } from './eventStore';
 
 const YEAR = 2030;
 const templateA = () => db.reference.lineupTemplates[0]!;
@@ -246,13 +247,13 @@ describe('event mocks', () => {
     });
   });
 
-  it('NEEDS_INVOICES only for played gigs: upcoming and cancelled gigs are NONE', async () => {
+  it('PARTLY_INVOICED for played gigs and cancelled gigs with rows; upcoming and row-less cancelled gigs are NONE', async () => {
     const pastYear = 2020;
     const played = await eventsApi.create(eventInput({ startDate: `${pastYear}-03-01` }));
-    expect(played).toMatchObject({ played: true, invoiceState: 'NEEDS_INVOICES' });
-    // Part paid, nothing open → still needs invoices.
-    const part = await invoiceRowsApi.create(played.id, { description: 'Part', amountCents: 1000, status: 'PAID' });
-    expect(part.invoiceState).toBe('NEEDS_INVOICES');
+    expect(played).toMatchObject({ played: true, invoiceState: 'PARTLY_INVOICED' });
+    // Part sent, nothing open → still partly invoiced.
+    const part = await invoiceRowsApi.create(played.id, { description: 'Part', amountCents: 1000, status: 'SENT' });
+    expect(part.invoiceState).toBe('PARTLY_INVOICED');
 
     const upcoming = await eventsApi.create(eventInput());
     expect(upcoming).toMatchObject({ played: false, invoiceState: 'NONE' });
@@ -260,93 +261,87 @@ describe('event mocks', () => {
     const cancelled = await eventsApi.create(eventInput({ startDate: `${pastYear}-04-01` }));
     await eventsApi.cancel(cancelled.id, { reason: 'Called off' });
     expect((await eventsApi.get(cancelled.id)).invoiceState).toBe('NONE');
+    // Cancelled with rows and sent < total → partly invoiced (contract details).
+    expect((await invoiceRowsApi.create(cancelled.id, { description: 'Fee', amountCents: 1000, status: 'SENT' })).invoiceState).toBe('PARTLY_INVOICED');
 
-    const res = await fetch(`/api/events?year=${pastYear}&invoiceState=NEEDS_INVOICES&status=ALL`);
+    const res = await fetch(`/api/events?year=${pastYear}&invoiceState=PARTLY_INVOICED&status=ALL`);
     const ids = ((await res.json()) as { events: { id: string }[] }).events.map((g) => g.id);
     expect(ids).toContain(played.id);
-    expect(ids).not.toContain(cancelled.id);
+    expect(ids).toContain(cancelled.id);
   });
 
-  it('invoice rows: add / patch / remove, derived figures and state, history, 409 when deleted (TASK-173)', async () => {
+  it('invoice rows: add / patch / remove, derived figures and state, history, 409 when deleted (Invoicing v3)', async () => {
     const event = await eventsApi.create(eventInput());
     const total = event.totalPriceCents;
     expect(event).toMatchObject({
       invoiceRows: [],
-      invoicedCents: 0,
-      paidCents: 0,
+      sentCents: 0,
+      notSentCents: 0,
+      uninvoicedCents: total,
       balanceCents: total,
-      openCents: 0,
-      // Upcoming gig: nothing to invoice yet (NEEDS_INVOICES is for played gigs only).
+      // Upcoming gig: nothing to invoice yet (PARTLY_INVOICED is for played gigs only).
       invoiceState: 'NONE',
     });
+    expect(event).not.toHaveProperty('paidCents');
 
-    // Default status READY; who / when set; creation order kept.
+    // Default status NOT_SENT; who / when set; creation order kept.
     const first = await invoiceRowsApi.create(event.id, { description: ' Prepayment ', amountCents: 10000 });
     expect(first.invoiceRows).toHaveLength(1);
     expect(first.invoiceRows[0]).toMatchObject({
       description: 'Prepayment',
       amountCents: 10000,
-      status: 'READY',
+      status: 'NOT_SENT',
       statusBy: partnerA().id,
       createdBy: partnerA().id,
+      auto: false,
     });
-    expect(first).toMatchObject({ invoiceState: 'ROWS_TO_INVOICE', openCents: 0, readyCents: 10000 });
+    expect(first).toMatchObject({ invoiceState: 'OPEN_INVOICES', notSentCents: 10000, uninvoicedCents: total - 10000 });
     const rowA = first.invoiceRows[0]!;
     const second = await invoiceRowsApi.create(event.id, { description: 'Invoice', amountCents: total - 10000, status: 'SENT' });
     expect(second.invoiceRows.map((r) => r.description)).toEqual(['Prepayment', 'Invoice']);
     expect(second).toMatchObject({
-      invoicedCents: total - 10000,
-      paidCents: 0,
-      openCents: total - 10000,
-      readyCents: 10000,
-      invoiceState: 'ROWS_TO_INVOICE',
+      sentCents: total - 10000,
+      notSentCents: 10000,
+      uninvoicedCents: 0,
+      balanceCents: 10000,
+      invoiceState: 'OPEN_INVOICES',
     });
     const rowB = second.invoiceRows[1]!;
 
-    // Prepayment paid, invoice still sent → open invoices; invoice paid → paid.
-    const paidA = await invoiceRowsApi.update(rowA.id, { status: 'PAID' });
-    expect(paidA).toMatchObject({
-      paidCents: 10000,
-      balanceCents: total - 10000,
-      invoicedCents: total,
-      openCents: total - 10000,
-      readyCents: 0,
-      invoiceState: 'OPEN_INVOICES',
-    });
-    const paidAll = await invoiceRowsApi.update(rowB.id, { status: 'PAID' });
-    expect(paidAll).toMatchObject({ paidCents: total, balanceCents: 0, openCents: 0, invoiceState: 'PAID' });
-    // Only some paid, nothing open → NONE on an upcoming gig; overpaid → negative balance, paid.
+    // Everything sent → fully invoiced.
+    const sentAll = await invoiceRowsApi.update(rowA.id, { status: 'SENT' });
+    expect(sentAll).toMatchObject({ sentCents: total, notSentCents: 0, balanceCents: 0, invoiceState: 'FULLY_INVOICED' });
+    // Part sent on an upcoming gig → NONE; over-sent → negative balance, fully invoiced.
     const partly = await invoiceRowsApi.remove(rowB.id);
     expect(partly).toMatchObject({
       invoiceRows: [expect.objectContaining({ id: rowA.id })],
       invoiceState: 'NONE',
     });
     const over = await invoiceRowsApi.update(rowA.id, { amountCents: total + 500, description: 'All' });
-    expect(over).toMatchObject({ balanceCents: -500, invoiceState: 'PAID' });
+    expect(over).toMatchObject({ balanceCents: -500, uninvoicedCents: 0, invoiceState: 'FULLY_INVOICED' });
 
     const listed = (await eventsApi.list({ year: YEAR })).events.find((g) => g.id === event.id)!;
     expect(listed).toMatchObject({
-      invoiceState: 'PAID',
-      openCents: 0,
+      invoiceState: 'FULLY_INVOICED',
+      sentCents: total + 500,
+      notSentCents: 0,
       balanceCents: -500,
-      paidCents: total + 500,
     });
     const filtered = async (query: string) => {
       const res = await fetch(`/api/events?year=${YEAR}&${query}`);
       return { status: res.status, ids: res.ok ? ((await res.json()) as { events: { id: string }[] }).events.map((g) => g.id) : [] };
     };
-    // Repeatable, OR; unknown value → 400.
-    expect((await filtered('invoiceState=PAID')).ids).toContain(event.id);
-    expect((await filtered('invoiceState=NONE&invoiceState=PAID')).ids).toContain(event.id);
-    expect((await filtered('invoiceState=NEEDS_INVOICES&invoiceState=OPEN_INVOICES')).ids).not.toContain(event.id);
+    // Repeatable, OR; unknown or old value → 400.
+    expect((await filtered('invoiceState=FULLY_INVOICED')).ids).toContain(event.id);
+    expect((await filtered('invoiceState=NONE&invoiceState=FULLY_INVOICED')).ids).toContain(event.id);
+    expect((await filtered('invoiceState=PARTLY_INVOICED&invoiceState=OPEN_INVOICES')).ids).not.toContain(event.id);
     expect((await filtered('invoiceState=NOPE')).status).toBe(400);
-    expect((await filtered('invoiceState=FULLY_PAID')).status).toBe(400);
+    expect((await filtered('invoiceState=PAID')).status).toBe(400);
 
     const history = (await eventsApi.history(event.id)).filter((h) => h.type.startsWith('INVOICE_ROW'));
     expect(history.map((h) => h.type)).toEqual([
       'INVOICE_ROW_UPDATED',
       'INVOICE_ROW_REMOVED',
-      'INVOICE_ROW_UPDATED',
       'INVOICE_ROW_UPDATED',
       'INVOICE_ROW_ADDED',
       'INVOICE_ROW_ADDED',
@@ -360,29 +355,52 @@ describe('event mocks', () => {
       ],
     });
 
-    // Validation.
+    // Validation; the old statuses READY / PAID are rejected.
     expect((await expectError(invoiceRowsApi.create(event.id, { description: ' ', amountCents: 0 }))).fields).toEqual({
       description: 'REQUIRED',
       amountCents: 'INVALID_VALUE',
     });
     expect(
-      (await expectError(invoiceRowsApi.create(event.id, { description: 'x'.repeat(501), amountCents: 1, status: 'NOPE' as never })))
+      (await expectError(invoiceRowsApi.create(event.id, { description: 'x'.repeat(501), amountCents: 1, status: 'READY' as never })))
         .fields,
     ).toEqual({ description: 'TOO_LONG', status: 'INVALID_VALUE' });
+    expect((await expectError(invoiceRowsApi.update(rowA.id, { status: 'PAID' as never }))).fields).toEqual({
+      status: 'INVALID_VALUE',
+    });
     expect((await expectError(invoiceRowsApi.update(rowA.id, { amountCents: -1 }))).fields).toEqual({
       amountCents: 'INVALID_VALUE',
     });
 
     // Allowed on cancelled gigs; deleted → 409.
     await eventsApi.cancel(event.id, { reason: 'Called off' });
-    expect((await invoiceRowsApi.update(rowA.id, { status: 'SENT' })).invoiceState).toBe('OPEN_INVOICES');
+    expect((await invoiceRowsApi.update(rowA.id, { status: 'NOT_SENT' })).invoiceState).toBe('OPEN_INVOICES');
     await eventsApi.uncancel(event.id, { reason: 'Back on' });
     await eventsApi.delete(event.id, { reason: 'Duplicate' });
-    expect((await expectError(invoiceRowsApi.update(rowA.id, { status: 'PAID' }))).code).toBe('EVENT_DELETED');
+    expect((await expectError(invoiceRowsApi.update(rowA.id, { status: 'SENT' }))).code).toBe('EVENT_DELETED');
     expect((await expectError(invoiceRowsApi.remove(rowA.id))).code).toBe('EVENT_DELETED');
     expect((await expectError(invoiceRowsApi.create(event.id, { description: 'x', amountCents: 1 }))).code).toBe(
       'EVENT_DELETED',
     );
+  });
+
+  it('automatic final invoice: one NOT_SENT "Loppulasku" for the uninvoiced amount, by the system (mock helper)', async () => {
+    const event = await eventsApi.create(eventInput({ startDate: '2020-03-01' }));
+    const total = event.totalPriceCents;
+    await invoiceRowsApi.create(event.id, { description: 'Prepayment', amountCents: 10000, status: 'SENT' });
+    const mock = db.events.events.find((e) => e.id === event.id)!;
+    expect(addAutoFinalInvoice(db.events, mock)).toMatchObject({
+      description: 'Loppulasku',
+      amountCents: total - 10000,
+      status: 'NOT_SENT',
+      createdBy: null,
+      auto: true,
+    });
+    const detail = await eventsApi.get(event.id);
+    expect(detail).toMatchObject({ uninvoicedCents: 0, invoiceState: 'OPEN_INVOICES' });
+    // Nothing left to invoice → no second row.
+    expect(addAutoFinalInvoice(db.events, mock)).toBeNull();
+    const added = (await eventsApi.history(event.id)).find((h) => h.type === 'INVOICE_ROW_ADDED' && h.details.auto);
+    expect(added).toMatchObject({ partnerId: null, details: { description: 'Loppulasku', auto: true } });
   });
 
   it('enforces status transitions, deletion and restore', async () => {

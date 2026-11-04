@@ -31,11 +31,11 @@ interface Props {
 }
 
 /**
- * "Laskutus" card under the price card (api-contract "Invoice rows", "Invoicing: one label"): the
- * gig's invoicing state tag on top, one row per invoice (description, amount, status, last change),
- * an add form, and the totals Laskutettu (sent + paid), Avoimet (sent, not paid), Maksettu (paid)
- * and Saldo (total − paid; warns when negative). Editable on upcoming, played and cancelled gigs
- * (cancellation fees can be invoiced).
+ * "Laskutus" card under the price card (api-contract "Invoice rows", "Invoicing v3"): the gig's
+ * invoicing state tag on top, one row per invoice (description, amount, status Lähettämättä /
+ * Lähetetty, last change), an add form, and the figures Lähetetty (sent), Lähettämättä (not sent)
+ * and Laskuttamatta (total − sent; warns when negative). Payments are not tracked. Editable on
+ * upcoming, played and cancelled gigs (cancellation fees can be invoiced).
  */
 export function EventInvoicing({ event, readOnly }: Props) {
   const { t } = useTranslation();
@@ -97,17 +97,13 @@ export function EventInvoicing({ event, readOnly }: Props) {
         ))}
 
       <dl className="invoice-totals">
-        <div>
-          <dt>{t('event.invoicing.invoiced')}</dt>
-          <dd>{formatMoney(event.invoicedCents, lang)}</dd>
+        <div className="invoice-total-sent">
+          <dt>{t('event.invoicing.sent')}</dt>
+          <dd>{formatMoney(event.sentCents, lang)}</dd>
         </div>
-        <div>
-          <dt>{t('event.invoicing.open')}</dt>
-          <dd>{formatMoney(event.openCents, lang)}</dd>
-        </div>
-        <div>
-          <dt>{t('event.invoicing.paid')}</dt>
-          <dd>{formatMoney(event.paidCents, lang)}</dd>
+        <div className="invoice-total-not-sent">
+          <dt>{t('event.invoicing.notSent')}</dt>
+          <dd>{formatMoney(event.notSentCents, lang)}</dd>
         </div>
       </dl>
       <div
@@ -165,6 +161,11 @@ function InvoiceRowItem({
             field="description"
             onSave={(description) => update({ description })}
           />
+        )}
+        {row.auto && (
+          <span className="meta small invoice-row-auto" title={t('event.invoicing.autoTitle')}>
+            {t('event.invoicing.auto')}
+          </span>
         )}
       </td>
       <td className="num cell-main invoice-row-amount" data-label={t('event.invoicing.amount')}>
@@ -257,7 +258,7 @@ function AddInvoiceRowForm({
   const statusOptions = useStatusOptions();
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
-  const [status, setStatus] = useState<InvoiceRowStatus>('READY');
+  const [status, setStatus] = useState<InvoiceRowStatus>('NOT_SENT');
   const [localErrors, setLocalErrors] = useState<Record<string, string>>({});
   const add = useMutation({
     mutationFn: () =>

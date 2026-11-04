@@ -717,12 +717,17 @@
 .event-page .invoice-table .invoice-row-changed {
   color: var(--text-muted);
 }
+/* "automaattinen" hint under the automatic final invoice's description. */
+.event-page .invoice-table .invoice-row-auto {
+  display: block;
+  color: var(--text-muted);
+}
 .event-page .invoice-table td.invoice-row-actions {
   width: 1%;
   text-align: right;
 }
-/* Status select drawn as its colour tag (owner 2026-10-31: Valmis laskutukseen blue, Lähetetty
-   light green, Maksettu solid green box); hover / focus keep the usual inline outline. */
+/* Status select drawn as its colour tag (Invoicing v3: Lähettämättä yellow, Lähetetty green);
+   hover / focus keep the usual inline outline. */
 .event-page .invoice-row-status select.inline-input {
   /* Sized to the chosen label (the table is narrow in the two-column layout). */
   field-sizing: content;
@@ -735,25 +740,15 @@
   letter-spacing: var(--ls-label);
   text-transform: uppercase;
 }
-.event-page .invoice-row-status.tone-info select.inline-input {
-  color: var(--info-fg);
-  background-color: var(--info-bg);
-  border-color: var(--info-border);
+.event-page .invoice-row-status.tone-yellow select.inline-input {
+  color: var(--yellow-fg);
+  background-color: var(--yellow-bg);
+  border-color: var(--yellow-border);
 }
 .event-page .invoice-row-status.tone-ok select.inline-input {
   color: var(--ok-fg);
   background-color: var(--ok-bg);
   border-color: var(--ok-border);
-}
-.event-page .invoice-row-status.tone-warn select.inline-input {
-  color: var(--warn-fg);
-  background-color: var(--warn-bg);
-  border-color: var(--warn-border);
-}
-.event-page .invoice-row-status.tone-ok-strong select.inline-input {
-  color: var(--ok-strong-fg);
-  background-color: var(--ok-strong-bg);
-  border-color: var(--ok-strong-border);
 }
 .event-page .invoice-row-status select.inline-input:focus {
   border-color: var(--accent);

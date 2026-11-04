@@ -150,7 +150,7 @@
   --warn-fg: #fbbf24;
   --warn-bg: #2a2210;
   --warn-border: #5c4a14;
-  /* Yellow ("Laskuttamatta" / needs invoices): lemon, distinct from the amber warn;
+  /* Yellow (open invoices / row not sent): lemon, distinct from the amber warn;
      fde047 on 2b2a0a = 11.1:1 */
   --yellow-fg: #fde047;
   --yellow-bg: #2b2a0a;
@@ -192,7 +192,7 @@
   --warn-fg: #a16207;
   --warn-bg: #fdf6e3;
   --warn-border: #ecd9a3;
-  /* Yellow ("Laskuttamatta" / needs invoices): saturated yellow fill, distinct from the pale
+  /* Yellow (open invoices / row not sent): saturated yellow fill, distinct from the pale
      amber warn; 713f12 on fef08a = 7.5:1 */
   --yellow-fg: #713f12;
   --yellow-bg: #fef08a;

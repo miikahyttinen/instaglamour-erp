@@ -198,6 +198,8 @@ export function describeEntry(
         d.status === undefined ? undefined : formatValue(t, lang, 'invoiceRowStatus', d.status, ctx),
       ].filter((p): p is string => p !== undefined && p !== '');
       if (parts.length > 0) lines.push(parts.join(' · '));
+      // Automatic final invoice (api-contract "Invoicing v3").
+      if (entry.type === 'INVOICE_ROW_ADDED' && d.auto) lines.push(t('history.auto'));
       break;
     }
     case 'INVOICE_ROW_UPDATED': {

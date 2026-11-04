@@ -229,14 +229,14 @@ test('Kate-%: the actual percentage is on a second line in the table, beside it 
 });
 
 // Gig statuses (owner decision 2026-10-31): Tuleva = blue (info), Soitettu = green (ok), Peruttu =
-// red (danger). Invoice rows (TASK-173): the "Laskutus" card under the price card lists invoice
-// rows (inline description / amount / status, who / when, remove with confirm; row status
-// "Valmis laskutukseen" blue, "Lähetetty" light green, "Maksettu" full green box), an add form, and
-// Laskutettu / Avoimet / Maksettu / Saldo (= total − paid; warning when negative). Invoicing state
-// (api-contract "Invoicing: one label"): ONE tag = the next action, first match wins — Maksettu
-// (full green box) · Laskutettavia rivejä (blue) · Avoimia laskuja (amber) · Laskuttamatta (yellow, played
-// gigs only; upcoming and cancelled gigs fall to "–") · "–"; on the gig card and in the list
-// "Laskutus" cell (one line), with one filter (f.invoiceState).
+// red (danger). Invoice rows (TASK-173, Invoicing v3): the "Laskutus" card under the price card
+// lists invoice rows (inline description / amount / status, who / when, remove with confirm; row
+// status "Lähettämättä" yellow, "Lähetetty" green), an add form, and Lähetetty / Lähettämättä /
+// Laskuttamatta (= total − sent; warning when negative). No payments. Invoicing state (api-contract
+// "Invoicing v3"): ONE tag, first match wins — Avoimia laskuja (yellow, any row not sent) ·
+// Laskutettu (solid dark green, sent ≥ total) · "–" (upcoming, row-less cancelled, total 0) · Osittain
+// laskutettu (blue, played or cancelled with rows, sent < total); on the gig card and in the list "Laskutus" cell (one
+// line), with one filter (f.invoiceState).
 test('gig statuses and "Laskutus": invoice rows, one invoicing state tag on the gig page and in the list, one filter', async ({ page }, testInfo) => {
   const { year, north } = await setup(page, testInfo);
   const venue = `Hall ${tagOf(testInfo)}${suffix()} Ready`;
@@ -252,42 +252,36 @@ test('gig statuses and "Laskutus": invoice rows, one invoicing state tag on the 
   await expect(card.getByText('Ei laskurivejä.')).toBeVisible();
   const stateGroup = card.getByRole('group', { name: 'Laskutuksen tila' });
   const stateTag = stateGroup.locator('.tag');
-  // Upcoming gig, no rows → "–" (Laskuttamatta is for played gigs only).
+  const figure = (label: string) => card.locator('dt', { hasText: new RegExp(`^${label}$`) }).locator('xpath=following-sibling::dd');
+  // Upcoming gig, no rows → "–" (Osittain laskutettu is for played gigs only).
   await expect(stateTag).toHaveCount(0);
   await expect(stateGroup).toHaveText('–');
   expect((await apiGig()).invoiceState).toBe('NONE');
+  // No payment figures any more.
+  await expect(card.locator('dt', { hasText: 'Maksettu' })).toHaveCount(0);
 
-  // Add a row: status defaults to "Valmis laskutukseen" (blue), who / when shown → "Laskutettavia rivejä".
+  // Add a row: status defaults to "Lähettämättä" (yellow), who / when shown → "Avoimia laskuja" (yellow).
   await card.getByRole('button', { name: '+ Lisää laskurivi' }).click();
   const form = card.getByRole('form', { name: 'Lisää laskurivi' });
+  await expect(form.getByRole('combobox', { name: 'Tila' })).toHaveValue('NOT_SENT');
   await form.getByRole('textbox', { name: 'Kuvaus' }).fill('Invoice 1');
   await form.getByRole('textbox', { name: 'Summa' }).fill(String(total / 100 + 10));
   await form.getByRole('button', { name: 'Lisää laskurivi' }).click();
   const row = card.locator('tr.invoice-row', { hasText: 'Invoice 1' });
   const status = row.getByRole('combobox', { name: 'Tila: Invoice 1' });
-  await expect(status).toHaveValue('READY');
-  await expect(row.locator('.invoice-row-status')).toHaveClass(/tone-info(\s|$)/);
+  await expect(status).toHaveValue('NOT_SENT');
+  await expect(status.locator('option')).toHaveText(['Lähettämättä', 'Lähetetty']);
+  await expect(row.locator('.invoice-row-status')).toHaveClass(/tone-yellow(\s|$)/);
   await expect(row.locator('.invoice-row-changed')).toContainText(/Partner A \d+\.\d+\.\d{4} klo /);
-  await expect(stateTag).toHaveText('Laskutettavia rivejä');
-  await expect(stateTag).toHaveClass(/tag-info/);
-  await expect.poll(async () => (await apiGig()).invoiceState).toBe('ROWS_TO_INVOICE');
-  expect((await apiGig()).readyCents).toBe(total + 1000);
-  await openList(page, year, '?f.invoiceState=ROWS_TO_INVOICE');
-  await expect(eventListRows(page)).toHaveCount(1);
-  const readyTag = eventListRows(page).first().locator('td.event-col-invoice .tag');
-  await expect(readyTag).toHaveCount(1);
-  await expect(readyTag).toHaveText('Laskutettavia rivejä');
-  await expect(readyTag).toHaveClass(/tag-info/);
-  await page.goto(`/gigs/${gig.id}`);
-
-  // Sent (light green row) → "Avoimia laskuja" (amber); Avoimet = the row.
-  await status.selectOption({ label: 'Lähetetty' });
-  await expect(row.locator('.invoice-row-status')).toHaveClass(/tone-ok(\s|$)/);
+  // Added by hand: no "automaattinen" hint.
+  await expect(row.locator('.invoice-row-auto')).toHaveCount(0);
   await expect(stateTag).toHaveText('Avoimia laskuja');
-  await expect(stateTag).toHaveClass(/tag-warn/);
-  await expect(card.locator('dt', { hasText: 'Avoimet' }).locator('xpath=following-sibling::dd')).not.toHaveText(/^0,00/);
+  await expect(stateTag).toHaveClass(/tag-yellow/);
+  await expect(figure('Lähettämättä')).not.toHaveText(/^0,00/);
+  await expect(figure('Lähetetty')).toHaveText(/^0,00/);
   await expect.poll(async () => (await apiGig()).invoiceState).toBe('OPEN_INVOICES');
-  expect((await apiGig()).openCents).toBe(total + 1000);
+  expect((await apiGig()).notSentCents).toBe(total + 1000);
+  expect(((await apiGig()).invoiceRows as { auto: boolean }[])[0]!.auto).toBe(false);
 
   // List: one tag on one line; f.invoiceState=NONE hides the gig; the "Laskutus" filter (user flow)
   // shows it again. No separate "Maksut" filter.
@@ -299,7 +293,7 @@ test('gig statuses and "Laskutus": invoice rows, one invoicing state tag on the 
   const listTag = listRow.locator('td.event-col-invoice .tag');
   await expect(listTag).toHaveCount(1);
   await expect(listTag).toHaveText('Avoimia laskuja');
-  await expect(listTag).toHaveClass(/tag-warn/);
+  await expect(listTag).toHaveClass(/tag-yellow/);
   const oneLine = await listTag.evaluate((el) => el.getClientRects().length === 1 && el.getBoundingClientRect().height < 40);
   expect(oneLine, 'invoicing tag on one line').toBe(true);
   await expect(listRow.getByText('Tuleva', { exact: true })).toHaveClass(/tag-info/);
@@ -313,15 +307,18 @@ test('gig statuses and "Laskutus": invoice rows, one invoicing state tag on the 
   await expect.poll(() => rowVenues(page, [north, venue])).toEqual([venue]);
   await page.setViewportSize(tagOf(testInfo) === 'M' ? { width: 375, height: 812 } : { width: 1280, height: 800 });
 
-  // Paid above the total → dark green "Maksettu", negative balance with a warning; then remove the row.
+  // Sent above the total → dark green "Laskutettu", negative "Laskuttamatta" with a warning; then remove the row.
   await page.goto(`/gigs/${gig.id}`);
-  await status.selectOption({ label: 'Maksettu' });
-  await expect(row.locator('.invoice-row-status')).toHaveClass(/tone-ok-strong/);
-  await expect(stateTag).toHaveText('Maksettu');
+  await status.selectOption({ label: 'Lähetetty' });
+  await expect(row.locator('.invoice-row-status')).toHaveClass(/tone-ok(\s|$)/);
+  await expect(stateTag).toHaveText('Laskutettu');
   await expect(stateTag).toHaveClass(/tag-ok-strong/);
-  await expect(card.getByRole('note')).toHaveText('Maksettu enemmän kuin kokonaishinta.');
-  await expect(card.locator('.event-balance')).toHaveClass(/event-balance-negative/);
+  await expect(figure('Lähettämättä')).toHaveText(/^0,00/);
+  await expect(figure('Lähetetty')).not.toHaveText(/^0,00/);
+  await expect(card.getByRole('note')).toHaveText('Laskutettu enemmän kuin kokonaishinta.');
+  await expect(card.getByRole('group', { name: 'Laskuttamatta' })).toHaveClass(/event-balance-negative/);
   await expect.poll(async () => (await apiGig()).balanceCents).toBe(-1000);
+  expect((await apiGig()).sentCents).toBe(total + 1000);
   await row.getByRole('button', { name: 'Poista: Invoice 1' }).click();
   await page.getByRole('dialog', { name: 'Poista laskurivi' }).getByRole('button', { name: 'Poista' }).click();
   await expect(card.getByText('Ei laskurivejä.')).toBeVisible();
@@ -330,38 +327,50 @@ test('gig statuses and "Laskutus": invoice rows, one invoicing state tag on the 
   await expect(stateTag).toHaveCount(0);
   await expect(stateGroup).toHaveText('–');
 
+  // The old row statuses are rejected.
+  for (const old of ['READY', 'PAID']) {
+    const res = await api(page).raw.post(`/api/events/${gig.id}/invoice-rows`, { data: { description: 'Old', amountCents: 100, status: old } });
+    expect(res.status(), `status ${old}`).toBe(400);
+  }
+
   // Cancelled = red "Peruttu".
   await openList(page, year, '?f.status=CANCELLED');
   await expect(eventListRows(page).first().getByText('Peruttu', { exact: true })).toHaveClass(/tag-danger/);
 
-  // Upcoming gig, part paid, nothing open → still "–".
+  // Upcoming gig, part sent, nothing open → still "–".
   const half = Math.floor(total / 2);
-  await api(page).post(`/events/${gig.id}/invoice-rows`, { description: 'Invoice 2', amountCents: half, status: 'PAID' });
+  await api(page).post(`/events/${gig.id}/invoice-rows`, { description: 'Invoice 2', amountCents: half, status: 'SENT' });
   await page.goto(`/gigs/${gig.id}`);
   await expect(stateTag).toHaveCount(0);
   await expect(stateGroup).toHaveText('–');
   expect((await apiGig()).invoiceState).toBe('NONE');
 
-  // Played gig (past date): no rows / part paid → yellow "Laskuttamatta"; a cancelled past gig → "–".
-  const pastDay = `2021-0${tagOf(testInfo) === 'M' ? 2 : 3}-01`;
-  const played = await createEventViaApi(page, { startDate: pastDay, venue: `${venue} Played` });
+  // Played gig: no rows / part sent → blue "Osittain laskutettu"; a cancelled past gig → "–". The
+  // played gig is from yesterday (organisation time zone), so the automatic final invoice (48 h
+  // after the gig) cannot appear during the test.
+  const yesterday = new Date(Date.now() - 24 * 3600 * 1000).toLocaleDateString('sv-SE', { timeZone: 'Europe/Helsinki' });
+  const played = await createEventViaApi(page, { startDate: yesterday, venue: `${venue} Played` });
   const playedGig = async () => (await api(page).get(`/events/${played.id}`)) as Record<string, unknown>;
-  expect((await playedGig()).invoiceState).toBe('NEEDS_INVOICES');
-  await api(page).post(`/events/${played.id}/invoice-rows`, { description: 'Part', amountCents: 1000, status: 'PAID' });
+  expect((await playedGig()).invoiceState).toBe('PARTLY_INVOICED');
+  await api(page).post(`/events/${played.id}/invoice-rows`, { description: 'Part', amountCents: 1000, status: 'SENT' });
   await page.goto(`/gigs/${played.id}`);
   await expect(pageHead(page).getByText('Soitettu', { exact: true })).toHaveClass(/tag-ok/);
   await expect(stateTag).toHaveCount(1);
-  await expect(stateTag).toHaveText('Laskuttamatta');
-  await expect(stateTag).toHaveClass(/tag-yellow/);
-  expect((await playedGig()).invoiceState).toBe('NEEDS_INVOICES');
+  await expect(stateTag).toHaveText('Osittain laskutettu');
+  await expect(stateTag).toHaveClass(/tag-info/);
+  expect((await playedGig()).invoiceState).toBe('PARTLY_INVOICED');
+  const pastDay = `2021-0${tagOf(testInfo) === 'M' ? 2 : 3}-01`;
   const pastCancelled = await createEventViaApi(page, { startDate: pastDay, venue: `${venue} Called off` });
   await api(page).post(`/events/${pastCancelled.id}/cancel`, { reason: 'Synthetic cancel' });
   expect(((await api(page).get(`/events/${pastCancelled.id}`)) as Record<string, unknown>).invoiceState).toBe('NONE');
+  // A cancelled gig with rows and sent < total → "Osittain laskutettu".
+  await api(page).post(`/events/${pastCancelled.id}/invoice-rows`, { description: 'Fee', amountCents: 1000, status: 'SENT' });
+  expect(((await api(page).get(`/events/${pastCancelled.id}`)) as Record<string, unknown>).invoiceState).toBe('PARTLY_INVOICED');
   await page.goto(`/gigs/${gig.id}`);
 
-  // Fully paid = solid dark green "Maksettu"; the columns fit without sideways scroll
+  // Fully sent = solid dark green "Laskutettu"; the columns fit without sideways scroll
   // (table rows from 600 px; compact rows on phones).
-  await api(page).post(`/events/${gig.id}/invoice-rows`, { description: 'Invoice 3', amountCents: total - half, status: 'PAID' });
+  await api(page).post(`/events/${gig.id}/invoice-rows`, { description: 'Invoice 3', amountCents: total - half, status: 'SENT' });
   const widths = tagOf(testInfo) === 'M' ? [375] : [600, 900, 1100, 1280, 1440, 1600, 1920];
   for (const w of widths) {
     await page.setViewportSize({ width: w, height: 800 });
@@ -372,10 +381,10 @@ test('gig statuses and "Laskutus": invoice rows, one invoicing state tag on the 
       .evaluate((table) => table.scrollWidth - table.parentElement!.clientWidth);
     expect(overflow, `${w} px: table wider than its container`).toBeLessThanOrEqual(1);
   }
-  const paidTag = eventListRows(page).filter({ hasText: venue }).locator('td.event-col-invoice .tag');
-  await expect(paidTag).toHaveCount(1);
-  await expect(paidTag).toHaveText('Maksettu');
-  await expect(paidTag).toHaveClass(/tag-ok-strong/);
+  const fullTag = eventListRows(page).filter({ hasText: venue }).locator('td.event-col-invoice .tag');
+  await expect(fullTag).toHaveCount(1);
+  await expect(fullTag).toHaveText('Laskutettu');
+  await expect(fullTag).toHaveClass(/tag-ok-strong/);
 });
 
 // Phone rows (owner requests 2026-10-31): line 1 = "Lineup STATUS ——— INVOICING total": the status
@@ -383,7 +392,7 @@ test('gig statuses and "Laskutus": invoice rows, one invoicing state tag on the 
 // at the right edge, the total last (without an invoicing tag the total is at the right edge). The
 // name truncates first; the gap shrinks to the minimum (8 px) before it does. At 320–430 px the
 // tags and the total never wrap; a long lineup name truncates with an ellipsis and keeps its full text in the link's accessible name and title. Worst case
-// here: the longest invoicing tag ("Laskutettavia rivejä") and a six-figure total; only at 320 px,
+// here: an invoicing tag ("Avoimia laskuja") and a six-figure total; only at 320 px,
 // once the name is down to its minimum, may that tag truncate too.
 test('phone rows: line 1 = lineup name + status tag on the left, invoicing tag + total at the right edge', async ({ page }, testInfo) => {
   test.skip(tagOf(testInfo) !== 'M', 'phone layout only');
@@ -392,7 +401,7 @@ test('phone rows: line 1 = lineup name + status tag on the left, invoicing tag +
   const gig = await createEventViaApi(page, { startDate: `${year}-09-01`, venue, priceCents: 12345600 });
   const longName = `Lineup ${suffix()} with a very long synthetic name that cannot fit`;
   await api(page).patch(`/events/${gig.id}`, { lineupName: longName });
-  await api(page).post(`/events/${gig.id}/invoice-rows`, { description: 'Invoice', amountCents: 1000, status: 'READY' });
+  await api(page).post(`/events/${gig.id}/invoice-rows`, { description: 'Invoice', amountCents: 1000, status: 'NOT_SENT' });
   const plainVenue = `Hall ${tagOf(testInfo)}${suffix()} NoInvoice`;
   await createEventViaApi(page, { startDate: `${year}-10-01`, venue: plainVenue, priceCents: 12345600 });
 
@@ -403,7 +412,7 @@ test('phone rows: line 1 = lineup name + status tag on the left, invoicing tag +
     await expect(row).toHaveCount(1);
     await expect(row.getByRole('link', { name: new RegExp(`^${longName}`) })).toHaveAttribute('title', longName);
     await expect(row.getByText('Tuleva', { exact: true })).toBeVisible();
-    await expect(row.getByText('Laskutettavia rivejä', { exact: true })).toBeVisible();
+    await expect(row.getByText('Avoimia laskuja', { exact: true })).toBeVisible();
 
     const m = await row.evaluate((tr) => {
       const rect = (el: Element) => {

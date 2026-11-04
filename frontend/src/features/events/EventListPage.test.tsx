@@ -69,7 +69,7 @@ describe('event list (UC-003)', () => {
       'Myyjä',
       'Tuottaja',
       'Kokonaishinta',
-      'Saldo',
+      'Laskuttamatta',
       'Kulut, budjetti',
       'Kulut, toteuma',
       'Kate-%',
@@ -287,15 +287,14 @@ describe('event list (UC-003)', () => {
       }
       return e;
     };
-    add('01-06', 'Venue Paid', [['PAID', 120000]]);
-    add('01-05', 'Venue Partly', [['PAID', 40000]]);
-    add('01-04', 'Venue Open', [['PAID', 40000], ['SENT', 60000]]);
-    add('01-03', 'Venue Draft', [['SENT', 40000], ['READY', 60000]]);
+    add('01-05', 'Venue Full', [['SENT', 120000]]);
+    add('01-04', 'Venue Partly', [['SENT', 40000]]);
+    add('01-03', 'Venue Open', [['SENT', 40000], ['NOT_SENT', 60000]]);
     add('01-02', 'Venue New', []);
     add('01-01', 'Venue Zero', [], 0);
     installMatchMedia({ [TABLET_QUERY]: true, [DESKTOP_QUERY]: true, [WIDE_QUERY]: true });
     const { user, url } = renderAppWithUrl(`/gigs`);
-    await waitFor(() => expect(venues()).toHaveLength(6));
+    await waitFor(() => expect(venues()).toHaveLength(5));
     const cell = (venue: string, label: string) => {
       const row = rows()[venues().indexOf(venue)]!;
       return within(row).getAllByRole('cell').find((c) => c.getAttribute('data-label') === label)!;
@@ -309,54 +308,53 @@ describe('event list (UC-003)', () => {
       return t ? `${[...t.classList].find((k) => k.startsWith('tag-'))} ${t.textContent}` : c.textContent;
     };
     expect(tag('Venue Zero')).toBe('–');
-    expect(tag('Venue New')).toBe('tag-yellow Laskuttamatta');
-    expect(tag('Venue Draft')).toBe('tag-info Laskutettavia rivejä');
-    expect(tag('Venue Open')).toBe('tag-warn Avoimia laskuja');
-    expect(tag('Venue Partly')).toBe('tag-yellow Laskuttamatta');
-    expect(tag('Venue Paid')).toBe('tag-ok-strong Maksettu');
-    // Saldo = total − paid rows; negative in warn colour.
-    expect(cell('Venue New', 'Saldo')).toHaveTextContent(/1\s000,00\s€/);
-    expect(cell('Venue Open', 'Saldo')).toHaveTextContent(/600,00\s€/);
-    expect(cell('Venue Paid', 'Saldo').querySelector('.event-balance-negative')).toHaveTextContent(/[-−]200,00\s€/);
+    expect(tag('Venue New')).toBe('tag-info Osittain laskutettu');
+    expect(tag('Venue Open')).toBe('tag-yellow Avoimia laskuja');
+    expect(tag('Venue Partly')).toBe('tag-info Osittain laskutettu');
+    expect(tag('Venue Full')).toBe('tag-ok-strong Laskutettu');
+    // Laskuttamatta = total − sent rows; negative in warn colour.
+    expect(cell('Venue New', 'Laskuttamatta')).toHaveTextContent(/1\s000,00\s€/);
+    expect(cell('Venue Open', 'Laskuttamatta')).toHaveTextContent(/600,00\s€/);
+    expect(cell('Venue Full', 'Laskuttamatta').querySelector('.event-balance-negative')).toHaveTextContent(/[-−]200,00\s€/);
 
     await user.click(within(table()).getByRole('button', { name: /^Laskutus/ }));
-    expect(venues()).toEqual(['Venue Zero', 'Venue New', 'Venue Partly', 'Venue Draft', 'Venue Open', 'Venue Paid']);
+    expect(venues()).toEqual(['Venue Zero', 'Venue Open', 'Venue New', 'Venue Partly', 'Venue Full']);
 
     // One filter button in the Laskutus header; no Maksut filter.
     expect(within(table()).queryByRole('button', { name: 'Suodata: Maksut' })).not.toBeInTheDocument();
     await user.click(within(table()).getByRole('button', { name: 'Suodata: Laskutus' }));
     let popover = screen.getByRole('dialog', { name: 'Suodata: Laskutus' });
     const options = () => within(popover).getAllByRole('checkbox').map((c) => c.closest('label')!.textContent);
-    expect(options()).toEqual(['–', 'Laskuttamatta', 'Laskutettavia rivejä', 'Avoimia laskuja', 'Maksettu']);
+    expect(options()).toEqual(['–', 'Avoimia laskuja', 'Osittain laskutettu', 'Laskutettu']);
     await user.click(within(popover).getByRole('button', { name: 'Tyhjennä' }));
-    await user.click(within(popover).getByRole('checkbox', { name: 'Laskutettavia rivejä' }));
+    await user.click(within(popover).getByRole('checkbox', { name: 'Avoimia laskuja' }));
     await user.click(within(popover).getByRole('button', { name: 'OK' }));
-    expect(venues()).toEqual(['Venue Draft']);
-    expect(url()).toContain('f.invoiceState=ROWS_TO_INVOICE');
+    expect(venues()).toEqual(['Venue Open']);
+    expect(url()).toContain('f.invoiceState=OPEN_INVOICES');
 
     await user.click(within(table()).getByRole('button', { name: 'Suodata: Laskutus' }));
     popover = screen.getByRole('dialog', { name: 'Suodata: Laskutus' });
     await user.click(within(popover).getByRole('button', { name: 'Tyhjennä' }));
-    await user.click(within(popover).getByRole('checkbox', { name: 'Laskuttamatta' }));
-    await user.click(within(popover).getByRole('checkbox', { name: 'Maksettu' }));
+    await user.click(within(popover).getByRole('checkbox', { name: 'Osittain laskutettu' }));
+    await user.click(within(popover).getByRole('checkbox', { name: 'Laskutettu' }));
     await user.click(within(popover).getByRole('button', { name: 'OK' }));
-    expect(venues().sort()).toEqual(['Venue New', 'Venue Paid', 'Venue Partly']);
-    expect(url()).toContain('f.invoiceState=NEEDS_INVOICES');
-    expect(url()).toContain('PAID');
+    expect(venues().sort()).toEqual(['Venue Full', 'Venue New', 'Venue Partly']);
+    expect(url()).toContain('f.invoiceState=PARTLY_INVOICED');
+    expect(url()).toContain('FULLY_INVOICED');
     expect(within(table()).getByRole('button', { name: 'Suodata: Laskutus' })).toHaveAccessibleDescription('Suodatin käytössä');
   });
 
   it('phone rows (TASK-175): lineup, status tag, total and invoicing tag on line 1, the one invoicing state tag, low-priority money hidden', async () => {
     signInMock().selectedYear = 2020;
     const e = addMockEvent({ startDate: '2020-02-01', venue: 'Venue Card', priceCents: 100000 });
-    addInvoiceRow(db.events, e, { description: 'Invoice', amountCents: 100000, status: 'SENT' }, partnerA().id);
+    addInvoiceRow(db.events, e, { description: 'Invoice', amountCents: 100000, status: 'NOT_SENT' }, partnerA().id);
     installMatchMedia({});
     renderApp('/gigs');
     await waitFor(() => expect(venues()).toEqual(['Venue Card']));
     const card = rows()[0]!; // one compact row
     const invoicing = within(card).getAllByRole('cell').find((c) => c.getAttribute('data-label') === 'Laskutus')!;
     expect(invoicing.querySelectorAll('.tag')).toHaveLength(1);
-    expect(within(invoicing).getByText('Avoimia laskuja')).toHaveClass('tag', 'tag-warn');
+    expect(within(invoicing).getByText('Avoimia laskuja')).toHaveClass('tag', 'tag-yellow');
     // Line 1: lineup, status tag … invoicing tag, total (price last, at the right edge).
     expect(invoicing).toHaveClass('cell-end');
     const cellOf = (label: string) => within(card).getAllByRole('cell').find((c) => c.getAttribute('data-label') === label)!;
@@ -376,7 +374,7 @@ describe('event list (UC-003)', () => {
     // The client name is shown bare (no "Asiakas" label) and stays visible on phones.
     expect(cellOf('Asiakas')).toHaveClass('cell-bare');
     expect(cellOf('Asiakas')).not.toHaveClass('hide-phone');
-    for (const hidden of ['Myyjä', 'Tuottaja', 'Saldo', 'Kulut, budjetti', 'Kulut, toteuma']) {
+    for (const hidden of ['Myyjä', 'Tuottaja', 'Laskuttamatta', 'Kulut, budjetti', 'Kulut, toteuma']) {
       expect(cellOf(hidden), hidden).toHaveClass('hide-phone');
     }
   });
@@ -402,7 +400,7 @@ describe('event list (UC-003)', () => {
     expect(rows()[0]).toHaveTextContent('Template A · Venue X');
     // Every column is a labelled line of the card (economics included).
     expect(within(rows()[0]!).getAllByRole('cell').map((c) => c.getAttribute('data-label'))).toEqual(
-      expect.arrayContaining(['Kate-%', 'Laskutus', 'Saldo']),
+      expect.arrayContaining(['Kate-%', 'Laskutus', 'Laskuttamatta']),
     );
     // Kate-%: budget and actual ("tot. x %") are separate lines (block elements, eventList.css).
     const margin = within(rows()[0]!).getAllByRole('cell').find((c) => c.getAttribute('data-label') === 'Kate-%')!;

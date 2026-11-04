@@ -126,17 +126,15 @@ export interface EventSummary {
   clientName: string | null;
   /** Offer the event was converted from (UC-031), or null. */
   offerId: Id | null;
-  /** Σ amountCents of SENT + PAID invoice rows ("Laskutettu"). */
-  invoicedCents: Cents;
-  /** Σ amountCents of PAID invoice rows ("Maksettu"). */
-  paidCents: Cents;
-  /** totalPriceCents − paidCents; negative when more has been paid than the total. */
+  /** Σ amountCents of SENT invoice rows ("Lähetetty"). */
+  sentCents: Cents;
+  /** Σ amountCents of NOT_SENT invoice rows ("Lähettämättä"). */
+  notSentCents: Cents;
+  /** max(total − sentCents − notSentCents, 0): not on any row yet. */
+  uninvoicedCents: Cents;
+  /** totalPriceCents − sentCents ("Laskuttamatta"); negative when more was sent than the total. */
   balanceCents: Cents;
-  /** Σ amountCents of READY invoice rows (drafts; the Keikat table shows "Laskutettavia rivejä"). */
-  readyCents: Cents;
-  /** Σ amountCents of SENT invoice rows (sent, not paid; "Avoimet"). */
-  openCents: Cents;
-  /** Next invoicing action, derived from the total and the rows (api-contract "Invoicing: one label"). */
+  /** Invoicing state, derived from the total and the rows (api-contract "Invoicing v3"). */
   invoiceState: InvoiceState;
   deletedAt: IsoTimestamp | null;
   createdAt: IsoTimestamp;
@@ -174,6 +172,8 @@ export interface InvoiceRow {
   statusBy: Id | null;
   createdAt: IsoTimestamp;
   createdBy: Id | null;
+  /** true only for the automatic final invoice ("Loppulasku", api-contract "Invoicing v3"). */
+  auto: boolean;
 }
 
 export interface InvoiceRowCreate {
@@ -181,7 +181,7 @@ export interface InvoiceRowCreate {
   description: string;
   /** Integer > 0 */
   amountCents: Cents;
-  /** Default READY */
+  /** Default NOT_SENT */
   status?: InvoiceRowStatus;
 }
 
@@ -212,7 +212,8 @@ interface EventHistoryEntryBase<T extends EventHistoryType, D> {
   id: Id;
   eventId: Id;
   type: T;
-  partnerId: Id;
+  /** null = done by the system (e.g. the automatic final invoice). */
+  partnerId: Id | null;
   at: IsoTimestamp;
   reason: string | null;
   details: D;
@@ -229,7 +230,10 @@ export interface InvoiceRowHistoryDetails {
   invoiceRowId?: Id;
   description?: string;
   amountCents?: Cents;
-  status?: InvoiceRowStatus;
+  /** Current codes, or READY / PAID in entries written before "Invoicing v3". */
+  status?: string;
+  /** true on the automatic final invoice ("Loppulasku", api-contract "Invoicing v3"). */
+  auto?: boolean;
 }
 
 /** History keeps the codes it was written with, including removed roles (Role cleanup). */
