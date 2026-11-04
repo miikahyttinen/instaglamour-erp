@@ -594,7 +594,7 @@ One derived value **`invoiceState`** = the next invoicing action; first match wi
 - The modal asks **"Oletko ALV-velvollinen?"** with three options: **Ei / No**, **Kyllä, ALV 13,5 % / Yes, VAT 13.5 %**, **Kyllä, ALV 25,5 % / Yes, VAT 25.5 %**.
 - Public create body: `{ vatRateBp: 0 | 1350 | 2550, lines: [...] }` (allowed values = `[0, ...settings.vatRatesBp]`; anything else → 400 `vatRateBp: INVALID_VALUE`; missing → `REQUIRED`). Legacy `vatLiable: true` = 1350, `false` = 0; legacy `{ costLineIds }` = 0.
 - Setting `fees.performer_vat_rates_bp` (comma-separated basis points, default `1350,2550`; replaces `fees.performer_vat_rate_bp`, whose value, if present, is used as the first rate). `FreelancerView.settings` = `{ soundcheckDeductionCents, vatRatesBp: [1350, 2550] }`.
-- PO gains `vatRateBp` (stored); `vatLiable` stays in responses (= vatRateBp > 0). Migration: existing POs `vat_liable = true` → `vat_rate_bp = 1350`, else 0. Line math unchanged with the chosen rate.
+- `PurchaseOrder` and `PublicPurchaseOrder` gain `vatRateBp` (stored); legacy `vatLiable: true` = the first configured rate; `vatLiable` stays in responses (= vatRateBp > 0). Migration: existing POs `vat_liable = true` → `vat_rate_bp = 1350`, else 0. Line math unchanged with the chosen rate.
 
 ## Change log
 - 2026-11-04 – Freelancer PO VAT: choice No / 13.5 % / 25.5 % (vatRateBp) (PM)
