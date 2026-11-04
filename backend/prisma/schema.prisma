@@ -27,11 +27,10 @@ enum EventStatus {
   CANCELLED
 }
 
-/// Status of one invoice row of an event, set by hand (api-contract "Invoice rows").
+/// Status of one invoice row of an event, set by hand (api-contract "Invoicing v3"). Payments are not tracked.
 enum InvoiceRowStatus {
-  READY
+  NOT_SENT
   SENT
-  PAID
 }
 
 enum TaskStatus {
@@ -317,6 +316,9 @@ model Event {
   offerId                    String?         @unique @map("offer_id") @db.Uuid
   deletedAt                  DateTime?       @map("deleted_at")
   deletedById                String?         @map("deleted_by") @db.Uuid
+  /// When the automatic final invoice ("Loppulasku", TASK-049) was created; null = not yet. Set once:
+  /// deleting the row does not bring it back.
+  finalInvoiceCreatedAt      DateTime?       @map("final_invoice_created_at")
   createdAt                  DateTime        @default(now()) @map("created_at")
   updatedAt                  DateTime        @updatedAt @map("updated_at")
 
@@ -339,8 +341,8 @@ model Event {
   @@map("event")
 }
 
-/// One invoice row of an event (api-contract "Invoice rows", TASK-046). Balance, invoiced/paid sums and
-/// the event's invoiceCoverage / paymentState are derived from the rows. amount_cents > 0 (DB check
+/// One invoice row of an event (api-contract "Invoice rows", TASK-046; "Invoicing v3", TASK-049). The
+/// event's sent / not sent sums, balance and invoiceState are derived from the rows. amount_cents > 0 (DB check
 /// "invoice_row_amount_positive"). status_at/by = last status change (creation counts);
 /// created_by / status_by are null for rows from the TASK-046 migration or the seed/import.
 model InvoiceRow {
@@ -348,7 +350,7 @@ model InvoiceRow {
   eventId     String           @map("event_id") @db.Uuid
   description String
   amountCents Int              @map("amount_cents")
-  status      InvoiceRowStatus @default(READY)
+  status      InvoiceRowStatus @default(NOT_SENT)
   statusAt    DateTime         @map("status_at")
   statusById  String?          @map("status_by") @db.Uuid
   createdAt   DateTime         @default(now()) @map("created_at")
@@ -513,7 +515,8 @@ model EventHistory {
   id        String           @id @default(uuid()) @db.Uuid
   eventId   String           @map("event_id") @db.Uuid
   type      EventHistoryType
-  partnerId String           @map("partner_id") @db.Uuid
+  /// Null only for automatic entries (details.auto = true, e.g. the final invoice job, TASK-049).
+  partnerId String?          @map("partner_id") @db.Uuid
   at        DateTime         @default(now())
   reason    String?
   details   Json             @default("{}")
@@ -522,8 +525,8 @@ model EventHistory {
   createdAt DateTime         @default(now()) @map("created_at")
   updatedAt DateTime         @updatedAt @map("updated_at")
 
-  event   Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  partner Partner @relation(fields: [partnerId], references: [id])
+  event   Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  partner Partner? @relation(fields: [partnerId], references: [id], onDelete: Restrict)
 
   @@index([eventId, at])
   @@map("event_history")

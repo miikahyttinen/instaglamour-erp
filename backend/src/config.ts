@@ -28,6 +28,8 @@ const envSchema = z.object({
   FRONTEND_URL: z.string().url().default('http://localhost:5173'),
   UPLOAD_DIR: z.string().min(1).default(DEFAULT_UPLOAD_DIR),
   FRONTEND_DIST_DIR: z.string().min(1).default(DEFAULT_FRONTEND_DIST_DIR),
+  // Automatic final invoice job (TASK-049); on unless explicitly false/0.
+  INVOICE_JOB_ENABLED: z.enum(['true', 'false', '1', '0', '']).optional(),
 });
 
 export interface AppConfig {
@@ -54,6 +56,11 @@ export interface AppConfig {
    * deployment). Set only in production; in development the Vite dev server serves the UI.
    */
   staticDir: string | null;
+  /**
+   * INVOICE_JOB_ENABLED (default true): run the automatic final invoice job at startup and every
+   * 15 minutes (server.ts only; tests call the job directly).
+   */
+  invoiceJobEnabled: boolean;
 }
 
 /**
@@ -110,5 +117,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     uploadDir: e.UPLOAD_DIR,
     secureCookies: frontendUrl.startsWith('https://'),
     staticDir: production ? path.resolve(e.FRONTEND_DIST_DIR) : null,
+    invoiceJobEnabled: e.INVOICE_JOB_ENABLED !== 'false' && e.INVOICE_JOB_ENABLED !== '0',
   };
 }

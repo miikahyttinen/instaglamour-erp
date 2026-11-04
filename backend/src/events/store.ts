@@ -46,7 +46,8 @@ export function assertNotDeleted(event: { deletedAt: Date | null }): void {
 export interface NewHistoryEntry {
   eventId: string;
   type: EventHistoryType;
-  partnerId: string;
+  /** null only for automatic entries (details.auto = true; the final invoice job). */
+  partnerId: string | null;
   reason?: string | null;
   details?: Prisma.InputJsonObject;
 }
@@ -62,6 +63,14 @@ export async function logHistory(tx: Tx, entry: NewHistoryEntry): Promise<void> 
       details: entry.details ?? {},
     },
   });
+}
+
+/**
+ * Lock the event row (FOR UPDATE) for the rest of the transaction. Invoice row changes take it so they
+ * are ordered with the automatic final invoice job, which takes the same lock.
+ */
+export async function lockEvent(tx: Prisma.TransactionClient, id: string): Promise<void> {
+  await tx.$queryRaw`SELECT "id" FROM "event" WHERE "id" = ${id}::uuid FOR UPDATE`;
 }
 
 /** Run a mutation and its history entry in one transaction. */
