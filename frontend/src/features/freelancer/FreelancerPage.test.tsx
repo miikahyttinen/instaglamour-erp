@@ -34,7 +34,7 @@ const confirmButton = () => within(dialog()).getByRole('button', { name: 'Vahvis
 
 type User = ReturnType<typeof renderApp>['user'];
 /** Opens the modal, answers the VAT question and confirms. */
-async function createVia(user: User, vat: 'Kyllä' | 'Ei' = 'Ei', confirm: 'click' | 'dblClick' = 'click') {
+async function createVia(user: User, vat: string = 'Ei', confirm: 'click' | 'dblClick' = 'click') {
   await user.click(createButton());
   await user.click(within(dialog()).getByRole('radio', { name: vat }));
   await user[confirm](confirmButton());
@@ -136,7 +136,7 @@ describe('FreelancerPage /f/:token (UC-033)', () => {
 
   it('modal: VAT question required, sound check switches, live preview from settings, POST body', async () => {
     db.reference.settings.loadInDeductionCents = 1500;
-    db.freelancer.vatRateBp = 1350;
+    db.freelancer.vatRatesBp = [1350, 2550];
     const bodies: unknown[] = [];
     const capture = ({ request }: { request: Request }) => {
       if (request.method === 'POST') void request.clone().json().then((b) => bodies.push(b));
@@ -151,8 +151,13 @@ describe('FreelancerPage /f/:token (UC-033)', () => {
 
     const d = dialog();
     expect(within(d).getByRole('group', { name: 'Oletko ALV-velvollinen?' })).toBeInTheDocument();
-    // Keyboard: focus starts on the first answer.
-    expect(within(d).getByRole('radio', { name: 'Kyllä' })).toHaveFocus();
+    // Three answers, rates from settings; keyboard focus starts on the first answer.
+    expect(within(d).getAllByRole('radio').map((r) => r.closest('label')!.textContent)).toEqual([
+      'Ei',
+      'Kyllä, ALV 13,5 %',
+      'Kyllä, ALV 25,5 %',
+    ]);
+    expect(within(d).getByRole('radio', { name: 'Ei' })).toHaveFocus();
     const lines = within(d).getAllByTestId('po-preview-line');
     expect(lines).toHaveLength(2);
     const switches = within(d).getAllByRole('switch');
@@ -162,7 +167,7 @@ describe('FreelancerPage /f/:token (UC-033)', () => {
 
     // Required: no answer → message, no request.
     await user.click(confirmButton());
-    expect(within(d).getByRole('alert')).toHaveTextContent('Valitse Kyllä tai Ei.');
+    expect(within(d).getByRole('alert')).toHaveTextContent('Valitse jokin vaihtoehdoista.');
     expect(requests.some((r) => r.startsWith('POST'))).toBe(false);
 
     // Venue X: not at the sound check → deduction from settings.
@@ -172,8 +177,18 @@ describe('FreelancerPage /f/:token (UC-033)', () => {
     expect(norm(venueX.textContent)).toContain(`Summa${fi(8500)}`);
     expect(norm(total.textContent)).toContain(`Ostotilaus yhteensä${fi(18500)}`);
 
-    // VAT-liable → + ALV 13,5 % (rate from settings).
-    await user.click(within(d).getByRole('radio', { name: 'Kyllä' }));
+    // 25,5 % → preview uses that rate.
+    await user.click(within(d).getByRole('radio', { name: 'Kyllä, ALV 25,5 %' }));
+    expect(within(d).queryByRole('alert')).not.toBeInTheDocument();
+    expect(norm(venueX.textContent)).toContain(`ALV 25,5 %+${fi(2168)}`);
+    expect(norm(venueX.textContent)).toContain(`Summa${fi(10668)}`);
+
+    // Ei → no VAT row.
+    await user.click(within(d).getByRole('radio', { name: 'Ei' }));
+    expect(norm(total.textContent)).toBe(`Palkkio alv 0 %${fi(20000)}Soundcheck-vähennys−${fi(1500)}Ostotilaus yhteensä${fi(18500)}`);
+
+    // 13,5 % → + ALV 13,5 %.
+    await user.click(within(d).getByRole('radio', { name: 'Kyllä, ALV 13,5 %' }));
     expect(within(d).queryByRole('alert')).not.toBeInTheDocument();
     expect(norm(venueX.textContent)).toContain(`ALV 13,5 %+${fi(1148)}`);
     expect(norm(venueX.textContent)).toContain(`Summa${fi(9648)}`);
@@ -187,7 +202,7 @@ describe('FreelancerPage /f/:token (UC-033)', () => {
     server.events.removeListener('request:start', capture);
     expect(bodies).toEqual([
       {
-        vatLiable: true,
+        vatRateBp: 1350,
         lines: [
           { costLineId: fx.lines.played2.id, soundcheck: true },
           { costLineId: fx.lines.played1.id, soundcheck: false },
@@ -199,7 +214,7 @@ describe('FreelancerPage /f/:token (UC-033)', () => {
     const number = /PERSON-5-\d{4}/.exec(status.textContent!)![0];
     const first = within(screen.getByRole('region', { name: 'Ostotilaukset' })).getAllByRole('listitem')[0]!;
     expect(within(first).getByRole('heading', { name: number })).toBeInTheDocument();
-    expect(norm(first.textContent)).toContain('ALV-velvollinenKyllä');
+    expect(norm(first.textContent)).toContain('ALVALV 13,5 %');
     expect(norm(first.textContent)).toContain(fi(20998));
     const table = within(first).getByRole('table', { name: `Ostotilauksen ${number} palkkiot` });
     expect(within(table).getAllByRole('columnheader').map((h) => h.textContent)).toEqual([
@@ -245,7 +260,11 @@ describe('FreelancerPage /f/:token (UC-033)', () => {
     await user.click(screen.getByRole('button', { name: 'Create purchase order number' }));
     const d = screen.getByRole('dialog', { name: 'Create purchase order number' });
     expect(within(d).getByRole('group', { name: 'Are you VAT-registered?' })).toBeInTheDocument();
-    expect(within(d).getByRole('radio', { name: 'Yes' })).toBeInTheDocument();
+    expect(within(d).getAllByRole('radio').map((r) => r.closest('label')!.textContent)).toEqual([
+      'No',
+      'Yes, VAT 13.5 %',
+      'Yes, VAT 25.5 %',
+    ]);
     expect(within(d).getByRole('switch', { name: /^I was at the sound check: / })).toBeChecked();
     expect(within(d).getByRole('button', { name: 'Confirm and create' })).toBeInTheDocument();
   });
@@ -326,7 +345,7 @@ describe('FreelancerPage /f/:token (UC-033)', () => {
         amountCents: 10000,
       },
     ];
-    const po = { vatLiable: false, totalCents: 10000, createdAt: paidAt, lines };
+    const po = { vatLiable: false, vatRateBp: 0, totalCents: 10000, createdAt: paidAt, lines };
     server.use(
       http.get('/api/public/freelancers/:token', () =>
         HttpResponse.json({
@@ -337,7 +356,7 @@ describe('FreelancerPage /f/:token (UC-033)', () => {
             { ...po, number: 'PERSON-5-0002', status: 'PAID', paidAt },
             { ...po, number: 'PERSON-5-0001', status: 'CANCELLED', paidAt: null },
           ],
-          settings: { soundcheckDeductionCents: 1000, vatRateBp: 1350 },
+          settings: { soundcheckDeductionCents: 1000, vatRatesBp: [1350, 2550] },
         }),
       ),
     );
@@ -349,7 +368,7 @@ describe('FreelancerPage /f/:token (UC-033)', () => {
     expect(within(items[1]!).getByText('Maksettu 16.10.2026 klo 14.32')).toHaveClass('tag-ok');
     expect(within(items[2]!).getByText('Peruttu')).toHaveClass('tag-muted');
     expect(within(items[0]!).getByRole('table', { name: 'Ostotilauksen PERSON-5-0003 palkkiot' })).toHaveTextContent('Venue X');
-    expect(norm(items[0]!.textContent)).toContain('ALV-velvollinenEi');
+    expect(norm(items[0]!.textContent)).toContain('ALVEi ALV');
   });
 
   it('EN: switch remembered on this device; default FI', async () => {

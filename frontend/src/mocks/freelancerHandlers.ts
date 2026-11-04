@@ -44,22 +44,39 @@ function checkIds(value: unknown): Id[] | null {
 }
 
 type CreateBody =
-  | { ok: true; ids: Id[]; vatLiable: boolean; soundcheck: Record<Id, boolean> }
+  | { ok: true; ids: Id[]; vatRateBp: number; soundcheck: Record<Id, boolean> }
   | { ok: false; fields: Record<string, FieldCode> };
 
+/** Legacy `vatLiable: true` maps to this rate (contract "Freelancer PO: VAT rate choice"). */
+const LEGACY_VAT_RATE_BP = 1350;
+
 /**
- * New body `{ vatLiable, lines: [{ costLineId, soundcheck }] }`, or the legacy `{ costLineIds }`
- * (= not VAT-liable, all at the sound check).
+ * New body `{ vatRateBp, lines: [{ costLineId, soundcheck }] }` (rate 0 or one of `allowedRates`),
+ * the older `{ vatLiable, lines }` (true = 1350, false = 0), or the legacy `{ costLineIds }`
+ * (= no VAT, all at the sound check).
  */
-function parseCreateBody(body: Record<string, unknown> | null): CreateBody {
-  if (body && body.lines === undefined && body.vatLiable === undefined && body.costLineIds !== undefined) {
+function parseCreateBody(body: Record<string, unknown> | null, allowedRates: number[]): CreateBody {
+  if (
+    body &&
+    body.lines === undefined &&
+    body.vatRateBp === undefined &&
+    body.vatLiable === undefined &&
+    body.costLineIds !== undefined
+  ) {
     const ids = checkIds(body.costLineIds);
-    return ids ? { ok: true, ids, vatLiable: false, soundcheck: {} } : { ok: false, fields: { costLineIds: 'INVALID_VALUE' } };
+    return ids ? { ok: true, ids, vatRateBp: 0, soundcheck: {} } : { ok: false, fields: { costLineIds: 'INVALID_VALUE' } };
   }
   const fields: Record<string, FieldCode> = {};
-  const vatLiable = body?.vatLiable;
-  if (vatLiable === undefined || vatLiable === null) fields.vatLiable = 'REQUIRED';
-  else if (typeof vatLiable !== 'boolean') fields.vatLiable = 'INVALID_VALUE';
+  let vatRateBp: number | null = null;
+  const rate = body?.vatRateBp;
+  const legacy = body?.vatLiable;
+  if (rate !== undefined && rate !== null) {
+    if (typeof rate === 'number' && (rate === 0 || allowedRates.includes(rate))) vatRateBp = rate;
+    else fields.vatRateBp = 'INVALID_VALUE';
+  } else if (legacy !== undefined && legacy !== null) {
+    if (typeof legacy === 'boolean') vatRateBp = legacy ? LEGACY_VAT_RATE_BP : 0;
+    else fields.vatLiable = 'INVALID_VALUE';
+  } else fields.vatRateBp = 'REQUIRED';
   const lines = body?.lines;
   const valid =
     Array.isArray(lines) &&
@@ -77,7 +94,7 @@ function parseCreateBody(body: Record<string, unknown> | null): CreateBody {
   return {
     ok: true,
     ids,
-    vatLiable: vatLiable as boolean,
+    vatRateBp: vatRateBp ?? 0,
     soundcheck: Object.fromEntries(typed.map((l) => [l.costLineId, l.soundcheck])),
   };
 }
@@ -94,17 +111,17 @@ export const freelancerHandlers = [
 
   http.post('/api/public/freelancers/:token/purchase-orders', async ({ params, request }) => {
     const raw = (await request.json().catch(() => null)) as unknown;
-    const parsed = parseCreateBody(typeof raw === 'object' && raw !== null ? (raw as Record<string, unknown>) : null);
+    const parsed = parseCreateBody(
+      typeof raw === 'object' && raw !== null ? (raw as Record<string, unknown>) : null,
+      db.freelancer.vatRatesBp,
+    );
     if (!parsed.ok) return validationError(parsed.fields);
     const person = publicPerson(String(params.token));
     if (!person) return notFound();
     const result = createPurchaseOrder(db.freelancer, db.events, person, parsed.ids, {
-      vatLiable: parsed.vatLiable,
+      vatRateBp: parsed.vatRateBp,
       soundcheck: parsed.soundcheck,
-      settings: {
-        soundcheckDeductionCents: db.reference.settings.loadInDeductionCents,
-        vatRateBp: db.freelancer.vatRateBp,
-      },
+      settings: { soundcheckDeductionCents: db.reference.settings.loadInDeductionCents },
     });
     if (!result.ok) {
       const error: ApiErrorBody = {

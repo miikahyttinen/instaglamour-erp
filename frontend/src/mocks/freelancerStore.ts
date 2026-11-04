@@ -27,16 +27,17 @@ export interface FreelancerState {
   events: PurchaseOrderEvent[];
   /** Global running number of BR-116 (next value). */
   nextSeq: number;
-  /** Setting `fees.performer_vat_rate_bp` (synthetic mock value). */
-  vatRateBp: number;
+  /** Setting `fees.performer_vat_rates_bp` (synthetic mock values). */
+  vatRatesBp: number[];
 }
 
-/** Mock default of the performer VAT rate (contract default 1350 bp). */
-export const MOCK_VAT_RATE_BP = 1350;
+/** Mock default of the performer VAT rates (contract default `1350,2550`). */
+export const MOCK_VAT_RATES_BP = [1350, 2550];
 
 /** VAT choice and sound check flags of a freelancer-created PO. */
 export interface PoChoices {
-  vatLiable: boolean;
+  /** 0 = not VAT-liable. */
+  vatRateBp: number;
   /** Cost line id → was at the sound check. Missing = true. */
   soundcheck: Record<Id, boolean>;
   settings: PoAmountSettings;
@@ -146,6 +147,7 @@ export function toPublicPurchaseOrder(po: PurchaseOrder): PublicPurchaseOrder {
     number: po.number,
     status: po.status,
     vatLiable: po.vatLiable,
+    vatRateBp: po.vatRateBp,
     totalCents: po.totalCents,
     createdAt: po.createdAt,
     paidAt: po.paidAt,
@@ -179,7 +181,7 @@ export function freelancerView(
       .slice()
       .reverse()
       .map(toPublicPurchaseOrder),
-    settings: { soundcheckDeductionCents, vatRateBp: state.vatRateBp },
+    settings: { soundcheckDeductionCents, vatRatesBp: [...state.vatRatesBp] },
   };
 }
 
@@ -200,7 +202,7 @@ export function newPurchaseOrder(
   const lines = fees.map((fee) => {
     const soundcheck = choices?.soundcheck[fee.line.id] ?? true;
     const amounts = choices
-      ? poLineAmounts(amount(fee), soundcheck, choices.vatLiable, choices.settings)
+      ? poLineAmounts(amount(fee), soundcheck, choices.vatRateBp, choices.settings)
       : { baseCents: amount(fee), deductionCents: 0, vatCents: 0, amountCents: amount(fee) };
     return {
       costLineId: fee.line.id,
@@ -220,7 +222,8 @@ export function newPurchaseOrder(
     personId: person.id,
     personName: person.name,
     status: 'OPEN',
-    vatLiable: choices?.vatLiable ?? false,
+    vatLiable: (choices?.vatRateBp ?? 0) > 0,
+    vatRateBp: choices?.vatRateBp ?? 0,
     totalCents: lines.reduce((sum, l) => sum + l.amountCents, 0),
     createdAt,
     paidAt: null,
@@ -285,7 +288,7 @@ function at(date: IsoDate, days: number, time = '12:00:00.000Z'): string {
  * CANCELLED PO for an unpaid one (which is therefore selectable again, UC-034 AC-3).
  */
 export function seedFreelancer(events: EventState, partnerId: Id | undefined): FreelancerState {
-  const state: FreelancerState = { tokens: {}, purchaseOrders: [], events: [], nextSeq: 1, vatRateBp: MOCK_VAT_RATE_BP };
+  const state: FreelancerState = { tokens: {}, purchaseOrders: [], events: [], nextSeq: 1, vatRatesBp: [...MOCK_VAT_RATES_BP] };
   const personId = PERSON_IDS[0];
   const person = events.people.find((p) => p.id === personId);
   if (!person) return state;

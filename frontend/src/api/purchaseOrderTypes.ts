@@ -54,8 +54,10 @@ export interface PurchaseOrder {
   personId: Id;
   personName: string;
   status: PurchaseOrderStatus;
-  /** Chosen by the freelancer; partner-created POs: false. */
+  /** = vatRateBp > 0. */
   vatLiable: boolean;
+  /** Chosen VAT rate in basis points (0 = no VAT, e.g. 1350 = 13.5 %); partner-created POs: 0. */
+  vatRateBp: number;
   totalCents: Cents;
   createdAt: IsoTimestamp;
   paidAt: IsoTimestamp | null;
@@ -162,7 +164,10 @@ export interface PublicPurchaseOrderLine {
 export interface PublicPurchaseOrder {
   number: string;
   status: PurchaseOrderStatus;
+  /** = vatRateBp > 0. */
   vatLiable: boolean;
+  /** Chosen VAT rate in basis points (0 = no VAT). */
+  vatRateBp: number;
   totalCents: Cents;
   createdAt: IsoTimestamp;
   paidAt: IsoTimestamp | null;
@@ -181,8 +186,8 @@ export interface FreelancerView {
 export interface FreelancerSettings {
   /** Deducted from a fee when the person was not at the sound check. */
   soundcheckDeductionCents: Cents;
-  /** Performer VAT rate in basis points (1350 = 13.5 %). */
-  vatRateBp: number;
+  /** VAT rates the freelancer can choose, basis points (e.g. [1350, 2550]); "no VAT" (0) is always offered too. */
+  vatRatesBp: number[];
 }
 
 /**
@@ -191,6 +196,7 @@ export interface FreelancerSettings {
  * send it.)
  */
 export interface PublicPurchaseOrderCreate {
-  vatLiable: boolean;
+  /** 0 or one of `FreelancerSettings.vatRatesBp`. */
+  vatRateBp: number;
   lines: { costLineId: Id; soundcheck: boolean }[];
 }
