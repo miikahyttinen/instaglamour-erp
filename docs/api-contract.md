@@ -579,6 +579,7 @@ One derived value **`invoiceState`** = the next invoicing action; first match wi
   4. `PARTLY_INVOICED` — played and sentCents < total → "Osittain laskutettu / Partly invoiced" (**blue**)
   Filter `?invoiceState=` uses these values.
 - **Automatic final invoice ("Loppulasku"):** a backend job (runs at startup and every 15 minutes) finds SOLD, non-deleted gigs whose end (end date, else start date) + **48 hours** (organisation time zone, Europe/Helsinki) has passed, `total > 0`, `uninvoicedCents > 0`, and `finalInvoiceCreatedAt` is null. It adds one row `{ description: "Loppulasku", amountCents: uninvoicedCents, status: NOT_SENT }` (createdBy null, history `INVOICE_ROW_ADDED` with `details.auto: true`) and sets `event.final_invoice_created_at`, so it is created **only once per gig** (deleting it does not bring it back). The job is idempotent and safe to run concurrently (row lock / advisory lock).
+- Details (TASK-049): `InvoiceRow` gains **`auto: boolean`** (true only for the job's Loppulasku). Auto history entries have `partnerId: null` (UI shows "Automaattinen / Automatic"). Gaps: a cancelled gig with rows and sent < total → PARTLY_INVOICED; total 0 with only SENT rows → NONE; an upcoming fully sent gig → FULLY_INVOICED. Due time = end of the gig's last day (Helsinki) + 48 h. If the price is raised after a fully covered gig's 48 h, the job adds a Loppulasku for the difference (only once).
 - Row endpoints unchanged except allowed statuses (`NOT_SENT` default, `SENT`); old values `READY`/`PAID` → 400 `INVALID_VALUE`.
 
 ## Change log
