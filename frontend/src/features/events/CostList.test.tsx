@@ -239,12 +239,24 @@ describe('cost list (UC-005)', () => {
     expect(mockLine(event, 'BASS').paidAt).toBeNull();
   });
 
-  it('has no pay action for fuel', async () => {
+  it('has no pay action and an empty actual cell for fuel', async () => {
     const event = addMockEvent();
     addCostLine(db.events, event, { type: 'FUEL', personId: null, description: null, budgetedCents: 10000 }, partnerA().id);
     await openEvent(event.id);
     expect(within(line('Polttoaine')).queryByRole('button', { name: 'Merkitse maksetuksi' })).not.toBeInTheDocument();
-    expect(line('Polttoaine')).toHaveTextContent('Arvio – ei maksumerkintää.');
+    const cell = line('Polttoaine').querySelector('td.cost-paid')!;
+    expect(cell).toBeEmptyDOMElement();
+  });
+
+  it('read-only (deleted gig): fuel actual cell is empty', async () => {
+    const event = addMockEvent();
+    addCostLine(db.events, event, { type: 'FUEL', personId: null, description: null, budgetedCents: 10000 }, partnerA().id);
+    event.deletedAt = new Date().toISOString();
+    renderApp(`/gigs/${event.id}`);
+    await screen.findByRole('table', { name: 'Kulut ja miehitys' });
+    const cell = line('Polttoaine').querySelector('td.cost-paid')!;
+    expect(cell).toBeEmptyDOMElement();
+    expect(within(line('Polttoaine')).queryByRole('button', { name: 'Merkitse maksetuksi' })).not.toBeInTheDocument();
   });
 
   it('adds lines (OTHER needs a description), edits them inline and removes them', async () => {

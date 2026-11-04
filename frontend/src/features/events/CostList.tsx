@@ -304,7 +304,8 @@ function CostLineItem({ line, people, readOnly, columnCount, onResult }: LinePro
             // Read-only: just the amount; who / when is in the gig log.
             <span className="cost-paid-amount">{formatMoney(line.actualCents, lang)}</span>
           ) : line.type === 'FUEL' ? (
-            <span className="cost-hint">{t('costs.fuelHint')}</span>
+            // Fuel is an estimate: never marked paid, so the cell stays empty (TASK-180).
+            null
           ) : !readOnly && !po ? (
             // Unpaid: only the button, which turns into the amount input in place (no "unpaid" tag).
             <PayControl
