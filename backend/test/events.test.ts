@@ -494,10 +494,10 @@ describe('seller / producer change (BR-027)', () => {
     const { world } = s;
     const event = await createEvent(s); // seller A, producer B
     const salesA = event.costLines.find((l: { type: string }) => l.type === 'SALES');
-    // A second, paid Sales line of A, and a split Sales line of Person 1.
+    // A second, paid Sales line of A, and a split Sales line of Partner B.
     const paidA = (await call(s, 'POST', `/api/events/${event.id}/cost-lines`, { type: 'SALES', personId: world.a.personId, budgetedCents: 10000 })).json().event.costLines.at(-1);
     await call(s, 'POST', `/api/cost-lines/${paidA.id}/pay`, {});
-    const split = (await call(s, 'POST', `/api/events/${event.id}/cost-lines`, { type: 'SALES', personId: world.p1.id, budgetedCents: 10000 })).json().event.costLines.at(-1);
+    const split = (await call(s, 'POST', `/api/events/${event.id}/cost-lines`, { type: 'SALES', personId: world.b.personId, budgetedCents: 10000 })).json().event.costLines.at(-1);
     const unpaidA2 = (await call(s, 'POST', `/api/events/${event.id}/cost-lines`, { type: 'SALES', personId: world.a.personId, budgetedCents: 20000 })).json().event.costLines.at(-1);
 
     const res = await call(s, 'PATCH', `/api/events/${event.id}`, { sellerId: world.c.id });
@@ -508,7 +508,7 @@ describe('seller / producer change (BR-027)', () => {
     expect(byId.get(salesA.id)).toMatchObject({ personId: world.c.personId, budgetedCents: FEES.sales });
     expect(byId.get(unpaidA2.id)).toMatchObject({ personId: world.c.personId, budgetedCents: 20000 });
     expect(byId.get(paidA.id)).toMatchObject({ personId: world.a.personId });
-    expect(byId.get(split.id)).toMatchObject({ personId: world.p1.id });
+    expect(byId.get(split.id)).toMatchObject({ personId: world.b.personId });
     expect(updated.sellerId).toBe(world.c.id);
 
     const [entry] = await history(s, event.id);
@@ -534,10 +534,10 @@ describe('seller / producer change (BR-027)', () => {
     const { world } = s;
     const event = await createEvent(s);
     const sales = event.costLines.find((l: { type: string }) => l.type === 'SALES');
-    await call(s, 'PATCH', `/api/cost-lines/${sales.id}`, { personId: world.p2.id });
+    await call(s, 'PATCH', `/api/cost-lines/${sales.id}`, { personId: world.b.personId });
     const res = await call(s, 'PATCH', `/api/events/${event.id}`, { sellerId: world.c.id });
     expect(res.json().movedCostLineIds).toEqual([]);
-    expect(res.json().event.costLines.find((l: { id: string }) => l.id === sales.id).personId).toBe(world.p2.id);
+    expect(res.json().event.costLines.find((l: { id: string }) => l.id === sales.id).personId).toBe(world.b.personId);
   });
 });
 

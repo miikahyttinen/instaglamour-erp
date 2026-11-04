@@ -107,6 +107,9 @@ export function convertLegacyRole(code: LegacyRole, personRoles: readonly unknow
 /** Cost types whose line needs a free-text description. */
 export const DESCRIPTION_REQUIRED_TYPES: ReadonlySet<CostType> = new Set<CostType>(['OTHER', 'OTHER_ROLE']);
 
+/** Lines whose person must be an active partner (or none) when created / when the person changes. */
+export const PARTNER_ONLY_TYPES: ReadonlySet<CostType> = new Set<CostType>(['SALES', 'PRODUCTION']);
+
 /** FUEL lines are estimates only and can never be paid (BR-008). */
 export function isPayable(type: CostType): boolean {
   return type !== 'FUEL';
