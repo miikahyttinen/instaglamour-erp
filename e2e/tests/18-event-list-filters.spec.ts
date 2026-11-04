@@ -234,8 +234,8 @@ test('Kate-%: the actual percentage is on a second line in the table, beside it 
 // status "Lähettämättä" yellow, "Lähetetty" green), an add form, and Lähetetty / Lähettämättä /
 // Laskuttamatta (= total − sent; warning when negative). No payments. Invoicing state (api-contract
 // "Invoicing v3"): ONE tag, first match wins — Avoimia laskuja (yellow, any row not sent) ·
-// Laskutettu (solid dark green, sent ≥ total) · "–" (upcoming / cancelled / total 0) · Osittain
-// laskutettu (blue, played and sent < total); on the gig card and in the list "Laskutus" cell (one
+// Laskutettu (solid dark green, sent ≥ total) · "–" (upcoming, row-less cancelled, total 0) · Osittain
+// laskutettu (blue, played or cancelled with rows, sent < total); on the gig card and in the list "Laskutus" cell (one
 // line), with one filter (f.invoiceState).
 test('gig statuses and "Laskutus": invoice rows, one invoicing state tag on the gig page and in the list, one filter', async ({ page }, testInfo) => {
   const { year, north } = await setup(page, testInfo);
@@ -281,6 +281,7 @@ test('gig statuses and "Laskutus": invoice rows, one invoicing state tag on the 
   await expect(figure('Lähetetty')).toHaveText(/^0,00/);
   await expect.poll(async () => (await apiGig()).invoiceState).toBe('OPEN_INVOICES');
   expect((await apiGig()).notSentCents).toBe(total + 1000);
+  expect(((await apiGig()).invoiceRows as { auto: boolean }[])[0]!.auto).toBe(false);
 
   // List: one tag on one line; f.invoiceState=NONE hides the gig; the "Laskutus" filter (user flow)
   // shows it again. No separate "Maksut" filter.
@@ -362,6 +363,9 @@ test('gig statuses and "Laskutus": invoice rows, one invoicing state tag on the 
   const pastCancelled = await createEventViaApi(page, { startDate: pastDay, venue: `${venue} Called off` });
   await api(page).post(`/events/${pastCancelled.id}/cancel`, { reason: 'Synthetic cancel' });
   expect(((await api(page).get(`/events/${pastCancelled.id}`)) as Record<string, unknown>).invoiceState).toBe('NONE');
+  // A cancelled gig with rows and sent < total → "Osittain laskutettu".
+  await api(page).post(`/events/${pastCancelled.id}/invoice-rows`, { description: 'Fee', amountCents: 1000, status: 'SENT' });
+  expect(((await api(page).get(`/events/${pastCancelled.id}`)) as Record<string, unknown>).invoiceState).toBe('PARTLY_INVOICED');
   await page.goto(`/gigs/${gig.id}`);
 
   // Fully sent = solid dark green "Laskutettu"; the columns fit without sideways scroll
