@@ -47,14 +47,16 @@ const PRICE_CENTS = 4370000; // distinctive event price: must never reach the fr
 const PRICE_FORMS = ['4370000', '43700', '43 700', '43 700', '43 700', '43,700', '43.700'];
 const VIEW_KEYS = ['lines', 'name', 'purchaseOrders', 'settings'];
 const LINE_KEYS = ['amountCents', 'costLineId', 'description', 'eventEndDate', 'eventStartDate', 'purchaseOrderNumber', 'state', 'type', 'venue'];
-const PUBLIC_PO_KEYS = ['createdAt', 'lines', 'number', 'paidAt', 'status', 'totalCents', 'vatLiable'];
+const PUBLIC_PO_KEYS = ['createdAt', 'lines', 'number', 'paidAt', 'status', 'totalCents', 'vatLiable', 'vatRateBp'];
 const PUBLIC_PO_LINE_KEYS = ['amountCents', 'baseCents', 'deductionCents', 'description', 'eventStartDate', 'soundcheck', 'type', 'vatCents', 'venue'];
 
-/** Contract "Freelancer PO: VAT and sound check": fee − deduction (≥ 0), then × (1 + rate) rounded. */
-function poAmount(fee: number, soundcheck: boolean, vatLiable: boolean, settings: { soundcheckDeductionCents: number; vatRateBp: number }) {
+/** Contract "Freelancer PO: VAT and sound check" / "VAT rate choice": fee − deduction (≥ 0), then × (1 + rate) rounded. */
+function poAmount(fee: number, soundcheck: boolean, vatRateBp: number, settings: { soundcheckDeductionCents: number }) {
   const net = soundcheck ? fee : Math.max(fee - settings.soundcheckDeductionCents, 0);
-  return vatLiable ? Math.round((net * (10000 + settings.vatRateBp)) / 10000) : net;
+  return vatRateBp > 0 ? Math.round((net * (10000 + vatRateBp)) / 10000) : net;
 }
+/** "13,5 %" from basis points (Finnish). */
+const fiRate = (bp: number) => `${String(bp / 100).replace('.', ',')} %`;
 const PO_NUMBER = /^[A-Z0-9-]+-\d{4,}$/;
 
 test('freelancer link → create PO → mark paid → event lines paid and locked; unmark, cancel, logs', async ({ page, context, browser, baseURL, request }, testInfo) => {
@@ -135,11 +137,13 @@ test('freelancer link → create PO → mark paid → event lines paid and locke
   const view = await viewRes.json();
   expect(Object.keys(view).sort()).toEqual(VIEW_KEYS);
   expect(view.name).toBe(person.name);
-  expect(Object.keys(view.settings).sort()).toEqual(['soundcheckDeductionCents', 'vatRateBp']);
-  const settings = view.settings as { soundcheckDeductionCents: number; vatRateBp: number };
-  // Drums: not at the sound check; bass: at it; VAT-liable.
-  const drumsAmount = poAmount(30000, false, true, settings);
-  const bassAmount = poAmount(40000, true, true, settings);
+  expect(Object.keys(view.settings).sort()).toEqual(['soundcheckDeductionCents', 'vatRatesBp']);
+  const settings = view.settings as { soundcheckDeductionCents: number; vatRatesBp: number[] };
+  expect(settings.vatRatesBp.length, 'two VAT rates to choose from').toBe(2);
+  // Drums: not at the sound check; bass: at it; the second (higher) VAT rate.
+  const vatRateBp = settings.vatRatesBp[1]!;
+  const drumsAmount = poAmount(30000, false, vatRateBp, settings);
+  const bassAmount = poAmount(40000, true, vatRateBp, settings);
   const poTotal = drumsAmount + bassAmount;
   for (const line of view.lines) expect(Object.keys(line).sort()).toEqual(LINE_KEYS);
   for (const po of view.purchaseOrders) {
@@ -203,34 +207,44 @@ test('freelancer link → create PO → mark paid → event lines paid and locke
   await create.click();
   const confirmPo = modal.getByRole('button', { name: 'Vahvista ja luo', exact: true });
   await confirmPo.click();
-  await expect(modal.getByRole('alert')).toHaveText('Valitse Kyllä tai Ei.');
+  await expect(modal.getByRole('alert')).toHaveText('Valitse jokin vaihtoehdoista.');
+  // Three answers: Ei and one per rate from settings.
+  await expect(modal.getByRole('radio')).toHaveCount(3);
+  await expect(modal.getByRole('radio', { name: 'Ei', exact: true })).toBeVisible();
+  for (const bp of settings.vatRatesBp) {
+    await expect(modal.getByRole('radio', { name: `Kyllä, ALV ${fiRate(bp)}`, exact: true })).toBeVisible();
+  }
   const drumsSwitch = modal.getByRole('switch', { name: `Olin soundcheckissä: ${fiDate(d1)}, ${venue(1)}, Rummut` });
   await expect(drumsSwitch).toBeChecked();
   await expect(modal.getByRole('switch', { name: `Olin soundcheckissä: ${fiDate(d2)}, ${venue(2)}, Basso` })).toBeChecked();
   await drumsSwitch.uncheck();
-  await modal.getByRole('radio', { name: 'Kyllä', exact: true }).check();
   const modalTotal = modal.getByRole('region', { name: 'Ostotilaus yhteensä' });
+  // The preview follows the chosen rate.
+  await modal.getByRole('radio', { name: `Kyllä, ALV ${fiRate(settings.vatRatesBp[0]!)}`, exact: true }).check();
+  await expect(modalTotal).toContainText(fiMoney(poAmount(30000, false, settings.vatRatesBp[0]!, settings) + poAmount(40000, true, settings.vatRatesBp[0]!, settings)));
+  await modal.getByRole('radio', { name: `Kyllä, ALV ${fiRate(vatRateBp)}`, exact: true }).check();
   await expect(modalTotal).toContainText(fiMoney(poTotal));
   if (settings.soundcheckDeductionCents > 0) await expect(modalTotal).toContainText('Soundcheck-vähennys');
-  await expect(modalTotal).toContainText(`ALV ${String(settings.vatRateBp / 100).replace('.', ',')} %`);
+  await expect(modalTotal).toContainText(`ALV ${fiRate(vatRateBp)}`);
   const postRes = fp.waitForResponse((r) => r.request().method() === 'POST' && r.url().includes('/purchase-orders'));
   await confirmPo.click();
   const created = await postRes;
   expect(created.status()).toBe(201);
   expect(created.request().postDataJSON()).toEqual({
-    vatLiable: true,
+    vatRateBp,
     lines: expect.arrayContaining([
       { costLineId: drums1, soundcheck: false },
       { costLineId: bass2, soundcheck: true },
     ]),
   });
   await expect(modal).toBeHidden();
-  const po = (await created.json()) as { number: string; totalCents: number; status: string; vatLiable: boolean };
+  const po = (await created.json()) as { number: string; totalCents: number; status: string; vatLiable: boolean; vatRateBp: number };
   expect(po.number).toMatch(PO_NUMBER);
   expect(po.number.startsWith(`${nameSlug(person.name)}-`), `${po.number} starts with the name slug`).toBe(true);
   expect(po.number).not.toBe(oldPo.number);
   expect(po.totalCents).toBe(poTotal);
   expect(po.vatLiable).toBe(true);
+  expect(po.vatRateBp).toBe(vatRateBp);
   expect(po.status).toBe('OPEN');
   await expect(fp.getByRole('status').filter({ hasText: `Ostotilausnumero ${po.number} luotu.` })).toBeVisible();
   await expect(feeRow(fp, venue(1), 'Rummut')).toContainText(`Ostotilaus ${po.number}`);
@@ -238,8 +252,7 @@ test('freelancer link → create PO → mark paid → event lines paid and locke
   await expect(fp.getByRole('heading', { level: 3, name: po.number })).toBeVisible();
   await expect(fp.getByRole('button', { name: `Kopioi numero ${po.number}` })).toBeVisible();
   const newOrder = fp.getByRole('listitem').filter({ has: fp.getByRole('heading', { level: 3, name: po.number }) });
-  await expect(newOrder).toContainText('ALV-velvollinen');
-  await expect(newOrder).toContainText('Kyllä');
+  await expect(newOrder.locator('dd').filter({ hasText: /^ALV / })).toHaveText(`ALV ${fiRate(vatRateBp)}`);
   await expect(newOrder.getByRole('columnheader', { name: 'Soundcheck-vähennys' })).toHaveCount(1);
   await expect(newOrder).toContainText(fiMoney(poTotal));
   await expect(fp.getByRole('button', { name: 'Luo ostotilausnumero', exact: true })).toBeDisabled();
@@ -319,7 +332,7 @@ test('freelancer link → create PO → mark paid → event lines paid and locke
   await expect(lines.getByRole('link', { name: `Avaa keikka: ${venue(1)}` })).toHaveAttribute('href', `/gigs/${event1.id}`);
   await expect(lines.getByRole('link', { name: `Avaa keikka: ${venue(2)}` })).toHaveAttribute('href', `/gigs/${event2.id}`);
   await expect(lines).toContainText(fiMoney(poTotal));
-  await expect(page.locator('.po-facts')).toContainText('ALV-velvollinen');
+  await expect(page.locator('.po-facts')).toContainText(`ALV ${fiRate(vatRateBp)}`);
   await expect(lines.getByRole('columnheader', { name: 'Palkkio alv 0 %' })).toHaveCount(1);
   await expect(lines).toContainText(fiMoney(70000)); // fees excl. VAT in the totals row
 
