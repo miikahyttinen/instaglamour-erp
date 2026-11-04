@@ -125,6 +125,20 @@ export const SETTING_KEYS = {
 
 export const ALL_SETTING_KEYS = Object.values(SETTING_KEYS);
 
+/**
+ * Optional numeric settings (integers ≥ 0): the code has a default when the row is missing.
+ * `fees.performer_vat_rate_bp` = VAT rate added to a VAT-liable freelancer's PO lines, in basis points
+ * (TASK-050; 1350 = 13.5 %).
+ */
+export const OPTIONAL_NUMBER_SETTING_KEYS = {
+  performerVatRateBp: 'fees.performer_vat_rate_bp',
+} as const;
+
+export const ALL_OPTIONAL_NUMBER_SETTING_KEYS = Object.values(OPTIONAL_NUMBER_SETTING_KEYS);
+
+/** Default of `fees.performer_vat_rate_bp` when the setting is missing (api-contract 2026-11-04). */
+export const DEFAULT_PERFORMER_VAT_RATE_BP = 1350;
+
 /** Text settings for offers (domain-model.md "Settings (additions)"); optional in the seed. */
 export const OFFER_SETTING_KEYS = {
   defaultIncludes: 'offers.default_includes',

@@ -83,7 +83,9 @@ Partners, templates, people, clients and budget categories are referenced by ema
     "fees.office_default": 10000,
     "fees.sales_default": 10000,
     "fees.production_default": 10000,
-    "fees.load_in_deduction": 1000,
+    "fees.load_in_deduction": 1000,   // also the freelancer PO "no sound check" deduction
+    "fees.performer_vat_rate_bp": 1350, // optional whole number: VAT rate in basis points for VAT-liable
+                                        // freelancer POs (1350 = 13.5 %); default 1350 when missing
     "offers.default_includes": "…"    // optional text (line breaks with \n): default "what's included" of a new offer
   },
   "budgetCategories": [               // the yearly budget rows; new rows are added after existing ones, in listed order

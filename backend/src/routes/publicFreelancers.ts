@@ -21,7 +21,7 @@ import {
   loadFreelancerView,
   toPublicPurchaseOrderDto,
 } from '../purchaseOrders/store.js';
-import { parseCostLineIds } from '../purchaseOrders/input.js';
+import { parseFreelancerPoBody } from '../purchaseOrders/input.js';
 import { isWellFormedFreelancerToken } from '../purchaseOrders/token.js';
 
 export const PUBLIC_FREELANCER_ROUTE = '/api/public/freelancers/:token';
@@ -56,13 +56,14 @@ export function publicFreelancerRoutes(app: FastifyInstance, deps: AppDeps, page
 
   app.post<TokenParams>(PUBLIC_FREELANCER_PO_ROUTE, async (request, reply) => {
     guard(request, reply);
-    const costLineIds = parseCostLineIds(request.body);
+    const { vatLiable, lines } = parseFreelancerPoBody(request.body);
     const { token } = request.params;
     const person = await findPerson(token);
     if (!person) throw linkNotFound();
     const po = await createPurchaseOrder(db, {
       personId: person.id,
-      costLineIds,
+      lines,
+      vatLiable,
       // Re-checked under the lock: the link may have been regenerated or the person deactivated.
       isCurrent: (p) => isLinkUsable(p) && sameToken(p.freelancerToken, token),
       eligibility: 'FREELANCER',
