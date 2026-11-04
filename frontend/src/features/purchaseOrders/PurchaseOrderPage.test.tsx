@@ -35,9 +35,13 @@ describe('purchase order page (UC-034)', () => {
       'Paikka',
       'Kokoonpano',
       'Rooli',
+      'Palkkio alv 0 %',
+      'Soundcheck-vähennys',
+      'ALV',
       'Summa',
       'Keikka',
     ]);
+    expect(text(page)).toContain('ALV-velvollinenEi');
     const row = within(lines).getAllByRole('row').find((r) => r.closest('tbody'))!;
     expect(text(row)).toContain(`1.6.${TEST_YEAR}`);
     expect(text(row)).toContain('Venue X');
@@ -48,6 +52,28 @@ describe('purchase order page (UC-034)', () => {
     const history = await screen.findByRole('table', { name: 'Historia' });
     expect(text(history)).toContain('Luotu freelancerin linkillä');
     expect(text(history)).toContain('Freelancer');
+  });
+
+  it('VAT-liable PO: breakdown per line and in the totals row (deduction, VAT, final amount)', async () => {
+    const { po } = addMockPurchaseOrder({ venue: 'Venue X' });
+    const stored = db.freelancer.purchaseOrders.find((p) => p.id === po.id)!;
+    stored.vatLiable = true;
+    Object.assign(stored.lines[0]!, { baseCents: 10000, soundcheck: false, deductionCents: 1000, vatCents: 1215, amountCents: 10215 });
+    stored.totalCents = 10215;
+    renderApp(`/purchase-orders/${po.id}`);
+    await screen.findByRole('heading', { level: 1, name: po.number });
+    expect(text(document.querySelector('.po-facts') as HTMLElement)).toContain('ALV-velvollinenKyllä');
+    const lines = screen.getByRole('table', { name: 'Ostotilauksen palkkiot' });
+    const row = within(lines).getAllByRole('row').find((r) => r.closest('tbody'))!;
+    const cells = within(row).getAllByRole('cell').map((c) => text(c));
+    expect(cells.slice(4, 8)).toEqual([fiMoney(10000), `−${fiMoney(1000)}`, `+${fiMoney(1215)}`, fiMoney(10215)]);
+    const total = within(lines).getAllByRole('row').find((r) => r.closest('tfoot'))!;
+    expect(within(total).getAllByRole('cell').map((c) => text(c)).slice(1, 5)).toEqual([
+      fiMoney(10000),
+      `−${fiMoney(1000)}`,
+      `+${fiMoney(1215)}`,
+      fiMoney(10215),
+    ]);
   });
 
   it('Mark paid → paid label and Unmark paid (after confirming) → open again', async () => {
