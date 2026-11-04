@@ -109,12 +109,14 @@ Partners, templates, people, clients and budget categories are referenced by ema
       "priceCents": 100000, "additionalSalesCents": 0, "additionalSalesDescription": "…", "notes": "…",
       "client": "Client A Oy",                              // optional; a name from clients (case-insensitive)
       "invoiceRows": [                                      // optional, kept in this order (TASK-046)
-        { "description": "Ennakkomaksu", "amountCents": 20000, "status": "PAID" },  // amount > 0; status READY (default) | SENT | PAID
-        { "description": "Lasku", "amountCents": 80000, "status": "SENT" }
+        { "description": "Ennakkomaksu", "amountCents": 20000, "status": "SENT" },  // amount > 0; status NOT_SENT (default) | SENT
+        { "description": "Lasku", "amountCents": 80000, "status": "NOT_SENT" }      // legacy READY → NOT_SENT, PAID → SENT (TASK-049)
       ],
       // Legacy (TASK-045), instead of invoiceRows — not both: "invoiceStatus" (NONE | READY | PREPAYMENT_PAID |
-      // INVOICED | PAID) and "prepaymentCents" (≥ 0) are converted into rows like migration 20261031140000:
-      // prepayment > 0 → PAID "Ennakkomaksu"; READY/INVOICED/PAID → READY/SENT/PAID "Lasku" for total − prepayment.
+      // INVOICED | PAID) and "prepaymentCents" (≥ 0) are converted into rows: prepayment > 0 → SENT
+      // "Ennakkomaksu"; READY → NOT_SENT, INVOICED/PAID → SENT "Lasku" for total − prepayment.
+      // Past SOLD events that are not fully covered by rows get an automatic "Loppulasku" row from the
+      // final invoice job (TASK-049) once the app runs.
       "costLines": [                                        // omit → generated per BR-020/BR-021 from template + settings
         {
           "type": "BASS",                                   // any CostType (docs/domain-model.md)

@@ -57,6 +57,7 @@ outside local development.**
 | `AUTH_ALLOWED_DOMAIN` | Only verified Google accounts in this domain may sign in (BR-070) |
 | `AUTH_EXTRA_ALLOWED_EMAILS` | Optional: comma-separated exact addresses outside the domain treated as if they were in it (case-insensitive, trimmed), e.g. `someone@example.org`. Applies to Google sign-in, dev login and partner emails; they must still be active partners. An entry that is not an email address stops startup. Unset/empty = none |
 | `DEV_LOGIN_ENABLED` | `true` registers `POST /api/auth/dev-login` (otherwise 404) |
+| `INVOICE_JOB_ENABLED` | Optional, default on: the automatic final invoice job ("Loppulasku", at startup and every 15 min). `false` turns it off |
 | `FRONTEND_URL` | Where the Google callback redirects (`/` or `/login?error=…`), e.g. `http://localhost:5173` |
 | `UPLOAD_DIR` | Reference photo storage (old event attachment files stay there unused), outside the repository (created at startup if missing; on Railway a volume path such as `/data/uploads`; tests use a temp dir; `npm run db:seed` copies seed photos here) |
 
@@ -175,38 +176,53 @@ template roles (no person → `TROMBONE`) and person roles (de-duplicated, `MUSI
 still load and are converted the same way (`seed/README.md`, `convertLegacyRole` in
 `src/domain/enums.ts`).
 
-## Invoice rows (TASK-046)
+## Invoice rows (TASK-046, Invoicing v3 TASK-049)
 
 Replace the TASK-045 event invoice status and prepayment (and, before that, the TASK-044 ready flag).
+Payments are not tracked (TASK-049).
 
 - Table `invoice_row` (event FK, `description`, `amount_cents` > 0 DB check, `status` enum
-  `InvoiceRowStatus` READY | SENT | PAID, `status_at`/`status_by` = last status change, `created_at`/`created_by`).
-  `created_by`/`status_by` are null for rows made by the migration or the seed/import.
+  `InvoiceRowStatus` NOT_SENT | SENT, `status_at`/`status_by` = last status change, `created_at`/`created_by`).
+  `created_by`/`status_by` are null for rows made by a migration, the seed/import or the final invoice job.
 - `EventDetail.invoiceRows` (creation order). EventSummary/EventDetail derive (`src/domain/invoicing.ts`,
-  api-contract "Invoicing: one label"; `invoiceCoverage` / `paymentState` were removed):
-  `balanceCents = totalPriceCents − Σ PAID`, `invoicedCents = Σ SENT + PAID`, `paidCents = Σ PAID`,
-  `openCents = Σ SENT`, `readyCents = Σ READY` (READY rows are drafts, not invoiced) and one state
-  `invoiceState` = the next invoicing action, first match wins:
-  1. PAID — paid > 0 and paid ≥ total (incl. overpaid with READY/SENT rows left)
-  2. ROWS_TO_INVOICE — readyCents > 0
-  3. OPEN_INVOICES — openCents > 0
-  4. NEEDS_INVOICES — played event (SOLD and start date before today in Helsinki, same rule as `played`)
-     and invoiced < total; upcoming and cancelled events fall to NONE
-  5. NONE — otherwise (total 0 and no rows; upcoming/cancelled without rows to act on)
-  Same sums for cancelled events. The `?invoiceState=` filter uses the same derived value.
-- `POST /api/events/{id}/invoice-rows`, `PATCH /api/invoice-rows/{id}`, `DELETE /api/invoice-rows/{id}` →
-  200 EventDetail; history `INVOICE_ROW_ADDED` / `INVOICE_ROW_UPDATED` / `INVOICE_ROW_REMOVED` with details
+  api-contract "Invoicing v3"): `sentCents = Σ SENT`, `notSentCents = Σ NOT_SENT`,
+  `uninvoicedCents = max(total − sent − notSent, 0)`, `balanceCents = total − sent` and `invoiceState`,
+  first match wins:
+  1. OPEN_INVOICES — any NOT_SENT row
+  2. FULLY_INVOICED — sent ≥ total and total > 0
+  3. NONE — upcoming (not played), or cancelled / total 0 without rows
+  4. PARTLY_INVOICED — played (SOLD and start date before today in Helsinki, same rule as `played`) and
+     sent < total; also a cancelled event with rows and sent < total
+  Anything else → NONE (e.g. total 0 with only SENT rows). The `?invoiceState=` filter uses the same value.
+- `POST /api/events/{id}/invoice-rows` (status default NOT_SENT), `PATCH /api/invoice-rows/{id}`,
+  `DELETE /api/invoice-rows/{id}` → 200 EventDetail; status NOT_SENT | SENT (old READY / PAID → 400
+  `INVALID_VALUE`); history `INVOICE_ROW_ADDED` / `INVOICE_ROW_UPDATED` / `INVOICE_ROW_REMOVED` with details
   `{ invoiceRowId, description, amountCents, status }` (UPDATED: `{ invoiceRowId, description, changes }`).
   SOLD and CANCELLED events; deleted → 409 `EVENT_DELETED`. Same-value PATCH = no-op (no history).
-- `GET /api/events?invoiceState=OPEN_INVOICES&invoiceState=NEEDS_INVOICES`: repeatable (any of the values);
-  unknown value → 400 `INVALID_VALUE`. The old `?invoiceCoverage=` / `?paymentState=` are ignored.
-- Removed: `invoiceStatus*`, `prepaymentCents`, `?invoiceStatus=` (PATCH ignores the old keys like any unknown key).
-- Migration `20261031140000_invoice_rows` converts first, then drops the old columns and the `InvoiceStatus`
-  enum: prepayment > 0 → PAID "Ennakkomaksu"; READY / INVOICED / PAID → READY / SENT / PAID "Lasku" for
-  total − prepayment; PREPAYMENT_PAID / NONE → nothing more; only amounts > 0; deleted/cancelled events too.
-  The balance row keeps the old status at/by. Old history entries are untouched.
-- Seed/import: optional `invoiceRows` per event; legacy `invoiceStatus`/`prepaymentCents` still accepted and
-  converted the same way (`legacyInvoiceRows`); both on one event → validation error.
+  The mutations lock the event row (ordered with the final invoice job).
+- `GET /api/events?invoiceState=OPEN_INVOICES&invoiceState=PARTLY_INVOICED`: repeatable (any of the values);
+  unknown value → 400 `INVALID_VALUE`.
+- Migration `20261104120000_invoicing_v3`: READY → NOT_SENT, SENT / PAID → SENT (no rows deleted, at/by kept),
+  adds `event.final_invoice_created_at` and makes `event_history.partner_id` nullable (automatic entries).
+  Old history entries keep their READY / PAID texts.
+- Earlier: migration `20261031140000_invoice_rows` converted the TASK-045 status + prepayment into rows.
+- Seed/import: optional `invoiceRows` per event (status NOT_SENT | SENT, legacy READY → NOT_SENT and
+  PAID → SENT); legacy `invoiceStatus`/`prepaymentCents` still accepted: prepayment > 0 → SENT
+  "Ennakkomaksu"; READY → NOT_SENT, INVOICED / PAID → SENT "Lasku" for total − prepayment
+  (`legacyInvoiceRows`); both on one event → validation error.
+
+### Automatic final invoice "Loppulasku" (`src/invoicing/finalInvoiceJob.ts`)
+
+- `server.ts` runs `runFinalInvoiceJob` at startup and every 15 minutes (`INVOICE_JOB_ENABLED=false` turns it
+  off; tests never start the schedule and call `runFinalInvoiceJob(db, now)` with a fixed clock).
+- Due when the event's last day (end date, else start date) has ended in Helsinki + 48 h, i.e. at
+  00:00 Helsinki time three days after that day (`finalInvoiceDueAt`; e.g. 10 June → 13 June 00:00).
+- For SOLD, non-deleted events with total > 0, `uninvoicedCents` > 0 and `final_invoice_created_at` null:
+  one NOT_SENT row "Loppulasku" for `uninvoicedCents` (created/status by null), history `INVOICE_ROW_ADDED`
+  with `details.auto: true` and `partnerId: null`, and `final_invoice_created_at` set (not exposed in the
+  API; `updated_at` unchanged). Once per event: deleting the row does not bring it back.
+- Concurrency: each event in its own transaction that locks the event row `FOR UPDATE` and re-checks
+  everything, so overlapping runs (two instances) create one row.
 
 ## Layout
 
