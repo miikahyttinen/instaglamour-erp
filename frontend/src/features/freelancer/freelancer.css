@@ -217,6 +217,10 @@
 .fl-po-switch {
   align-self: flex-start;
 }
+.fl-po-locked-note {
+  margin: 0;
+  font-size: 0.875em;
+}
 .fl-po-breakdown {
   margin: 0;
   display: flex;

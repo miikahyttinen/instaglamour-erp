@@ -5,7 +5,7 @@ import { Button } from '../../components/Button';
 import { Dialog } from '../../components/Dialog';
 import { useLang } from '../../i18n/useLang';
 import { formatDate, formatMoney } from '../../lib/format';
-import { formatVatRate, poLineAmounts } from '../../lib/poAmounts';
+import { formatVatRate, poLineAmountsFor, soundcheckLockedOff } from '../../lib/poAmounts';
 import { feeRoleLabel } from './freelancerLabels';
 
 interface Props {
@@ -22,11 +22,15 @@ interface Props {
  * "Freelancer PO: VAT rate choice"): the VAT question (required; No or one of
  * `settings.vatRatesBp`), a sound check switch per fee (default on) and a live preview of each
  * amount and the total. Amounts use the deduction from settings and the chosen VAT rate.
+ * A fee whose gig already says "no sound check" (`joinsLoadIn = false`, contract "Freelancer PO:
+ * sound check already set on the gig") has the switch off and locked; its preview shows the
+ * original fee and the deduction already applied once, never a second deduction.
  */
 export function CreatePoDialog({ lines, settings, pending, onConfirm, onClose }: Props) {
   const { t } = useTranslation();
   const lang = useLang();
-  const errorId = useId();
+  const baseId = useId();
+  const errorId = `${baseId}-error`;
   /** Chosen rate in basis points; 0 = not VAT-liable; null = not answered yet. */
   const [vatRateBp, setVatRateBp] = useState<number | null>(null);
   const [missed, setMissed] = useState<ReadonlySet<Id>>(new Set());
@@ -36,8 +40,15 @@ export function CreatePoDialog({ lines, settings, pending, onConfirm, onClose }:
   const options = [0, ...settings.vatRatesBp.filter((bp) => bp > 0)];
 
   const rows = lines.map((line) => {
-    const soundcheck = !missed.has(line.costLineId);
-    return { line, soundcheck, amounts: poLineAmounts(line.amountCents, soundcheck, vatRateBp ?? 0, settings) };
+    const locked = soundcheckLockedOff(line);
+    const { soundcheck, ...amounts } = poLineAmountsFor(
+      line,
+      line.amountCents,
+      !missed.has(line.costLineId),
+      vatRateBp ?? 0,
+      settings,
+    );
+    return { line, locked, soundcheck, amounts };
   });
   const sum = (pick: (a: (typeof rows)[number]['amounts']) => number) => rows.reduce((s, r) => s + pick(r.amounts), 0);
   const totals = {
@@ -105,9 +116,10 @@ export function CreatePoDialog({ lines, settings, pending, onConfirm, onClose }:
         <fieldset className="check-group">
           <legend>{t('freelancer.dialog.linesTitle')}</legend>
           <ul className="fl-po-lines">
-            {rows.map(({ line, soundcheck, amounts }) => {
+            {rows.map(({ line, locked, soundcheck, amounts }) => {
               const date = formatDate(line.eventStartDate, lang);
               const role = feeRoleLabel(t, line);
+              const noteId = `${baseId}-locked-${line.costLineId}`;
               return (
                 <li key={line.costLineId} className="fl-po-line" data-testid="po-preview-line">
                   <p className="fl-po-line-title">{[date, line.venue, role].join(' · ')}</p>
@@ -117,10 +129,19 @@ export function CreatePoDialog({ lines, settings, pending, onConfirm, onClose }:
                       role="switch"
                       aria-label={t('freelancer.dialog.soundcheckOf', { date, venue: line.venue, role })}
                       checked={soundcheck}
-                      onChange={() => toggleSoundcheck(line.costLineId)}
+                      disabled={locked}
+                      aria-describedby={locked ? noteId : undefined}
+                      onChange={() => {
+                        if (!locked) toggleSoundcheck(line.costLineId);
+                      }}
                     />
                     <span aria-hidden="true">{t('freelancer.dialog.soundcheck')}</span>
                   </label>
+                  {locked && (
+                    <p id={noteId} className="muted fl-po-locked-note">
+                      {t('freelancer.dialog.soundcheckLocked')}
+                    </p>
+                  )}
                   <Breakdown
                     rate={rate}
                     base={amounts.baseCents}

@@ -6,7 +6,10 @@ import { seedFreelancerFees } from '../test/freelancerFixtures';
 import { signInMock } from '../test/renderApp';
 import { db } from './data';
 import { DEMO_FREELANCER_TOKEN } from './freelancerHandlers';
+import { updateCostLine } from './eventStore';
 import { purchaseOrderNumber, purchaseOrderSlug } from './freelancerStore';
+import { createPurchaseOrderByHand } from './purchaseOrderStore';
+import { partnerA } from '../test/eventFixtures';
 
 const base = '/api';
 const getView = (token: string) => fetch(`${base}/public/freelancers/${token}`);
@@ -54,7 +57,19 @@ describe('public freelancer mock', () => {
     expect(view.lines.map((l) => l.state)).toEqual(['UPCOMING', 'SELECTABLE', 'SELECTABLE', 'SELECTABLE', 'PAID']);
     expect(view.lines[4]!.amountCents).toBe(12000);
     expect(Object.keys(view.lines[0]!).sort()).toEqual(
-      ['amountCents', 'costLineId', 'description', 'eventEndDate', 'eventStartDate', 'purchaseOrderNumber', 'state', 'type', 'venue'].sort(),
+      [
+        'amountCents',
+        'costLineId',
+        'description',
+        'eventEndDate',
+        'eventStartDate',
+        'joinsLoadIn',
+        'loadInDeductionAppliedCents',
+        'purchaseOrderNumber',
+        'state',
+        'type',
+        'venue',
+      ].sort(),
     );
   });
 
@@ -133,6 +148,67 @@ describe('public freelancer mock', () => {
     expect(stored.vatLiable).toBe(true);
     expect(stored.vatRateBp).toBe(1000);
     expect(stored.lines.find((l) => l.costLineId === fx.lines.played1.id)!.amountCents).toBe(p1.amountCents);
+  });
+
+  it('"no sound check" already set on the gig: switch value ignored, deduction shown once, never twice', async () => {
+    db.reference.settings.loadInDeductionCents = 2000;
+    const fee = fx.lines.played1.budgetedCents;
+    updateCostLine(db.events, fx.lines.played1, { joinsLoadIn: false }, 2000, partnerA().id);
+    expect(fx.lines.played1.budgetedCents).toBe(fee - 2000);
+
+    const view = (await (await getView(fx.token)).json()) as FreelancerView;
+    const locked = view.lines.find((l) => l.costLineId === fx.lines.played1.id)!;
+    expect(locked).toMatchObject({ joinsLoadIn: false, loadInDeductionAppliedCents: 2000, amountCents: fee - 2000 });
+    expect(view.lines.find((l) => l.costLineId === fx.lines.played2.id)).toMatchObject({
+      joinsLoadIn: true,
+      loadInDeductionAppliedCents: null,
+    });
+
+    const res = await post(fx.token, {
+      vatRateBp: 1350,
+      lines: [
+        { costLineId: fx.lines.played1.id, soundcheck: true }, // ignored
+        { costLineId: fx.lines.played2.id, soundcheck: false },
+      ],
+    });
+    expect(res.status).toBe(201);
+    const po = (await res.json()) as PublicPurchaseOrder;
+    const p1 = po.lines.find((l) => l.venue === 'Venue X')!;
+    const p2 = po.lines.find((l) => l.venue === 'Venue Y')!;
+    const net1 = fee - 2000;
+    expect(p1).toMatchObject({ soundcheck: false, baseCents: fee, deductionCents: 2000 });
+    expect(p1.amountCents).toBe(Math.round(net1 * 1.135));
+    expect(p1.vatCents).toBe(p1.amountCents - net1);
+    // joinsLoadIn true + switch off → the setting is deducted once, as before.
+    const fee2 = fx.lines.played2.budgetedCents;
+    expect(p2).toMatchObject({ soundcheck: false, baseCents: fee2, deductionCents: 2000, amountCents: Math.round((fee2 - 2000) * 1.135) });
+
+    // Same request with soundcheck: false on the locked line gives the same amount (no 2nd deduction).
+    db.freelancer.purchaseOrders.at(-1)!.status = 'CANCELLED';
+    fx.lines.played1.purchaseOrder = null;
+    fx.lines.played2.purchaseOrder = null;
+    const again = (await (
+      await post(fx.token, { vatRateBp: 1350, lines: [{ costLineId: fx.lines.played1.id, soundcheck: false }] })
+    ).json()) as PublicPurchaseOrder;
+    expect(again.lines[0]).toMatchObject({ baseCents: fee, deductionCents: 2000, amountCents: p1.amountCents });
+  });
+
+  it('partner-created PO applies the same rule for a gig-level "no sound check"', () => {
+    const fee = fx.lines.played1.budgetedCents;
+    updateCostLine(db.events, fx.lines.played1, { joinsLoadIn: false }, 1500, partnerA().id);
+    const result = createPurchaseOrderByHand(
+      db.freelancer,
+      db.events,
+      fx.person,
+      [fx.lines.played1.id, fx.lines.played2.id],
+      partnerA().id,
+    );
+    if (!result.ok) throw new Error('not created');
+    const [l1, l2] = [fx.lines.played1.id, fx.lines.played2.id].map(
+      (id) => result.purchaseOrder.lines.find((l) => l.costLineId === id)!,
+    );
+    expect(l1).toMatchObject({ soundcheck: false, baseCents: fee, deductionCents: 1500, vatCents: 0, amountCents: fee - 1500 });
+    expect(l2).toMatchObject({ soundcheck: true, deductionCents: 0, amountCents: fx.lines.played2.budgetedCents });
   });
 
   it('validates the new body: vatRateBp REQUIRED / INVALID_VALUE, lines INVALID_VALUE', async () => {
