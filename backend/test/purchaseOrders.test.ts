@@ -242,6 +242,8 @@ describe('GET /api/public/freelancers/{token} (UC-033)', () => {
         amountCents: 30000,
         state: 'UPCOMING',
         purchaseOrderNumber: null,
+        joinsLoadIn: true,
+        loadInDeductionAppliedCents: null,
       },
       expect.objectContaining({ costLineId: lineOf(played, 'VOC').id, eventStartDate: PAST, state: 'SELECTABLE', amountCents: 30000 }),
       expect.objectContaining({ costLineId: extraLine.id, description: 'Role 1', type: 'OTHER_ROLE', state: 'SELECTABLE', amountCents: 10000 }),
@@ -279,7 +281,19 @@ describe('GET /api/public/freelancers/{token} (UC-033)', () => {
     }
     const v = res.json();
     expect(Object.keys(v.lines[0]).sort()).toEqual(
-      ['amountCents', 'costLineId', 'description', 'eventEndDate', 'eventStartDate', 'purchaseOrderNumber', 'state', 'type', 'venue'].sort(),
+      [
+        'amountCents',
+        'costLineId',
+        'description',
+        'eventEndDate',
+        'eventStartDate',
+        'joinsLoadIn',
+        'loadInDeductionAppliedCents',
+        'purchaseOrderNumber',
+        'state',
+        'type',
+        'venue',
+      ].sort(),
     );
     expect(Object.keys(v.purchaseOrders[0]).sort()).toEqual(
       ['createdAt', 'lines', 'number', 'paidAt', 'status', 'totalCents', 'vatLiable', 'vatRateBp'].sort(),
