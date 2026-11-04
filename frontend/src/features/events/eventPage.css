@@ -260,14 +260,12 @@
 .event-page .cost-table td.cost-budget .inline-field {
   min-width: calc(var(--label-w) - var(--space-6));
 }
-/* Paid line: inline actual amount + who / when. */
+/* Paid line: inline actual amount only (who / when is in the gig log, TASK-178). */
 .event-page .cost-table .cost-paid-edit {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
   min-width: calc(var(--label-w) - var(--space-5));
 }
-.event-page .cost-table .cost-paid-edit .inline-numeric input {
+.event-page .cost-table .cost-paid-edit .inline-numeric input,
+.event-page .cost-table .cost-paid-amount {
   color: var(--ok-fg);
 }
 .event-page .cost-table td.cost-person .inline-field {
@@ -285,19 +283,6 @@
 }
 .event-page .cost-table td.cost-person .inline-actions {
   margin-top: 0;
-}
-.event-page .cost-table .paid-info {
-  display: inline-flex;
-  align-items: flex-start;
-  gap: var(--space-1);
-  font-size: var(--fs-small);
-  color: var(--ok-fg);
-  text-align: left;
-}
-/* Icon centred on the first text line. */
-.event-page .cost-table .paid-icon {
-  flex: 0 0 auto;
-  margin-top: calc((1lh - var(--icon)) / 2);
 }
 .event-page .cost-hint {
   font-size: var(--fs-small);

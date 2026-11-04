@@ -51,13 +51,15 @@ describe('cost lines on a purchase order (BR-118)', () => {
     expect(within(line('Kitara')).queryByRole('link', { name: /Ostotilaus/ })).not.toBeInTheDocument();
   });
 
-  it('a paid PO line shows its paid info without the edit / unpay controls', async () => {
+  it('a paid PO line shows just the paid amount, without the edit / pay controls', async () => {
     const { event } = addMockPurchaseOrder({ status: 'PAID' });
     await openEvent(event.id);
     const voc = line('Laulu');
     expect(within(voc).queryByRole('textbox', { name: /Toteutunut summa/ })).not.toBeInTheDocument();
-    expect(within(voc).queryByRole('button', { name: 'Poista maksumerkintä' })).not.toBeInTheDocument();
-    expect(within(voc).getByText(/Maksettu/)).toBeInTheDocument();
+    expect(within(voc).queryByRole('button', { name: 'Merkitse maksetuksi' })).not.toBeInTheDocument();
+    const cell = voc.querySelector('td.cost-paid')!;
+    expect(cell.textContent).toMatch(/^[\d\s]+,\d\d\s€$/);
+    expect(cell).not.toHaveTextContent('Maksettu');
   });
 
   it('cancelling an event with a line on an open PO explains which PO blocks it', async () => {

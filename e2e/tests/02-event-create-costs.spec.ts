@@ -81,11 +81,21 @@ test('create an event from a template, staff it, switch load-in, mark paid', asy
   await expect(payInput).toHaveValue(fiInput(vocBudget));
   await expect(voc.getByRole('button', { name: 'Merkitse maksetuksi' })).toHaveCount(0);
   await payInput.press('Enter');
-  // Paid: the amount is an inline field ("Toteutunut summa: Laulu"); time and partner next to it.
-  await expect(voc.locator('.paid-info')).toBeVisible();
+  // Paid: the amount is an inline field ("Toteutunut summa: Laulu") and keeps the focus. No paid
+  // log (time · partner) and no "unmark paid" button in the table (TASK-178).
   await expect(costField(page, 'Toteutunut summa', 'Laulu')).toHaveValue(fiInput(vocBudget));
-  await expect(voc.locator('.paid-info')).toContainText('Partner A');
-  await expect(voc.getByRole('button', { name: 'Poista maksumerkintä' })).toBeVisible();
+  await expect(costField(page, 'Toteutunut summa', 'Laulu')).toBeFocused();
+  await expect(voc.locator('td.cost-paid')).not.toContainText('Partner A');
+  await expect(voc.getByRole('button', { name: 'Poista maksumerkintä' })).toHaveCount(0);
+
+  // Clearing the amount unmarks the line paid; then mark it paid again for the checks below.
+  await costField(page, 'Toteutunut summa', 'Laulu').fill('');
+  await costField(page, 'Toteutunut summa', 'Laulu').press('Enter');
+  await expect(voc.getByRole('button', { name: 'Merkitse maksetuksi' })).toBeFocused();
+  await expect(econTile(page, 'Kulut').actual).toHaveText(fiMoney(0));
+  await voc.getByRole('button', { name: 'Merkitse maksetuksi' }).click();
+  await costField(page, 'Toteutunut summa', 'Laulu').press('Enter');
+  await expect(costField(page, 'Toteutunut summa', 'Laulu')).toHaveValue(fiInput(vocBudget));
 
   // Economics update: actual costs and actual margin.
   await expect(econTile(page, 'Kulut').actual).toHaveText(fiMoney(vocBudget));
@@ -104,7 +114,8 @@ test('create an event from a template, staff it, switch load-in, mark paid', asy
 
   // The history logged the cost events.
   const history = page.getByRole('list', { name: 'Muutoshistoria' });
-  await expect(history.getByText('Merkitty maksetuksi')).toBeVisible();
+  await expect(history.getByText('Merkitty maksetuksi').first()).toBeVisible();
+  await expect(history.getByText('Maksumerkintä poistettu')).toBeVisible();
   await expect(history.getByText('Kuluriviä muutettu').first()).toBeVisible();
   await expect(history.getByText('Keikka luotu')).toBeVisible();
   await expectNoHorizontalScroll(page, 'event page after edits');
@@ -187,7 +198,7 @@ test('cost lines are edited in place; Esc and invalid amounts are not saved', as
   // Blur saves the prefilled budget.
   await dj.getByRole('button', { name: 'Merkitse maksetuksi' }).click();
   await costField(page, 'Toteutunut summa', 'DJ').blur();
-  await expect(dj.locator('.paid-info')).toBeVisible();
+  await expect(dj.getByRole('button', { name: 'Merkitse maksetuksi' })).toHaveCount(0);
   const paid = costField(page, 'Toteutunut summa', 'DJ');
   await expect(paid).toHaveValue(fiInput(fee));
   expect(await editInline(page, paid, fiInput(djPaid))).toEqual({ actualCents: djPaid });
