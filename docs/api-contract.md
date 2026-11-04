@@ -602,7 +602,15 @@ One derived value **`invoiceState`** = the next invoicing action; first match wi
 - Server (public create): for such a line the request's `soundcheck` is ignored; the PO line is stored as `soundcheck: false`, `baseCents = budgetedCents + loadInDeductionAppliedCents`, `deductionCents = loadInDeductionAppliedCents` (so the breakdown shows the original fee and the deduction once), and `amountCents` = (budgeted) × VAT as before. Lines with `joinsLoadIn = true` work as before (switch on by default; off → deduct `settings.loadInDeductionCents` once).
 - The partner-created PO path applies the same rule (deduction shown once, never added again).
 
+## Sales and production lines: partners only (owner decision 2026-11-04)
+- A cost line of type `SALES` ("Myynti") or `PRODUCTION` ("Tuotanto") may only have a `personId` of a person who is linked to an **active partner** (or no person).
+- `POST /api/events/{id}/cost-lines` and `PATCH /api/cost-lines/{id}` with such a type and any other person → 400 `personId: NOT_PARTNER`.
+- Existing lines that already break the rule are left as they are (no migration); they are only checked when the person is changed.
+- Automatic SALES/PRODUCTION lines (BR-021/027 seller/producer) already use partners and are unaffected.
+- UI: the person picker on these lines lists only active partners.
+
 ## Change log
+- 2026-11-04 – SALES/PRODUCTION cost lines: person must be an active partner (400 NOT_PARTNER) (PM)
 - 2026-11-04 – Freelancer PO: no double sound-check deduction; gig-level load-in setting shown/locked in the modal (PM)
 - 2026-11-04 – Freelancer PO VAT: choice No / 13.5 % / 25.5 % (vatRateBp) (PM)
 - 2026-11-04 – Freelancer PO: VAT-liable choice (+ rate setting) and per-gig sound check (deduction from settings) (PM)
