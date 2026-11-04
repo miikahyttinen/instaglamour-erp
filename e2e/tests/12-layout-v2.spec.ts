@@ -215,6 +215,8 @@ test.describe('desktop sidebar', () => {
       ['expanded', 1280, false],
       ['expanded', 1440, true],
       ['collapsed', 1200, true],
+      ['collapsed', 1440, true],
+      ['expanded', 1920, true],
       ['collapsed', 1920, true],
     ] as const) {
       await page.addInitScript(([key, value]) => window.localStorage.setItem(key, value), [SIDEBAR_KEY, mode]);
@@ -232,7 +234,7 @@ test.describe('desktop sidebar', () => {
       });
       expect(wrap.scroll, `${where}: cost table does not scroll sideways (list ${wrap.list} px)`).toBeLessThanOrEqual(wrap.client);
       // Groups: "Miehitys" head before the lines, a totals row per group.
-      await expect(table.getByRole('columnheader', { name: 'Miehitys', exact: true }), `${where}: Miehitys group`).toBeVisible();
+      await expect(table.getByRole('columnheader', { name: /^Miehitys(\s|$)/ }), `${where}: Miehitys group`).toBeVisible();
       await expect(table.getByRole('row', { name: /^Miehitys yhteensä/ }), `${where}: Miehitys totals`).toBeVisible();
       // One table row per line: person, budget and the actions on one line; dense rows (the
       // description may wrap under the type name in the narrowest list).
@@ -246,12 +248,43 @@ test.describe('desktop sidebar', () => {
       expect(Math.abs((await centre(line.getByRole('textbox', { name: /^Budjetti:/ }))) - personY), `${where}: budget on the person's line`).toBeLessThanOrEqual(2);
       expect(Math.abs((await centre(line.getByRole('button', { name: 'Poista' }))) - personY), `${where}: actions on the person's line`).toBeLessThanOrEqual(2);
       expect(rowBox.height, `${where}: dense row`).toBeLessThanOrEqual(64);
+      // Amounts end on one vertical line per column (lines, group totals, overall total): the "€"
+      // of inline fields and the text of plain amounts (±1 px).
+      const edges = await table.evaluate((t) => {
+        const right = (td: Element) => {
+          const unit = td.querySelector('.inline-unit > span');
+          if (unit) return unit.getBoundingClientRect().right;
+          const amount = td.querySelector('.cost-amount');
+          if (!amount) return null;
+          const range = document.createRange();
+          range.selectNodeContents(amount);
+          return range.getBoundingClientRect().right;
+        };
+        const column = (cls: string) =>
+          [...t.querySelectorAll(`td.${cls}`)].map(right).filter((x): x is number => x !== null);
+        return { budget: column('cost-budget'), paid: column('cost-paid') };
+      });
+      for (const [col, xs] of Object.entries(edges)) {
+        expect(xs.length, `${where}: ${col} amounts measured`).toBeGreaterThanOrEqual(3);
+        expect(Math.max(...xs) - Math.min(...xs), `${where}: ${col} amounts share one right edge`).toBeLessThanOrEqual(1);
+      }
 
       const costs = await box('Kulut ja miehitys');
       const basic = await box('Perustiedot');
       const economics = await box('Talous');
       const history = await box('Muutoshistoria');
       if (twoColumns) {
+        // Owner request: both columns' section headers on one line and their boxes (cost table,
+        // "Perustiedot" card) start at the same height (±1 px).
+        const top = (l: Locator) => l.evaluate((e) => e.getBoundingClientRect().top);
+        const summary = (name: string) =>
+          page.locator('details.event-section').filter({ has: page.getByRole('heading', { name, level: 2 }) }).locator('summary');
+        const heading = (name: string) => page.getByRole('heading', { name, level: 2 });
+        expect(Math.abs((await top(summary('Kulut ja miehitys'))) - (await top(summary('Perustiedot')))), `${where}: section headers level`).toBeLessThanOrEqual(1);
+        expect(Math.abs((await top(heading('Kulut ja miehitys'))) - (await top(heading('Perustiedot')))), `${where}: header texts level`).toBeLessThanOrEqual(1);
+        const tableTop = await top(page.locator('.event-section-costs .table-wrap'));
+        const cardTop = await top(page.locator('.event-section-basic .event-section-body > *').first());
+        expect(Math.abs(tableTop - cardTop), `${where}: cost table and Perustiedot card start level`).toBeLessThanOrEqual(1);
         expect(basic.x, `${where}: other sections right of the costs`).toBeGreaterThanOrEqual(costs.x + costs.width);
         expect(Math.abs(basic.y - costs.y), `${where}: both columns start at the top`).toBeLessThanOrEqual(1);
         expect(costs.width / (costs.width + basic.width), `${where}: costs column ~60 %`).toBeGreaterThan(0.55);

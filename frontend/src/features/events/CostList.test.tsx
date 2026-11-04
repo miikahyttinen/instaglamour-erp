@@ -108,7 +108,7 @@ describe('cost list (UC-005)', () => {
     office.actualCents = 700;
     office.paidBy = partnerA().id;
     await openEvent(event.id);
-    const staffingHead = within(costs()).getByRole('columnheader', { name: 'Miehitys' });
+    const staffingHead = within(costs()).getByRole('columnheader', { name: /^Miehitys(\s|$)/ });
     const costsHead = within(costs()).getByRole('columnheader', { name: 'Kulut' });
     const follows = (a: Element, b: Element) => Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
     for (const name of ['Laulu', 'Rummut', 'Toimisto', 'Myynti', 'Tuotanto']) {
@@ -121,8 +121,10 @@ describe('cost list (UC-005)', () => {
     const costsTotal = within(costs()).getByRole('row', { name: /^Kulut yhteensä/ });
     expect(staffingTotal).toHaveTextContent(/430,00\s€\s*7,00\s€/);
     expect(costsTotal).toHaveTextContent(/50,00\s€\s*0,00\s€/);
-    // The overall totals stay below both groups.
-    expect(screen.getByText('Kulut yhteensä, budjetti').nextElementSibling).toHaveTextContent(/480,00\s€/);
+    // The overall totals: last row, under the same budget / actual columns.
+    expect(within(costs()).getByRole('row', { name: /^Yhteensä/ })).toHaveTextContent(/480,00\s€\s*7,00\s€/);
+    // "Miehitys kesken" sits in the Miehitys head; nothing above the table.
+    expect(staffingHead).toContainElement(screen.getByRole('note'));
   });
 
   it('has no pay action for fuel', async () => {

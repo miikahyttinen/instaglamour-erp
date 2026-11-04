@@ -230,24 +230,40 @@
   container: cost-list / inline-size;
 }
 
-.event-page .cost-list-actions {
-  display: flex;
-  justify-content: flex-end;
-  margin: 0 0 var(--space-3);
-}
-.event-page .cost-po-notice {
+/* Below the table: "+ Lisää rivi" left, "Luo ostotilaus" right (owner request: nothing above the
+   table, so its box lines up with the "Perustiedot" card in the right column). */
+.event-page .cost-list-bottom {
+  margin-top: var(--space-3);
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-2);
-  margin: 0 0 var(--space-3);
+}
+.event-page .cost-list-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin: 0 0 0 auto;
+}
+.event-page .cost-po-notice {
+  display: flex;
+  flex: 1 1 100%;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  order: -1;
+  margin: 0;
 }
 .event-page .cost-po-notice p {
   margin: 0;
 }
-.event-page .cost-staffing {
-  margin: 0 0 var(--space-3);
+/* "Miehitys kesken" tag in the Miehitys group head. */
+.event-page .cost-table .cost-staffing {
+  margin-left: var(--space-2);
+  font-family: var(--font-sans);
+  letter-spacing: normal;
+  text-transform: none;
 }
 
 /* Group shades: the whole group (head, lines, totals) sits on its own surface. */
@@ -298,16 +314,52 @@
   letter-spacing: var(--ls-label);
   text-transform: uppercase;
 }
-.event-page .cost-table .cost-section-foot td.num {
+/* Overall totals (tfoot): same slots, stronger. */
+.event-page .cost-table .cost-grand-total :is(th, td) {
+  padding-top: var(--cell-pad-y);
+  padding-bottom: var(--cell-pad-y);
+  background: var(--surface);
+}
+.event-page .cost-table .cost-grand-total th {
+  text-align: left;
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  font-weight: var(--fw-medium);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  color: var(--label);
+}
+.event-page .cost-table .cost-grand-total td.num {
+  font-size: var(--fs-body);
+  font-weight: var(--fw-bold);
+}
+
+/* Amounts: right-aligned, tabular figures, all ending on one vertical line per column. Inline
+   money fields fill their cell, so their "€" ends --inline-num-trail before the cell's content
+   edge; plain amounts (.inline-num-value: totals, read-only / locked values) are padded by the
+   same trail, and tags / hints in the actual column end there too. */
+.event-page .cost-table :is(td.cost-budget, td.cost-paid) {
+  text-align: right;
   font-variant-numeric: tabular-nums;
 }
-/* Budget total ends where the inline budget values end; the actual total starts at the column's
-   left edge like the tags / paid amounts above it. */
-.event-page .cost-table .cost-section-foot td.cost-budget {
-  padding-right: calc(var(--cell-pad-x-tight) + var(--inline-num-trail));
+.event-page .cost-table .cost-amount {
+  display: block;
+  white-space: nowrap;
 }
-.event-page .cost-table .cost-section-foot td.cost-paid {
-  text-align: left;
+.event-page .cost-table .cost-amount.is-paid {
+  color: var(--ok-fg);
+}
+.event-page .cost-table td.cost-paid > :is(.tag, .cost-hint) {
+  margin-right: var(--inline-num-trail);
+}
+/* A slightly tighter tag, so "Maksamatta" + the trail fit the actual column. */
+.event-page .cost-table td.cost-paid > .tag {
+  padding-left: var(--space-1);
+  padding-right: var(--space-1);
+  letter-spacing: 0.08em;
+}
+.event-page .cost-table td.cost-paid > .cost-hint {
+  display: block;
 }
 
 .event-page .cost-table {
@@ -333,8 +385,8 @@
 }
 /* Inline description next to the type name, wrapping under it when the cell is narrow (NFR-8). */
 .event-page .cost-table .cost-description {
-  flex: 1 1 5rem;
-  min-width: 4.5rem;
+  flex: 1 1 4rem;
+  min-width: 4rem;
   max-width: 20rem;
   font-weight: var(--fw-regular);
 }
@@ -348,8 +400,13 @@
 .event-page .cost-table .cost-paid-edit {
   display: flex;
   flex-direction: column;
+  align-items: stretch;
   gap: 0;
   min-width: 0;
+}
+/* Who / when: right-aligned under the amount, using the full cell width (it is not an amount). */
+.event-page .cost-table .cost-paid-edit .paid-info {
+  align-self: flex-end;
 }
 .event-page .cost-table .cost-paid-edit .inline-numeric input {
   color: var(--ok-fg);
@@ -374,7 +431,8 @@
   font-size: var(--fs-meta);
   line-height: var(--lh-tight);
   color: var(--ok-fg);
-  text-align: left;
+  text-align: right;
+  hyphens: none;
 }
 .event-page .cost-table .paid-icon {
   flex: 0 0 auto;
@@ -455,33 +513,6 @@
   margin-top: 0;
 }
 
-.event-page .cost-totals {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: var(--space-2) var(--space-4);
-  margin: var(--space-2) 0;
-}
-.event-page .cost-totals > div {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0;
-}
-.event-page .cost-totals dt {
-  font-family: var(--font-mono);
-  font-weight: var(--fw-medium);
-  font-size: var(--fs-meta);
-  letter-spacing: var(--ls-label);
-  text-transform: uppercase;
-  color: var(--label);
-}
-.event-page .cost-totals dd {
-  margin: 0;
-  font-size: var(--fs-lg);
-  font-weight: var(--fw-bold);
-  font-variant-numeric: tabular-nums;
-}
 .event-page .cost-add-form {
   margin-top: var(--space-3);
 }
@@ -500,15 +531,6 @@
   .event-page .cost-inline-form .field,
   .event-page .cost-inline-form .form-row {
     flex: 1 1 100%;
-  }
-  .event-page .cost-totals {
-    flex-direction: column;
-    gap: var(--space-1);
-  }
-  .event-page .cost-totals > div {
-    flex-direction: row;
-    align-items: baseline;
-    justify-content: space-between;
   }
 }
 
@@ -541,13 +563,13 @@
     width: clamp(8rem, 20%, 13rem);
   }
   .event-page .cost-table th.cost-col-loadin {
-    width: 4.5rem;
+    width: 4rem;
   }
   .event-page .cost-table th.cost-col-budget {
     width: 6.75rem;
   }
   .event-page .cost-table th.cost-col-paid {
-    width: 6.5rem;
+    width: 7.5rem;
   }
   .event-page .cost-table th.cost-col-actions {
     width: calc(2 * var(--control-h) + var(--space-1) + var(--cell-pad-x-tight) + var(--cell-pad-x));
@@ -696,14 +718,21 @@
   .event-page .cost-table thead + .cost-section-head th {
     border-top: 0;
   }
-  .event-page .cost-table .cost-section-foot tr {
-    display: flex;
-    flex-wrap: wrap;
+  /* Group totals and the overall total: the same two columns as the lines, so each amount ends
+     exactly under the line amounts (budget on line 1, actual on line 2, label on the left). */
+  .event-page .cost-table tfoot {
+    display: block;
+  }
+  .event-page .cost-table :is(.cost-section-foot, .cost-grand-total) tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     align-items: baseline;
-    justify-content: flex-end;
     gap: 0 var(--space-3);
     padding: var(--space-1) var(--cell-pad-x);
     border-top: var(--hairline) solid var(--border);
+  }
+  .event-page .cost-table .cost-grand-total tr {
+    border-top-color: var(--border-strong);
   }
   .event-page .cost-table .cost-section-foot.cost-in-staffing tr {
     background: var(--surface-2);
@@ -711,21 +740,38 @@
   .event-page .cost-table .cost-section-foot.cost-in-expenses tr {
     background: var(--surface-3);
   }
-  .event-page .cost-table .cost-section-foot :is(th, td) {
+  .event-page .cost-table :is(.cost-section-foot, .cost-grand-total) :is(th, td) {
     display: block;
     padding: 0;
     border: 0;
   }
-  .event-page .cost-table .cost-section-foot th {
-    margin-right: auto;
+  .event-page .cost-table :is(.cost-section-foot, .cost-grand-total) th {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+    align-self: start;
   }
-  .event-page .cost-table .cost-section-foot td.cost-actions {
+  .event-page .cost-table :is(.cost-section-foot, .cost-grand-total) td.cost-budget {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .event-page .cost-table :is(.cost-section-foot, .cost-grand-total) td.cost-paid {
+    grid-column: 2;
+    grid-row: 2;
+  }
+  .event-page .cost-table :is(.cost-section-foot, .cost-grand-total) td.cost-actions {
     display: none;
   }
-  .event-page .cost-table .cost-section-foot td[data-label]::before {
-    content: attr(data-label) ' ';
+  .event-page .cost-table :is(.cost-section-foot, .cost-grand-total) td[data-label] {
+    display: flex;
+    align-items: baseline;
+    justify-content: flex-end;
+    gap: var(--space-2);
+  }
+  .event-page .cost-table :is(.cost-section-foot, .cost-grand-total) td[data-label]::before {
+    content: attr(data-label);
     font-family: var(--font-mono);
     font-size: var(--fs-meta);
+    font-weight: var(--fw-regular);
     letter-spacing: var(--ls-label);
     text-transform: uppercase;
     color: var(--label);

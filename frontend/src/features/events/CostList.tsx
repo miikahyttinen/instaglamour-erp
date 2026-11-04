@@ -56,13 +56,10 @@ export function CostList({ event, people, readOnly, onWarnings }: Props) {
   ).filter(([, , lines]) => lines.length > 0);
 
   return (
+    // Owner request: the table box starts at the top of the section, level with the "Perustiedot"
+    // card in the right column; the "not fully staffed" tag sits in the Miehitys head and the
+    // purchase order action next to "+ Lisää rivi" below the table.
     <div className="cost-list">
-      {!readOnly && <EventPurchaseOrder event={event} people={people} />}
-      {event.notFullyStaffed && (
-        <p className="cost-staffing" role="note">
-          <StatusTag tone="warn">{t('events.notFullyStaffed')}</StatusTag>
-        </p>
-      )}
       {event.costLines.length === 0 ? (
         <p className="table-empty">{t('costs.empty')}</p>
       ) : (
@@ -103,39 +100,48 @@ export function CostList({ event, people, readOnly, onWarnings }: Props) {
                 kind={key}
                 title={title}
                 lines={lines}
+                notFullyStaffed={key === 'staffing' && event.notFullyStaffed}
                 people={people}
                 readOnly={readOnly}
                 columnCount={columnCount}
                 onResult={onResult}
               />
             ))}
+            {/* Overall totals, right under the budget / actual columns like the group totals. */}
+            <tfoot className="cost-grand-total">
+              <tr>
+                <th scope="row" colSpan={3}>
+                  {t('costs.grandTotal')}
+                </th>
+                <td className="num cost-budget" data-label={t('costs.budgeted')}>
+                  <span className="inline-num-value cost-amount">{formatMoney(event.budgetedCostsCents, lang)}</span>
+                </td>
+                <td className="num cost-paid" data-label={t('event.actual')}>
+                  <span className="inline-num-value cost-amount">{formatMoney(event.actualCostsCents, lang)}</span>
+                </td>
+                {!readOnly && <td className="cost-actions" />}
+              </tr>
+            </tfoot>
           </table>
         </div>
       )}
-      <dl className="cost-totals">
-        <div>
-          <dt>{t('costs.totalBudgeted')}</dt>
-          <dd>{formatMoney(event.budgetedCostsCents, lang)}</dd>
+      {!readOnly && (
+        <div className="cost-list-bottom">
+          {!adding && <Button onClick={() => setAdding(true)}>+ {t('costs.add')}</Button>}
+          <EventPurchaseOrder event={event} people={people} />
         </div>
-        <div>
-          <dt>{t('costs.totalActual')}</dt>
-          <dd>{formatMoney(event.actualCostsCents, lang)}</dd>
-        </div>
-      </dl>
-      {!readOnly &&
-        (adding ? (
-          <AddCostLineForm
-            event={event}
-            people={people}
-            onDone={(result) => {
-              onResult(result);
-              setAdding(false);
-            }}
-            onCancel={() => setAdding(false)}
-          />
-        ) : (
-          <Button onClick={() => setAdding(true)}>+ {t('costs.add')}</Button>
-        ))}
+      )}
+      {!readOnly && adding && (
+        <AddCostLineForm
+          event={event}
+          people={people}
+          onDone={(result) => {
+            onResult(result);
+            setAdding(false);
+          }}
+          onCancel={() => setAdding(false)}
+        />
+      )}
     </div>
   );
 }
@@ -144,6 +150,7 @@ interface GroupProps {
   kind: 'staffing' | 'expenses';
   title: string;
   lines: readonly CostLine[];
+  notFullyStaffed: boolean;
   people: Person[] | undefined;
   readOnly: boolean;
   columnCount: number;
@@ -151,7 +158,7 @@ interface GroupProps {
 }
 
 /** One group: a small head row, its lines (one <tbody> each) and a subtle totals row. */
-function CostGroup({ kind, title, lines, people, readOnly, columnCount, onResult }: GroupProps) {
+function CostGroup({ kind, title, lines, notFullyStaffed, people, readOnly, columnCount, onResult }: GroupProps) {
   const { t } = useTranslation();
   const lang = useLang();
   const budgeted = lines.reduce((sum, l) => sum + l.budgetedCents, 0);
@@ -164,6 +171,12 @@ function CostGroup({ kind, title, lines, people, readOnly, columnCount, onResult
         <tr>
           <th scope="colgroup" colSpan={columnCount}>
             {title}
+            {notFullyStaffed && ' '}
+            {notFullyStaffed && (
+              <span className="cost-staffing" role="note">
+                <StatusTag tone="warn">{t('events.notFullyStaffed')}</StatusTag>
+              </span>
+            )}
           </th>
         </tr>
       </tbody>
@@ -184,10 +197,10 @@ function CostGroup({ kind, title, lines, people, readOnly, columnCount, onResult
             {t('costs.sectionTotal', { group: title })}
           </th>
           <td className="num cost-budget" data-label={t('costs.budgeted')}>
-            {formatMoney(budgeted, lang)}
+            <span className="inline-num-value cost-amount">{formatMoney(budgeted, lang)}</span>
           </td>
           <td className="num cost-paid" data-label={t('event.actual')}>
-            {formatMoney(actual, lang)}
+            <span className="inline-num-value cost-amount">{formatMoney(actual, lang)}</span>
           </td>
           {!readOnly && <td className="cost-actions" />}
         </tr>
@@ -296,7 +309,7 @@ function CostLineItem({ line, people, readOnly, columnCount, groupClass, onResul
 
         <td className="num cost-budget" data-label={t('costs.budgeted')} title={lockedHint}>
           {readOnly ? (
-            formatMoney(line.budgetedCents, lang)
+            <span className="inline-num-value cost-amount">{formatMoney(line.budgetedCents, lang)}</span>
           ) : (
             <InlineMoney
               label={`${t('costs.budgeted')}: ${label}`}
@@ -330,16 +343,16 @@ function CostLineItem({ line, people, readOnly, columnCount, groupClass, onResul
               </span>
             </div>
           ) : paid ? (
-            <span className="paid-info">
-              <CircleCheck className="paid-icon" />
-              <span>
-                {t('costs.paidInfo', {
-                  amount: formatMoney(line.actualCents, lang),
-                  time: formatDateTime(line.paidAt, lang),
-                  partner: paidBy?.name ?? '–',
-                })}
+            // Read-only / locked by a PO: the amount in the same slot as the inline amounts.
+            <div className="cost-paid-edit">
+              <span className="inline-num-value cost-amount is-paid">{formatMoney(line.actualCents, lang)}</span>
+              <span className="paid-info">
+                <CircleCheck className="paid-icon" />
+                <span>
+                  {t('costs.paidMeta', { time: formatDateTime(line.paidAt, lang), partner: paidBy?.name ?? '–' })}
+                </span>
               </span>
-            </span>
+            </div>
           ) : line.type === 'FUEL' ? (
             <span className="cost-hint">{t('costs.fuelHint')}</span>
           ) : (

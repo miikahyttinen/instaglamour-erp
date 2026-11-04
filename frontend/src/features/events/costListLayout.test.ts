@@ -42,6 +42,11 @@ describe('cost table layout (TASK-149)', () => {
     expect(full).not.toMatch(/th\.cost-col-type \{\s*width:/);
   });
 
+  it('amounts end on one line per column: right-aligned, tabular, plain amounts padded like the inline fields', () => {
+    expect(css).toMatch(/:is\(td\.cost-budget, td\.cost-paid\) \{\s*text-align: right;\s*font-variant-numeric: tabular-nums;/);
+    expect(css).toMatch(/td\.cost-paid > :is\(\.tag, \.cost-hint\) \{\s*margin-right: var\(--inline-num-trail\);/);
+  });
+
   it('staffing and costs groups use different surface tokens', () => {
     expect(css).toMatch(/\.cost-in-staffing :is\(td, th\) \{\s*background: var\(--surface-2\);/);
     expect(css).toMatch(/\.cost-in-expenses :is\(td, th\) \{\s*background: var\(--surface-3\);/);
