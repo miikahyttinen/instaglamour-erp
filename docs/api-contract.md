@@ -590,7 +590,14 @@ One derived value **`invoiceState`** = the next invoicing action; first match wi
 - Details: `baseCents` = the fee before the deduction (budgetedCents); `amountCents = round_half_up((baseCents − deductionCents) × (1 + vatRateBp/10000))`, `vatCents = amountCents − (baseCents − deductionCents)`. `soundcheckDeductionCents` in `FreelancerView.settings` is the same value as `settings.loadInDeductionCents`. `PublicPurchaseOrder.lines` also carry `baseCents, soundcheck, deductionCents, vatCents`.
 - Partner-created POs (`POST /api/purchase-orders`) unchanged (no VAT/sound check; lines `soundcheck: true`, `vatLiable: false`).
 
+## Freelancer PO: VAT rate choice (owner request 2026-11-04) — replaces the yes/no VAT question
+- The modal asks **"Oletko ALV-velvollinen?"** with three options: **Ei / No**, **Kyllä, ALV 13,5 % / Yes, VAT 13.5 %**, **Kyllä, ALV 25,5 % / Yes, VAT 25.5 %**.
+- Public create body: `{ vatRateBp: 0 | 1350 | 2550, lines: [...] }` (allowed values = `[0, ...settings.vatRatesBp]`; anything else → 400 `vatRateBp: INVALID_VALUE`; missing → `REQUIRED`). Legacy `vatLiable: true` = 1350, `false` = 0; legacy `{ costLineIds }` = 0.
+- Setting `fees.performer_vat_rates_bp` (comma-separated basis points, default `1350,2550`; replaces `fees.performer_vat_rate_bp`, whose value, if present, is used as the first rate). `FreelancerView.settings` = `{ soundcheckDeductionCents, vatRatesBp: [1350, 2550] }`.
+- PO gains `vatRateBp` (stored); `vatLiable` stays in responses (= vatRateBp > 0). Migration: existing POs `vat_liable = true` → `vat_rate_bp = 1350`, else 0. Line math unchanged with the chosen rate.
+
 ## Change log
+- 2026-11-04 – Freelancer PO VAT: choice No / 13.5 % / 25.5 % (vatRateBp) (PM)
 - 2026-11-04 – Freelancer PO: VAT-liable choice (+ rate setting) and per-gig sound check (deduction from settings) (PM)
 - 2026-11-04 – Invoicing v3: rows NOT_SENT/SENT, no payments, states OPEN_INVOICES/FULLY_INVOICED/PARTLY_INVOICED/NONE, automatic Loppulasku 48 h after the gig (PM)
 - 2026-11-03 – AUTH_EXTRA_ALLOWED_EMAILS (exception list for sign-in outside the domain) (PM)
