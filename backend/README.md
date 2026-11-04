@@ -137,6 +137,12 @@ spoof it and bypass the limit).
   `purchase_order.vat_rate_bp`; `vat_liable` is kept and written as `vat_rate_bp > 0`; responses carry
   `vatRateBp` and `vatLiable`. Migration `20261104140000_po_vat_rate` backfilled `vat_liable = true` POs with
   the old single-rate setting (1350 if the row was missing), others 0. Partner POs: `vatRateBp: 0`.
+- **No double sound-check deduction** (2026-11-04): `FreelancerLine` carries the cost line's `joinsLoadIn`
+  and `loadInDeductionAppliedCents`. A cost line already at `joinsLoadIn = false` has the load-in deduction
+  inside `budgetedCents` (BR-026), so both create paths (`poCostLineAmount` in
+  `src/purchaseOrders/amounts.ts`) ignore the requested `soundcheck` and store `soundcheck: false`,
+  `base = budgeted + loadInDeductionAppliedCents`, `deduction = loadInDeductionAppliedCents` (the remembered
+  amount, not the current setting), `amount = budgeted + VAT(budgeted)`. Other lines are unchanged. No migration.
 - **One active PO per cost line:** `purchase_order_line.active` is true while the PO is OPEN/PAID; the
   partial unique index `purchase_order_line_active_cost_line_key` backs the code check. Line snapshots
   (`cost_line_ref`, event, type, description, amount) keep cancelled POs intact if a freed cost line is
