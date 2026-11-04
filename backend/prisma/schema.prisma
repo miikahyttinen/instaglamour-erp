@@ -679,7 +679,10 @@ model PurchaseOrder {
   cancelledById String?             @map("cancelled_by") @db.Uuid
   cancelReason  String?             @map("cancel_reason")
   /// The freelancer is VAT-liable (TASK-050): line amounts include VAT. Partner-created POs: false.
+  /// Kept in sync with vatRateBp (= vatRateBp > 0) so older readers stay consistent.
   vatLiable     Boolean             @default(false) @map("vat_liable")
+  /// The VAT rate the freelancer chose, in basis points (0 = not VAT-liable). Partner-created POs: 0.
+  vatRateBp     Int                 @default(0) @map("vat_rate_bp")
   createdAt     DateTime            @default(now()) @map("created_at")
   updatedAt     DateTime            @updatedAt @map("updated_at")
 

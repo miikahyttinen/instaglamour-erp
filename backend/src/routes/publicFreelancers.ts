@@ -21,6 +21,7 @@ import {
   loadFreelancerView,
   toPublicPurchaseOrderDto,
 } from '../purchaseOrders/store.js';
+import { loadPoAmountSettings } from '../purchaseOrders/amounts.js';
 import { parseFreelancerPoBody } from '../purchaseOrders/input.js';
 import { isWellFormedFreelancerToken } from '../purchaseOrders/token.js';
 
@@ -56,14 +57,19 @@ export function publicFreelancerRoutes(app: FastifyInstance, deps: AppDeps, page
 
   app.post<TokenParams>(PUBLIC_FREELANCER_PO_ROUTE, async (request, reply) => {
     guard(request, reply);
-    const { vatLiable, lines } = parseFreelancerPoBody(request.body);
+    const { vatRatesBp } = await loadPoAmountSettings(db);
+    const { vatRateBp, lines } = parseFreelancerPoBody(request.body, {
+      allowedRatesBp: [0, ...vatRatesBp],
+      // Legacy `vatLiable: true` = the first configured rate (1350 by default; the old single rate).
+      legacyVatRateBp: vatRatesBp[0] ?? 0,
+    });
     const { token } = request.params;
     const person = await findPerson(token);
     if (!person) throw linkNotFound();
     const po = await createPurchaseOrder(db, {
       personId: person.id,
       lines,
-      vatLiable,
+      vatRateBp,
       // Re-checked under the lock: the link may have been regenerated or the person deactivated.
       isCurrent: (p) => isLinkUsable(p) && sameToken(p.freelancerToken, token),
       eligibility: 'FREELANCER',

@@ -33,22 +33,37 @@ const isLineRequest = (l: unknown): l is PoLineRequest =>
   typeof (l as Record<string, unknown>).soundcheck === 'boolean';
 
 /**
- * Freelancer-link body (api-contract "Freelancer PO: VAT and sound check"):
- * `{ vatLiable: boolean, lines: [{ costLineId, soundcheck: boolean }] }` (1…200 unique cost lines).
- * The legacy `{ costLineIds }` (without `vatLiable` and `lines`) is still accepted as
- * `vatLiable: false` with every line `soundcheck: true`.
- * Errors: missing → REQUIRED, anything else invalid → INVALID_VALUE (both fields reported together).
+ * Freelancer-link body (api-contract "Freelancer PO: VAT rate choice", 2026-11-04):
+ * `{ vatRateBp: number, lines: [{ costLineId, soundcheck: boolean }] }` (1…200 unique cost lines).
+ * `vatRateBp` must be one of `allowedRatesBp` (= `[0, ...settings.vatRatesBp]`).
+ * Legacy forms still accepted:
+ * - `{ vatLiable: boolean, lines }` (no `vatRateBp`): `true` = `legacyVatRateBp` (the first configured
+ *   rate, 1350 by default), `false` = 0;
+ * - `{ costLineIds }` (without `vatRateBp`, `vatLiable` and `lines`): rate 0, every line `soundcheck: true`.
+ * If `vatRateBp` is given, it wins over `vatLiable`.
+ * Errors: missing → REQUIRED, anything else invalid → INVALID_VALUE (all fields reported together).
  */
-export function parseFreelancerPoBody(body: unknown): { vatLiable: boolean; lines: PoLineRequest[] } {
+export function parseFreelancerPoBody(
+  body: unknown,
+  rates: { allowedRatesBp: readonly number[]; legacyVatRateBp: number },
+): { vatRateBp: number; lines: PoLineRequest[] } {
   const obj = body !== null && typeof body === 'object' ? (body as Record<string, unknown>) : {};
-  if (obj.costLineIds !== undefined && obj.vatLiable === undefined && obj.lines === undefined) {
-    return { vatLiable: false, lines: parseCostLineIds(obj).map((costLineId) => ({ costLineId, soundcheck: true })) };
+  if (obj.costLineIds !== undefined && obj.vatRateBp === undefined && obj.vatLiable === undefined && obj.lines === undefined) {
+    return { vatRateBp: 0, lines: parseCostLineIds(obj).map((costLineId) => ({ costLineId, soundcheck: true })) };
   }
 
   const fields: Record<string, 'REQUIRED' | 'INVALID_VALUE'> = {};
-  const { vatLiable, lines } = obj;
-  if (vatLiable === undefined || vatLiable === null) fields.vatLiable = 'REQUIRED';
-  else if (typeof vatLiable !== 'boolean') fields.vatLiable = 'INVALID_VALUE';
+  const { vatRateBp, vatLiable, lines } = obj;
+  let rate = 0;
+  if (vatRateBp !== undefined && vatRateBp !== null) {
+    if (typeof vatRateBp === 'number' && Number.isInteger(vatRateBp) && rates.allowedRatesBp.includes(vatRateBp)) rate = vatRateBp;
+    else fields.vatRateBp = 'INVALID_VALUE';
+  } else if (vatLiable !== undefined && vatLiable !== null) {
+    if (typeof vatLiable === 'boolean') rate = vatLiable ? rates.legacyVatRateBp : 0;
+    else fields.vatLiable = 'INVALID_VALUE';
+  } else {
+    fields.vatRateBp = 'REQUIRED';
+  }
 
   let parsed: PoLineRequest[] = [];
   if (lines === undefined || lines === null) {
@@ -65,5 +80,5 @@ export function parseFreelancerPoBody(body: unknown): { vatLiable: boolean; line
     fields.lines = 'INVALID_VALUE';
   }
   if (Object.keys(fields).length > 0) throw validationError(fields);
-  return { vatLiable: vatLiable === true, lines: parsed };
+  return { vatRateBp: rate, lines: parsed };
 }

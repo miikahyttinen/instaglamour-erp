@@ -136,6 +136,7 @@ describe('POST /api/purchase-orders', () => {
       cancelledAt: null,
       cancelledBy: null,
       cancelReason: null,
+      vatRateBp: 0,
       vatLiable: false,
       lines: [
         // Oldest event first on the PO; partner POs have no VAT / sound check choice
