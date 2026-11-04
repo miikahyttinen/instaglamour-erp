@@ -1,5 +1,5 @@
 # TASK-176: Invoicing v3 (UI)
-- **owner:** ui · **status:** todo · **spec:** api-contract "Invoicing v3" · **parallel:** TASK-049
+- **owner:** ui · **status:** done · **spec:** api-contract "Invoicing v3" · **parallel:** TASK-049
 ## Acceptance criteria
 - [ ] Invoice rows: status select **Lähettämättä / Lähetetty** (Not sent / Sent), default Lähettämättä; colours: Lähettämättä yellow, Lähetetty green. Remove all "paid" UI.
 - [ ] Laskutus card figures: **Lähetetty** (sentCents), **Lähettämättä** (notSentCents), **Laskuttamatta** (balanceCents = total − sent). Auto-created "Loppulasku" rows show a small "automaattinen / automatic" hint.

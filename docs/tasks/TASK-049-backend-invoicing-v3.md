@@ -1,5 +1,5 @@
 # TASK-049: Invoicing v3 — sent/not sent, automatic final invoice (backend)
-- **owner:** backend · **status:** todo · **spec:** api-contract "Invoicing v3" (2026-11-04) · **parallel:** TASK-176
+- **owner:** backend · **status:** done · **spec:** api-contract "Invoicing v3" (2026-11-04) · **parallel:** TASK-176
 ## Acceptance criteria
 - [ ] Migration: row status enum → NOT_SENT/SENT with data conversion (READY→NOT_SENT, SENT/PAID→SENT); `event.final_invoice_created_at` (nullable). Non-destructive for rows; tested on a populated scratch schema.
 - [ ] Derived figures + `invoiceState` exactly per contract; filter; remove paid-related fields; endpoints validate statuses.
