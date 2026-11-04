@@ -349,6 +349,34 @@ describe('event page (UC-004, UC-007)', () => {
     expect(status.closest('.inline-field')).toHaveClass('tone-ok');
   });
 
+  it('a new cost line typed in the draft row updates the economics and the log (TASK-179)', async () => {
+    const event = addMockEvent();
+    const { user } = renderApp(`/gigs/${event.id}`);
+    await screen.findByRole('heading', { name: 'Template A · Venue X', level: 1 });
+    const tile = (name: string) => within(section('Talous')).getByRole('region', { name });
+    expect(tile('Kulut')).toHaveTextContent(/430,00\s€\s*Budjetti/);
+    await user.click(within(section('Kulut ja miehitys')).getByRole('button', { name: '+ Lisää rivi' }));
+    // No separate form, no Save / Cancel buttons: a row in the table.
+    expect(screen.queryByRole('form', { name: 'Uusi kulurivi' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Peruuta' })).not.toBeInTheDocument();
+    const draft = within(screen.getByRole('table', { name: 'Kulut ja miehitys' })).getByRole('rowgroup', {
+      name: 'Uusi kulurivi',
+    });
+    await user.selectOptions(within(draft).getByRole('combobox', { name: 'Tyyppi: Uusi kulurivi' }), 'Rummut');
+    await user.type(within(draft).getByRole('textbox', { name: 'Budjetti: Uusi kulurivi' }), '70');
+    await user.click(document.body);
+    await waitFor(() => expect(tile('Kulut')).toHaveTextContent(/500,00\s€\s*Budjetti/));
+    await waitFor(() => expect(historyItems()[0]).toHaveTextContent('Kulurivi lisätty'));
+  });
+
+  it('deleted gigs have no "add line" button', async () => {
+    const deleted = addMockEvent({ venue: 'Venue Del' });
+    deleted.deletedAt = '2030-06-03T10:00:00Z';
+    renderApp(`/gigs/${deleted.id}`);
+    await screen.findByRole('table', { name: 'Kulut ja miehitys' });
+    expect(screen.queryByRole('button', { name: '+ Lisää rivi' })).not.toBeInTheDocument();
+  });
+
   it('deleted gigs show invoice rows read-only', async () => {
     const deleted = addMockEvent({ venue: 'Venue Del' });
     const sent = addInvoiceRow(db.events, deleted, { description: 'Invoice', amountCents: 100000, status: 'SENT' }, partnerA().id);

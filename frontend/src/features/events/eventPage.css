@@ -357,17 +357,11 @@
   font-weight: var(--fw-bold);
   font-variant-numeric: tabular-nums;
 }
-.event-page .cost-add-form {
-  margin-top: var(--space-3);
-}
-.event-page .cost-add-title {
-  margin: 0;
-  font-family: var(--font-mono);
-  font-size: var(--fs-label);
-  font-weight: var(--fw-regular);
-  letter-spacing: var(--ls-label);
-  text-transform: uppercase;
-  color: var(--label);
+/* Draft row (TASK-179): the new line is typed in place at the end of the table, with the same
+   quiet inline controls as the saved lines; a light surface marks it as not saved yet. */
+.event-page .cost-table tbody.cost-draft td,
+.event-page .cost-table tbody.cost-draft tr:hover td {
+  background: var(--surface-2);
 }
 
 /* Phone: the totals stack (the lines use the compact rows below). */
@@ -425,6 +419,11 @@
     }
     .event-page .cost-table .cost-paid-edit {
       max-width: calc(var(--label-w) * 1.25);
+    }
+    /* Draft row: the type select gets the width of a type name + description. */
+    .event-page .cost-table tbody.cost-draft td.cost-type .inline-field:first-child {
+      min-width: var(--label-w);
+      max-width: calc(var(--label-w) * 2);
     }
   }
 }
@@ -580,7 +579,8 @@
   .event-page .cost-table td.cost-actions {
     justify-self: end;
   }
-  .event-page .cost-table td.cost-actions:empty {
+  .event-page .cost-table td.cost-actions:empty,
+  .event-page .cost-table tbody.cost-draft td.cost-draft-paid {
     display: none;
   }
   .event-page .cost-actions-inner {

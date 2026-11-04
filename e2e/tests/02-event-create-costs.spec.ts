@@ -13,6 +13,7 @@ import {
   signIn,
   tagOf,
   test,
+  trackWrites,
 } from './helpers';
 import { costField, costLine, costLines, createEventViaApi, econTile, suffix, totalPriceLine } from './events';
 import { yearFigure } from './year';
@@ -227,4 +228,94 @@ test('cost lines are edited in place; Esc and invalid amounts are not saved', as
   expect(byType('VOC').budgetedCents).toBe(fee);
   expect(byType('OFFICE').description).toBe(note);
   expect(byType('DJ').actualCents).toBe(djPaid);
+});
+
+// New line (TASK-179): "Lisää rivi" adds an empty draft row at the end of the cost table (no
+// separate form). Leaving it empty drops it, Esc / trash drop it, missing type / description show
+// on the fields with nothing sent; once complete, leaving the row saves it (one POST) and it turns
+// into a normal inline line.
+test('a new cost line is typed in an inline draft row', async ({ page }, testInfo) => {
+  await signIn(page);
+  const venue = `Venue ${tagOf(testInfo)}-${suffix()}`;
+  const budgeted = 3 * SEED.templateB.roleFeeCents + 3 * SEED.internalFeeCents;
+  const amount = 5000;
+  const note = 'Synthetic rental';
+  const event = await createEventViaApi(page, { startDate: '2026-11-21', venue });
+
+  await page.goto(`/gigs/${event.id}`);
+  await expect(costLines(page)).toHaveCount(6);
+  const addButton = page.getByRole('button', { name: '+ Lisää rivi', exact: true });
+  const draft = costLine(page, 'Uusi kulurivi');
+  const draftField = (field: 'Tyyppi' | 'Kuvaus' | 'Henkilö' | 'Budjetti') =>
+    page.getByRole('table', { name: 'Kulut ja miehitys' }).getByLabel(`${field}: Uusi kulurivi`, { exact: true });
+  const writes = trackWrites(page);
+
+  // An empty row at the end of the table, its type select focused; no form, no Save / Cancel.
+  await addButton.click();
+  await expect(draft).toBeVisible();
+  await expect(costLines(page)).toHaveCount(7);
+  await expect(costLines(page).last()).toHaveAccessibleName('Uusi kulurivi');
+  await expect(draftField('Tyyppi')).toBeFocused();
+  await expect(page.getByRole('form', { name: 'Uusi kulurivi' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Peruuta' })).toHaveCount(0);
+  await expectNoHorizontalScroll(page, 'event page with a draft row');
+  // Moving inside the row keeps it; leaving it empty drops it.
+  await draftField('Tyyppi').press('Tab');
+  await expect(draftField('Kuvaus')).toBeFocused();
+  await draftField('Kuvaus').blur();
+  await expect(draft).toHaveCount(0);
+
+  // Esc drops a filled draft; so does its trash button.
+  await addButton.click();
+  await draftField('Kuvaus').fill(note);
+  await draftField('Kuvaus').press('Escape');
+  await expect(draft).toHaveCount(0);
+  await addButton.click();
+  await draftField('Kuvaus').fill(note);
+  await draft.getByRole('button', { name: 'Poista' }).click();
+  await expect(draft).toHaveCount(0);
+
+  // Filled without a type: REQUIRED on the type, the row stays.
+  await addButton.click();
+  await draftField('Budjetti').fill(fiInput(amount));
+  await draftField('Budjetti').blur();
+  await expect(draftField('Tyyppi')).toHaveAttribute('aria-invalid', 'true');
+  await expect(draftField('Tyyppi')).toHaveAccessibleDescription('Pakollinen tieto.');
+  // Only one draft: "Lisää rivi" focuses it.
+  await addButton.click();
+  await expect(draft).toHaveCount(1);
+  await expect(draftField('Tyyppi')).toBeFocused();
+  await expect(draftField('Budjetti')).toHaveValue(fiInput(amount));
+  // OTHER needs a description.
+  await draftField('Tyyppi').selectOption({ label: 'Muu kulu' });
+  await draftField('Tyyppi').blur();
+  await expect(draftField('Kuvaus')).toHaveAccessibleDescription('Kuvaus on pakollinen.');
+  await page.waitForTimeout(300);
+  expect(writes, 'nothing is sent before the draft is complete').toEqual([]);
+
+  // Complete: leaving the row saves it with one POST.
+  await draftField('Kuvaus').fill(note);
+  const posted = page.waitForResponse(
+    (res) => res.request().method() === 'POST' && new URL(res.url()).pathname === `/api/events/${event.id}/cost-lines`,
+  );
+  await draftField('Kuvaus').blur();
+  const res = await posted;
+  expect(res.ok()).toBe(true);
+  expect(res.request().postDataJSON()).toEqual({ type: 'OTHER', personId: null, description: note, budgetedCents: amount });
+  await expect(draft).toHaveCount(0);
+  const added = `Muu kulu (${note})`;
+  await expect(costLine(page, added)).toBeVisible();
+  await expect(costField(page, 'Budjetti', added)).toHaveValue(fiInput(amount));
+  await expect(costLines(page)).toHaveCount(7);
+  await expect(econTile(page, 'Kulut').budget).toHaveText(fiMoney(budgeted + amount));
+  expect(writes).toEqual([`POST /api/events/${event.id}/cost-lines`]);
+  await expectNoHorizontalScroll(page, 'event page after adding a line');
+
+  // The backend agrees; the new line survives a reload.
+  await page.reload();
+  await expect(costField(page, 'Budjetti', added)).toHaveValue(fiInput(amount));
+  const saved = await api(page).get(`/events/${event.id}`);
+  const other = saved.costLines.find((l: { type: string }) => l.type === 'OTHER');
+  expect(other.description).toBe(note);
+  expect(other.budgetedCents).toBe(amount);
 });

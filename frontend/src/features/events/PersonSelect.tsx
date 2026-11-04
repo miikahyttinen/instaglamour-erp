@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { peopleApi } from '../../api/endpoints';
 import { Button } from '../../components/Button';
@@ -86,48 +86,66 @@ function NewPersonForm({ onCreated, onCancel }: { onCreated: (id: Id) => void; o
 }
 
 interface Props {
-  id?: string;
+  /** Accessible name (visually hidden: the column header / card label shows it). */
   label: string;
   value: Id | null;
   people: Person[] | undefined;
   onChange: (personId: Id | null) => void;
-  disabled?: boolean;
+  /** Translated error shown under the field. */
+  error?: string;
   /** SALES / PRODUCTION line: list only people linked to an active partner. */
   partnersOnly?: boolean;
 }
 
 /**
- * Person picker for forms (new cost line): active people, plus the current person even if
- * inactive. "New person…" adds a person inline by name (UC-005 A8) and selects them.
+ * Person picker for the draft cost row (not saved yet): same look as the inline picker, but it
+ * only reports the choice. "New person…" adds a person inline by name (UC-005 A8) and selects them.
  */
-export function PersonSelect({ id, label, value, people, onChange, disabled, partnersOnly = false }: Props) {
+export function PersonSelect({ label, value, people, onChange, error, partnersOnly = false }: Props) {
   const [creating, setCreating] = useState(false);
-
-  if (creating) {
-    return (
-      <NewPersonForm
-        onCreated={(personId) => {
-          setCreating(false);
-          onChange(personId);
-        }}
-        onCancel={() => setCreating(false)}
-      />
-    );
-  }
+  const selectRef = useRef<HTMLSelectElement>(null);
+  // The name input is removed when it is done: keep the focus in the row (on the picker), so the
+  // draft row does not think the user left it.
+  const refocus = useRef(false);
+  useLayoutEffect(() => {
+    if (!creating && refocus.current) {
+      refocus.current = false;
+      selectRef.current?.focus();
+    }
+  }, [creating]);
+  const stopCreating = () => {
+    refocus.current = true;
+    setCreating(false);
+  };
 
   return (
-    <select
-      id={id}
-      aria-label={id ? undefined : label}
-      value={value ?? ''}
-      disabled={disabled}
-      onChange={(e) => {
-        if (e.target.value === NEW) setCreating(true);
-        else onChange(e.target.value || null);
-      }}
-    >
-      <PersonOptions people={people} value={value} partnersOnly={partnersOnly} />
-    </select>
+    <>
+      <InlineFieldFrame label={label} hideLabel status={error ? 'error' : 'idle'} error={error ?? null}>
+        {(control) => (
+          <select
+            {...control}
+            ref={selectRef}
+            value={value ?? ''}
+            disabled={creating}
+            onChange={(e) => {
+              if (e.target.value === NEW) setCreating(true);
+              else onChange(e.target.value || null);
+            }}
+          >
+            <PersonOptions people={people} value={value} partnersOnly={partnersOnly} />
+          </select>
+        )}
+      </InlineFieldFrame>
+      {creating && (
+        <NewPersonForm
+          onCreated={(personId) => {
+            stopCreating();
+            onChange(personId);
+          }}
+          onCancel={stopCreating}
+        />
+      )}
+    </>
   );
 }
 

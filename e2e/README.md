@@ -62,7 +62,7 @@ database that `npm run e2e` creates.
 | File | Flow |
 |---|---|
 | `01-login-year` | Dev login → year page figures match `GET /api/years/{year}`; sign out; ended session → sign-in with notice; unknown email refused |
-| `02-event-create-costs` | New event from a template → cost lines → assign a person → load-in switch → mark paid → economics; event list summary and year page updated without reload; double-booking warning; cost lines edited in place (budget, description, paid amount), Esc, invalid amounts |
+| `02-event-create-costs` | New event from a template → cost lines → assign a person → load-in switch → mark paid → economics; event list summary and year page updated without reload; double-booking warning; cost lines edited in place (budget, description, paid amount), Esc, invalid amounts; new line typed in an inline draft row (TASK-179: empty → dropped on blur, Esc / trash drop it, missing type / description shown with nothing sent, one draft at a time, complete → one POST and a normal line) |
 | `03-event-lifecycle` | Event info and price edited in place (Esc, invalid values, no Edit/Save buttons); edit price and additional sales; move; cancel and adjust price; uncancel; delete; restore from the deleted view; history lists all events |
 | `05-people` | Add, rename in place, deactivate with the switch; Esc / empty name; the person page shows their lines; reactivate from the list |
 | `06-tasks` | Add, mark done, reopen; edit title / description / owner / due date in place, Esc, empty title; delete |

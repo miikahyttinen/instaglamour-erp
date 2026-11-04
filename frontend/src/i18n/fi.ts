@@ -446,6 +446,7 @@ const fi = {
     totalBudgeted: 'Kulut yhteensä, budjetti',
     totalActual: 'Kulut yhteensä, toteuma',
     add: 'Lisää rivi',
+    /** Name of the draft row a new line is typed in (TASK-179); its fields are "<field>: <this>". */
     addTitle: 'Uusi kulurivi',
     groupMusician: 'Soittajat ja tekniikka',
     groupInternal: 'Sisäiset',

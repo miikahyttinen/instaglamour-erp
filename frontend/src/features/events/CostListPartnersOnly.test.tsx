@@ -64,25 +64,43 @@ describe('sales and production lines: partners only', () => {
     ).toBeInTheDocument();
   });
 
-  it('add form: partner-only picker for Myynti / Tuotanto, clears a non-partner on type change', async () => {
+  it('draft row: partner-only picker for Myynti / Tuotanto, clears a non-partner on type change', async () => {
     const event = addMockEvent();
     const { user } = await openEvent(event.id);
     await user.click(screen.getByRole('button', { name: '+ Lisää rivi' }));
-    const form = screen.getByRole('form', { name: 'Uusi kulurivi' });
-    const personSelect = within(form).getByRole('combobox', { name: 'Henkilö' });
+    const draft = line('Uusi kulurivi');
+    const personSelect = within(draft).getByRole('combobox', { name: 'Henkilö: Uusi kulurivi' });
     await user.selectOptions(personSelect, 'Person 1');
 
-    await user.selectOptions(within(form).getByRole('combobox', { name: 'Tyyppi' }), 'Myynti');
+    await user.selectOptions(within(draft).getByRole('combobox', { name: 'Tyyppi: Uusi kulurivi' }), 'Myynti');
     expect(personSelect).toHaveDisplayValue('– ei henkilöä –');
     expect(optionNames(personSelect)).toEqual(['– ei henkilöä –', 'Partner A', 'Partner B', 'Partner C']);
 
     await user.selectOptions(personSelect, 'Partner B');
-    await user.click(within(form).getByRole('button', { name: 'Lisää rivi' }));
+    await user.click(document.body);
     await waitFor(() =>
       expect(
         db.events.costLines.filter((l) => l.eventId === event.id && l.type === 'SALES').map((l) => l.personId),
       ).toContain(partnerB().personId),
     );
+  });
+
+  it('draft row: NOT_PARTNER from the server shows on the person field; the draft stays', async () => {
+    const event = addMockEvent();
+    server.use(
+      http.post('/api/events/:id/cost-lines', () =>
+        errorResponse(400, 'VALIDATION_ERROR', 'Server English text', { personId: 'NOT_PARTNER' }),
+      ),
+    );
+    const { user } = await openEvent(event.id);
+    await user.click(screen.getByRole('button', { name: '+ Lisää rivi' }));
+    const draft = line('Uusi kulurivi');
+    await user.selectOptions(within(draft).getByRole('combobox', { name: 'Tyyppi: Uusi kulurivi' }), 'Tuotanto');
+    await user.selectOptions(within(draft).getByRole('combobox', { name: 'Henkilö: Uusi kulurivi' }), 'Partner C');
+    await user.click(document.body);
+    expect(await within(draft).findByText('Myynti- ja tuotantorivillä voi olla vain osakas.')).toBeInTheDocument();
+    expect(within(draft).getByRole('combobox', { name: 'Henkilö: Uusi kulurivi' })).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.queryByText('Server English text')).not.toBeInTheDocument();
   });
 
   it('has the NOT_PARTNER text in both languages', () => {
