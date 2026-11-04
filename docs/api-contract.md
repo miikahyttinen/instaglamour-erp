@@ -582,7 +582,15 @@ One derived value **`invoiceState`** = the next invoicing action; first match wi
 - Details (TASK-049): `InvoiceRow` gains **`auto: boolean`** (true only for the job's Loppulasku). Auto history entries have `partnerId: null` (UI shows "Automaattinen / Automatic"). Gaps: a cancelled gig with rows and sent < total → PARTLY_INVOICED; total 0 with only SENT rows → NONE; an upcoming fully sent gig → FULLY_INVOICED. Due time = end of the gig's last day (Helsinki) + 48 h. If the price is raised after a fully covered gig's 48 h, the job adds a Loppulasku for the difference (only once).
 - Row endpoints unchanged except allowed statuses (`NOT_SENT` default, `SENT`); old values `READY`/`PAID` → 400 `INVALID_VALUE`.
 
+## Freelancer PO: VAT and sound check (owner request 2026-11-04)
+- `POST /api/public/freelancers/{token}/purchase-orders` body becomes `{ vatLiable: boolean, lines: [{ costLineId, soundcheck: boolean }] }` (1…200 unique lines; old `{ costLineIds }` still accepted = `vatLiable: false`, all `soundcheck: true`). Missing/invalid → 400 (`vatLiable: REQUIRED`, `lines: INVALID_VALUE`).
+- Per line amount: `base = budgetedCents`; if `soundcheck = false` → `base − settings.loadInDeductionCents` (not below 0; the same deduction as the load-in switch, value from settings, never hard-coded); if `vatLiable` → `amount = round(base × (1 + vatRate))` where `vatRate` = setting `fees.performer_vat_rate_bp` (basis points; default 1350 = 13.5 %, seedable). The VAT is part of the cost (the app does not track VAT separately).
+- `PurchaseOrderLine` gains `baseCents`, `soundcheck`, `deductionCents`, `vatCents`; `amountCents` = final. `PurchaseOrder` and `PublicPurchaseOrder` gain `vatLiable`. Totals = Σ amountCents. Paying a PO sets each cost line's actual = its `amountCents` (incl. VAT) as before.
+- `FreelancerView` gains `settings: { soundcheckDeductionCents, vatRateBp }` so the page can preview amounts. FreelancerLine `amountCents` stays the budgeted fee (alv 0 %).
+- Partner-created POs (`POST /api/purchase-orders`) unchanged (no VAT/sound check; lines `soundcheck: true`, `vatLiable: false`).
+
 ## Change log
+- 2026-11-04 – Freelancer PO: VAT-liable choice (+ rate setting) and per-gig sound check (deduction from settings) (PM)
 - 2026-11-04 – Invoicing v3: rows NOT_SENT/SENT, no payments, states OPEN_INVOICES/FULLY_INVOICED/PARTLY_INVOICED/NONE, automatic Loppulasku 48 h after the gig (PM)
 - 2026-11-03 – AUTH_EXTRA_ALLOWED_EMAILS (exception list for sign-in outside the domain) (PM)
 - 2026-10-31 – Gig file attachments removed from the app (PM)
