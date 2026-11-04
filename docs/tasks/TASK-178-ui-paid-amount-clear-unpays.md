@@ -1,7 +1,7 @@
 # TASK-178: Cost list — clearing the paid amount unmarks paid; no paid log in the table
 
 - **owner:** ui
-- **status:** todo
+- **status:** done
 - **spec:** docs/business-rules.md (BR-025)
 - **depends on:** none
 
