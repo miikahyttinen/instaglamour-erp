@@ -44,6 +44,34 @@ export function poLineAmount(
   return { baseCents, deductionCents, vatCents, amountCents: net + vatCents };
 }
 
+/** The cost line fields that decide whether the sound check deduction was already made on the gig. */
+export interface PoCostLineState {
+  budgetedCents: number;
+  joinsLoadIn: boolean | null;
+  loadInDeductionAppliedCents: number | null;
+}
+
+/**
+ * The PO line amount for a cost line (api-contract "Freelancer PO: sound check already set on the
+ * gig", 2026-11-04). A line with `joinsLoadIn = false` already has the load-in deduction inside
+ * `budgetedCents` (BR-026): the requested sound check is ignored, the line is stored as
+ * `soundcheck: false` and the deduction is shown once (base = budgeted + applied, deduction =
+ * applied) — never deducted a second time. Other lines: `poLineAmount` with the requested value.
+ */
+export function poCostLineAmount(
+  line: PoCostLineState,
+  options: { soundcheck: boolean; vatRateBp: number },
+  settings: Pick<PoAmountSettings, 'soundcheckDeductionCents'>,
+): PoLineAmount & { soundcheck: boolean } {
+  if (line.joinsLoadIn === false) {
+    const applied = Math.max(line.loadInDeductionAppliedCents ?? 0, 0);
+    const net = line.budgetedCents;
+    const vatCents = Math.floor((net * Math.max(options.vatRateBp, 0) + 5000) / 10000);
+    return { soundcheck: false, baseCents: net + applied, deductionCents: applied, vatCents, amountCents: net + vatCents };
+  }
+  return { soundcheck: options.soundcheck, ...poLineAmount(line.budgetedCents, options, settings) };
+}
+
 type SettingRow = { key: string; valueCents: number | null; valueText: string | null };
 
 /**

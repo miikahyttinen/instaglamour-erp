@@ -19,7 +19,7 @@ import { Prisma, type PurchaseOrderStatus } from '../generated/prisma/client.js'
 import { AppError, notFound } from '../http/errors.js';
 import { compareCostLines, costLinePurchaseOrderInclude } from '../events/serialize.js';
 import { logHistory } from '../events/store.js';
-import { loadPoAmountSettings, poLineAmount } from './amounts.js';
+import { loadPoAmountSettings, poCostLineAmount } from './amounts.js';
 import type { PoLineRequest } from './input.js';
 import { purchaseOrderNumber } from './number.js';
 
@@ -200,6 +200,8 @@ export async function loadFreelancerView(db: Db, person: { id: string; name: str
         amountCents,
         state,
         purchaseOrderNumber: onPo?.purchaseOrder.number ?? null,
+        joinsLoadIn: line.joinsLoadIn,
+        loadInDeductionAppliedCents: line.loadInDeductionAppliedCents,
       };
     }),
     purchaseOrders: purchaseOrders.map(toPublicPurchaseOrderDto),
@@ -337,8 +339,8 @@ export async function createPurchaseOrder(
     );
     const settings = await loadPoAmountSettings(tx);
     const priced = ordered.map((line) => {
-      const soundcheck = soundcheckById.get(line.id) ?? true;
-      return { line, soundcheck, ...poLineAmount(line.budgetedCents, { soundcheck, vatRateBp: input.vatRateBp }, settings) };
+      const requested = soundcheckById.get(line.id) ?? true;
+      return { line, ...poCostLineAmount(line, { soundcheck: requested, vatRateBp: input.vatRateBp }, settings) };
     });
     const [{ seq }] = await tx.$queryRaw<[{ seq: number }]>`SELECT nextval('purchase_order_seq')::int AS "seq"`;
     const po = await tx.purchaseOrder.create({
