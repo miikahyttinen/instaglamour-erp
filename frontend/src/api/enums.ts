@@ -149,6 +149,7 @@ export const FIELD_CODES = [
   'TOO_LONG',
   'UNKNOWN_REFERENCE',
   'NOT_EDITABLE',
+  'NOT_PARTNER',
 ] as const;
 export type FieldCode = (typeof FIELD_CODES)[number];
 
@@ -201,6 +202,11 @@ export type SignInErrorCode = (typeof SIGN_IN_ERROR_CODES)[number];
 
 export function isMusicianRole(type: CostType): type is MusicianRole {
   return (MUSICIAN_ROLES as readonly string[]).includes(type);
+}
+
+/** SALES / PRODUCTION lines may only have a person linked to an active partner (400 NOT_PARTNER). */
+export function isPartnerOnlyType(type: CostType): boolean {
+  return type === 'SALES' || type === 'PRODUCTION';
 }
 
 export function isSignInErrorCode(value: string | null): value is SignInErrorCode {

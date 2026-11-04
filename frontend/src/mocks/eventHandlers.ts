@@ -2,7 +2,15 @@
 // Business logic lives in eventStore.ts.
 import { http, HttpResponse } from 'msw';
 import type { CostType, FieldCode, Logistics, TechnicalSetup } from '../api/enums';
-import { COST_TYPES, INVOICE_ROW_STATUSES, INVOICE_STATES, isMusicianRole, LOGISTICS, TECHNICAL_SETUPS } from '../api/enums';
+import {
+  COST_TYPES,
+  INVOICE_ROW_STATUSES,
+  INVOICE_STATES,
+  isMusicianRole,
+  isPartnerOnlyType,
+  LOGISTICS,
+  TECHNICAL_SETUPS,
+} from '../api/enums';
 import type {
   CostLine,
   CostLineCreate,
@@ -111,6 +119,13 @@ function checkClient(fields: Fields, value: unknown): void {
 function checkPerson(fields: Fields, value: unknown): void {
   if (value === undefined || value === null) return;
   if (!db.events.people.some((p) => p.id === value)) fields.personId = 'UNKNOWN_REFERENCE';
+}
+
+/** SALES / PRODUCTION: a person must be linked to an active partner (400 personId NOT_PARTNER). */
+function checkPartnerPerson(fields: Fields, type: CostType | undefined, value: unknown): void {
+  if (fields.personId || !type || !isPartnerOnlyType(type)) return;
+  if (value === undefined || value === null) return;
+  if (!db.partners.some((p) => p.personId === value && p.active)) fields.personId = 'NOT_PARTNER';
 }
 
 const blankToNull = (v: string | null | undefined): string | null =>
@@ -441,6 +456,7 @@ export const costLineHandlers = [
     if (!body.type) fields.type = 'REQUIRED';
     else if (!(COST_TYPES as readonly string[]).includes(body.type)) fields.type = 'INVALID_VALUE';
     checkPerson(fields, body.personId);
+    if (!fields.type) checkPartnerPerson(fields, body.type, body.personId);
     checkString(fields, 'description', body.description, false);
     if (body.type && needsDescription(body.type) && !blankToNull(body.description)) {
       fields.description = 'DESCRIPTION_REQUIRED';
@@ -473,6 +489,8 @@ export const costLineHandlers = [
     const fields: Fields = {};
     if (body.type !== undefined) fields.type = 'NOT_EDITABLE';
     checkPerson(fields, body.personId);
+    // Existing lines that break the rule stay as they are; checked only when the person changes.
+    if (body.personId !== line.personId) checkPartnerPerson(fields, line.type, body.personId);
     checkString(fields, 'description', body.description, false);
     if (
       body.description !== undefined &&
