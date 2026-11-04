@@ -19,7 +19,8 @@ interface Props {
 /**
  * "Mark paid" button that turns into the actual-amount input in the same place (NFR-8 pattern):
  * prefilled with the budget, focused and selected; Enter or blur saves, Esc returns to the button.
- * Leaving it empty (blur) also cancels, for phones without an Esc key. On success the line becomes
+ * Leaving it empty (blur) also cancels, for phones without an Esc key; so does 0 (Enter or blur),
+ * since 0 is not a payment. On success the line becomes
  * paid and the parent renders the paid amount instead.
  */
 export function PayControl({ inputLabel, initialCents, onPay }: Props) {
@@ -78,6 +79,8 @@ export function PayControl({ inputLabel, initialCents, onPay }: Props) {
       setError(fieldErrorLabel(t, code));
       return;
     }
+    // 0 is "not paid" (a paid line cleared to 0 is unmarked, TASK-178): close without paying.
+    if (cents === 0) return cancel(via === 'enter');
     saving.current = true;
     setStatus('saving');
     setError(null);

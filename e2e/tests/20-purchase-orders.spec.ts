@@ -318,7 +318,7 @@ test('freelancer link → create PO → mark paid → event lines paid and locke
   await expect(drums).toContainText(fiMoney(drumsAmount));
   await expect(costField(page, 'Budjetti', 'Rummut')).toBeDisabled();
   await expect(costField(page, 'Henkilö', 'Rummut')).toBeDisabled();
-  await expect(drums.getByRole('button', { name: /Merkitse maksetuksi|Poista maksumerkintä|Poista/ })).toHaveCount(0);
+  await expect(drums.getByRole('button', { name: /Merkitse maksetuksi|Poista/ })).toHaveCount(0);
   await expect(drums.getByRole('switch')).toBeDisabled();
 
   // API: the amount can't be changed while the line is on a PO (BR-118).

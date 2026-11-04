@@ -1,5 +1,5 @@
 import { useMutation } from '@tanstack/react-query';
-import { CircleCheck, Trash2 } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -15,9 +15,9 @@ import { Notice } from '../../components/Notice';
 import { StatusTag } from '../../components/StatusTag';
 import { apiErrorMessage, apiFieldErrors, costTypeLabel } from '../../i18n/labels';
 import { useLang } from '../../i18n/useLang';
-import { centsToInput, formatDateTime, formatMoney } from '../../lib/format';
+import { centsToInput, formatMoney } from '../../lib/format';
 import { parseMoneyField } from '../../lib/moneyField';
-import { usePartner, useReference } from '../../reference/useReference';
+import { useReference } from '../../reference/useReference';
 import { EventPurchaseOrder } from './EventPurchaseOrder';
 import { selectablePeople } from './personOptions';
 import { InlinePersonSelect, PersonSelect } from './PersonSelect';
@@ -133,7 +133,6 @@ interface LineProps {
 function CostLineItem({ line, people, readOnly, columnCount, onResult }: LineProps) {
   const { t } = useTranslation();
   const lang = useLang();
-  const paidBy = usePartner(line.paidBy);
   const [mode, setMode] = useState<'view' | 'remove'>('view');
   const typeLabel = costTypeLabel(t, line.type);
   const label = line.description ? `${typeLabel} (${line.description})` : typeLabel;
@@ -144,7 +143,7 @@ function CostLineItem({ line, people, readOnly, columnCount, onResult }: LinePro
   const po = line.purchaseOrder;
   const lockedHint = po ? t('purchaseOrders.lockedHint', { number: po.number }) : undefined;
 
-  // Pay / unpay / remove are actions; the fields below save themselves (NFR-8).
+  // Remove is an action; the fields below save themselves (NFR-8).
   const mutation = useMutation({
     mutationFn: (action: () => Promise<EventWithWarnings>) => action(),
     onSuccess: (result) => {
@@ -158,10 +157,15 @@ function CostLineItem({ line, people, readOnly, columnCount, onResult }: LinePro
   const paidCell = useRef<HTMLTableCellElement>(null);
   // Marked paid with Enter: keep the keyboard focus on the amount that replaced the pay input.
   const focusPaidAmount = useRef(false);
+  // Unmarked paid with Enter (amount cleared / 0): keep the focus on the "Mark paid" button.
+  const focusPayButton = useRef(false);
   useEffect(() => {
     if (paid && focusPaidAmount.current) {
       focusPaidAmount.current = false;
       paidCell.current?.querySelector('input')?.focus();
+    } else if (!paid && focusPayButton.current) {
+      focusPayButton.current = false;
+      paidCell.current?.querySelector('button')?.focus();
     }
   }, [paid]);
 
@@ -246,33 +250,29 @@ function CostLineItem({ line, people, readOnly, columnCount, onResult }: LinePro
         <td ref={paidCell} className="cost-paid" data-label={t('event.actual')} title={lockedHint}>
           {paid && !readOnly && !po ? (
             // Paid: the amount stays editable (POST pay on a paid line updates the amount only).
+            // Clearing it or entering 0 unmarks the line paid (POST unpay, TASK-178).
             <div className="cost-paid-edit">
               <InlineMoney
                 label={`${t('costs.actualAmount')}: ${label}`}
                 hideLabel
-                required
-                value={line.actualCents ?? 0}
+                value={line.actualCents}
                 field="actualCents"
-                onSave={async (actualCents) => onResult(await costLinesApi.pay(line.id, { actualCents }))}
+                onSave={async (actualCents) => {
+                  if (actualCents === null || actualCents === 0) {
+                    // Saved with Enter: keep the keyboard on the "Mark paid" button that replaces it.
+                    const viaEnter = paidCell.current?.contains(document.activeElement) ?? false;
+                    const result = await costLinesApi.unpay(line.id);
+                    focusPayButton.current = viaEnter;
+                    onResult(result);
+                    return;
+                  }
+                  onResult(await costLinesApi.pay(line.id, { actualCents }));
+                }}
               />
-              <span className="paid-info">
-                <CircleCheck className="paid-icon" />
-                <span>
-                  {formatDateTime(line.paidAt, lang)} · {paidBy?.name ?? '–'}
-                </span>
-              </span>
             </div>
           ) : paid ? (
-            <span className="paid-info">
-              <CircleCheck className="paid-icon" />
-              <span>
-                {t('costs.paidInfo', {
-                  amount: formatMoney(line.actualCents, lang),
-                  time: formatDateTime(line.paidAt, lang),
-                  partner: paidBy?.name ?? '–',
-                })}
-              </span>
-            </span>
+            // Read-only: just the amount; who / when is in the gig log.
+            <span className="cost-paid-amount">{formatMoney(line.actualCents, lang)}</span>
           ) : line.type === 'FUEL' ? (
             <span className="cost-hint">{t('costs.fuelHint')}</span>
           ) : !readOnly && !po ? (
@@ -296,15 +296,6 @@ function CostLineItem({ line, people, readOnly, columnCount, onResult }: LinePro
             {po && <span className="cost-hint cost-po-hint">{lockedHint}</span>}
             {!po && (
               <div className="cost-actions-inner">
-                {paid && (
-                  <Button
-                    size="sm"
-                    disabled={mutation.isPending}
-                    onClick={() => run(() => costLinesApi.unpay(line.id))}
-                  >
-                    {t('costs.unmarkPaid')}
-                  </Button>
-                )}
                 <IconButton
                   variant="ghost"
                   icon={Trash2}

@@ -88,7 +88,12 @@ describe('cost list (UC-005)', () => {
     await waitFor(() => expect(actual).toHaveValue('90,00'));
     // Saved with Enter: keyboard focus moves to the paid amount that replaced the input.
     await waitFor(() => expect(actual).toHaveFocus());
-    expect(line('Basso')).toHaveTextContent(/· Partner A/);
+    // No paid log (time · partner) in the table: that is in the gig log (TASK-178).
+    expect(actual.closest('td')).not.toHaveTextContent(partnerA().name);
+    expect(actual.closest('td')!.querySelector('svg')).toBeNull();
+    // Only the remove action stays; there is no separate "unmark paid" button.
+    expect(within(line('Basso')).queryByRole('button', { name: 'Poista maksumerkintä' })).not.toBeInTheDocument();
+    expect(within(line('Basso')).getByRole('button', { name: 'Poista' })).toBeInTheDocument();
     expect(mockLine(event, 'BASS')).toMatchObject({ actualCents: 10000 - 1000, paidBy: partnerA().id });
     expect(econTile('Kulut')).toHaveTextContent(/90,00\s€\s*Toteuma$/);
     await waitFor(() => expect(historyItems()[0]).toHaveTextContent(/Merkitty maksetuksi.*Basso: 90,00\s€/));
@@ -103,11 +108,69 @@ describe('cost list (UC-005)', () => {
     await waitFor(() => expect(econTile('Kulut')).toHaveTextContent(/80,00\s€\s*Toteuma$/));
     expect(within(line('Basso')).getByRole('textbox', { name: 'Toteutunut summa: Basso' })).toHaveValue('80,00');
 
-    await user.click(within(line('Basso')).getByRole('button', { name: 'Poista maksumerkintä' }));
+    // Clearing the amount (blur) unmarks the line paid via POST unpay.
+    await user.clear(within(line('Basso')).getByRole('textbox', { name: 'Toteutunut summa: Basso' }));
+    await user.tab();
     expect(await within(line('Basso')).findByRole('button', { name: 'Merkitse maksetuksi' })).toBeInTheDocument();
+    expect(mockLine(event, 'BASS')).toMatchObject({ paidAt: null, actualCents: null });
     expect(line('Basso')).not.toHaveTextContent('Maksamatta');
     expect(within(line('Basso')).queryByRole('textbox', { name: 'Toteutunut summa: Basso' })).not.toBeInTheDocument();
     await waitFor(() => expect(historyItems()[0]).toHaveTextContent(/Basso: aiemmin maksettu 80,00\s€/));
+  });
+
+  it('entering 0 on a paid line with Enter unmarks it and focuses the "Mark paid" button', async () => {
+    const event = addMockEvent();
+    const { user } = await openEvent(event.id);
+    let pays = 0;
+    server.events.on('request:start', ({ request }) => {
+      if (request.method === 'POST' && request.url.endsWith('/pay')) pays += 1;
+    });
+    await user.click(within(line('Basso')).getByRole('button', { name: 'Merkitse maksetuksi' }));
+    await user.keyboard('{Enter}');
+    const actual = await within(line('Basso')).findByRole('textbox', { name: 'Toteutunut summa: Basso' });
+    await waitFor(() => expect(actual).toHaveFocus());
+    expect(pays).toBe(1);
+    await user.clear(actual);
+    await user.type(actual, '0{Enter}');
+    const button = await within(line('Basso')).findByRole('button', { name: 'Merkitse maksetuksi' });
+    await waitFor(() => expect(button).toHaveFocus());
+    expect(mockLine(event, 'BASS').paidAt).toBeNull();
+    expect(pays).toBe(1);
+    server.events.removeAllListeners();
+  });
+
+  it('paid line: invalid input shows the inline error; an unpay error shows on the field', async () => {
+    const event = addMockEvent();
+    server.use(http.post('*/api/cost-lines/:id/unpay', () => errorResponse(409, 'COST_NOT_PAYABLE', 'Not payable')));
+    const { user } = await openEvent(event.id);
+    await user.click(within(line('Basso')).getByRole('button', { name: 'Merkitse maksetuksi' }));
+    await user.keyboard('{Enter}');
+    const actual = await within(line('Basso')).findByRole('textbox', { name: 'Toteutunut summa: Basso' });
+    await user.clear(actual);
+    await user.type(actual, 'abc');
+    await user.tab();
+    expect(actual).toHaveAccessibleDescription('Virheellinen arvo.');
+    await user.clear(actual);
+    await user.tab();
+    await waitFor(() => expect(actual).toHaveAttribute('aria-invalid', 'true'));
+    expect(actual).not.toHaveAccessibleDescription('Virheellinen arvo.');
+    expect(actual).toHaveAccessibleDescription(/.+/);
+    expect(mockLine(event, 'BASS').paidAt).not.toBeNull();
+    expect(within(line('Basso')).queryByRole('button', { name: 'Merkitse maksetuksi' })).not.toBeInTheDocument();
+  });
+
+  it('read-only (deleted gig): a paid line shows just the amount', async () => {
+    const event = addMockEvent();
+    const bass = mockLine(event, 'BASS');
+    bass.paidAt = new Date().toISOString();
+    bass.actualCents = 9000;
+    bass.paidBy = partnerA().id;
+    event.deletedAt = new Date().toISOString();
+    renderApp(`/gigs/${event.id}`);
+    await screen.findByRole('table', { name: 'Kulut ja miehitys' });
+    const cell = line('Basso').querySelector('td.cost-paid')!;
+    expect(cell.textContent).toMatch(/^90,00\s€$/);
+    expect(cell.querySelector('svg')).toBeNull();
   });
 
   it('pay input: blur saves the prefilled budget', async () => {
@@ -142,6 +205,20 @@ describe('cost list (UC-005)', () => {
     await user.tab();
     expect(await within(line('Basso')).findByText('Virheellinen arvo.')).toBeInTheDocument();
     expect(within(line('Basso')).getByRole('textbox', { name: 'Toteutunut summa: Basso' })).toBeInTheDocument();
+
+    // 0 on an unpaid line is not a payment: Enter closes back to the focused button, blur too.
+    await user.clear(amount);
+    await user.type(amount, '0{Enter}');
+    expect(button()).toHaveFocus();
+    await user.click(button());
+    await user.keyboard('0');
+    await user.tab();
+    expect(button()).toBeInTheDocument();
+    // Empty + blur still cancels.
+    await user.click(button());
+    await user.clear(within(line('Basso')).getByRole('textbox', { name: 'Toteutunut summa: Basso' }));
+    await user.tab();
+    expect(button()).toBeInTheDocument();
     expect(posts).toBe(0);
     expect(mockLine(event, 'BASS').paidAt).toBeNull();
     server.events.removeAllListeners();
