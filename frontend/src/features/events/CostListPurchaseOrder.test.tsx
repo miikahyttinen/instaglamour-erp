@@ -55,7 +55,7 @@ describe('cost lines on a purchase order (BR-118)', () => {
     const { event } = addMockPurchaseOrder({ status: 'PAID' });
     await openEvent(event.id);
     const voc = line('Laulu');
-    expect(within(voc).queryByRole('textbox', { name: /Maksettu summa/ })).not.toBeInTheDocument();
+    expect(within(voc).queryByRole('textbox', { name: /Toteutunut summa/ })).not.toBeInTheDocument();
     expect(within(voc).queryByRole('button', { name: 'Poista maksumerkintä' })).not.toBeInTheDocument();
     expect(within(voc).getByText(/Maksettu/)).toBeInTheDocument();
   });

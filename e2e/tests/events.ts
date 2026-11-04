@@ -109,7 +109,7 @@ export function totalPrice(page: Page): Locator {
 }
 
 /** Cost line field on the event page, e.g. `costField(page, 'Budjetti', 'Laulu')` → "Budjetti: Laulu". */
-export function costField(page: Page, field: 'Budjetti' | 'Kuvaus' | 'Maksettu summa' | 'Henkilö', line: string): Locator {
+export function costField(page: Page, field: 'Budjetti' | 'Kuvaus' | 'Toteutunut summa' | 'Henkilö', line: string): Locator {
   return page
     .getByRole('table', { name: 'Kulut ja miehitys' })
     .getByLabel(`${field}: ${line}`, { exact: true });

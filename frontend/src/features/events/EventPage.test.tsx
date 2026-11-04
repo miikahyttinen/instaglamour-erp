@@ -428,7 +428,7 @@ describe('event page (UC-004, UC-007)', () => {
     await user.click(restore);
     expect(await screen.findByText('Keikka palautettu poistosta.')).toBeInTheDocument();
     // All data is back, including the payment (AC-3).
-    const paidAmounts = await screen.findAllByRole('textbox', { name: /^Maksettu summa: / });
+    const paidAmounts = await screen.findAllByRole('textbox', { name: /^Toteutunut summa: / });
     expect(paidAmounts.map((el) => (el as HTMLInputElement).value)).toContain('100,00');
   });
 

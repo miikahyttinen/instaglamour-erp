@@ -71,12 +71,19 @@ test('create an event from a template, staff it, switch load-in, mark paid', asy
   await expect(costField(page, 'Budjetti', 'Laulu')).toHaveValue(fiInput(vocBudget));
   await expect(econTile(page, 'Kulut').budget).toHaveText(fiMoney(budgeted - SEED.loadInDeductionCents));
 
-  // Mark paid with the default amount (= budgeted).
+  // Unpaid: the actual cell shows only the button, no "Maksamatta" tag.
+  await expect(voc).not.toContainText('Maksamatta');
+  // Mark paid with the default amount (= budgeted): the button turns into the amount input in
+  // place (focused, prefilled), Enter saves.
   await voc.getByRole('button', { name: 'Merkitse maksetuksi' }).click();
-  await expect(voc.getByLabel('Maksettu summa', { exact: true })).toHaveValue(fiInput(vocBudget));
-  await voc.getByRole('button', { name: 'Merkitse maksetuksi' }).click();
-  // Paid: the amount is an inline field ("Maksettu summa: Laulu"); time and partner next to it.
-  await expect(costField(page, 'Maksettu summa', 'Laulu')).toHaveValue(fiInput(vocBudget));
+  const payInput = costField(page, 'Toteutunut summa', 'Laulu');
+  await expect(payInput).toBeFocused();
+  await expect(payInput).toHaveValue(fiInput(vocBudget));
+  await expect(voc.getByRole('button', { name: 'Merkitse maksetuksi' })).toHaveCount(0);
+  await payInput.press('Enter');
+  // Paid: the amount is an inline field ("Toteutunut summa: Laulu"); time and partner next to it.
+  await expect(voc.locator('.paid-info')).toBeVisible();
+  await expect(costField(page, 'Toteutunut summa', 'Laulu')).toHaveValue(fiInput(vocBudget));
   await expect(voc.locator('.paid-info')).toContainText('Partner A');
   await expect(voc.getByRole('button', { name: 'Poista maksumerkintä' })).toBeVisible();
 
@@ -173,9 +180,15 @@ test('cost lines are edited in place; Esc and invalid amounts are not saved', as
 
   // Paid amount: after marking paid, the amount itself is edited in place.
   const dj = costLine(page, 'DJ');
+  // Esc on the pay input returns to the button without saving.
   await dj.getByRole('button', { name: 'Merkitse maksetuksi' }).click();
+  await costField(page, 'Toteutunut summa', 'DJ').press('Escape');
+  await expect(dj.getByRole('button', { name: 'Merkitse maksetuksi' })).toBeFocused();
+  // Blur saves the prefilled budget.
   await dj.getByRole('button', { name: 'Merkitse maksetuksi' }).click();
-  const paid = costField(page, 'Maksettu summa', 'DJ');
+  await costField(page, 'Toteutunut summa', 'DJ').blur();
+  await expect(dj.locator('.paid-info')).toBeVisible();
+  const paid = costField(page, 'Toteutunut summa', 'DJ');
   await expect(paid).toHaveValue(fiInput(fee));
   expect(await editInline(page, paid, fiInput(djPaid))).toEqual({ actualCents: djPaid });
   await expect(econTile(page, 'Kulut').actual).toHaveText(fiMoney(djPaid));
