@@ -568,7 +568,21 @@ One derived value **`invoiceState`** = the next invoicing action; first match wi
 - Applies to: Google sign-in domain check (BR-070), dev login, and partner email validation (`PUT /api/people/{id}/partner`: such an address no longer gets `email: INVALID_VALUE`). The person must still be an **active partner** to sign in.
 - Unset/empty = no change. Invalid entries (not an email) → startup error.
 
+## Invoicing v3: sent / not sent, automatic final invoice (owner decision 2026-11-04) — replaces payment tracking
+**Payments are not tracked.** Invoice rows have two statuses: `NOT_SENT` ("Lähettämättä / Not sent") and `SENT` ("Lähetetty / Sent").
+- Migration: row `READY` → `NOT_SENT`; `SENT` and `PAID` → `SENT`.
+- Figures on `EventSummary`/`EventDetail`: `sentCents` (Σ SENT), `notSentCents` (Σ NOT_SENT), `uninvoicedCents` = max(total − sentCents − notSentCents, 0), `balanceCents` = total − sentCents ("Laskuttamatta / Not invoiced yet"). Removed: `paidCents`, `openCents`, `readyCents`, `invoicedCents`.
+- **`invoiceState`** (one label, first match wins):
+  1. `OPEN_INVOICES` — any NOT_SENT row → "Avoimia laskuja / Open invoices" (**yellow**)
+  2. `FULLY_INVOICED` — sentCents ≥ total and total > 0 → "Laskutettu / Fully invoiced" (**dark green**, solid)
+  3. `NONE` — gig not played yet (upcoming), or cancelled/total 0 without rows → "–"
+  4. `PARTLY_INVOICED` — played and sentCents < total → "Osittain laskutettu / Partly invoiced" (**blue**)
+  Filter `?invoiceState=` uses these values.
+- **Automatic final invoice ("Loppulasku"):** a backend job (runs at startup and every 15 minutes) finds SOLD, non-deleted gigs whose end (end date, else start date) + **48 hours** (organisation time zone, Europe/Helsinki) has passed, `total > 0`, `uninvoicedCents > 0`, and `finalInvoiceCreatedAt` is null. It adds one row `{ description: "Loppulasku", amountCents: uninvoicedCents, status: NOT_SENT }` (createdBy null, history `INVOICE_ROW_ADDED` with `details.auto: true`) and sets `event.final_invoice_created_at`, so it is created **only once per gig** (deleting it does not bring it back). The job is idempotent and safe to run concurrently (row lock / advisory lock).
+- Row endpoints unchanged except allowed statuses (`NOT_SENT` default, `SENT`); old values `READY`/`PAID` → 400 `INVALID_VALUE`.
+
 ## Change log
+- 2026-11-04 – Invoicing v3: rows NOT_SENT/SENT, no payments, states OPEN_INVOICES/FULLY_INVOICED/PARTLY_INVOICED/NONE, automatic Loppulasku 48 h after the gig (PM)
 - 2026-11-03 – AUTH_EXTRA_ALLOWED_EMAILS (exception list for sign-in outside the domain) (PM)
 - 2026-10-31 – Gig file attachments removed from the app (PM)
 - 2026-10-31 – Invoicing back to one label (next action): PAID / ROWS_TO_INVOICE / OPEN_INVOICES / NEEDS_INVOICES / NONE (PM)
