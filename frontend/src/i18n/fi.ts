@@ -436,7 +436,6 @@ const fi = {
     budgeted: 'Budjetti',
     loadIn: 'Roudaus ja soundcheck',
     unpaid: 'Maksamatta',
-    fuelHint: 'Arvio – ei maksumerkintää.',
     markPaid: 'Merkitse maksetuksi',
     actualAmount: 'Toteutunut summa',
     removeTitle: 'Poista kulurivi',

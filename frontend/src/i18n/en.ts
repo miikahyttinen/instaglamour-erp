@@ -433,7 +433,6 @@ const en: Resources = {
     budgeted: 'Budget',
     loadIn: 'Load-in & soundcheck',
     unpaid: 'Not paid',
-    fuelHint: 'Estimate – not marked paid.',
     markPaid: 'Mark paid',
     actualAmount: 'Actual amount',
     removeTitle: 'Remove cost line',
