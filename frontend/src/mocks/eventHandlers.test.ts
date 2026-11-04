@@ -172,7 +172,8 @@ describe('event mocks', () => {
   });
 
   it('double booking counts performers only: SALES on one event + VOC on another never warns (BR-022)', async () => {
-    const person = db.events.people.find((p) => p.name === 'Person 1')!;
+    // SALES / PRODUCTION take partners only: Partner B also sings.
+    const person = { id: partnerB().personId };
     const eventA = await eventsApi.create(eventInput({ startDate: `${YEAR}-08-01` }));
     const eventB = await eventsApi.create(eventInput({ startDate: `${YEAR}-08-01` }));
 
@@ -455,5 +456,38 @@ describe('event mocks', () => {
     expect(active.some((p) => p.name === 'Person 9')).toBe(false);
     const created = await peopleApi.create({ name: 'person 1' });
     expect(created.warnings).toEqual([{ code: 'DUPLICATE_NAME' }]);
+  });
+
+  it('SALES / PRODUCTION lines take only active partners (NOT_PARTNER)', async () => {
+    const person1 = db.events.people.find((p) => p.name === 'Person 1')!;
+    const event = await eventsApi.create(eventInput());
+
+    let error = await expectError(
+      costLinesApi.create(event.id, { type: 'SALES', personId: person1.id, budgetedCents: 1000 }),
+    );
+    expect(error).toMatchObject({ status: 400, fields: { personId: 'NOT_PARTNER' } });
+    error = await expectError(costLinesApi.update(line(event, 'PRODUCTION').id, { personId: person1.id }));
+    expect(error.fields).toEqual({ personId: 'NOT_PARTNER' });
+
+    // Partners and "no person" are fine; other line types take anyone.
+    const created = await costLinesApi.create(event.id, {
+      type: 'PRODUCTION',
+      personId: partnerB().personId,
+      budgetedCents: 1000,
+    });
+    expect(created.event.costLines.filter((l) => l.type === 'PRODUCTION')).toHaveLength(2);
+    await costLinesApi.update(line(event, 'SALES').id, { personId: null });
+    await costLinesApi.create(event.id, { type: 'OFFICE', personId: person1.id, budgetedCents: 1000 });
+
+    // A removed partner no longer qualifies.
+    partnerB().active = false;
+    error = await expectError(costLinesApi.update(line(event, 'SALES').id, { personId: partnerB().personId }));
+    expect(error.fields).toEqual({ personId: 'NOT_PARTNER' });
+
+    // An existing line that breaks the rule is only checked when its person changes.
+    const sales = db.events.costLines.find((l) => l.id === line(event, 'SALES').id)!;
+    sales.personId = person1.id;
+    const result = await costLinesApi.update(sales.id, { personId: person1.id, description: 'Note' });
+    expect(line(result.event, 'SALES')).toMatchObject({ personId: person1.id, description: 'Note' });
   });
 });
