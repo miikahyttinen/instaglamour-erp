@@ -1,10 +1,10 @@
 import { useMutation } from '@tanstack/react-query';
-import { CircleCheck, Trash2 } from 'lucide-react';
+import { CircleCheck, Lock, Trash2, Undo2 } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import type { CostType } from '../../api/enums';
-import { isMusicianRole } from '../../api/enums';
+import { INTERNAL_ROLES, isMusicianRole } from '../../api/enums';
 import { costLinesApi } from '../../api/endpoints';
 import type { CostLine, CostLineUpdate, EventDetail, EventWithWarnings, Person, Warning } from '../../api/types';
 import { Button, IconButton } from '../../components/Button';
@@ -32,6 +32,8 @@ interface Props {
 const needsDescription = (type: CostType) => type === 'OTHER' || type === 'OTHER_ROLE';
 /** Contract: description strings up to 5000 chars (TOO_LONG). */
 const DESCRIPTION_MAX = 5000;
+/** "Miehitys" group: musician roles and the internal roles (OFFICE / SALES / PRODUCTION). */
+const isStaffing = (type: CostType) => isMusicianRole(type) || (INTERNAL_ROLES as readonly CostType[]).includes(type);
 
 /** One list of fees and expenses with staffing, load-in switch and payments (UC-005). */
 export function CostList({ event, people, readOnly, onWarnings }: Props) {
@@ -44,79 +46,166 @@ export function CostList({ event, people, readOnly, onWarnings }: Props) {
     onWarnings(result.warnings);
   };
   const columnCount = readOnly ? 5 : 6;
+  // Owner request: staffing (musician + internal roles) and costs (expense categories) as two
+  // visually separate groups, each with its own totals; the overall totals stay below.
+  const groups = (
+    [
+      ['staffing', t('costs.sectionStaffing'), event.costLines.filter((l) => isStaffing(l.type))],
+      ['expenses', t('costs.sectionCosts'), event.costLines.filter((l) => !isStaffing(l.type))],
+    ] as const
+  ).filter(([, , lines]) => lines.length > 0);
 
   return (
+    // Owner request: the table box starts at the top of the section, level with the "Perustiedot"
+    // card in the right column; the "not fully staffed" tag sits in the Miehitys head and the
+    // purchase order action next to "+ Lisää rivi" below the table.
     <div className="cost-list">
-      {!readOnly && <EventPurchaseOrder event={event} people={people} />}
-      {event.notFullyStaffed && (
-        <p className="cost-staffing" role="note">
-          <StatusTag tone="warn">{t('events.notFullyStaffed')}</StatusTag>
-        </p>
-      )}
       {event.costLines.length === 0 ? (
         <p className="table-empty">{t('costs.empty')}</p>
       ) : (
         // Hand-written .data-table (not <DataTable>): each line is its own named <tbody>, so the
-        // pay form can open in a full-width row right under their line.
+        // pay form can open in a full-width row right under their line. Group heads and totals are
+        // their own unnamed <tbody>s.
         <div className="table-wrap">
           <table className="data-table cost-table">
             <caption className="visually-hidden">{t('event.sections.costs')}</caption>
             <thead>
               <tr>
-                <th scope="col">{t('costs.type')}</th>
-                <th scope="col">{t('costs.person')}</th>
-                <th scope="col" className="cost-col-loadin">
-                  {t('costs.loadIn')}
+                <th scope="col" className="cost-col-type">
+                  {t('costs.type')}
                 </th>
-                <th scope="col" className="num">
+                <th scope="col" className="cost-col-person">
+                  {t('costs.person')}
+                </th>
+                <th scope="col" className="cost-col-loadin" title={t('costs.loadIn')}>
+                  <span aria-hidden="true">{t('costs.loadInShort')}</span>
+                  <span className="visually-hidden">{t('costs.loadIn')}</span>
+                </th>
+                <th scope="col" className="num cost-col-budget">
                   {t('costs.budgeted')}
                 </th>
-                <th scope="col">{t('event.actual')}</th>
+                <th scope="col" className="cost-col-paid">
+                  {t('event.actual')}
+                </th>
                 {!readOnly && (
-                  <th scope="col">
+                  <th scope="col" className="cost-col-actions">
                     <span className="visually-hidden">{t('event.actions.label')}</span>
                   </th>
                 )}
               </tr>
             </thead>
-            {event.costLines.map((line) => (
-              <CostLineItem
-                key={line.id}
-                line={line}
+            {groups.map(([key, title, lines]) => (
+              <CostGroup
+                key={key}
+                kind={key}
+                title={title}
+                lines={lines}
+                notFullyStaffed={key === 'staffing' && event.notFullyStaffed}
                 people={people}
                 readOnly={readOnly}
                 columnCount={columnCount}
                 onResult={onResult}
               />
             ))}
+            {/* Overall totals, right under the budget / actual columns like the group totals. */}
+            <tfoot className="cost-grand-total">
+              <tr>
+                <th scope="row" colSpan={3}>
+                  {t('costs.grandTotal')}
+                </th>
+                <td className="num cost-budget" data-label={t('costs.budgeted')}>
+                  <span className="inline-num-value cost-amount">{formatMoney(event.budgetedCostsCents, lang)}</span>
+                </td>
+                <td className="num cost-paid" data-label={t('event.actual')}>
+                  <span className="inline-num-value cost-amount">{formatMoney(event.actualCostsCents, lang)}</span>
+                </td>
+                {!readOnly && <td className="cost-actions" />}
+              </tr>
+            </tfoot>
           </table>
         </div>
       )}
-      <dl className="cost-totals">
-        <div>
-          <dt>{t('costs.totalBudgeted')}</dt>
-          <dd>{formatMoney(event.budgetedCostsCents, lang)}</dd>
+      {!readOnly && (
+        <div className="cost-list-bottom">
+          {!adding && <Button onClick={() => setAdding(true)}>+ {t('costs.add')}</Button>}
+          <EventPurchaseOrder event={event} people={people} />
         </div>
-        <div>
-          <dt>{t('costs.totalActual')}</dt>
-          <dd>{formatMoney(event.actualCostsCents, lang)}</dd>
-        </div>
-      </dl>
-      {!readOnly &&
-        (adding ? (
-          <AddCostLineForm
-            event={event}
-            people={people}
-            onDone={(result) => {
-              onResult(result);
-              setAdding(false);
-            }}
-            onCancel={() => setAdding(false)}
-          />
-        ) : (
-          <Button onClick={() => setAdding(true)}>+ {t('costs.add')}</Button>
-        ))}
+      )}
+      {!readOnly && adding && (
+        <AddCostLineForm
+          event={event}
+          people={people}
+          onDone={(result) => {
+            onResult(result);
+            setAdding(false);
+          }}
+          onCancel={() => setAdding(false)}
+        />
+      )}
     </div>
+  );
+}
+
+interface GroupProps {
+  kind: 'staffing' | 'expenses';
+  title: string;
+  lines: readonly CostLine[];
+  notFullyStaffed: boolean;
+  people: Person[] | undefined;
+  readOnly: boolean;
+  columnCount: number;
+  onResult: (result: EventWithWarnings) => void;
+}
+
+/** One group: a small head row, its lines (one <tbody> each) and a subtle totals row. */
+function CostGroup({ kind, title, lines, notFullyStaffed, people, readOnly, columnCount, onResult }: GroupProps) {
+  const { t } = useTranslation();
+  const lang = useLang();
+  const budgeted = lines.reduce((sum, l) => sum + l.budgetedCents, 0);
+  // Same rule as the event's actualCostsCents: Σ actualCents of paid lines.
+  const actual = lines.reduce((sum, l) => sum + (l.paidAt !== null ? (l.actualCents ?? 0) : 0), 0);
+  const groupClass = `cost-in-${kind}`;
+  return (
+    <>
+      <tbody className={`cost-section-head ${groupClass}`}>
+        <tr>
+          <th scope="colgroup" colSpan={columnCount}>
+            {title}
+            {notFullyStaffed && ' '}
+            {notFullyStaffed && (
+              <span className="cost-staffing" role="note">
+                <StatusTag tone="warn">{t('events.notFullyStaffed')}</StatusTag>
+              </span>
+            )}
+          </th>
+        </tr>
+      </tbody>
+      {lines.map((line) => (
+        <CostLineItem
+          key={line.id}
+          line={line}
+          people={people}
+          readOnly={readOnly}
+          columnCount={columnCount}
+          groupClass={groupClass}
+          onResult={onResult}
+        />
+      ))}
+      <tbody className={`cost-section-foot ${groupClass}`}>
+        <tr>
+          <th scope="row" colSpan={3}>
+            {t('costs.sectionTotal', { group: title })}
+          </th>
+          <td className="num cost-budget" data-label={t('costs.budgeted')}>
+            <span className="inline-num-value cost-amount">{formatMoney(budgeted, lang)}</span>
+          </td>
+          <td className="num cost-paid" data-label={t('event.actual')}>
+            <span className="inline-num-value cost-amount">{formatMoney(actual, lang)}</span>
+          </td>
+          {!readOnly && <td className="cost-actions" />}
+        </tr>
+      </tbody>
+    </>
   );
 }
 
@@ -125,10 +214,11 @@ interface LineProps {
   people: Person[] | undefined;
   readOnly: boolean;
   columnCount: number;
+  groupClass: string;
   onResult: (result: EventWithWarnings) => void;
 }
 
-function CostLineItem({ line, people, readOnly, columnCount, onResult }: LineProps) {
+function CostLineItem({ line, people, readOnly, columnCount, groupClass, onResult }: LineProps) {
   const { t } = useTranslation();
   const lang = useLang();
   const paidBy = usePartner(line.paidBy);
@@ -155,37 +245,39 @@ function CostLineItem({ line, people, readOnly, columnCount, onResult }: LinePro
   const hasExtraRow = (mutation.isError && mode !== 'remove') || mode === 'pay';
 
   return (
-    <tbody className={paid ? 'cost-group is-paid' : 'cost-group'} aria-label={label}>
+    <tbody className={`cost-group ${groupClass}${paid ? ' is-paid' : ''}`} aria-label={label}>
       <tr>
         <td className="cell-primary cost-type">
-          <span className="cost-type-name">{typeLabel}</span>
-          {po && (
-            <Link
-              to={`/purchase-orders/${po.id}`}
-              className="tag tag-info cost-po-tag"
-              title={lockedHint}
-              aria-label={t('purchaseOrders.tagLabel', { number: po.number })}
-            >
-              {t('purchaseOrders.tag', { number: po.number })}
-            </Link>
-          )}
-          {readOnly ? (
-            line.description && <span className="cost-type-description"> · {line.description}</span>
-          ) : (
-            <InlineText
-              label={`${t('costs.description')}: ${label}`}
-              hideLabel
-              className="cost-description"
-              value={line.description}
-              placeholder={t('costs.description')}
-              maxLength={DESCRIPTION_MAX}
-              field="description"
-              validate={(description) =>
-                needsDescription(line.type) && description === null ? 'DESCRIPTION_REQUIRED' : null
-              }
-              onSave={(description) => update({ description })}
-            />
-          )}
+          <div className="cost-type-inner">
+            <span className="cost-type-name">{typeLabel}</span>
+            {po && (
+              <Link
+                to={`/purchase-orders/${po.id}`}
+                className="tag tag-info cost-po-tag"
+                title={lockedHint}
+                aria-label={t('purchaseOrders.tagLabel', { number: po.number })}
+              >
+                {t('purchaseOrders.tag', { number: po.number })}
+              </Link>
+            )}
+            {readOnly ? (
+              line.description && <span className="cost-type-description"> · {line.description}</span>
+            ) : (
+              <InlineText
+                label={`${t('costs.description')}: ${label}`}
+                hideLabel
+                className="cost-description"
+                value={line.description}
+                placeholder={t('costs.description')}
+                maxLength={DESCRIPTION_MAX}
+                field="description"
+                validate={(description) =>
+                  needsDescription(line.type) && description === null ? 'DESCRIPTION_REQUIRED' : null
+                }
+                onSave={(description) => update({ description })}
+              />
+            )}
+          </div>
         </td>
 
         <td className="cost-person" data-label={t('costs.person')} title={lockedHint}>
@@ -217,7 +309,7 @@ function CostLineItem({ line, people, readOnly, columnCount, onResult }: LinePro
 
         <td className="num cost-budget" data-label={t('costs.budgeted')} title={lockedHint}>
           {readOnly ? (
-            formatMoney(line.budgetedCents, lang)
+            <span className="inline-num-value cost-amount">{formatMoney(line.budgetedCents, lang)}</span>
           ) : (
             <InlineMoney
               label={`${t('costs.budgeted')}: ${label}`}
@@ -251,16 +343,16 @@ function CostLineItem({ line, people, readOnly, columnCount, onResult }: LinePro
               </span>
             </div>
           ) : paid ? (
-            <span className="paid-info">
-              <CircleCheck className="paid-icon" />
-              <span>
-                {t('costs.paidInfo', {
-                  amount: formatMoney(line.actualCents, lang),
-                  time: formatDateTime(line.paidAt, lang),
-                  partner: paidBy?.name ?? '–',
-                })}
+            // Read-only / locked by a PO: the amount in the same slot as the inline amounts.
+            <div className="cost-paid-edit">
+              <span className="inline-num-value cost-amount is-paid">{formatMoney(line.actualCents, lang)}</span>
+              <span className="paid-info">
+                <CircleCheck className="paid-icon" />
+                <span>
+                  {t('costs.paidMeta', { time: formatDateTime(line.paidAt, lang), partner: paidBy?.name ?? '–' })}
+                </span>
               </span>
-            </span>
+            </div>
           ) : line.type === 'FUEL' ? (
             <span className="cost-hint">{t('costs.fuelHint')}</span>
           ) : (
@@ -270,22 +362,32 @@ function CostLineItem({ line, people, readOnly, columnCount, onResult }: LinePro
 
         {!readOnly && (
           <td className="cost-actions">
-            {po && <span className="cost-hint cost-po-hint">{lockedHint}</span>}
+            {po && (
+              // The "PO <number>" tag next to the type links to it; here just a lock with the hint.
+              <span className="cost-po-lock" title={lockedHint}>
+                <Lock className="cost-po-lock-icon" aria-hidden="true" />
+                <span className="visually-hidden">{lockedHint}</span>
+              </span>
+            )}
             {mode !== 'pay' && !po && (
               <div className="cost-actions-inner">
                 {paid ? (
-                  <Button
-                    size="sm"
+                  <IconButton
+                    variant="ghost"
+                    icon={Undo2}
+                    label={t('costs.unmarkPaid')}
                     disabled={mutation.isPending}
                     onClick={() => run(() => costLinesApi.unpay(line.id))}
-                  >
-                    {t('costs.unmarkPaid')}
-                  </Button>
+                  />
                 ) : (
                   line.type !== 'FUEL' && (
-                    <Button size="sm" onClick={() => setMode('pay')}>
-                      {t('costs.markPaid')}
-                    </Button>
+                    <IconButton
+                      variant="ghost"
+                      icon={CircleCheck}
+                      label={t('costs.markPaid')}
+                      className="cost-pay"
+                      onClick={() => setMode('pay')}
+                    />
                   )
                 )}
                 <IconButton

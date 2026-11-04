@@ -75,11 +75,14 @@ export function costLine(page: Page, label: string): Locator {
   return page.getByRole('table', { name: 'Kulut ja miehitys' }).getByRole('rowgroup', { name: label, exact: true });
 }
 
-/** All cost lines on the event page (the header rowgroup has column headers, no cells). */
+/**
+ * All cost lines on the event page: the named rowgroups. The column header row group, the group
+ * heads ("Miehitys" / "Kulut") and the group totals rows are unnamed row groups.
+ */
 export function costLines(page: Page): Locator {
   return page
     .getByRole('table', { name: 'Kulut ja miehitys' })
-    .getByRole('rowgroup')
+    .getByRole('rowgroup', { name: /\S/ })
     .filter({ has: page.getByRole('cell') });
 }
 
