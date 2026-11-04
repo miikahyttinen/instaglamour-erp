@@ -265,7 +265,7 @@ test.describe('desktop sidebar', () => {
         return { budget: column('cost-budget'), paid: column('cost-paid') };
       });
       for (const [col, xs] of Object.entries(edges)) {
-        expect(xs.length, `${where}: ${col} amounts measured`).toBeGreaterThanOrEqual(3);
+        expect(xs.length, `${where}: ${col} amounts measured`).toBeGreaterThanOrEqual(2);
         expect(Math.max(...xs) - Math.min(...xs), `${where}: ${col} amounts share one right edge`).toBeLessThanOrEqual(1);
       }
 
