@@ -19,10 +19,9 @@ describe('EventStatusTag', () => {
   });
 
   it.each([
-    ['PAID', 'Maksettu', 'tag-ok-strong'],
-    ['ROWS_TO_INVOICE', 'Laskutettavia rivejä', 'tag-info'],
-    ['OPEN_INVOICES', 'Avoimia laskuja', 'tag-warn'],
-    ['NEEDS_INVOICES', 'Laskuttamatta', 'tag-yellow'],
+    ['OPEN_INVOICES', 'Avoimia laskuja', 'tag-yellow'],
+    ['FULLY_INVOICED', 'Laskutettu', 'tag-ok-strong'],
+    ['PARTLY_INVOICED', 'Osittain laskutettu', 'tag-info'],
   ] as const)('invoicing state %s is one "%s" tag (%s)', (state, label, toneClass) => {
     const { container } = render(<InvoiceStateTag state={state} />);
     expect(screen.getByText(label)).toHaveClass('tag', toneClass);
@@ -33,8 +32,8 @@ describe('EventStatusTag', () => {
     for (const state of INVOICE_STATES) if (state !== 'NONE') expect(INVOICE_STATE_TONE[state]).toBeDefined();
   });
 
-  it('invoice row statuses: Ready blue, Sent light green, Paid solid green', () => {
-    expect(INVOICE_ROW_STATUS_TONE).toEqual({ READY: 'info', SENT: 'ok', PAID: 'ok-strong' });
+  it('invoice row statuses: Not sent yellow, Sent green', () => {
+    expect(INVOICE_ROW_STATUS_TONE).toEqual({ NOT_SENT: 'yellow', SENT: 'ok' });
   });
 
   it('NONE is a plain dash', () => {

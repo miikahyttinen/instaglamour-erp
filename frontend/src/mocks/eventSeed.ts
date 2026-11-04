@@ -4,6 +4,7 @@ import type { MusicianRole } from '../api/enums';
 import type { LineupTemplate, Partner, Settings } from '../api/types';
 import type { EventState, MockClient, MockPerson, NewEventInput } from './eventStore';
 import {
+  addAutoFinalInvoice,
   addCostLine,
   addInvoiceRow,
   createEvent,
@@ -108,7 +109,7 @@ export function seedEventState(
   // An old-style history entry (before invoice statuses) still renders its own text.
   logEvent(state, g1.id, 'READY_FOR_INVOICE', a.id);
   // Seeded invoice rows have no who / when (as in the backend seed).
-  addInvoiceRow(state, g1, { description: 'Lasku', amountCents: 200000, status: 'READY' }, null);
+  addInvoiceRow(state, g1, { description: 'Lasku', amountCents: 200000, status: 'SENT' }, null);
 
   // 2. Two-day event with additional sales; keys not staffed.
   const g2 = createEvent(
@@ -139,7 +140,9 @@ export function seedEventState(
     ],
     movedCostLineIds: [],
   });
-  addInvoiceRow(state, g2, { description: 'Ennakkomaksu', amountCents: 50000, status: 'PAID' }, null);
+  addInvoiceRow(state, g2, { description: 'Ennakkomaksu', amountCents: 50000, status: 'SENT' }, null);
+  // The automatic final invoice for the rest (api-contract "Invoicing v3").
+  addAutoFinalInvoice(state, g2);
 
   // 3. Cancelled; price adjusted to what is still billed.
   const g3 = createEvent(

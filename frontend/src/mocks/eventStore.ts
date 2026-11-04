@@ -119,44 +119,44 @@ export function invoiceRowsOf(state: EventState, eventId: Id): InvoiceRow[] {
 }
 
 export interface InvoiceFigures {
-  invoicedCents: number;
-  paidCents: number;
-  readyCents: number;
-  openCents: number;
+  sentCents: number;
+  notSentCents: number;
+  uninvoicedCents: number;
   balanceCents: number;
   invoiceState: InvoiceState;
 }
 
 /**
- * Derived invoicing figures of a gig (api-contract "Invoice rows" and "Invoicing: one label"):
- * invoiced = Σ SENT + PAID, paid = Σ PAID, open = Σ SENT, ready = Σ READY (drafts).
- * `played` = SOLD and the start date has passed; only played gigs can be NEEDS_INVOICES
- * (upcoming and cancelled gigs fall to NONE).
+ * Derived invoicing figures of a gig (api-contract "Invoicing v3"): sent = Σ SENT, notSent =
+ * Σ NOT_SENT, uninvoiced = max(total − sent − notSent, 0), balance = total − sent.
+ * State, first match wins: any NOT_SENT row → OPEN_INVOICES; sent ≥ total > 0 → FULLY_INVOICED;
+ * played (SOLD, start date passed) and sent < total → PARTLY_INVOICED; otherwise NONE (upcoming,
+ * cancelled, total 0).
  */
 export function invoiceFigures(
   rows: Pick<InvoiceRow, 'status' | 'amountCents'>[],
   totalPriceCents: number,
   played: boolean,
 ): InvoiceFigures {
-  const sum = (statuses: InvoiceRowStatus[]) =>
-    rows.filter((r) => statuses.includes(r.status)).reduce((s, r) => s + r.amountCents, 0);
+  const sum = (status: InvoiceRowStatus) =>
+    rows.filter((r) => r.status === status).reduce((s, r) => s + r.amountCents, 0);
   const total = totalPriceCents;
-  const invoicedCents = sum(['SENT', 'PAID']);
-  const paidCents = sum(['PAID']);
-  const openCents = sum(['SENT']);
-  const readyCents = sum(['READY']);
-  // Next invoicing action (api-contract "Invoicing: one label"); first match wins.
-  const invoiceState: InvoiceState =
-    paidCents > 0 && paidCents >= total
-      ? 'PAID'
-      : readyCents > 0
-        ? 'ROWS_TO_INVOICE'
-        : openCents > 0
-          ? 'OPEN_INVOICES'
-          : played && invoicedCents < total
-            ? 'NEEDS_INVOICES'
-            : 'NONE';
-  return { invoicedCents, paidCents, readyCents, openCents, balanceCents: total - paidCents, invoiceState };
+  const sentCents = sum('SENT');
+  const notSentCents = sum('NOT_SENT');
+  const invoiceState: InvoiceState = rows.some((r) => r.status === 'NOT_SENT')
+    ? 'OPEN_INVOICES'
+    : total > 0 && sentCents >= total
+      ? 'FULLY_INVOICED'
+      : played && sentCents < total
+        ? 'PARTLY_INVOICED'
+        : 'NONE';
+  return {
+    sentCents,
+    notSentCents,
+    uninvoicedCents: Math.max(total - sentCents - notSentCents, 0),
+    balanceCents: total - sentCents,
+    invoiceState,
+  };
 }
 
 export function toSummary(state: EventState, event: MockEvent, today = todayIso()): EventSummary {
@@ -238,7 +238,7 @@ export function logEvent(
   state: EventState,
   eventId: Id,
   type: EventHistoryType,
-  partnerId: Id,
+  partnerId: Id | null,
   details: object = {},
   reason: string | null = null,
 ): void {
@@ -563,6 +563,9 @@ export function updateEvent(
 
 // ---------- Invoice rows (api-contract "Invoice rows") ----------
 
+/** Description of the automatic final invoice row. */
+export const FINAL_INVOICE_DESCRIPTION = 'Loppulasku';
+
 const rowSnapshot = (row: InvoiceRow) => ({
   invoiceRowId: row.id,
   description: row.description,
@@ -582,7 +585,7 @@ export function addInvoiceRow(
     eventId: event.id,
     description: input.description,
     amountCents: input.amountCents,
-    status: input.status ?? 'READY',
+    status: input.status ?? 'NOT_SENT',
     statusAt: actorId ? ts : null,
     statusBy: actorId,
     createdAt: ts,
@@ -591,6 +594,20 @@ export function addInvoiceRow(
   state.invoiceRows.push(row);
   event.updatedAt = ts;
   if (actorId) logEvent(state, event.id, 'INVOICE_ROW_ADDED', actorId, rowSnapshot(row));
+  return row;
+}
+
+/**
+ * The automatic final invoice (api-contract "Invoicing v3"): one NOT_SENT "Loppulasku" row for the
+ * uninvoiced amount, no creator, history INVOICE_ROW_ADDED by the system with `auto: true`. The
+ * mock has no timer job; the seed and tests call this to get such a row.
+ */
+export function addAutoFinalInvoice(state: EventState, event: MockEvent): InvoiceRow | null {
+  const total = event.priceCents + event.additionalSalesCents;
+  const { uninvoicedCents } = invoiceFigures(invoiceRowsOf(state, event.id), total, false);
+  if (uninvoicedCents <= 0) return null;
+  const row = addInvoiceRow(state, event, { description: FINAL_INVOICE_DESCRIPTION, amountCents: uninvoicedCents }, null);
+  logEvent(state, event.id, 'INVOICE_ROW_ADDED', null, { ...rowSnapshot(row), auto: true });
   return row;
 }
 

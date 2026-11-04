@@ -71,15 +71,21 @@ export type EventDisplayStatus = (typeof EVENT_DISPLAY_STATUSES)[number];
 export const LEGACY_INVOICE_STATUSES = ['NONE', 'READY', 'PREPAYMENT_PAID', 'INVOICED', 'PAID'] as const;
 export type LegacyInvoiceStatus = (typeof LEGACY_INVOICE_STATUSES)[number];
 
-/** Status of one invoice row, in workflow order (api-contract "Invoice rows"). */
-export const INVOICE_ROW_STATUSES = ['READY', 'SENT', 'PAID'] as const;
+/** Status of one invoice row, in workflow order (api-contract "Invoicing v3"). */
+export const INVOICE_ROW_STATUSES = ['NOT_SENT', 'SENT'] as const;
 export type InvoiceRowStatus = (typeof INVOICE_ROW_STATUSES)[number];
 
 /**
- * A gig's next invoicing action, derived from its total and rows (api-contract "Invoicing: one
- * label"); listed in filter / sort order (nothing to do first, then by urgency, paid last).
+ * Former invoice row statuses (before "Invoicing v3"). Only old history entries still hold these
+ * codes (READY → NOT_SENT, PAID → SENT in the migration).
  */
-export const INVOICE_STATES = ['NONE', 'NEEDS_INVOICES', 'ROWS_TO_INVOICE', 'OPEN_INVOICES', 'PAID'] as const;
+export const LEGACY_INVOICE_ROW_STATUSES = ['READY', 'PAID'] as const;
+
+/**
+ * A gig's invoicing state, derived from its total and rows (api-contract "Invoicing v3"); listed in
+ * filter / sort order (nothing to do first, then open invoices, partly, fully invoiced last).
+ */
+export const INVOICE_STATES = ['NONE', 'OPEN_INVOICES', 'PARTLY_INVOICED', 'FULLY_INVOICED'] as const;
 export type InvoiceState = (typeof INVOICE_STATES)[number];
 
 export const TASK_STATUSES = ['OPEN', 'DONE'] as const;

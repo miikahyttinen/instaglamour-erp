@@ -54,10 +54,11 @@ const COLOR_TOKENS = [
 const STATUS_TOKENS = ['info', 'ok', 'ok-strong', 'warn', 'yellow', 'purple', 'danger'] as const;
 const SPACING = [1, 2, 3, 4, 5, 6, 7] as const;
 const TONES: { tone: StatusTone; text: string; use: string }[] = [
-  { tone: 'info', text: 'Upcoming', use: 'Upcoming gig / Open' },
-  { tone: 'ok', text: 'Played', use: 'Played gig / Done / Paid / Ready to be invoiced' },
-  { tone: 'warn', text: 'Not fully staffed', use: 'Overdue / staffing / contract warnings / Open invoices' },
-  { tone: 'yellow', text: 'Needs invoices', use: 'Needs invoices (played gig not fully invoiced)' },
+  { tone: 'info', text: 'Upcoming', use: 'Upcoming gig / Open / Partly invoiced' },
+  { tone: 'ok', text: 'Played', use: 'Played gig / Done / Invoice row sent' },
+  { tone: 'ok-strong', text: 'Fully invoiced', use: 'Fully invoiced (solid dark green)' },
+  { tone: 'warn', text: 'Not fully staffed', use: 'Overdue / staffing / contract warnings' },
+  { tone: 'yellow', text: 'Open invoices', use: 'Open invoices / invoice row not sent' },
   { tone: 'purple', text: 'Purple', use: 'currently unused (token kept)' },
   { tone: 'danger', text: 'Cancelled', use: 'Cancelled / Deleted' },
   { tone: 'muted', text: 'Inactive', use: 'neutral facts' },

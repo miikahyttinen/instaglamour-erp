@@ -52,7 +52,11 @@ export function History({ eventId, people }: { eventId: Id; people: Person[] | u
         <ol className="history-list" aria-label={t('event.sections.history')}>
           {entries.map((entry) => {
             const { title, lines } = describeEntry(t, lang, entry, ctx);
-            const partner = reference?.partners.find((p) => p.id === entry.partnerId)?.name ?? '–';
+            // No partner = done by the system (e.g. the automatic final invoice).
+            const partner =
+              entry.partnerId === null
+                ? t('history.system')
+                : (reference?.partners.find((p) => p.id === entry.partnerId)?.name ?? '–');
             return (
               <li key={entry.id} className="history-item">
                 <div className="history-title">

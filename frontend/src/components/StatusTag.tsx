@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react';
 
 /**
- * info: Upcoming gig / Open / Rows to be invoiced · ok: Played gig / Done ·
- * ok-strong (solid dark green): Paid · warn: Overdue / Not fully staffed / Open invoices / contract warnings ·
- * yellow: Needs invoices ("Laskuttamatta", distinct from the amber warn) ·
+ * info: Upcoming gig / Open / Partly invoiced · ok: Played gig / Done / Invoice row sent ·
+ * ok-strong (solid dark green): Fully invoiced · warn: Overdue / Not fully staffed / contract warnings ·
+ * yellow: Open invoices / invoice row not sent (distinct from the amber warn) ·
  * purple: currently unused (token kept) · danger: Cancelled / Deleted · muted: inactive, neutral facts.
  */
 export type StatusTone = 'info' | 'ok' | 'ok-strong' | 'warn' | 'yellow' | 'purple' | 'danger' | 'muted';
