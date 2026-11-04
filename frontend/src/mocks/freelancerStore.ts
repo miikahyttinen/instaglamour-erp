@@ -15,6 +15,7 @@ import type {
   PurchaseOrderEvent,
 } from '../api/types';
 import { todayIso } from '../lib/format';
+import { poLineAmounts, type PoAmountSettings } from '../lib/poAmounts';
 import { PERSON_IDS } from './eventSeed';
 import { mockId, nowTs, type EventState, type MockEvent, type MockPerson } from './eventStore';
 
@@ -26,6 +27,19 @@ export interface FreelancerState {
   events: PurchaseOrderEvent[];
   /** Global running number of BR-116 (next value). */
   nextSeq: number;
+  /** Setting `fees.performer_vat_rate_bp` (synthetic mock value). */
+  vatRateBp: number;
+}
+
+/** Mock default of the performer VAT rate (contract default 1350 bp). */
+export const MOCK_VAT_RATE_BP = 1350;
+
+/** VAT choice and sound check flags of a freelancer-created PO. */
+export interface PoChoices {
+  vatLiable: boolean;
+  /** Cost line id → was at the sound check. Missing = true. */
+  soundcheck: Record<Id, boolean>;
+  settings: PoAmountSettings;
 }
 
 /** Fixed token of Person 1 for the demo (`npm run dev:mock` → /f/<token>). Not a real secret. */
@@ -131,6 +145,7 @@ export function toPublicPurchaseOrder(po: PurchaseOrder): PublicPurchaseOrder {
   return {
     number: po.number,
     status: po.status,
+    vatLiable: po.vatLiable,
     totalCents: po.totalCents,
     createdAt: po.createdAt,
     paidAt: po.paidAt,
@@ -139,6 +154,10 @@ export function toPublicPurchaseOrder(po: PurchaseOrder): PublicPurchaseOrder {
       venue: l.eventVenue,
       type: l.type,
       description: l.description,
+      baseCents: l.baseCents,
+      soundcheck: l.soundcheck,
+      deductionCents: l.deductionCents,
+      vatCents: l.vatCents,
       amountCents: l.amountCents,
     })),
   };
@@ -149,6 +168,7 @@ export function freelancerView(
   state: FreelancerState,
   events: EventState,
   person: MockPerson,
+  soundcheckDeductionCents: number,
   today: IsoDate = todayIso(),
 ): FreelancerView {
   return {
@@ -159,6 +179,7 @@ export function freelancerView(
       .slice()
       .reverse()
       .map(toPublicPurchaseOrder),
+    settings: { soundcheckDeductionCents, vatRateBp: state.vatRateBp },
   };
 }
 
@@ -173,23 +194,33 @@ export function newPurchaseOrder(
   createdAt: string,
   /** Partner who created it by hand; null = the freelancer via the link. */
   createdBy: Id | null = null,
+  /** Freelancer choices; omitted (partner / seed) = no VAT, all at the sound check. */
+  choices?: PoChoices,
 ): PurchaseOrder {
-  const lines = fees.map((fee) => ({
-    costLineId: fee.line.id,
-    eventId: fee.event.id,
-    eventStartDate: fee.event.startDate,
-    eventVenue: fee.event.venue,
-    eventLineupName: fee.event.lineupName,
-    type: fee.line.type,
-    description: fee.line.description,
-    amountCents: amount(fee),
-  }));
+  const lines = fees.map((fee) => {
+    const soundcheck = choices?.soundcheck[fee.line.id] ?? true;
+    const amounts = choices
+      ? poLineAmounts(amount(fee), soundcheck, choices.vatLiable, choices.settings)
+      : { baseCents: amount(fee), deductionCents: 0, vatCents: 0, amountCents: amount(fee) };
+    return {
+      costLineId: fee.line.id,
+      eventId: fee.event.id,
+      eventStartDate: fee.event.startDate,
+      eventVenue: fee.event.venue,
+      eventLineupName: fee.event.lineupName,
+      type: fee.line.type,
+      description: fee.line.description,
+      soundcheck,
+      ...amounts,
+    };
+  });
   const po: PurchaseOrder = {
     id: mockId(),
     number: purchaseOrderNumber(person.name, state.nextSeq),
     personId: person.id,
     personName: person.name,
     status: 'OPEN',
+    vatLiable: choices?.vatLiable ?? false,
     totalCents: lines.reduce((sum, l) => sum + l.amountCents, 0),
     createdAt,
     paidAt: null,
@@ -226,6 +257,7 @@ export function createPurchaseOrder(
   events: EventState,
   person: MockPerson,
   costLineIds: Id[],
+  choices?: PoChoices,
   today: IsoDate = todayIso(),
 ): CreateResult {
   const fees = feeLines(events, person.id);
@@ -239,7 +271,7 @@ export function createPurchaseOrder(
   if (notEligible.length > 0) return { ok: false, notEligible };
   // Event order, newest first (same as the page).
   chosen.sort((a, b) => b.event.startDate.localeCompare(a.event.startDate));
-  return { ok: true, purchaseOrder: newPurchaseOrder(state, person, chosen, (f) => f.line.budgetedCents, nowTs()) };
+  return { ok: true, purchaseOrder: newPurchaseOrder(state, person, chosen, (f) => f.line.budgetedCents, nowTs(), null, choices) };
 }
 
 function at(date: IsoDate, days: number, time = '12:00:00.000Z'): string {
@@ -253,7 +285,7 @@ function at(date: IsoDate, days: number, time = '12:00:00.000Z'): string {
  * CANCELLED PO for an unpaid one (which is therefore selectable again, UC-034 AC-3).
  */
 export function seedFreelancer(events: EventState, partnerId: Id | undefined): FreelancerState {
-  const state: FreelancerState = { tokens: {}, purchaseOrders: [], events: [], nextSeq: 1 };
+  const state: FreelancerState = { tokens: {}, purchaseOrders: [], events: [], nextSeq: 1, vatRateBp: MOCK_VAT_RATE_BP };
   const personId = PERSON_IDS[0];
   const person = events.people.find((p) => p.id === personId);
   if (!person) return state;

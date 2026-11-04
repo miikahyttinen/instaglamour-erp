@@ -4,6 +4,7 @@
 // (freelancerStore.ts) over the event store's cost lines. Rate limiting (429) is not simulated;
 // tests override a handler for it. Synthetic data only (BR-090).
 import { http, HttpResponse } from 'msw';
+import type { FieldCode } from '../api/enums';
 import type { ApiErrorBody, FreelancerLink, Id } from '../api/types';
 import { db } from './data';
 import {
@@ -42,22 +43,69 @@ function checkIds(value: unknown): Id[] | null {
   return value as Id[];
 }
 
+type CreateBody =
+  | { ok: true; ids: Id[]; vatLiable: boolean; soundcheck: Record<Id, boolean> }
+  | { ok: false; fields: Record<string, FieldCode> };
+
+/**
+ * New body `{ vatLiable, lines: [{ costLineId, soundcheck }] }`, or the legacy `{ costLineIds }`
+ * (= not VAT-liable, all at the sound check).
+ */
+function parseCreateBody(body: Record<string, unknown> | null): CreateBody {
+  if (body && body.lines === undefined && body.vatLiable === undefined && body.costLineIds !== undefined) {
+    const ids = checkIds(body.costLineIds);
+    return ids ? { ok: true, ids, vatLiable: false, soundcheck: {} } : { ok: false, fields: { costLineIds: 'INVALID_VALUE' } };
+  }
+  const fields: Record<string, FieldCode> = {};
+  const vatLiable = body?.vatLiable;
+  if (vatLiable === undefined || vatLiable === null) fields.vatLiable = 'REQUIRED';
+  else if (typeof vatLiable !== 'boolean') fields.vatLiable = 'INVALID_VALUE';
+  const lines = body?.lines;
+  const valid =
+    Array.isArray(lines) &&
+    lines.every(
+      (l: unknown) =>
+        typeof l === 'object' &&
+        l !== null &&
+        typeof (l as { costLineId?: unknown }).costLineId === 'string' &&
+        typeof (l as { soundcheck?: unknown }).soundcheck === 'boolean',
+    );
+  const typed = valid ? (lines as { costLineId: Id; soundcheck: boolean }[]) : [];
+  const ids = valid ? checkIds(typed.map((l) => l.costLineId)) : null;
+  if (!ids) fields.lines = 'INVALID_VALUE';
+  if (!ids || Object.keys(fields).length > 0) return { ok: false, fields };
+  return {
+    ok: true,
+    ids,
+    vatLiable: vatLiable as boolean,
+    soundcheck: Object.fromEntries(typed.map((l) => [l.costLineId, l.soundcheck])),
+  };
+}
+
 const linkBody = (token: string): FreelancerLink => ({ sharePath: `/f/${token}` });
 
 export const freelancerHandlers = [
   http.get('/api/public/freelancers/:token', ({ params }) => {
     const person = publicPerson(String(params.token));
     if (!person) return notFound();
-    return HttpResponse.json(freelancerView(db.freelancer, db.events, person), { headers: NOINDEX });
+    const deduction = db.reference.settings.loadInDeductionCents;
+    return HttpResponse.json(freelancerView(db.freelancer, db.events, person, deduction), { headers: NOINDEX });
   }),
 
   http.post('/api/public/freelancers/:token/purchase-orders', async ({ params, request }) => {
-    const body = (await request.json().catch(() => null)) as { costLineIds?: unknown } | null;
-    const ids = checkIds(body?.costLineIds);
-    if (!ids) return validationError({ costLineIds: 'INVALID_VALUE' });
+    const raw = (await request.json().catch(() => null)) as unknown;
+    const parsed = parseCreateBody(typeof raw === 'object' && raw !== null ? (raw as Record<string, unknown>) : null);
+    if (!parsed.ok) return validationError(parsed.fields);
     const person = publicPerson(String(params.token));
     if (!person) return notFound();
-    const result = createPurchaseOrder(db.freelancer, db.events, person, ids);
+    const result = createPurchaseOrder(db.freelancer, db.events, person, parsed.ids, {
+      vatLiable: parsed.vatLiable,
+      soundcheck: parsed.soundcheck,
+      settings: {
+        soundcheckDeductionCents: db.reference.settings.loadInDeductionCents,
+        vatRateBp: db.freelancer.vatRateBp,
+      },
+    });
     if (!result.ok) {
       const error: ApiErrorBody = {
         error: {
