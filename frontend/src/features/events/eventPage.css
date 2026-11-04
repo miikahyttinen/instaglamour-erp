@@ -1,8 +1,9 @@
 /* Event page (UC-004 … UC-013): header, sections, economics, cost table, history.
    Tokens only (docs/design.md, Layout v2). Scoped under .event-page. Phone first.
-   - Sections: 1 column; 2 columns from 1200 px (the 232 px sidebar leaves ~590 px at 900 px).
+   - Sections: 1 column with the costs first; from a 1080 px wide page (container query, so the
+     sidebar state counts) costs on the left (3 : 2), other sections on the right, log below.
    - Basic info / price: Card + FieldList (one label column).
-   - Economics: 2 tiles per row, 4 from 1200 px.
+   - Economics: 2 tiles per row, 4 from 1200 px in one column (2 in the right column).
    - Cost table: compact rows while .cost-list is narrower than the full table (two columns on
      phones); full table when it fits. */
 
@@ -81,10 +82,18 @@
 
 /* ---------- Collapsible sections ---------- */
 
+/* The page is the size container, so the column switch follows the width it really gets
+   (sidebar expanded or collapsed), like the cost list does. */
+.event-page {
+  container: event-page / inline-size;
+}
 .event-page .event-sections {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 0 var(--section-gap);
+}
+.event-page .event-col {
+  min-width: 0;
 }
 .event-page .event-section {
   min-width: 0;
@@ -92,7 +101,7 @@
   border-top: var(--hairline) solid var(--border);
 }
 /* The page head already draws the divider above the first section(s). */
-.event-page .event-section:first-child {
+.event-page .event-col-costs > .event-section:first-child {
   border-top: 0;
 }
 .event-page .event-section summary {
@@ -656,24 +665,34 @@
   overflow-wrap: anywhere;
 }
 
-/* ---------- Wide desktop: two-column sections ---------- */
+/* ---------- Wide page: two columns ---------- */
 
-/* From 1200 px only: at 900–1199 px the expanded sidebar leaves too little room for two columns. */
-@media (min-width: 1200px) {
+/* About 3 : 2. The right column never goes below 28rem, so the "Laskutus" table fits without
+   clipping. From an 1080 px wide page the left column then stays ≥ 600 px, so the cost list keeps
+   its desktop compact rows instead of the phone layout. E.g. 1200 px with the sidebar collapsed,
+   1440 px either way; 900 px and 1200 px with the sidebar expanded stay in one column. */
+@container event-page (min-width: 1080px) {
   .event-page .event-sections {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 3fr) minmax(28rem, 2fr);
     align-items: start;
   }
-  .event-page .event-section-wide {
+  .event-page .event-col-side > .event-section:first-child {
+    border-top: 0;
+  }
+  .event-page .event-section-history {
     grid-column: 1 / -1;
   }
-  /* Two columns: basic info on the left spans the price and invoicing cards on the right, so
-     "Laskutus" sits directly under the price card (owner request, TASK-172). */
-  .event-page .event-section-basic {
-    grid-row: span 2;
+  /* The right column is too narrow for four tiles in a row. */
+  .event-page .event-econ-grid > * {
+    grid-column: span 6;
   }
-  .event-page .event-section:nth-child(2) {
-    border-top: 0;
+}
+
+/* Very wide page (e.g. 1920 px, sidebar collapsed): 2 : 1 lets the cost list reach the full
+   table (≥ 1120 px) while the right column stays ~600 px. */
+@container event-page (min-width: 1700px) {
+  .event-page .event-sections {
+    grid-template-columns: minmax(0, 2fr) minmax(28rem, 1fr);
   }
 }
 

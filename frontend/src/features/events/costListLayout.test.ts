@@ -46,3 +46,14 @@ describe('cost table layout (TASK-149)', () => {
     expect(full).toMatch(/max-width: calc\(var\(--label-w\) \* 1\.5\)/);
   });
 });
+
+describe('gig page columns (owner request)', () => {
+  it('the page is a size container; two columns (costs ~60 % left) only from a 1080 px wide page', () => {
+    expect(css).toMatch(/\.event-page \{\s*container: event-page \/ inline-size;/);
+    const start = css.indexOf('@container event-page (min-width: 1080px)');
+    expect(start).toBeGreaterThanOrEqual(0);
+    const block = css.slice(start, css.indexOf('@container', start + 1));
+    expect(block).toMatch(/grid-template-columns: minmax\(0, 3fr\) minmax\(28rem, 2fr\)/);
+    expect(block).toMatch(/\.event-section-history \{\s*grid-column: 1 \/ -1;/);
+  });
+});
