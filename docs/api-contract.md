@@ -51,7 +51,7 @@ The UI translates `code` and the field codes; it never shows `message` to users.
 
 **Field codes:** `REQUIRED`, `INVALID_DATE`, `END_BEFORE_START`, `NEGATIVE_AMOUNT`, `INVALID_VALUE`,
 `DESCRIPTION_REQUIRED`, `INVALID_HOURS`, `DUPLICATE`, `TOO_LONG` (strings > 500 chars; notes/description > 5000),
-`UNKNOWN_REFERENCE` (id that doesn't exist), `NOT_EDITABLE` (e.g. dates in PATCH gig).
+`UNKNOWN_REFERENCE` (id that doesn't exist), `NOT_EDITABLE` (e.g. dates in PATCH gig), `NOT_PARTNER` (sales/production line person is not an active partner; checked only when the person changes).
 
 ### Warning format (non-blocking, returned alongside success)
 ```json
