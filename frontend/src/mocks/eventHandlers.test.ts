@@ -247,7 +247,7 @@ describe('event mocks', () => {
     });
   });
 
-  it('PARTLY_INVOICED only for played gigs: upcoming and cancelled gigs are NONE', async () => {
+  it('PARTLY_INVOICED for played gigs and cancelled gigs with rows; upcoming and row-less cancelled gigs are NONE', async () => {
     const pastYear = 2020;
     const played = await eventsApi.create(eventInput({ startDate: `${pastYear}-03-01` }));
     expect(played).toMatchObject({ played: true, invoiceState: 'PARTLY_INVOICED' });
@@ -261,11 +261,13 @@ describe('event mocks', () => {
     const cancelled = await eventsApi.create(eventInput({ startDate: `${pastYear}-04-01` }));
     await eventsApi.cancel(cancelled.id, { reason: 'Called off' });
     expect((await eventsApi.get(cancelled.id)).invoiceState).toBe('NONE');
+    // Cancelled with rows and sent < total → partly invoiced (contract details).
+    expect((await invoiceRowsApi.create(cancelled.id, { description: 'Fee', amountCents: 1000, status: 'SENT' })).invoiceState).toBe('PARTLY_INVOICED');
 
     const res = await fetch(`/api/events?year=${pastYear}&invoiceState=PARTLY_INVOICED&status=ALL`);
     const ids = ((await res.json()) as { events: { id: string }[] }).events.map((g) => g.id);
     expect(ids).toContain(played.id);
-    expect(ids).not.toContain(cancelled.id);
+    expect(ids).toContain(cancelled.id);
   });
 
   it('invoice rows: add / patch / remove, derived figures and state, history, 409 when deleted (Invoicing v3)', async () => {
@@ -291,6 +293,7 @@ describe('event mocks', () => {
       status: 'NOT_SENT',
       statusBy: partnerA().id,
       createdBy: partnerA().id,
+      auto: false,
     });
     expect(first).toMatchObject({ invoiceState: 'OPEN_INVOICES', notSentCents: 10000, uninvoicedCents: total - 10000 });
     const rowA = first.invoiceRows[0]!;
@@ -390,6 +393,7 @@ describe('event mocks', () => {
       amountCents: total - 10000,
       status: 'NOT_SENT',
       createdBy: null,
+      auto: true,
     });
     const detail = await eventsApi.get(event.id);
     expect(detail).toMatchObject({ uninvoicedCents: 0, invoiceState: 'OPEN_INVOICES' });

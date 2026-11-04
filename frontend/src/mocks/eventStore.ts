@@ -130,13 +130,14 @@ export interface InvoiceFigures {
  * Derived invoicing figures of a gig (api-contract "Invoicing v3"): sent = Σ SENT, notSent =
  * Σ NOT_SENT, uninvoiced = max(total − sent − notSent, 0), balance = total − sent.
  * State, first match wins: any NOT_SENT row → OPEN_INVOICES; sent ≥ total > 0 → FULLY_INVOICED;
- * played (SOLD, start date passed) and sent < total → PARTLY_INVOICED; otherwise NONE (upcoming,
- * cancelled, total 0).
+ * played (SOLD, start date passed) or cancelled with rows, and sent < total → PARTLY_INVOICED;
+ * otherwise NONE (upcoming not fully sent, cancelled without rows, total 0 with only SENT rows).
  */
 export function invoiceFigures(
   rows: Pick<InvoiceRow, 'status' | 'amountCents'>[],
   totalPriceCents: number,
   played: boolean,
+  cancelled = false,
 ): InvoiceFigures {
   const sum = (status: InvoiceRowStatus) =>
     rows.filter((r) => r.status === status).reduce((s, r) => s + r.amountCents, 0);
@@ -147,7 +148,7 @@ export function invoiceFigures(
     ? 'OPEN_INVOICES'
     : total > 0 && sentCents >= total
       ? 'FULLY_INVOICED'
-      : played && sentCents < total
+      : (played || (cancelled && rows.length > 0)) && sentCents < total
         ? 'PARTLY_INVOICED'
         : 'NONE';
   return {
@@ -200,7 +201,7 @@ export function toSummary(state: EventState, event: MockEvent, today = todayIso(
     clientId: event.clientId,
     clientName: state.clients.find((c) => c.id === event.clientId)?.name ?? null,
     offerId: event.offerId,
-    ...invoiceFigures(invoiceRowsOf(state, event.id), totalPriceCents, played),
+    ...invoiceFigures(invoiceRowsOf(state, event.id), totalPriceCents, played, event.status === 'CANCELLED'),
     deletedAt: event.deletedAt,
     createdAt: event.createdAt,
     updatedAt: event.updatedAt,
@@ -590,6 +591,7 @@ export function addInvoiceRow(
     statusBy: actorId,
     createdAt: ts,
     createdBy: actorId,
+    auto: false,
   };
   state.invoiceRows.push(row);
   event.updatedAt = ts;
@@ -607,6 +609,7 @@ export function addAutoFinalInvoice(state: EventState, event: MockEvent): Invoic
   const { uninvoicedCents } = invoiceFigures(invoiceRowsOf(state, event.id), total, false);
   if (uninvoicedCents <= 0) return null;
   const row = addInvoiceRow(state, event, { description: FINAL_INVOICE_DESCRIPTION, amountCents: uninvoicedCents }, null);
+  row.auto = true;
   logEvent(state, event.id, 'INVOICE_ROW_ADDED', null, { ...rowSnapshot(row), auto: true });
   return row;
 }

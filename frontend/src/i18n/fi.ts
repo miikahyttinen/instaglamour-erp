@@ -470,7 +470,7 @@ const fi = {
     unpaid: '{{type}}: aiemmin maksettu {{amount}}',
     reason: 'Syy: {{reason}}',
     auto: 'Luotu automaattisesti',
-    system: 'Järjestelmä',
+    autoActor: 'Automaattinen',
     yes: 'kyllä',
     no: 'ei',
   },

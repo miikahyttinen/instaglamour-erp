@@ -289,7 +289,7 @@ describe('event page (UC-004, UC-007)', () => {
     await waitFor(() => expect(historyItems()[0]).toHaveTextContent('Laskurivi poistettu'));
   });
 
-  it('automatic "Loppulasku" row shows an "automaattinen" hint; its history entry is by the system', async () => {
+  it('automatic "Loppulasku" row shows an "automaattinen" hint; its history entry is "Automaattinen"', async () => {
     const event = addMockEvent({ startDate: '2020-06-01', venue: 'Venue Auto' });
     addInvoiceRow(db.events, event, { description: 'Ennakko', amountCents: 30000, status: 'SENT' }, partnerA().id);
     addAutoFinalInvoice(db.events, event);
@@ -301,7 +301,7 @@ describe('event page (UC-004, UC-007)', () => {
     expect(within(screen.getByRole('row', { name: /Ennakko/ })).queryByText('automaattinen')).not.toBeInTheDocument();
     const card = within(section('Laskutus'));
     expect(within(card.getByRole('group', { name: 'Laskutuksen tila' })).getByText('Avoimia laskuja')).toHaveClass('tag-yellow');
-    await waitFor(() => expect(historyItems()[0]).toHaveTextContent(/Laskurivi lisätty.*Järjestelmä/));
+    await waitFor(() => expect(historyItems()[0]).toHaveTextContent(/Laskurivi lisätty.*Automaattinen/));
     expect(historyItems()[0]).toHaveTextContent(/Loppulasku · 700,00\s€ · Lähettämättä/);
     expect(historyItems()[0]).toHaveTextContent('Luotu automaattisesti');
   });

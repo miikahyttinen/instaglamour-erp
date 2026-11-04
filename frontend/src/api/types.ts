@@ -172,6 +172,8 @@ export interface InvoiceRow {
   statusBy: Id | null;
   createdAt: IsoTimestamp;
   createdBy: Id | null;
+  /** true only for the automatic final invoice ("Loppulasku", api-contract "Invoicing v3"). */
+  auto: boolean;
 }
 
 export interface InvoiceRowCreate {

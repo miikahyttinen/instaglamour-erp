@@ -34,6 +34,17 @@ describe('invoiceFigures', () => {
     expect(invoiceFigures(list, total, false).invoiceState).toBe(state);
   });
 
+  // Cancelled gigs (contract details): with rows and sent < total → PARTLY_INVOICED; no rows → NONE.
+  it.each([
+    ['no rows', 100000, rows(), 'NONE'],
+    ['part sent', 100000, rows(['SENT', 40000]), 'PARTLY_INVOICED'],
+    ['all sent', 100000, rows(['SENT', 100000]), 'FULLY_INVOICED'],
+    ['not sent', 100000, rows(['NOT_SENT', 100000]), 'OPEN_INVOICES'],
+    ['total 0, sent row', 0, rows(['SENT', 5000]), 'NONE'],
+  ] as const)('cancelled: %s → %s', (_case, total, list, state) => {
+    expect(invoiceFigures(list, total, false, true).invoiceState).toBe(state);
+  });
+
   it('sums sent, not sent, uninvoiced (max(total − both, 0)) and balance (total − sent)', () => {
     expect(invoiceFigures(rows(['NOT_SENT', 1000], ['SENT', 2000], ['SENT', 3000]), 10000, true)).toEqual({
       sentCents: 5000,

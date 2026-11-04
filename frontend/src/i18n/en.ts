@@ -467,7 +467,7 @@ const en: Resources = {
     unpaid: '{{type}}: previously paid {{amount}}',
     reason: 'Reason: {{reason}}',
     auto: 'Created automatically',
-    system: 'System',
+    autoActor: 'Automatic',
     yes: 'yes',
     no: 'no',
   },

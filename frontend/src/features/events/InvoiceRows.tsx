@@ -24,17 +24,6 @@ import { useApplyEvent } from './queries';
 /** Contract: description 1–500 chars. */
 const DESCRIPTION_MAX = 500;
 
-/** Description of the automatic final invoice (api-contract "Invoicing v3"). */
-const FINAL_INVOICE_DESCRIPTION = 'Loppulasku';
-
-/**
- * The automatic final invoice: created by the system (no creator) as "Loppulasku". The row has no
- * explicit flag in the contract, so this is the best available signal (seeded / migrated rows also
- * have no creator but are described differently).
- */
-const isAutoFinalInvoice = (row: InvoiceRow) =>
-  row.createdBy === null && row.description === FINAL_INVOICE_DESCRIPTION;
-
 interface Props {
   event: EventDetail;
   /** Deleted gig: rows shown read-only, no add / remove. */
@@ -173,7 +162,7 @@ function InvoiceRowItem({
             onSave={(description) => update({ description })}
           />
         )}
-        {isAutoFinalInvoice(row) && (
+        {row.auto && (
           <span className="meta small invoice-row-auto" title={t('event.invoicing.autoTitle')}>
             {t('event.invoicing.auto')}
           </span>
