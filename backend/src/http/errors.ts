@@ -39,6 +39,7 @@ export const FIELD_CODES = [
   'TOO_LONG',
   'UNKNOWN_REFERENCE',
   'NOT_EDITABLE',
+  'NOT_PARTNER',
 ] as const;
 export type FieldCode = (typeof FIELD_CODES)[number];
 const fieldCodeSet: ReadonlySet<string> = new Set(FIELD_CODES);

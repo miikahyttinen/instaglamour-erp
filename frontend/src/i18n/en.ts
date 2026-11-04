@@ -121,6 +121,7 @@ const en: Resources = {
     DUPLICATE: 'This name is already in use.',
     UNKNOWN_REFERENCE: 'The selected item does not exist.',
     NOT_EDITABLE: 'This cannot be changed here.',
+    NOT_PARTNER: 'Only partners can be on sales and production lines.',
   },
   warnings: {
     PERSON_DOUBLE_BOOKED: 'This person is already on {{lineupName}} ({{date}}).',

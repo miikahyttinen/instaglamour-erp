@@ -1,7 +1,7 @@
 /** Cost line endpoints (UC-005; BR-008, BR-022…BR-026). Synthetic data only. */
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { SETTING_KEYS } from '../src/domain/enums.js';
-import { closeTestDb, login, resetDb } from './helpers.js';
+import { closeTestDb, login, resetDb, testDb } from './helpers.js';
 import { call, createEvent, history, type Json, setSetting, startSession, UNKNOWN_ID, type Session } from './eventFixtures.js';
 
 let s: Session;
@@ -70,7 +70,7 @@ describe('POST /api/events/{id}/cost-lines', () => {
     const event = await createEvent(s);
     await addLine(event.id, { type: 'GUITAR', personId: s.world.p1.id, budgetedCents: 10000 });
     const body = await addLine(event.id, { type: 'MIX', personId: s.world.p1.id, budgetedCents: 10000 });
-    await addLine(event.id, { type: 'PRODUCTION', personId: s.world.p2.id, budgetedCents: 10000 });
+    await addLine(event.id, { type: 'PRODUCTION', personId: s.world.b.personId, budgetedCents: 10000 });
     expect(body.warnings).toEqual([]); // same event is not a double booking
   });
 
@@ -168,7 +168,8 @@ describe('double booking (BR-022)', () => {
   });
 
   it('internal roles and expenses never trigger a warning (add and assign)', async () => {
-    const { p1 } = s.world;
+    // Partner C: Sales/Production lines take only active partners.
+    const p1 = { id: s.world.c.personId };
     const other = await createEvent(s, { startDate: '2026-08-01' });
     await addLine(other.id, { type: 'VOC', personId: p1.id, budgetedCents: 10000 });
     const event = await createEvent(s, { startDate: '2026-08-01' });
@@ -182,7 +183,7 @@ describe('double booking (BR-022)', () => {
   });
 
   it('SALES on one event and VOC on another the same day is fine; VOC on both warns', async () => {
-    const { p1 } = s.world;
+    const p1 = { id: s.world.c.personId }; // a partner: Sales lines take only active partners
     const salesEvent = await createEvent(s, { startDate: '2026-09-01', lineupTemplateId: null, lineupName: 'Lineup Sales' });
     await addLine(salesEvent.id, { type: 'SALES', personId: p1.id, budgetedCents: 10000 });
     const event = await createEvent(s, { startDate: '2026-09-01' });
@@ -202,7 +203,8 @@ describe('double booking (BR-022)', () => {
     await addLine(other.id, { type: 'VOC', personId: p1.id, budgetedCents: 10000 });
     await addLine(other.id, { type: 'MIX', personId: p2.id, budgetedCents: 10000 });
     const event = await createEvent(s, { startDate: '2026-11-01' });
-    await addLine(event.id, { type: 'PRODUCTION', personId: p1.id, budgetedCents: 10000 }); // internal: ignored
+    await addLine(other.id, { type: 'GUITAR', personId: s.world.c.personId, budgetedCents: 10000 });
+    await addLine(event.id, { type: 'PRODUCTION', personId: s.world.c.personId, budgetedCents: 10000 }); // internal: ignored
     await addLine(event.id, { type: 'DJ', personId: p2.id, budgetedCents: 10000 });
     const res = (await call(s, 'POST', `/api/events/${event.id}/move`, { startDate: '2026-10-01' })).json();
     expect(res.warnings.map((w: { personId: string }) => w.personId)).toEqual([p2.id]);
@@ -433,5 +435,95 @@ describe('pay / unpay (BR-025, BR-008)', () => {
     ] as const) {
       expect((await s.app.inject({ method, url })).statusCode).toBe(401);
     }
+  });
+});
+
+describe('Sales and production lines: partners only (contract 2026-11-04)', () => {
+  const add = (eventId: string, payload: Record<string, unknown>) => call(s, 'POST', `/api/events/${eventId}/cost-lines`, payload);
+  const patch = (id: string, payload: Record<string, unknown>) => call(s, 'PATCH', `/api/cost-lines/${id}`, payload);
+  const notPartner = { error: expect.objectContaining({ code: 'VALIDATION_ERROR', fields: { personId: 'NOT_PARTNER' } }) };
+
+  it.each(['SALES', 'PRODUCTION'])('%s: an active partner is accepted on create and on person change', async (type) => {
+    const event = await createEvent(s);
+    const res = await add(event.id, { type, personId: s.world.c.personId, budgetedCents: 10000 });
+    expect(res.statusCode).toBe(200);
+    const line = res.json().event.costLines.at(-1);
+    expect(line).toMatchObject({ type, personId: s.world.c.personId });
+    const changed = await patch(line.id, { personId: s.world.b.personId });
+    expect(changed.statusCode).toBe(200);
+    expect(changed.json().event.costLines.find((l: Line) => l.id === line.id).personId).toBe(s.world.b.personId);
+  });
+
+  it.each(['SALES', 'PRODUCTION'])('%s: a person who is not a partner → 400 personId: NOT_PARTNER; nothing written', async (type) => {
+    const event = await createEvent(s);
+    const historyBefore = (await history(s, event.id)).length;
+    const res = await add(event.id, { type, personId: s.world.p1.id, budgetedCents: 10000 });
+    expect(res.statusCode).toBe(400);
+    expect(res.json()).toEqual(notPartner);
+
+    const line = lineOf(event, type);
+    const changed = await patch(line.id, { personId: s.world.p1.id });
+    expect(changed.statusCode).toBe(400);
+    expect(changed.json()).toEqual(notPartner);
+
+    const db = testDb();
+    expect(await db.costLine.count({ where: { eventId: event.id } })).toBe(event.costLines.length);
+    expect((await db.costLine.findUniqueOrThrow({ where: { id: line.id } })).personId).toBe(line.personId);
+    expect(await history(s, event.id)).toHaveLength(historyBefore);
+  });
+
+  it('a removed (inactive) partner → 400 NOT_PARTNER on create and PATCH', async () => {
+    const event = await createEvent(s);
+    await testDb().partner.update({ where: { id: s.world.c.id }, data: { active: false, revokedAt: new Date() } });
+    const res = await add(event.id, { type: 'SALES', personId: s.world.c.personId, budgetedCents: 10000 });
+    expect(res.statusCode).toBe(400);
+    expect(res.json()).toEqual(notPartner);
+    const changed = await patch(lineOf(event, 'PRODUCTION').id, { personId: s.world.c.personId });
+    expect(changed.statusCode).toBe(400);
+    expect(changed.json()).toEqual(notPartner);
+  });
+
+  it('no person is fine on create and PATCH', async () => {
+    const event = await createEvent(s);
+    expect((await add(event.id, { type: 'PRODUCTION', personId: null, budgetedCents: 10000 })).statusCode).toBe(200);
+    expect((await add(event.id, { type: 'SALES', budgetedCents: 10000 })).statusCode).toBe(200);
+    const sales = lineOf(event, 'SALES');
+    const cleared = await patch(sales.id, { personId: null });
+    expect(cleared.statusCode).toBe(200);
+    expect(cleared.json().event.costLines.find((l: Line) => l.id === sales.id).personId).toBeNull();
+  });
+
+  it('other types are unaffected: non-partners stay allowed', async () => {
+    const event = await createEvent(s);
+    for (const type of ['OFFICE', 'VOC', 'MIX', 'FUEL', 'ACCOMMODATION']) {
+      expect((await add(event.id, { type, personId: s.world.p1.id, budgetedCents: 10000 })).statusCode, type).toBe(200);
+    }
+    expect((await patch(lineOf(event, 'VOC').id, { personId: s.world.p2.id })).statusCode).toBe(200);
+  });
+
+  it('an unknown person stays UNKNOWN_REFERENCE (not NOT_PARTNER)', async () => {
+    const event = await createEvent(s);
+    const res = await add(event.id, { type: 'SALES', personId: UNKNOWN_ID, budgetedCents: 10000 });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.fields).toEqual({ personId: 'UNKNOWN_REFERENCE' });
+  });
+
+  it('existing lines that break the rule stay editable while the person is unchanged; BR-027 still works', async () => {
+    const event = await createEvent(s);
+    const legacy = await testDb().costLine.create({
+      data: { eventId: event.id, type: 'SALES', personId: s.world.p1.id, budgetedCents: 10000 },
+    });
+    expect((await patch(legacy.id, { budgetedCents: 20000, description: 'Old split' })).statusCode).toBe(200);
+    expect((await patch(legacy.id, { personId: s.world.p1.id })).statusCode).toBe(200); // same person: no change
+    expect((await patch(legacy.id, { personId: s.world.p2.id })).json()).toEqual(notPartner);
+
+    // BR-027: changing the seller moves the old seller's lines and leaves the legacy line alone.
+    const res = await call(s, 'PATCH', `/api/events/${event.id}`, { sellerId: s.world.c.id });
+    expect(res.statusCode).toBe(200);
+    const sales = lineOf(event, 'SALES');
+    expect(res.json().movedCostLineIds).toEqual([sales.id]);
+    const lines = res.json().event.costLines as Line[];
+    expect(lines.find((l) => l.id === sales.id)!.personId).toBe(s.world.c.personId);
+    expect(lines.find((l) => l.id === legacy.id)).toMatchObject({ personId: s.world.p1.id, budgetedCents: 20000 });
   });
 });

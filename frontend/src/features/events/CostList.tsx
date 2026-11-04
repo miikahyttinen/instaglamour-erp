@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import type { CostType } from '../../api/enums';
-import { isMusicianRole } from '../../api/enums';
+import { isMusicianRole, isPartnerOnlyType } from '../../api/enums';
 import { costLinesApi } from '../../api/endpoints';
 import type { CostLine, CostLineUpdate, EventDetail, EventWithWarnings, Person, Warning } from '../../api/types';
 import { Button, IconButton } from '../../components/Button';
@@ -19,6 +19,7 @@ import { centsToInput, formatDateTime, formatMoney } from '../../lib/format';
 import { parseMoneyField } from '../../lib/moneyField';
 import { usePartner, useReference } from '../../reference/useReference';
 import { EventPurchaseOrder } from './EventPurchaseOrder';
+import { selectablePeople } from './personOptions';
 import { InlinePersonSelect, PersonSelect } from './PersonSelect';
 import { PayControl } from './PayControl';
 import { personName, useApplyEvent } from './queries';
@@ -207,6 +208,7 @@ function CostLineItem({ line, people, readOnly, columnCount, onResult }: LinePro
               value={line.personId}
               people={people}
               disabled={po !== null}
+              partnersOnly={isPartnerOnlyType(line.type)}
               onSave={(personId) => update({ personId })}
             />
           )}
@@ -397,8 +399,14 @@ function AddCostLineForm({
     return null;
   };
 
+  const partnersOnly = type !== '' && isPartnerOnlyType(type);
+
   const onTypeChange = (code: CostType | '') => {
     setType(code);
+    // SALES / PRODUCTION: drop a chosen person who isn't an active partner (it would be rejected).
+    if (code && isPartnerOnlyType(code) && personId !== null) {
+      if (!selectablePeople(people, null, true).some((p) => p.id === personId)) setPersonId(null);
+    }
     const fee = code ? internalDefault(code) : null;
     if (fee !== null && budget.trim() === '') setBudget(centsToInput(fee, lang));
   };
@@ -444,7 +452,14 @@ function AddCostLineForm({
         </Field>
         <Field label={t('costs.person')} error={errors.personId}>
           {(p) => (
-            <PersonSelect id={p.id} label={t('costs.person')} value={personId} people={people} onChange={setPersonId} />
+            <PersonSelect
+              id={p.id}
+              label={t('costs.person')}
+              value={personId}
+              people={people}
+              partnersOnly={partnersOnly}
+              onChange={setPersonId}
+            />
           )}
         </Field>
       </div>

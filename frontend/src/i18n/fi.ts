@@ -123,6 +123,7 @@ const fi = {
     DUPLICATE: 'Nimi on jo käytössä.',
     UNKNOWN_REFERENCE: 'Valittua tietoa ei ole olemassa.',
     NOT_EDITABLE: 'Tätä tietoa ei voi muuttaa tässä.',
+    NOT_PARTNER: 'Myynti- ja tuotantorivillä voi olla vain osakas.',
   },
   warnings: {
     PERSON_DOUBLE_BOOKED: 'Henkilö on jo keikalla {{lineupName}} ({{date}}).',
