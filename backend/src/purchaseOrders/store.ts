@@ -58,7 +58,8 @@ export function toPurchaseOrderDto(po: PurchaseOrderWithLines) {
     cancelledAt: po.cancelledAt?.toISOString() ?? null,
     cancelledBy: po.cancelledById,
     cancelReason: po.cancelReason,
-    vatLiable: po.vatLiable,
+    vatRateBp: po.vatRateBp,
+    vatLiable: po.vatRateBp > 0,
     lines: po.lines.map((l) => ({
       costLineId: l.costLineRef,
       eventId: l.eventId,
@@ -84,7 +85,8 @@ export function toPublicPurchaseOrderDto(po: PurchaseOrderWithLines) {
     totalCents: po.totalCents,
     createdAt: po.createdAt.toISOString(),
     paidAt: po.paidAt?.toISOString() ?? null,
-    vatLiable: po.vatLiable,
+    vatRateBp: po.vatRateBp,
+    vatLiable: po.vatRateBp > 0,
     lines: po.lines.map((l) => ({
       eventStartDate: isoFromDate(l.event.startDate),
       venue: l.event.venue,
@@ -276,8 +278,8 @@ export async function createPurchaseOrder(
     personId: string;
     /** Requested lines; partner POs send every line with `soundcheck: true`. */
     lines: readonly PoLineRequest[];
-    /** VAT-liable freelancer (TASK-050); partner POs: false. */
-    vatLiable: boolean;
+    /** Chosen VAT rate in basis points (0 = not VAT-liable); partner POs: 0. Validated by the caller. */
+    vatRateBp: number;
     isCurrent: (person: LinkPerson) => boolean;
     eligibility: PoEligibility;
     createdBy: string | null;
@@ -336,7 +338,7 @@ export async function createPurchaseOrder(
     const settings = await loadPoAmountSettings(tx);
     const priced = ordered.map((line) => {
       const soundcheck = soundcheckById.get(line.id) ?? true;
-      return { line, soundcheck, ...poLineAmount(line.budgetedCents, { soundcheck, vatLiable: input.vatLiable }, settings) };
+      return { line, soundcheck, ...poLineAmount(line.budgetedCents, { soundcheck, vatRateBp: input.vatRateBp }, settings) };
     });
     const [{ seq }] = await tx.$queryRaw<[{ seq: number }]>`SELECT nextval('purchase_order_seq')::int AS "seq"`;
     const po = await tx.purchaseOrder.create({
@@ -344,7 +346,8 @@ export async function createPurchaseOrder(
         number: purchaseOrderNumber(person.name, seq),
         seq,
         personId: person.id,
-        vatLiable: input.vatLiable,
+        vatRateBp: input.vatRateBp,
+        vatLiable: input.vatRateBp > 0,
         totalCents: priced.reduce((sum, p) => sum + p.amountCents, 0),
         lines: {
           create: priced.map(({ line: l, soundcheck, baseCents, deductionCents, vatCents, amountCents }, position) => ({

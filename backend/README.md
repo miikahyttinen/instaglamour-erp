@@ -125,8 +125,18 @@ spoof it and bypass the limit).
   `purchase_order.vat_liable` and `purchase_order_line.base_cents/soundcheck/deduction_cents/vat_cents`
   (migration `20261104130000_po_vat_soundcheck` backfilled old lines: base = amount, soundcheck true, 0, 0).
   Totals = Σ amount; paying sets each cost line's actual = its line amount (incl. VAT). The cost line's
-  budgeted fee is not changed. Partner POs always use soundcheck true / no VAT. `FreelancerView.settings`
-  = `{ soundcheckDeductionCents, vatRateBp }` for the UI preview.
+  budgeted fee is not changed. Partner POs always use soundcheck true / no VAT.
+- **VAT rate choice** (2026-11-04, replaces the yes/no question): the public POST takes `{ vatRateBp,
+  lines }`; allowed values = `[0, ...vatRatesBp]`, anything else → 400 `vatRateBp: INVALID_VALUE`, missing →
+  `REQUIRED` (validated before the token lookup). Legacy bodies: `{ vatLiable, lines }` → `true` = the first
+  configured rate (1350 by default), `false` = 0; `{ costLineIds }` = 0. If both `vatRateBp` and `vatLiable`
+  are sent, `vatRateBp` wins. Rates (`resolveVatRates` in `src/purchaseOrders/amounts.ts`): setting
+  `fees.performer_vat_rates_bp` (text, comma-separated basis points, e.g. `1350,2550`) if present and valid;
+  else the default `[1350, 2550]` with the first rate replaced by the old `fees.performer_vat_rate_bp` if
+  that row exists. `FreelancerView.settings` = `{ soundcheckDeductionCents, vatRatesBp }`. Stored on
+  `purchase_order.vat_rate_bp`; `vat_liable` is kept and written as `vat_rate_bp > 0`; responses carry
+  `vatRateBp` and `vatLiable`. Migration `20261104140000_po_vat_rate` backfilled `vat_liable = true` POs with
+  the old single-rate setting (1350 if the row was missing), others 0. Partner POs: `vatRateBp: 0`.
 - **One active PO per cost line:** `purchase_order_line.active` is true while the PO is OPEN/PAID; the
   partial unique index `purchase_order_line_active_cost_line_key` backs the code check. Line snapshots
   (`cost_line_ref`, event, type, description, amount) keep cancelled POs intact if a freed cost line is

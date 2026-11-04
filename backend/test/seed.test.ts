@@ -110,6 +110,22 @@ describe('seed: optional VAT rate setting (TASK-050)', () => {
     await loadSeed(testDb(), data);
     expect((await testDb().setting.findUniqueOrThrow({ where: { key: 'fees.performer_vat_rate_bp' } })).valueCents).toBe(2400);
   });
+
+  it('fees.performer_vat_rates_bp is optional, comma-separated basis points, stored as text', async () => {
+    const key = 'fees.performer_vat_rates_bp';
+    for (const value of ['x', '', '1350,,2550', '1350,1350', '0,1350', '10001', '13.5', 1350]) {
+      const bad = example();
+      bad.settings = { ...(bad.settings as object), [key]: value };
+      const result = validateSeed(bad);
+      expect(result.ok, String(value)).toBe(false);
+      expect(result.ok ? '' : result.errors.join('\n')).toMatch(/settings\.fees\.performer_vat_rates_bp/);
+    }
+    const data = example();
+    data.settings = { ...(data.settings as object), [key]: '1000, 2400' };
+    expect(validateSeed(data).ok).toBe(true);
+    await loadSeed(testDb(), data);
+    expect(await testDb().setting.findUniqueOrThrow({ where: { key } })).toMatchObject({ valueText: '1000, 2400', valueCents: null });
+  });
 });
 
 describe('validateSeed: technical setup / logistics (TASK-010)', () => {
