@@ -24,6 +24,7 @@ import {
   createPoPublic,
   feeRow,
   feeRows,
+  feeTable,
   fiPaidLabel,
   freelancerPath,
   nameSlug,
@@ -185,7 +186,8 @@ test('freelancer link → create PO → mark paid → event lines paid and locke
   await expect(fp.getByText(venue(4))).toHaveCount(0);
 
   // Select fees from two events → modal: VAT question + sound check per fee → create.
-  await expect(fp.getByRole('columnheader', { name: 'Palkkio alv 0 %' })).toBeVisible();
+  // Scoped to the fee table: the PO breakdowns below have the same column.
+  await expect(feeTable(fp).getByRole('columnheader', { name: 'Palkkio alv 0 %' })).toBeVisible();
   const create = fp.getByRole('button', { name: 'Luo ostotilausnumero', exact: true });
   await expect(create).toBeDisabled();
   await fp.getByRole('checkbox', { name: `Valitse: ${fiDate(d1)}, ${venue(1)}, Rummut` }).check();

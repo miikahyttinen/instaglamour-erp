@@ -69,8 +69,12 @@ test('edit price, move, cancel, uncancel, delete, restore — all in history', a
   await signIn(page);
   const tag = tagOf(testInfo);
   const venue = `Venue ${tag}-${suffix()}`;
-  const startDate = tag === 'M' ? '2026-11-02' : '2026-11-09';
-  const movedTo = tag === 'M' ? '2026-11-03' : '2026-11-10';
+  // Upcoming dates relative to today (Europe/Helsinki): uncancelling must give "Tuleva", which a
+  // fixed date stops doing once it has passed (it would be "Soitettu").
+  const daysFromToday = (days: number) =>
+    new Date(Date.now() + days * 24 * 3600 * 1000).toLocaleDateString('sv-SE', { timeZone: 'Europe/Helsinki' });
+  const startDate = daysFromToday(tag === 'M' ? 7 : 14);
+  const movedTo = daysFromToday(tag === 'M' ? 8 : 15);
   const event = await createEventViaApi(page, { startDate, venue, priceCents: 100000 });
   const title = `${event.lineupName} · ${venue}`;
 
