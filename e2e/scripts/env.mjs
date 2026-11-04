@@ -40,6 +40,9 @@ export function backendEnv() {
     FRONTEND_URL: frontendUrl,
     UPLOAD_DIR: uploadDir,
     LOG_LEVEL: process.env.E2E_LOG_LEVEL ?? 'warn',
+    // The automatic final invoice job ("Loppulasku") would add invoice rows to gigs behind the
+    // specs' backs; it is off here and covered by the backend unit tests instead.
+    INVOICE_JOB_ENABLED: 'false',
   };
 }
 

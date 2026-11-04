@@ -33,6 +33,11 @@ npm run e2e
 All configuration is passed as environment variables (`scripts/env.mjs`); no `.env` file is read
 or written. The values there are local-only placeholders, not secrets.
 
+The backend runs with **`INVOICE_JOB_ENABLED=false`**: the automatic final invoice job
+("Loppulasku", at startup and every 15 min) would otherwise add invoice rows to played gigs behind
+the specs' backs. It has no API trigger, so the e2e suite does not cover it; the job is covered by
+the backend tests (`backend/src/invoicing/finalInvoiceJob.test.ts`).
+
 Every flow runs twice: project **`mobile-375`** (375 × 812, touch) and **`desktop-1280`**.
 Other widths (900, 1199, 1200, 1440 px) are checked inside `12-layout-v2` by resizing the desktop
 page, without a third project (the flows that write data tag records per viewport, `M` / `D`).
