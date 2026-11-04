@@ -587,6 +587,7 @@ One derived value **`invoiceState`** = the next invoicing action; first match wi
 - Per line amount: `base = budgetedCents`; if `soundcheck = false` → `base − settings.loadInDeductionCents` (not below 0; the same deduction as the load-in switch, value from settings, never hard-coded); if `vatLiable` → `amount = round(base × (1 + vatRate))` where `vatRate` = setting `fees.performer_vat_rate_bp` (basis points; default 1350 = 13.5 %, seedable). The VAT is part of the cost (the app does not track VAT separately).
 - `PurchaseOrderLine` gains `baseCents`, `soundcheck`, `deductionCents`, `vatCents`; `amountCents` = final. `PurchaseOrder` and `PublicPurchaseOrder` gain `vatLiable`. Totals = Σ amountCents. Paying a PO sets each cost line's actual = its `amountCents` (incl. VAT) as before.
 - `FreelancerView` gains `settings: { soundcheckDeductionCents, vatRateBp }` so the page can preview amounts. FreelancerLine `amountCents` stays the budgeted fee (alv 0 %).
+- Details: `baseCents` = the fee before the deduction (budgetedCents); `amountCents = round_half_up((baseCents − deductionCents) × (1 + vatRateBp/10000))`, `vatCents = amountCents − (baseCents − deductionCents)`. `soundcheckDeductionCents` in `FreelancerView.settings` is the same value as `settings.loadInDeductionCents`. `PublicPurchaseOrder.lines` also carry `baseCents, soundcheck, deductionCents, vatCents`.
 - Partner-created POs (`POST /api/purchase-orders`) unchanged (no VAT/sound check; lines `soundcheck: true`, `vatLiable: false`).
 
 ## Change log
