@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { peopleApi, publicFreelancersApi } from '../../api/endpoints';
-import type { FreelancerView, Id, PublicPurchaseOrder } from '../../api/types';
+import type { FreelancerView, Id, PublicPurchaseOrder, PublicPurchaseOrderCreate } from '../../api/types';
 
 export const freelancerKeys = {
   /** Public page data (no session). */
@@ -23,11 +23,11 @@ export function useFreelancerView(token: string) {
 export function useCreatePurchaseOrder(token: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (costLineIds: Id[]) => publicFreelancersApi.createPurchaseOrder(token, { costLineIds }),
-    onSuccess: (po: PublicPurchaseOrder, costLineIds) => {
+    mutationFn: (body: PublicPurchaseOrderCreate) => publicFreelancersApi.createPurchaseOrder(token, body),
+    onSuccess: (po: PublicPurchaseOrder, body) => {
       queryClient.setQueryData<FreelancerView>(freelancerKeys.view(token), (view) => {
         if (!view) return view;
-        const ids = new Set(costLineIds);
+        const ids = new Set(body.lines.map((l) => l.costLineId));
         return {
           ...view,
           lines: view.lines.map((line) =>

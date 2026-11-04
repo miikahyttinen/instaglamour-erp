@@ -127,6 +127,10 @@ function PurchaseOrderView({ po }: { po: PurchaseOrder }) {
               <dd className="num">{po.lines.length}</dd>
             </div>
             <div>
+              <dt>{t('purchaseOrders.page.vatLiable')}</dt>
+              <dd>{po.vatLiable ? t('purchaseOrders.page.yes') : t('purchaseOrders.page.no')}</dd>
+            </div>
+            <div>
               <dt>{t('purchaseOrders.page.total')}</dt>
               <dd className="num po-total">{formatMoney(po.totalCents, lang)}</dd>
             </div>
@@ -175,6 +179,10 @@ function PurchaseOrderView({ po }: { po: PurchaseOrder }) {
 function LinesTable({ po }: { po: PurchaseOrder }) {
   const { t } = useTranslation();
   const lang = useLang();
+  const sum = (pick: (l: PurchaseOrderLine) => number) => po.lines.reduce((s, l) => s + pick(l), 0);
+  /** 0 → "–"; else "−x" / "+x". */
+  const signed = (cents: number) =>
+    cents === 0 ? '–' : `${cents < 0 ? '−' : '+'}${formatMoney(Math.abs(cents), lang)}`;
   const role = (l: PurchaseOrderLine) =>
     l.description ? `${costTypeLabel(t, l.type)} · ${l.description}` : costTypeLabel(t, l.type);
   const columns: DataTableColumn<PurchaseOrderLine>[] = [
@@ -188,6 +196,24 @@ function LinesTable({ po }: { po: PurchaseOrder }) {
     { key: 'venue', phoneBare: true, label: t('purchaseOrders.lines.venue'), cell: (l) => l.eventVenue },
     { key: 'lineup', phoneBare: true, label: t('purchaseOrders.lines.lineup'), cell: (l) => l.eventLineupName },
     { key: 'role', phoneBare: true, label: t('purchaseOrders.lines.role'), cell: role },
+    {
+      key: 'base',
+      label: t('purchaseOrders.lines.base'),
+      numeric: true,
+      cell: (l) => formatMoney(l.baseCents, lang),
+    },
+    {
+      key: 'deduction',
+      label: t('purchaseOrders.lines.deduction'),
+      numeric: true,
+      cell: (l) => signed(-l.deductionCents),
+    },
+    {
+      key: 'vat',
+      label: t('purchaseOrders.lines.vat'),
+      numeric: true,
+      cell: (l) => signed(l.vatCents),
+    },
     {
       key: 'amount',
       phoneMain: true,
@@ -217,6 +243,15 @@ function LinesTable({ po }: { po: PurchaseOrder }) {
         <tr className="po-lines-total">
           <td colSpan={4} data-label={t('purchaseOrders.lines.total')}>
             {t('purchaseOrders.lines.total')}
+          </td>
+          <td className="num" data-label={t('purchaseOrders.lines.base')}>
+            {formatMoney(sum((l) => l.baseCents), lang)}
+          </td>
+          <td className="num" data-label={t('purchaseOrders.lines.deduction')}>
+            {signed(-sum((l) => l.deductionCents))}
+          </td>
+          <td className="num" data-label={t('purchaseOrders.lines.vat')}>
+            {signed(sum((l) => l.vatCents))}
           </td>
           <td className="num" data-label={t('purchaseOrders.lines.total')}>
             {formatMoney(po.totalCents, lang)}

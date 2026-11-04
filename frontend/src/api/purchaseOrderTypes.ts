@@ -37,7 +37,13 @@ export interface PurchaseOrderLine {
   eventLineupName: string;
   type: CostType;
   description: string | null;
-  /** Snapshot taken when the PO was created. */
+  /** Fee excl. VAT (snapshot when the PO was created). */
+  baseCents: Cents;
+  /** false = not at the sound check: `deductionCents` was deducted. Partner-created: true. */
+  soundcheck: boolean;
+  deductionCents: Cents;
+  vatCents: Cents;
+  /** Final amount = base − deduction + VAT (snapshot taken when the PO was created). */
   amountCents: Cents;
 }
 
@@ -48,6 +54,8 @@ export interface PurchaseOrder {
   personId: Id;
   personName: string;
   status: PurchaseOrderStatus;
+  /** Chosen by the freelancer; partner-created POs: false. */
+  vatLiable: boolean;
   totalCents: Cents;
   createdAt: IsoTimestamp;
   paidAt: IsoTimestamp | null;
@@ -141,6 +149,12 @@ export interface PublicPurchaseOrderLine {
   venue: string;
   type: CostType;
   description: string | null;
+  /** Fee excl. VAT. */
+  baseCents: Cents;
+  soundcheck: boolean;
+  deductionCents: Cents;
+  vatCents: Cents;
+  /** Final amount = base − deduction + VAT. */
   amountCents: Cents;
 }
 
@@ -148,6 +162,7 @@ export interface PublicPurchaseOrderLine {
 export interface PublicPurchaseOrder {
   number: string;
   status: PurchaseOrderStatus;
+  vatLiable: boolean;
   totalCents: Cents;
   createdAt: IsoTimestamp;
   paidAt: IsoTimestamp | null;
@@ -159,9 +174,23 @@ export interface FreelancerView {
   name: string;
   lines: FreelancerLine[];
   purchaseOrders: PublicPurchaseOrder[];
+  /** For the amount preview of the create dialog. */
+  settings: FreelancerSettings;
 }
 
-/** `POST /api/public/freelancers/{token}/purchase-orders`: 1…200 unique ids. */
+export interface FreelancerSettings {
+  /** Deducted from a fee when the person was not at the sound check. */
+  soundcheckDeductionCents: Cents;
+  /** Performer VAT rate in basis points (1350 = 13.5 %). */
+  vatRateBp: number;
+}
+
+/**
+ * `POST /api/public/freelancers/{token}/purchase-orders`: VAT choice and 1…200 unique lines with
+ * the sound check flag. (The backend still accepts the legacy `{ costLineIds }`; the UI does not
+ * send it.)
+ */
 export interface PublicPurchaseOrderCreate {
-  costLineIds: Id[];
+  vatLiable: boolean;
+  lines: { costLineId: Id; soundcheck: boolean }[];
 }

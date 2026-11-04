@@ -10,12 +10,14 @@ import { purchaseOrderNumber, purchaseOrderSlug } from './freelancerStore';
 
 const base = '/api';
 const getView = (token: string) => fetch(`${base}/public/freelancers/${token}`);
-const create = (token: string, costLineIds: unknown) =>
+const post = (token: string, body: unknown) =>
   fetch(`${base}/public/freelancers/${token}/purchase-orders`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ costLineIds }),
+    body: JSON.stringify(body),
   });
+/** Legacy body `{ costLineIds }` (still accepted: not VAT-liable, all at the sound check). */
+const create = (token: string, costLineIds: unknown) => post(token, { costLineIds });
 
 describe('PO number (BR-116)', () => {
   it('slugs the name: accents removed, upper case, non-alphanumerics to single dashes', () => {
@@ -40,7 +42,11 @@ describe('public freelancer mock', () => {
     expect(res.status).toBe(200);
     expect(res.headers.get('X-Robots-Tag')).toBe('noindex');
     const view = (await res.json()) as FreelancerView;
-    expect(Object.keys(view).sort()).toEqual(['lines', 'name', 'purchaseOrders']);
+    expect(Object.keys(view).sort()).toEqual(['lines', 'name', 'purchaseOrders', 'settings']);
+    expect(view.settings).toEqual({
+      soundcheckDeductionCents: db.reference.settings.loadInDeductionCents,
+      vatRateBp: db.freelancer.vatRateBp,
+    });
     expect(view.name).toBe('Person 5');
     const ids = view.lines.map((l) => l.costLineId);
     expect(ids).toEqual([fx.lines.upcoming.id, fx.lines.played2.id, fx.lines.other.id, fx.lines.played1.id, fx.lines.paid.id]);
@@ -58,7 +64,9 @@ describe('public freelancer mock', () => {
     expect(po.number).toMatch(/^PERSON-5-\d{4}$/);
     expect(po.status).toBe('OPEN');
     expect(po.totalCents).toBe(fx.lines.played1.budgetedCents + fx.lines.played2.budgetedCents);
-    expect(Object.keys(po).sort()).toEqual(['createdAt', 'lines', 'number', 'paidAt', 'status', 'totalCents']);
+    expect(Object.keys(po).sort()).toEqual(['createdAt', 'lines', 'number', 'paidAt', 'status', 'totalCents', 'vatLiable']);
+    expect(po.vatLiable).toBe(false);
+    expect(po.lines.every((l) => l.soundcheck && l.deductionCents === 0 && l.vatCents === 0 && l.baseCents === l.amountCents)).toBe(true);
     expect(po.lines.map((l) => l.venue)).toEqual(['Venue Y', 'Venue X']);
 
     const view = (await (await getView(fx.token)).json()) as FreelancerView;
@@ -81,13 +89,59 @@ describe('public freelancer mock', () => {
     expect(db.freelancer.purchaseOrders.length).toBe(before);
 
     // The API client exposes `details` on the error.
-    const error = await publicFreelancersApi.createPurchaseOrder(fx.token, { costLineIds: [fx.lines.upcoming.id] }).catch((e: unknown) => e);
+    const error = await publicFreelancersApi
+      .createPurchaseOrder(fx.token, { vatLiable: false, lines: [{ costLineId: fx.lines.upcoming.id, soundcheck: true }] }).catch((e: unknown) => e);
     expect(error).toBeInstanceOf(ApiError);
     expect((error as ApiError).details).toEqual({ costLineIds: [fx.lines.upcoming.id] });
 
     // A line already on an open PO can't go on another one.
     expect((await create(fx.token, [fx.lines.played1.id])).status).toBe(201);
     expect((await create(fx.token, [fx.lines.played1.id])).status).toBe(409);
+  });
+
+  it('VAT-liable + missed sound check: deduction from settings, VAT from the rate, totals', async () => {
+    db.reference.settings.loadInDeductionCents = 3000;
+    db.freelancer.vatRateBp = 1000;
+    fx.lines.other.budgetedCents = 2001; // deduction capped at the fee; rounding
+    const res = await post(fx.token, {
+      vatLiable: true,
+      lines: [
+        { costLineId: fx.lines.played1.id, soundcheck: false },
+        { costLineId: fx.lines.played2.id, soundcheck: true },
+        { costLineId: fx.lines.other.id, soundcheck: false },
+      ],
+    });
+    expect(res.status).toBe(201);
+    const po = (await res.json()) as PublicPurchaseOrder;
+    expect(po.vatLiable).toBe(true);
+    const byVenueRole = (venue: string, type: string) => po.lines.find((l) => l.venue === venue && l.type === type)!;
+    const p1 = byVenueRole('Venue X', 'VOC');
+    const p2 = byVenueRole('Venue Y', 'VOC');
+    const other = byVenueRole('Venue Y', 'OTHER_ROLE');
+    const fee = fx.lines.played1.budgetedCents;
+    expect(p1).toMatchObject({ baseCents: fee, soundcheck: false, deductionCents: 3000 });
+    expect(p1.amountCents).toBe(Math.round((fee - 3000) * 1.1));
+    expect(p1.vatCents).toBe(p1.amountCents - (fee - 3000));
+    expect(p2).toMatchObject({ soundcheck: true, deductionCents: 0, amountCents: Math.round(fx.lines.played2.budgetedCents * 1.1) });
+    expect(other).toMatchObject({ baseCents: 2001, deductionCents: 2001, vatCents: 0, amountCents: 0 });
+    expect(po.totalCents).toBe(p1.amountCents + p2.amountCents + other.amountCents);
+    // Partner view and paying use the final amount.
+    const stored = db.freelancer.purchaseOrders.at(-1)!;
+    expect(stored.vatLiable).toBe(true);
+    expect(stored.lines.find((l) => l.costLineId === fx.lines.played1.id)!.amountCents).toBe(p1.amountCents);
+  });
+
+  it('validates the new body: vatLiable REQUIRED, lines INVALID_VALUE', async () => {
+    const fields = async (body: unknown) =>
+      ((await (await post(fx.token, body)).json()) as { error: { fields: Record<string, string> } }).error.fields;
+    expect(await fields({ lines: [{ costLineId: fx.lines.played1.id, soundcheck: true }] })).toEqual({ vatLiable: 'REQUIRED' });
+    expect(await fields({ vatLiable: 'yes', lines: [{ costLineId: fx.lines.played1.id, soundcheck: true }] })).toEqual({
+      vatLiable: 'INVALID_VALUE',
+    });
+    expect(await fields({ vatLiable: true, lines: [] })).toEqual({ lines: 'INVALID_VALUE' });
+    expect(await fields({ vatLiable: true, lines: [{ costLineId: fx.lines.played1.id }] })).toEqual({ lines: 'INVALID_VALUE' });
+    const dup = { costLineId: fx.lines.played1.id, soundcheck: true };
+    expect(await fields({ vatLiable: false, lines: [dup, dup] })).toEqual({ lines: 'INVALID_VALUE' });
   });
 
   it('a cancelled PO frees its lines again', async () => {

@@ -4,7 +4,13 @@ import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { isApiError } from '../../api/client';
 import type { Language } from '../../api/enums';
-import type { FreelancerLine, FreelancerView, Id, PublicPurchaseOrder } from '../../api/types';
+import type {
+  FreelancerLine,
+  FreelancerView,
+  Id,
+  PublicPurchaseOrder,
+  PublicPurchaseOrderCreate,
+} from '../../api/types';
 import { Button } from '../../components/Button';
 import { DataTable, type DataTableColumn } from '../../components/DataTable';
 import { Logo } from '../../components/Logo';
@@ -16,6 +22,7 @@ import { useLang } from '../../i18n/useLang';
 import { LanguageButtons } from '../../layout/LanguageButtons';
 import { formatDate, formatDateRange, formatMoney } from '../../lib/format';
 import { copyToClipboard } from '../offers/offerOptions';
+import { CreatePoDialog } from './CreatePoDialog';
 import { feeRoleLabel, purchaseOrderStatusLabel } from './freelancerLabels';
 import { readFreelancerLanguage, storeFreelancerLanguage } from './freelancerLanguage';
 import { useCreatePurchaseOrder, useFreelancerView } from './queries';
@@ -116,6 +123,7 @@ function FreelancerContent({ token, view, refetch }: { token: string; view: Free
   const [selected, setSelected] = useState<ReadonlySet<Id>>(new Set());
   const [notice, setNotice] = useState<CreateNotice | null>(null);
   const [newNumber, setNewNumber] = useState<string | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
   // Set synchronously on click: React Query's isPending shows only after a render, so a fast
   // double click would otherwise send two requests.
   const submitting = useRef(false);
@@ -136,12 +144,17 @@ function FreelancerContent({ token, view, refetch }: { token: string; view: Free
     });
   const toggleAll = () => setSelected(allChosen ? new Set() : new Set(selectable.map((l) => l.costLineId)));
 
-  const submit = () => {
-    if (submitting.current || chosen.length === 0) return;
+  const openDialog = () => {
+    if (chosen.length === 0) return;
+    setNotice(null);
+    setDialogOpen(true);
+  };
+
+  const submit = (body: PublicPurchaseOrderCreate) => {
+    if (submitting.current || body.lines.length === 0) return;
     submitting.current = true;
     setNotice(null);
-    const ids = chosen.map((l) => l.costLineId);
-    create.mutate(ids, {
+    create.mutate(body, {
       onSuccess: (po) => {
         setSelected(new Set());
         setNewNumber(po.number);
@@ -162,6 +175,7 @@ function FreelancerContent({ token, view, refetch }: { token: string; view: Free
       },
       onSettled: () => {
         submitting.current = false;
+        setDialogOpen(false);
       },
     });
   };
@@ -237,11 +251,22 @@ function FreelancerContent({ token, view, refetch }: { token: string; view: Free
               <strong className="num">{t('freelancer.selectedTotal', { amount: money(totalCents) })}</strong>
             </p>
           )}
-          <Button variant="primary" disabled={chosen.length === 0 || create.isPending} onClick={submit}>
+          <Button variant="primary" disabled={chosen.length === 0 || create.isPending} onClick={openDialog}>
             {create.isPending ? t('freelancer.creating') : t('freelancer.create')}
           </Button>
         </div>
         {notice && <CreateNoticeBox notice={notice} />}
+        {dialogOpen && (
+          <CreatePoDialog
+            lines={chosen}
+            settings={view.settings}
+            pending={create.isPending}
+            onConfirm={submit}
+            onClose={() => {
+              if (!submitting.current) setDialogOpen(false);
+            }}
+          />
+        )}
       </section>
 
       <section className="freelancer-section" aria-labelledby="freelancer-orders-title">
@@ -329,7 +354,20 @@ function PurchaseOrderItem({ po, isNew }: { po: PublicPurchaseOrder; isNew: bool
     },
     { key: 'venue', phoneBare: true, label: t('freelancer.columns.venue'), cell: (line) => line.venue },
     { key: 'role', phoneBare: true, label: t('freelancer.columns.role'), cell: (line) => feeRoleLabel(t, line) },
-    { key: 'amount', label: t('freelancer.columns.amount'), numeric: true, phoneMain: true, cell: (line) => formatMoney(line.amountCents, lang) },
+    { key: 'base', label: t('freelancer.columns.amount'), numeric: true, cell: (line) => formatMoney(line.baseCents, lang) },
+    {
+      key: 'deduction',
+      label: t('freelancer.dialog.deduction'),
+      numeric: true,
+      cell: (line) => (line.deductionCents > 0 ? `−${formatMoney(line.deductionCents, lang)}` : '–'),
+    },
+    {
+      key: 'vat',
+      label: t('freelancer.orders.vat'),
+      numeric: true,
+      cell: (line) => (line.vatCents > 0 ? `+${formatMoney(line.vatCents, lang)}` : '–'),
+    },
+    { key: 'amount', label: t('freelancer.dialog.lineTotal'), numeric: true, phoneMain: true, cell: (line) => formatMoney(line.amountCents, lang) },
   ];
 
   return (
@@ -359,6 +397,10 @@ function PurchaseOrderItem({ po, isNew }: { po: PublicPurchaseOrder; isNew: bool
         <div>
           <dt className="label">{t('freelancer.orders.total')}</dt>
           <dd className="num">{formatMoney(po.totalCents, lang)}</dd>
+        </div>
+        <div>
+          <dt className="label">{t('freelancer.orders.vatLiable')}</dt>
+          <dd>{po.vatLiable ? t('freelancer.orders.vatLiableYes') : t('freelancer.orders.vatLiableNo')}</dd>
         </div>
         <div>
           <dt className="label">{t('freelancer.orders.status')}</dt>

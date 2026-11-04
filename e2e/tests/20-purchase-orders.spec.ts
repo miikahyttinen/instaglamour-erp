@@ -44,10 +44,16 @@ import {
 
 const PRICE_CENTS = 4370000; // distinctive event price: must never reach the freelancer
 const PRICE_FORMS = ['4370000', '43700', '43 700', '43 700', '43 700', '43,700', '43.700'];
-const VIEW_KEYS = ['lines', 'name', 'purchaseOrders'];
+const VIEW_KEYS = ['lines', 'name', 'purchaseOrders', 'settings'];
 const LINE_KEYS = ['amountCents', 'costLineId', 'description', 'eventEndDate', 'eventStartDate', 'purchaseOrderNumber', 'state', 'type', 'venue'];
-const PUBLIC_PO_KEYS = ['createdAt', 'lines', 'number', 'paidAt', 'status', 'totalCents'];
-const PUBLIC_PO_LINE_KEYS = ['amountCents', 'description', 'eventStartDate', 'type', 'venue'];
+const PUBLIC_PO_KEYS = ['createdAt', 'lines', 'number', 'paidAt', 'status', 'totalCents', 'vatLiable'];
+const PUBLIC_PO_LINE_KEYS = ['amountCents', 'baseCents', 'deductionCents', 'description', 'eventStartDate', 'soundcheck', 'type', 'vatCents', 'venue'];
+
+/** Contract "Freelancer PO: VAT and sound check": fee − deduction (≥ 0), then × (1 + rate) rounded. */
+function poAmount(fee: number, soundcheck: boolean, vatLiable: boolean, settings: { soundcheckDeductionCents: number; vatRateBp: number }) {
+  const net = soundcheck ? fee : Math.max(fee - settings.soundcheckDeductionCents, 0);
+  return vatLiable ? Math.round((net * (10000 + settings.vatRateBp)) / 10000) : net;
+}
 const PO_NUMBER = /^[A-Z0-9-]+-\d{4,}$/;
 
 test('freelancer link → create PO → mark paid → event lines paid and locked; unmark, cancel, logs', async ({ page, context, browser, baseURL, request }, testInfo) => {
@@ -128,6 +134,12 @@ test('freelancer link → create PO → mark paid → event lines paid and locke
   const view = await viewRes.json();
   expect(Object.keys(view).sort()).toEqual(VIEW_KEYS);
   expect(view.name).toBe(person.name);
+  expect(Object.keys(view.settings).sort()).toEqual(['soundcheckDeductionCents', 'vatRateBp']);
+  const settings = view.settings as { soundcheckDeductionCents: number; vatRateBp: number };
+  // Drums: not at the sound check; bass: at it; VAT-liable.
+  const drumsAmount = poAmount(30000, false, true, settings);
+  const bassAmount = poAmount(40000, true, true, settings);
+  const poTotal = drumsAmount + bassAmount;
   for (const line of view.lines) expect(Object.keys(line).sort()).toEqual(LINE_KEYS);
   for (const po of view.purchaseOrders) {
     expect(Object.keys(po).sort()).toEqual(PUBLIC_PO_KEYS);
@@ -172,27 +184,62 @@ test('freelancer link → create PO → mark paid → event lines paid and locke
   await expect(feeRow(fp, venue(1), 'Koskettimet')).toContainText(`Ostotilaus ${oldPo.number}`);
   await expect(fp.getByText(venue(4))).toHaveCount(0);
 
-  // Select fees from two events → create.
+  // Select fees from two events → modal: VAT question + sound check per fee → create.
+  await expect(fp.getByRole('columnheader', { name: 'Palkkio alv 0 %' })).toBeVisible();
   const create = fp.getByRole('button', { name: 'Luo ostotilausnumero', exact: true });
   await expect(create).toBeDisabled();
   await fp.getByRole('checkbox', { name: `Valitse: ${fiDate(d1)}, ${venue(1)}, Rummut` }).check();
   await fp.getByRole('checkbox', { name: `Valitse: ${fiDate(d2)}, ${venue(2)}, Basso` }).check();
   await expect(fp.getByText(`Yhteensä ${fiMoney(70000)}`)).toBeVisible();
-  const postRes = fp.waitForResponse((r) => r.request().method() === 'POST' && r.url().includes('/purchase-orders'));
   await create.click();
+  const modal = fp.getByRole('dialog', { name: 'Luo ostotilausnumero' });
+  await expect(modal.getByRole('group', { name: 'Oletko ALV-velvollinen?' })).toBeVisible();
+  await expectNoHorizontalScroll(fp, 'create-PO modal');
+  // Keyboard: Escape closes; the button opens it again.
+  await fp.keyboard.press('Escape');
+  await expect(modal).toBeHidden();
+  await create.click();
+  const confirmPo = modal.getByRole('button', { name: 'Vahvista ja luo', exact: true });
+  await confirmPo.click();
+  await expect(modal.getByRole('alert')).toHaveText('Valitse Kyllä tai Ei.');
+  const drumsSwitch = modal.getByRole('switch', { name: `Olin soundcheckissä: ${fiDate(d1)}, ${venue(1)}, Rummut` });
+  await expect(drumsSwitch).toBeChecked();
+  await expect(modal.getByRole('switch', { name: `Olin soundcheckissä: ${fiDate(d2)}, ${venue(2)}, Basso` })).toBeChecked();
+  await drumsSwitch.uncheck();
+  await modal.getByRole('radio', { name: 'Kyllä', exact: true }).check();
+  const modalTotal = modal.getByRole('region', { name: 'Ostotilaus yhteensä' });
+  await expect(modalTotal).toContainText(fiMoney(poTotal));
+  if (settings.soundcheckDeductionCents > 0) await expect(modalTotal).toContainText('Soundcheck-vähennys');
+  await expect(modalTotal).toContainText(`ALV ${String(settings.vatRateBp / 100).replace('.', ',')} %`);
+  const postRes = fp.waitForResponse((r) => r.request().method() === 'POST' && r.url().includes('/purchase-orders'));
+  await confirmPo.click();
   const created = await postRes;
   expect(created.status()).toBe(201);
-  const po = (await created.json()) as { number: string; totalCents: number; status: string };
+  expect(created.request().postDataJSON()).toEqual({
+    vatLiable: true,
+    lines: expect.arrayContaining([
+      { costLineId: drums1, soundcheck: false },
+      { costLineId: bass2, soundcheck: true },
+    ]),
+  });
+  await expect(modal).toBeHidden();
+  const po = (await created.json()) as { number: string; totalCents: number; status: string; vatLiable: boolean };
   expect(po.number).toMatch(PO_NUMBER);
   expect(po.number.startsWith(`${nameSlug(person.name)}-`), `${po.number} starts with the name slug`).toBe(true);
   expect(po.number).not.toBe(oldPo.number);
-  expect(po.totalCents).toBe(70000);
+  expect(po.totalCents).toBe(poTotal);
+  expect(po.vatLiable).toBe(true);
   expect(po.status).toBe('OPEN');
   await expect(fp.getByRole('status').filter({ hasText: `Ostotilausnumero ${po.number} luotu.` })).toBeVisible();
   await expect(feeRow(fp, venue(1), 'Rummut')).toContainText(`Ostotilaus ${po.number}`);
   await expect(feeRow(fp, venue(2), 'Basso')).toContainText(`Ostotilaus ${po.number}`);
   await expect(fp.getByRole('heading', { level: 3, name: po.number })).toBeVisible();
   await expect(fp.getByRole('button', { name: `Kopioi numero ${po.number}` })).toBeVisible();
+  const newOrder = fp.getByRole('listitem').filter({ has: fp.getByRole('heading', { level: 3, name: po.number }) });
+  await expect(newOrder).toContainText('ALV-velvollinen');
+  await expect(newOrder).toContainText('Kyllä');
+  await expect(newOrder.getByRole('columnheader', { name: 'Soundcheck-vähennys' })).toHaveCount(1);
+  await expect(newOrder).toContainText(fiMoney(poTotal));
   await expect(fp.getByRole('button', { name: 'Luo ostotilausnumero', exact: true })).toBeDisabled();
 
   // ---- Partner: Ostotilaukset ----
@@ -202,7 +249,7 @@ test('freelancer link → create PO → mark paid → event lines paid and locke
   const row = poRow(page, po.number);
   await expect(row).toBeVisible();
   await expect(row).toContainText(person.name);
-  await expect(row).toContainText(fiMoney(70000));
+  await expect(row).toContainText(fiMoney(poTotal));
   // Every year is listed (contract "Year is no longer global"): the backdated PO too, below.
   await expect(poRow(page, oldPo.number), 'the backdated PO is listed (all years)').toHaveCount(1);
   await expect(page.getByRole('combobox', { name: 'Valittu vuosi' })).toHaveCount(0);
@@ -229,7 +276,7 @@ test('freelancer link → create PO → mark paid → event lines paid and locke
   await expect(poRow(page, po.number).getByRole('button', { name: /Merkitse maksetuksi/ })).toHaveCount(0);
 
   // Event page: lines paid with the PO amount, PO tag, controls locked.
-  for (const [lineId, eventId, amount] of [[drums1, event1.id, 30000], [bass2, event2.id, 40000]] as const) {
+  for (const [lineId, eventId, amount] of [[drums1, event1.id, drumsAmount], [bass2, event2.id, bassAmount]] as const) {
     const line = await costLineOf(page, eventId, lineId);
     expect(line.paidAt).not.toBeNull();
     expect(line.actualCents).toBe(amount);
@@ -241,7 +288,7 @@ test('freelancer link → create PO → mark paid → event lines paid and locke
   const tagLink = drums.getByRole('link', { name: `Ostotilaus ${po.number}` });
   await expect(tagLink).toBeVisible();
   await expect(tagLink).toHaveAttribute('href', `/purchase-orders/${paid.id}`);
-  await expect(drums).toContainText(fiMoney(30000));
+  await expect(drums).toContainText(fiMoney(drumsAmount));
   await expect(costField(page, 'Budjetti', 'Rummut')).toBeDisabled();
   await expect(costField(page, 'Henkilö', 'Rummut')).toBeDisabled();
   await expect(drums.getByRole('button', { name: /Merkitse maksetuksi|Poista maksumerkintä|Poista/ })).toHaveCount(0);
@@ -269,7 +316,10 @@ test('freelancer link → create PO → mark paid → event lines paid and locke
   const lines = page.getByRole('table', { name: 'Ostotilauksen palkkiot' });
   await expect(lines.getByRole('link', { name: `Avaa keikka: ${venue(1)}` })).toHaveAttribute('href', `/gigs/${event1.id}`);
   await expect(lines.getByRole('link', { name: `Avaa keikka: ${venue(2)}` })).toHaveAttribute('href', `/gigs/${event2.id}`);
-  await expect(lines).toContainText(fiMoney(70000));
+  await expect(lines).toContainText(fiMoney(poTotal));
+  await expect(page.locator('.po-facts')).toContainText('ALV-velvollinen');
+  await expect(lines.getByRole('columnheader', { name: 'Palkkio alv 0 %' })).toHaveCount(1);
+  await expect(lines).toContainText(fiMoney(70000)); // fees excl. VAT in the totals row
 
   await page.getByRole('button', { name: 'Peru maksu', exact: true }).click();
   const unpay = page.getByRole('dialog', { name: 'Peru maksu' });

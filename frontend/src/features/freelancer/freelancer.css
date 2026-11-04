@@ -183,3 +183,65 @@
     padding-top: var(--space-6);
   }
 }
+
+/* Create-PO modal (VAT question, sound check per fee, live amounts). Wraps on phones: no
+   sideways scroll. */
+.fl-po p {
+  margin: 0;
+}
+.fl-po-intro {
+  max-width: 60ch;
+}
+.fl-po-radios {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--space-5);
+}
+.fl-po-lines {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: var(--hairline) solid var(--border);
+}
+.fl-po-line {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2) 0;
+  border-bottom: var(--hairline) solid var(--border);
+  min-width: 0;
+}
+.fl-po-line-title {
+  overflow-wrap: anywhere;
+}
+.fl-po-switch {
+  align-self: flex-start;
+}
+.fl-po-breakdown {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.fl-po-breakdown > div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-width: 0;
+}
+.fl-po-breakdown dt {
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+.fl-po-breakdown dd {
+  margin: 0;
+  white-space: nowrap;
+}
+.fl-po-breakdown-total dt {
+  color: var(--text);
+}
+.fl-po-total {
+  margin-top: var(--space-3);
+  padding-top: var(--space-2);
+  border-top: var(--hairline) solid var(--border-strong);
+}

@@ -29,6 +29,16 @@ const feesTable = () => screen.getByRole('table', { name: 'Palkkiot' });
 const createButton = () => screen.getByRole('button', { name: 'Luo ostotilausnumero' });
 const checkbox = (venue: string, role = 'Laulu') =>
   screen.getByRole('checkbox', { name: new RegExp(`${venue}, ${role}$`) });
+const dialog = () => screen.getByRole('dialog', { name: 'Luo ostotilausnumero' });
+const confirmButton = () => within(dialog()).getByRole('button', { name: 'Vahvista ja luo' });
+
+type User = ReturnType<typeof renderApp>['user'];
+/** Opens the modal, answers the VAT question and confirms. */
+async function createVia(user: User, vat: 'Kyllä' | 'Ei' = 'Ei', confirm: 'click' | 'dblClick' = 'click') {
+  await user.click(createButton());
+  await user.click(within(dialog()).getByRole('radio', { name: vat }));
+  await user[confirm](confirmButton());
+}
 
 describe('FreelancerPage /f/:token (UC-033)', () => {
   let fx: ReturnType<typeof seedFreelancerFees>;
@@ -91,7 +101,7 @@ describe('FreelancerPage /f/:token (UC-033)', () => {
     await screen.findByRole('heading', { level: 1, name: 'Person 5' });
     await user.click(checkbox('Venue X'));
     await user.click(checkbox('Venue Y'));
-    await user.dblClick(createButton());
+    await createVia(user, 'Ei', 'dblClick');
 
     const status = await screen.findByText(/Ostotilausnumero PERSON-5-\d{4} luotu/);
     const number = /PERSON-5-\d{4}/.exec(status.textContent!)![0];
@@ -116,6 +126,130 @@ describe('FreelancerPage /f/:token (UC-033)', () => {
     expect(within(first).getByRole('button', { name: `Kopioi numero ${number}` })).toHaveTextContent('Kopioitu');
   });
 
+  it('fee column header is "Palkkio alv 0 %" (EN "Fee excl. VAT")', async () => {
+    const { user } = renderApp(`/f/${fx.token}`);
+    await screen.findByRole('heading', { level: 1, name: 'Person 5' });
+    expect(within(feesTable()).getByRole('columnheader', { name: 'Palkkio alv 0 %' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'English' }));
+    expect(await screen.findByRole('columnheader', { name: 'Fee excl. VAT' })).toBeInTheDocument();
+  });
+
+  it('modal: VAT question required, sound check switches, live preview from settings, POST body', async () => {
+    db.reference.settings.loadInDeductionCents = 1500;
+    db.freelancer.vatRateBp = 1350;
+    const bodies: unknown[] = [];
+    const capture = ({ request }: { request: Request }) => {
+      if (request.method === 'POST') void request.clone().json().then((b) => bodies.push(b));
+    };
+    server.events.on('request:start', capture);
+
+    const { user } = renderApp(`/f/${fx.token}`);
+    await screen.findByRole('heading', { level: 1, name: 'Person 5' });
+    await user.click(checkbox('Venue X'));
+    await user.click(checkbox('Venue Y'));
+    await user.click(createButton());
+
+    const d = dialog();
+    expect(within(d).getByRole('group', { name: 'Oletko ALV-velvollinen?' })).toBeInTheDocument();
+    // Keyboard: focus starts on the first answer.
+    expect(within(d).getByRole('radio', { name: 'Kyllä' })).toHaveFocus();
+    const lines = within(d).getAllByTestId('po-preview-line');
+    expect(lines).toHaveLength(2);
+    const switches = within(d).getAllByRole('switch');
+    expect(switches.map((sw) => (sw as HTMLInputElement).checked)).toEqual([true, true]);
+    const total = within(d).getByRole('region', { name: 'Ostotilaus yhteensä' });
+    expect(norm(total.textContent)).toBe(`Palkkio alv 0 %${fi(20000)}Ostotilaus yhteensä${fi(20000)}`);
+
+    // Required: no answer → message, no request.
+    await user.click(confirmButton());
+    expect(within(d).getByRole('alert')).toHaveTextContent('Valitse Kyllä tai Ei.');
+    expect(requests.some((r) => r.startsWith('POST'))).toBe(false);
+
+    // Venue X: not at the sound check → deduction from settings.
+    const venueX = lines.find((l) => l.textContent!.includes('Venue X'))!;
+    await user.click(within(venueX).getByRole('switch', { name: /^Olin soundcheckissä: .*Venue X, Laulu$/ }));
+    expect(norm(venueX.textContent)).toContain(`Soundcheck-vähennys−${fi(1500)}`);
+    expect(norm(venueX.textContent)).toContain(`Summa${fi(8500)}`);
+    expect(norm(total.textContent)).toContain(`Ostotilaus yhteensä${fi(18500)}`);
+
+    // VAT-liable → + ALV 13,5 % (rate from settings).
+    await user.click(within(d).getByRole('radio', { name: 'Kyllä' }));
+    expect(within(d).queryByRole('alert')).not.toBeInTheDocument();
+    expect(norm(venueX.textContent)).toContain(`ALV 13,5 %+${fi(1148)}`);
+    expect(norm(venueX.textContent)).toContain(`Summa${fi(9648)}`);
+    expect(norm(total.textContent)).toBe(
+      `Palkkio alv 0 %${fi(20000)}Soundcheck-vähennys−${fi(1500)}ALV 13,5 %+${fi(2498)}Ostotilaus yhteensä${fi(20998)}`,
+    );
+
+    await user.click(confirmButton());
+    const status = await screen.findByText(/Ostotilausnumero PERSON-5-\d{4} luotu/);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    server.events.removeListener('request:start', capture);
+    expect(bodies).toEqual([
+      {
+        vatLiable: true,
+        lines: [
+          { costLineId: fx.lines.played2.id, soundcheck: true },
+          { costLineId: fx.lines.played1.id, soundcheck: false },
+        ],
+      },
+    ]);
+
+    // The new PO shows the breakdown and the VAT answer.
+    const number = /PERSON-5-\d{4}/.exec(status.textContent!)![0];
+    const first = within(screen.getByRole('region', { name: 'Ostotilaukset' })).getAllByRole('listitem')[0]!;
+    expect(within(first).getByRole('heading', { name: number })).toBeInTheDocument();
+    expect(norm(first.textContent)).toContain('ALV-velvollinenKyllä');
+    expect(norm(first.textContent)).toContain(fi(20998));
+    const table = within(first).getByRole('table', { name: `Ostotilauksen ${number} palkkiot` });
+    expect(within(table).getAllByRole('columnheader').map((h) => h.textContent)).toEqual([
+      'Päivä',
+      'Paikka',
+      'Rooli',
+      'Palkkio alv 0 %',
+      'Soundcheck-vähennys',
+      'ALV',
+      'Summa',
+    ]);
+    const rowX = within(table).getAllByRole('row').find((r) => r.textContent!.includes('Venue X'))!;
+    expect(within(rowX).getAllByRole('cell').slice(3).map((c) => norm(c.textContent))).toEqual([
+      fi(10000),
+      `−${fi(1500)}`,
+      `+${fi(1148)}`,
+      fi(9648),
+    ]);
+  });
+
+  it('modal: Escape and Cancel close it without a request; focus returns to the button', async () => {
+    const { user } = renderApp(`/f/${fx.token}`);
+    await screen.findByRole('heading', { level: 1, name: 'Person 5' });
+    await user.click(checkbox('Venue X'));
+    await user.click(createButton());
+    expect(dialog()).toBeInTheDocument();
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(createButton()).toHaveFocus();
+
+    await user.keyboard('{Enter}');
+    await user.click(within(dialog()).getByRole('button', { name: 'Peruuta' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(requests.some((r) => r.startsWith('POST'))).toBe(false);
+    expect(checkbox('Venue X')).toBeChecked();
+  });
+
+  it('modal in English', async () => {
+    window.localStorage.setItem(FREELANCER_LANG_KEY, 'en');
+    const { user } = renderApp(`/f/${fx.token}`);
+    await screen.findByRole('heading', { level: 1, name: 'Person 5' });
+    await user.click(screen.getByRole('checkbox', { name: /Venue X, Vocals$/ }));
+    await user.click(screen.getByRole('button', { name: 'Create purchase order number' }));
+    const d = screen.getByRole('dialog', { name: 'Create purchase order number' });
+    expect(within(d).getByRole('group', { name: 'Are you VAT-registered?' })).toBeInTheDocument();
+    expect(within(d).getByRole('radio', { name: 'Yes' })).toBeInTheDocument();
+    expect(within(d).getByRole('switch', { name: /^I was at the sound check: / })).toBeChecked();
+    expect(within(d).getByRole('button', { name: 'Confirm and create' })).toBeInTheDocument();
+  });
+
   it('409 COST_LINE_NOT_ELIGIBLE: message, refetch, keeps the still-valid selection', async () => {
     const { user } = renderApp(`/f/${fx.token}`);
     await screen.findByRole('heading', { level: 1, name: 'Person 5' });
@@ -125,7 +259,7 @@ describe('FreelancerPage /f/:token (UC-033)', () => {
     fx.lines.played1.paidAt = new Date().toISOString();
     fx.lines.played1.actualCents = fx.lines.played1.budgetedCents;
 
-    await user.click(createButton());
+    await createVia(user);
     expect(await screen.findByRole('alert')).toHaveTextContent('Osa valituista palkkioista ei ole enää valittavissa');
     await waitFor(() => expect(screen.queryByRole('checkbox', { name: /Venue X, Laulu$/ })).not.toBeInTheDocument());
     expect(checkbox('Venue Y')).toBeChecked();
@@ -142,7 +276,7 @@ describe('FreelancerPage /f/:token (UC-033)', () => {
     const { user } = renderApp(`/f/${fx.token}`);
     await screen.findByRole('heading', { level: 1, name: 'Person 5' });
     await user.click(checkbox('Venue X'));
-    await user.click(createButton());
+    await createVia(user);
     expect(await screen.findByRole('alert')).toHaveTextContent('Liian monta pyyntöä. Odota hetki ja yritä uudelleen.');
     expect(checkbox('Venue X')).toBeChecked();
   });
@@ -157,9 +291,10 @@ describe('FreelancerPage /f/:token (UC-033)', () => {
     const { user } = renderApp(`/f/${fx.token}`);
     await screen.findByRole('heading', { level: 1, name: 'Person 5' });
     await user.click(checkbox('Venue X'));
-    await user.click(createButton());
-    expect(screen.getByRole('button', { name: 'Luodaan…' })).toBeDisabled();
+    await createVia(user);
+    expect(within(dialog()).getByRole('button', { name: 'Luodaan…' })).toBeDisabled();
     expect(await screen.findByRole('alert')).toHaveTextContent('Ostotilausnumeron luonti epäonnistui');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
   it('unknown or regenerated link → "Linkkiä ei löydy"', async () => {
@@ -178,17 +313,31 @@ describe('FreelancerPage /f/:token (UC-033)', () => {
 
   it('lists POs with status labels: open, paid with date and time, cancelled', async () => {
     const paidAt = new Date(2026, 9, 16, 14, 32).toISOString();
-    const lines = [{ eventStartDate: '2020-03-01', venue: 'Venue X', type: 'VOC' as const, description: null, amountCents: 10000 }];
+    const lines = [
+      {
+        eventStartDate: '2020-03-01',
+        venue: 'Venue X',
+        type: 'VOC' as const,
+        description: null,
+        baseCents: 10000,
+        soundcheck: true,
+        deductionCents: 0,
+        vatCents: 0,
+        amountCents: 10000,
+      },
+    ];
+    const po = { vatLiable: false, totalCents: 10000, createdAt: paidAt, lines };
     server.use(
       http.get('/api/public/freelancers/:token', () =>
         HttpResponse.json({
           name: 'Person 5',
           lines: [],
           purchaseOrders: [
-            { number: 'PERSON-5-0003', status: 'OPEN', totalCents: 10000, createdAt: paidAt, paidAt: null, lines },
-            { number: 'PERSON-5-0002', status: 'PAID', totalCents: 10000, createdAt: paidAt, paidAt, lines },
-            { number: 'PERSON-5-0001', status: 'CANCELLED', totalCents: 10000, createdAt: paidAt, paidAt: null, lines },
+            { ...po, number: 'PERSON-5-0003', status: 'OPEN', paidAt: null },
+            { ...po, number: 'PERSON-5-0002', status: 'PAID', paidAt },
+            { ...po, number: 'PERSON-5-0001', status: 'CANCELLED', paidAt: null },
           ],
+          settings: { soundcheckDeductionCents: 1000, vatRateBp: 1350 },
         }),
       ),
     );
@@ -200,6 +349,7 @@ describe('FreelancerPage /f/:token (UC-033)', () => {
     expect(within(items[1]!).getByText('Maksettu 16.10.2026 klo 14.32')).toHaveClass('tag-ok');
     expect(within(items[2]!).getByText('Peruttu')).toHaveClass('tag-muted');
     expect(within(items[0]!).getByRole('table', { name: 'Ostotilauksen PERSON-5-0003 palkkiot' })).toHaveTextContent('Venue X');
+    expect(norm(items[0]!.textContent)).toContain('ALV-velvollinenEi');
   });
 
   it('EN: switch remembered on this device; default FI', async () => {
