@@ -203,6 +203,16 @@ template roles (no person → `TROMBONE`) and person roles (de-duplicated, `MUSI
 still load and are converted the same way (`seed/README.md`, `convertLegacyRole` in
 `src/domain/enums.ts`).
 
+## Sales and production lines: partners only (2026-11-04)
+
+`SALES` / `PRODUCTION` cost lines (`PARTNER_ONLY_TYPES` in `src/domain/enums.ts`) take only a person
+linked to an **active** partner, or no person. `POST /api/events/{id}/cost-lines` checks it on create,
+`PATCH /api/cost-lines/{id}` only when `personId` actually changes; otherwise 400 `VALIDATION_ERROR`
+with `fields.personId = NOT_PARTNER` (an unknown id stays `UNKNOWN_REFERENCE`). No migration: existing
+lines that break the rule stay as they are and remain editable (amount, description) until someone
+changes their person. Seed/import are unchanged (historic data loads as is), and the automatic
+seller/producer move (BR-027) only ever assigns partners.
+
 ## Invoice rows (TASK-046, Invoicing v3 TASK-049)
 
 Replace the TASK-045 event invoice status and prepayment (and, before that, the TASK-044 ready flag).

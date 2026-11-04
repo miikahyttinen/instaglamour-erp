@@ -3,9 +3,9 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import type { AppDeps } from '../app.js';
 import { todayIso } from '../domain/dates.js';
-import { COST_TYPES, DESCRIPTION_REQUIRED_TYPES, isMusicianRole, isPayable } from '../domain/enums.js';
+import { COST_TYPES, DESCRIPTION_REQUIRED_TYPES, PARTNER_ONLY_TYPES, isMusicianRole, isPayable } from '../domain/enums.js';
 import { switchLoadIn } from '../domain/loadIn.js';
-import type { CostLine, Event, Prisma } from '../generated/prisma/client.js';
+import type { CostLine, CostType, Event, Prisma } from '../generated/prisma/client.js';
 import { AppError, notFound, parseInput, validationError, type FieldCode } from '../http/errors.js';
 import { money, oneOf, optionalText } from '../events/schemas.js';
 import { toEventDetailDto } from '../events/serialize.js';
@@ -45,6 +45,17 @@ export function costLineRoutes(app: FastifyInstance, deps: AppDeps): void {
   const personExists = async (personId: string) =>
     isUuid(personId) && (await db.person.count({ where: { id: personId } })) > 0;
 
+  /** SALES/PRODUCTION lines: the person must be linked to an active partner (contract 2026-11-04). */
+  const isActivePartner = async (personId: string) =>
+    (await db.partner.count({ where: { personId, active: true } })) > 0;
+
+  /** Field code for a person on a line of this type, or null when fine. */
+  const personFieldCode = async (type: CostType, personId: string): Promise<FieldCode | null> => {
+    if (!(await personExists(personId))) return 'UNKNOWN_REFERENCE';
+    if (PARTNER_ONLY_TYPES.has(type) && !(await isActivePartner(personId))) return 'NOT_PARTNER';
+    return null;
+  };
+
   /** The line and its event; 404 if unknown, 409 if the event is deleted. */
   const requireMutableLine = async (id: string): Promise<CostLine & { event: Event }> => {
     const line = isUuid(id) ? await db.costLine.findUnique({ where: { id }, include: { event: true } }) : null;
@@ -70,7 +81,8 @@ export function costLineRoutes(app: FastifyInstance, deps: AppDeps): void {
 
     const fields: Record<string, FieldCode> = {};
     if (DESCRIPTION_REQUIRED_TYPES.has(body.type) && !body.description) fields.description = 'DESCRIPTION_REQUIRED';
-    if (body.personId && !(await personExists(body.personId))) fields.personId = 'UNKNOWN_REFERENCE';
+    const personCode = body.personId ? await personFieldCode(body.type, body.personId) : null;
+    if (personCode) fields.personId = personCode;
     if (Object.keys(fields).length > 0) throw validationError(fields);
 
     const personId = body.personId ?? null;
@@ -109,7 +121,11 @@ export function costLineRoutes(app: FastifyInstance, deps: AppDeps): void {
 
     const fields: Record<string, FieldCode> = {};
     if (body.joinsLoadIn !== undefined && !isMusicianRole(line.type)) fields.joinsLoadIn = 'INVALID_VALUE';
-    if (body.personId && !(await personExists(body.personId))) fields.personId = 'UNKNOWN_REFERENCE';
+    // Only a changed person is checked: existing lines that break the partner rule stay as they are.
+    if (body.personId && body.personId !== line.personId) {
+      const personCode = await personFieldCode(line.type, body.personId);
+      if (personCode) fields.personId = personCode;
+    }
     const description = body.description === undefined ? line.description : body.description;
     if (DESCRIPTION_REQUIRED_TYPES.has(line.type) && !description) fields.description = 'DESCRIPTION_REQUIRED';
     if (Object.keys(fields).length > 0) throw validationError(fields);
