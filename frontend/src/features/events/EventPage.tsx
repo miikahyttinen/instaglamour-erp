@@ -26,19 +26,9 @@ type Notice =
   | { kind: 'moved' | 'uncancelled' | 'restored' }
   | { kind: 'cancelled' };
 
-function Section({
-  title,
-  wide,
-  className,
-  children,
-}: {
-  title: string;
-  wide?: boolean;
-  className?: string;
-  children: ReactNode;
-}) {
+function Section({ title, className, children }: { title: string; className?: string; children: ReactNode }) {
   return (
-    <details className={['event-section', wide && 'event-section-wide', className].filter(Boolean).join(' ')} open>
+    <details className={['event-section', className].filter(Boolean).join(' ')} open>
       <summary>
         <ChevronDown className="event-section-chevron" />
         <h2>{title}</h2>
@@ -160,29 +150,34 @@ export function EventPage() {
 
       <WarningList warnings={warnings} people={people} onDismiss={() => setWarnings([])} />
 
+      {/* Wide: "Kulut ja miehitys" alone on the left (~60 %), the other sections stacked on the
+          right, the log full width below. Narrow: one column, costs first (owner request). */}
       <div className="event-sections">
-        <Section title={t('event.sections.basic')} className="event-section-basic">
-          <EventBasicFields event={event} readOnly={readOnly} onPartnerSaved={onPartnerSaved} />
-        </Section>
+        <div className="event-col event-col-costs">
+          <Section title={t('event.sections.costs')} className="event-section-costs">
+            <CostList event={event} people={people} readOnly={readOnly} onWarnings={setWarnings} />
+          </Section>
+        </div>
 
-        <Section title={t('event.sections.price')}>
-          <EventPriceFields event={event} readOnly={readOnly} />
-        </Section>
+        <div className="event-col event-col-side">
+          <Section title={t('event.sections.basic')} className="event-section-basic">
+            <EventBasicFields event={event} readOnly={readOnly} onPartnerSaved={onPartnerSaved} />
+          </Section>
 
-        <Section title={t('event.sections.invoicing')} className="event-section-invoicing">
-          <EventInvoicing event={event} readOnly={readOnly} />
-        </Section>
+          <Section title={t('event.sections.price')}>
+            <EventPriceFields event={event} readOnly={readOnly} />
+          </Section>
 
-        <Section title={t('event.sections.economics')} wide>
-          <Economics event={event} />
-        </Section>
+          <Section title={t('event.sections.invoicing')} className="event-section-invoicing">
+            <EventInvoicing event={event} readOnly={readOnly} />
+          </Section>
 
-        <Section title={t('event.sections.costs')} wide>
-          <CostList event={event} people={people} readOnly={readOnly} onWarnings={setWarnings} />
-        </Section>
+          <Section title={t('event.sections.economics')} className="event-section-economics">
+            <Economics event={event} />
+          </Section>
+        </div>
 
-        {/* Wide: it is the last section and has no partner card since attachments were removed. */}
-        <Section title={t('event.sections.history')} wide>
+        <Section title={t('event.sections.history')} className="event-section-history">
           <History eventId={event.id} people={people} />
         </Section>
       </div>

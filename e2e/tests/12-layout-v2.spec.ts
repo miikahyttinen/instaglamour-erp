@@ -194,24 +194,60 @@ test.describe('desktop sidebar', () => {
     }
   });
 
-  test('event page cost list: compact rows next to the expanded sidebar at 1280 px, full table at 1440 px', async ({ page }) => {
+  // Gig page columns (owner request): "Kulut ja miehitys" alone on the left (~60 %), the other
+  // sections on the right, the log full width below; one column (costs first) on a narrower page.
+  // The cost list keeps its own compact rows / full table switch inside the left column.
+  test('event page: costs left / other sections right on a wide page, one column otherwise; cost list compact or full', async ({ page }) => {
     const { eventId } = await busyIds(page);
     const table = page.getByRole('table', { name: 'Kulut ja miehitys' });
     // Compact rows keep the table semantics; the header row group is only visually hidden (1 px clip).
     const headerHeight = () => table.locator('thead').evaluate((e) => e.getBoundingClientRect().height);
+    const box = async (name: string) => {
+      const b = await page.locator('details.event-section').filter({ has: page.getByRole('heading', { name, level: 2 }) }).boundingBox();
+      return b!;
+    };
 
-    for (const [w, compact] of [
-      [1280, true],
-      [1440, false],
+    for (const [mode, w, twoColumns, compact] of [
+      ['expanded', 900, false, true],
+      ['expanded', 1200, false, true],
+      ['expanded', 1280, false, true],
+      ['expanded', 1440, true, true],
+      ['collapsed', 1200, true, true],
+      ['collapsed', 1920, true, false],
     ] as const) {
+      await page.addInitScript(([key, value]) => window.localStorage.setItem(key, value), [SIDEBAR_KEY, mode]);
       await page.setViewportSize({ width: w, height: 800 });
       await openLoaded(page, `/gigs/${eventId}`);
-      await expectExpanded(page);
+      if (mode === 'collapsed') await expectCollapsed(page);
+      else await expectExpanded(page);
+      const where = `sidebar ${mode}, ${w} px`;
       await expect(table).toBeVisible();
-      expect(await costLines(page).count(), `${w} px: cost lines are named rowgroups`).toBeGreaterThan(0);
-      if (compact) expect(await headerHeight(), `${w} px: compact rows`).toBeLessThanOrEqual(1);
-      else expect(await headerHeight(), `${w} px: full table with column headers`).toBeGreaterThan(1);
-      await expectNoHorizontalScroll(page, `event page at ${w} px`);
+      expect(await costLines(page).count(), `${where}: cost lines are named rowgroups`).toBeGreaterThan(0);
+      if (compact) expect(await headerHeight(), `${where}: compact rows`).toBeLessThanOrEqual(1);
+      else expect(await headerHeight(), `${where}: full table with column headers`).toBeGreaterThan(1);
+
+      const costs = await box('Kulut ja miehitys');
+      const basic = await box('Perustiedot');
+      const economics = await box('Talous');
+      const history = await box('Muutoshistoria');
+      if (twoColumns) {
+        expect(basic.x, `${where}: other sections right of the costs`).toBeGreaterThanOrEqual(costs.x + costs.width);
+        expect(Math.abs(basic.y - costs.y), `${where}: both columns start at the top`).toBeLessThanOrEqual(1);
+        expect(costs.width / (costs.width + basic.width), `${where}: costs column ~60 %`).toBeGreaterThan(0.55);
+        expect(costs.width, `${where}: costs column not too narrow`).toBeGreaterThanOrEqual(600);
+        expect(basic.width, `${where}: right column not too narrow`).toBeGreaterThanOrEqual(440);
+      } else {
+        expect(Math.abs(basic.x - costs.x), `${where}: one column`).toBeLessThanOrEqual(1);
+        expect(basic.y, `${where}: costs first`).toBeGreaterThan(costs.y + costs.height - 1);
+      }
+      // The log is below both columns, full width.
+      expect(history.y, `${where}: log below the costs`).toBeGreaterThanOrEqual(costs.y + costs.height - 1);
+      expect(history.y, `${where}: log below the right column`).toBeGreaterThanOrEqual(economics.y + economics.height - 1);
+      expect(Math.abs(history.x - costs.x), `${where}: log starts at the left edge`).toBeLessThanOrEqual(1);
+      expect(history.width, `${where}: log is full width`).toBeGreaterThanOrEqual(
+        twoColumns ? basic.x + basic.width - costs.x - 1 : costs.width - 1,
+      );
+      await expectNoHorizontalScroll(page, `event page, ${where}`);
     }
   });
 

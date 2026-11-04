@@ -49,6 +49,28 @@ describe('event page (UC-004, UC-007)', () => {
     expect(section('Talous')).not.toHaveAttribute('open');
   });
 
+  it('section order: costs first (left column), the other sections (right column), the log last', async () => {
+    const event = addMockEvent();
+    renderApp(`/gigs/${event.id}`);
+    await screen.findByRole('heading', { name: 'Template A · Venue X', level: 1 });
+    const sections = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
+    expect(sections).toEqual([
+      'Kulut ja miehitys',
+      'Perustiedot',
+      'Hinta ja lisämyynti',
+      'Laskutus',
+      'Talous',
+      'Muutoshistoria',
+    ]);
+    // Costs alone in the left column; history outside both columns (full width).
+    expect(section('Kulut ja miehitys').parentElement).toHaveClass('event-col-costs');
+    expect(section('Kulut ja miehitys').parentElement!.children).toHaveLength(1);
+    for (const name of ['Perustiedot', 'Hinta ja lisämyynti', 'Laskutus', 'Talous']) {
+      expect(section(name).parentElement).toHaveClass('event-col-side');
+    }
+    expect(section('Muutoshistoria').parentElement).toHaveClass('event-sections');
+  });
+
   it('has no Edit buttons: basic info and price are inline fields (NFR-8)', async () => {
     const event = addMockEvent();
     renderApp(`/gigs/${event.id}`);
