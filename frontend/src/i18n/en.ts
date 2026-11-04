@@ -449,6 +449,10 @@ const en: Resources = {
     groupMusician: 'Musicians and crew',
     groupInternal: 'Internal',
     groupExpense: 'Expenses',
+    sectionStaffing: 'Staffing',
+    sectionCosts: 'Costs',
+    sectionTotal: '{{group}} total',
+    loadInShort: 'Load-in',
   },
   history: {
     filter: 'Show',

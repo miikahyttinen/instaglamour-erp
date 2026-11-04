@@ -452,6 +452,10 @@ const fi = {
     groupMusician: 'Soittajat ja tekniikka',
     groupInternal: 'Sisäiset',
     groupExpense: 'Kulut',
+    sectionStaffing: 'Miehitys',
+    sectionCosts: 'Kulut',
+    sectionTotal: '{{group}} yhteensä',
+    loadInShort: 'Roudaus',
   },
   history: {
     filter: 'Näytä',

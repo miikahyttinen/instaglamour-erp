@@ -196,8 +196,10 @@ test.describe('desktop sidebar', () => {
 
   // Gig page columns (owner request): "Kulut ja miehitys" alone on the left (~60 %), the other
   // sections on the right, the log full width below; one column (costs first) on a narrower page.
-  // The cost list keeps its own compact rows / full table switch inside the left column.
-  test('event page: costs left / other sections right on a wide page, one column otherwise; cost list compact or full', async ({ page }) => {
+  // The cost list (owner request 2026-11: compact rows, "Miehitys" / "Kulut" groups) is the full
+  // one-line table at every desktop width here, also in the ~60 % column at 1440 px with the
+  // sidebar expanded, and never scrolls sideways; compact rows only below a 600 px wide list.
+  test('event page: costs left / other sections right on a wide page, one column otherwise; cost list full table in groups', async ({ page }) => {
     const { eventId } = await busyIds(page);
     const table = page.getByRole('table', { name: 'Kulut ja miehitys' });
     // Compact rows keep the table semantics; the header row group is only visually hidden (1 px clip).
@@ -207,13 +209,13 @@ test.describe('desktop sidebar', () => {
       return b!;
     };
 
-    for (const [mode, w, twoColumns, compact] of [
-      ['expanded', 900, false, true],
-      ['expanded', 1200, false, true],
-      ['expanded', 1280, false, true],
-      ['expanded', 1440, true, true],
-      ['collapsed', 1200, true, true],
-      ['collapsed', 1920, true, false],
+    for (const [mode, w, twoColumns] of [
+      ['expanded', 900, false],
+      ['expanded', 1200, false],
+      ['expanded', 1280, false],
+      ['expanded', 1440, true],
+      ['collapsed', 1200, true],
+      ['collapsed', 1920, true],
     ] as const) {
       await page.addInitScript(([key, value]) => window.localStorage.setItem(key, value), [SIDEBAR_KEY, mode]);
       await page.setViewportSize({ width: w, height: 800 });
@@ -223,8 +225,27 @@ test.describe('desktop sidebar', () => {
       const where = `sidebar ${mode}, ${w} px`;
       await expect(table).toBeVisible();
       expect(await costLines(page).count(), `${where}: cost lines are named rowgroups`).toBeGreaterThan(0);
-      if (compact) expect(await headerHeight(), `${where}: compact rows`).toBeLessThanOrEqual(1);
-      else expect(await headerHeight(), `${where}: full table with column headers`).toBeGreaterThan(1);
+      expect(await headerHeight(), `${where}: full table with column headers`).toBeGreaterThan(1);
+      const wrap = await table.evaluate((t) => {
+        const w = t.parentElement!;
+        return { scroll: w.scrollWidth, client: w.clientWidth, list: t.closest('.cost-list')!.getBoundingClientRect().width };
+      });
+      expect(wrap.scroll, `${where}: cost table does not scroll sideways (list ${wrap.list} px)`).toBeLessThanOrEqual(wrap.client);
+      // Groups: "Miehitys" head before the lines, a totals row per group.
+      await expect(table.getByRole('columnheader', { name: 'Miehitys', exact: true }), `${where}: Miehitys group`).toBeVisible();
+      await expect(table.getByRole('row', { name: /^Miehitys yhteensä/ }), `${where}: Miehitys totals`).toBeVisible();
+      // One table row per line: person, budget and the actions on one line; dense rows (the
+      // description may wrap under the type name in the narrowest list).
+      const line = costLines(page).first();
+      const rowBox = (await line.locator('tr').first().boundingBox())!;
+      const centre = async (l: Locator) => {
+        const b = (await l.boundingBox())!;
+        return b.y + b.height / 2;
+      };
+      const personY = await centre(line.getByRole('combobox'));
+      expect(Math.abs((await centre(line.getByRole('textbox', { name: /^Budjetti:/ }))) - personY), `${where}: budget on the person's line`).toBeLessThanOrEqual(2);
+      expect(Math.abs((await centre(line.getByRole('button', { name: 'Poista' }))) - personY), `${where}: actions on the person's line`).toBeLessThanOrEqual(2);
+      expect(rowBox.height, `${where}: dense row`).toBeLessThanOrEqual(64);
 
       const costs = await box('Kulut ja miehitys');
       const basic = await box('Perustiedot');

@@ -100,6 +100,31 @@ describe('cost list (UC-005)', () => {
     await waitFor(() => expect(historyItems()[0]).toHaveTextContent(/Basso: aiemmin maksettu 80,00\s€/));
   });
 
+  it('groups the lines into Miehitys (musician + internal roles) and Kulut (expenses) with group totals', async () => {
+    const event = addMockEvent();
+    addCostLine(db.events, event, { type: 'FUEL', personId: null, description: null, budgetedCents: 5000 }, partnerA().id);
+    const office = mockLine(event, 'OFFICE');
+    office.paidAt = new Date().toISOString();
+    office.actualCents = 700;
+    office.paidBy = partnerA().id;
+    await openEvent(event.id);
+    const staffingHead = within(costs()).getByRole('columnheader', { name: 'Miehitys' });
+    const costsHead = within(costs()).getByRole('columnheader', { name: 'Kulut' });
+    const follows = (a: Element, b: Element) => Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+    for (const name of ['Laulu', 'Rummut', 'Toimisto', 'Myynti', 'Tuotanto']) {
+      expect(follows(staffingHead, line(name)), name).toBe(true);
+      expect(follows(line(name), costsHead), name).toBe(true);
+    }
+    expect(follows(costsHead, line('Polttoaine'))).toBe(true);
+
+    const staffingTotal = within(costs()).getByRole('row', { name: /^Miehitys yhteensä/ });
+    const costsTotal = within(costs()).getByRole('row', { name: /^Kulut yhteensä/ });
+    expect(staffingTotal).toHaveTextContent(/430,00\s€\s*7,00\s€/);
+    expect(costsTotal).toHaveTextContent(/50,00\s€\s*0,00\s€/);
+    // The overall totals stay below both groups.
+    expect(screen.getByText('Kulut yhteensä, budjetti').nextElementSibling).toHaveTextContent(/480,00\s€/);
+  });
+
   it('has no pay action for fuel', async () => {
     const event = addMockEvent();
     addCostLine(db.events, event, { type: 'FUEL', personId: null, description: null, budgetedCents: 10000 }, partnerA().id);
