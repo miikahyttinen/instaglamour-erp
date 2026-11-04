@@ -41,7 +41,7 @@ describe('purchase order page (UC-034)', () => {
       'Summa',
       'Keikka',
     ]);
-    expect(text(page)).toContain('ALV-velvollinenEi');
+    expect(text(page)).toContain('ALVEi ALV');
     const row = within(lines).getAllByRole('row').find((r) => r.closest('tbody'))!;
     expect(text(row)).toContain(`1.6.${TEST_YEAR}`);
     expect(text(row)).toContain('Venue X');
@@ -58,11 +58,12 @@ describe('purchase order page (UC-034)', () => {
     const { po } = addMockPurchaseOrder({ venue: 'Venue X' });
     const stored = db.freelancer.purchaseOrders.find((p) => p.id === po.id)!;
     stored.vatLiable = true;
+    stored.vatRateBp = 2550;
     Object.assign(stored.lines[0]!, { baseCents: 10000, soundcheck: false, deductionCents: 1000, vatCents: 1215, amountCents: 10215 });
     stored.totalCents = 10215;
     renderApp(`/purchase-orders/${po.id}`);
     await screen.findByRole('heading', { level: 1, name: po.number });
-    expect(text(document.querySelector('.po-facts') as HTMLElement)).toContain('ALV-velvollinenKyllä');
+    expect(text(document.querySelector('.po-facts') as HTMLElement)).toContain('ALVALV 25,5 %');
     const lines = screen.getByRole('table', { name: 'Ostotilauksen palkkiot' });
     const row = within(lines).getAllByRole('row').find((r) => r.closest('tbody'))!;
     const cells = within(row).getAllByRole('cell').map((c) => text(c));

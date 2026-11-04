@@ -17,6 +17,7 @@ import { SectionLabel } from '../../components/SectionLabel';
 import { apiErrorMessage, apiFieldErrors, costTypeLabel } from '../../i18n/labels';
 import { useLang } from '../../i18n/useLang';
 import { formatDate, formatMoney } from '../../lib/format';
+import { formatVatRate } from '../../lib/poAmounts';
 import { usePartner } from '../../reference/useReference';
 import { PurchaseOrderEventTable, PurchaseOrderStatusTag } from './poParts';
 import { poDateTime, poErrorMessage } from './poText';
@@ -128,7 +129,11 @@ function PurchaseOrderView({ po }: { po: PurchaseOrder }) {
             </div>
             <div>
               <dt>{t('purchaseOrders.page.vatLiable')}</dt>
-              <dd>{po.vatLiable ? t('purchaseOrders.page.yes') : t('purchaseOrders.page.no')}</dd>
+              <dd>
+                {po.vatRateBp > 0
+                  ? t('purchaseOrders.page.vatRate', { rate: formatVatRate(po.vatRateBp, lang) })
+                  : t('purchaseOrders.page.noVat')}
+              </dd>
             </div>
             <div>
               <dt>{t('purchaseOrders.page.total')}</dt>

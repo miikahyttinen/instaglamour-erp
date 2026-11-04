@@ -18,23 +18,26 @@ interface Props {
 }
 
 /**
- * Confirmation modal of "Luo ostotilausnumero" (contract "Freelancer PO: VAT and sound check"):
- * the VAT question (required), a sound check switch per fee (default on) and a live preview of
- * each amount and the total. Amounts use the deduction and VAT rate from `FreelancerView.settings`.
+ * Confirmation modal of "Luo ostotilausnumero" (contract "Freelancer PO: VAT and sound check",
+ * "Freelancer PO: VAT rate choice"): the VAT question (required; No or one of
+ * `settings.vatRatesBp`), a sound check switch per fee (default on) and a live preview of each
+ * amount and the total. Amounts use the deduction from settings and the chosen VAT rate.
  */
 export function CreatePoDialog({ lines, settings, pending, onConfirm, onClose }: Props) {
   const { t } = useTranslation();
   const lang = useLang();
   const errorId = useId();
-  const [vatLiable, setVatLiable] = useState<boolean | null>(null);
+  /** Chosen rate in basis points; 0 = not VAT-liable; null = not answered yet. */
+  const [vatRateBp, setVatRateBp] = useState<number | null>(null);
   const [missed, setMissed] = useState<ReadonlySet<Id>>(new Set());
   const [showRequired, setShowRequired] = useState(false);
   const money = (cents: number) => formatMoney(cents, lang);
-  const rate = formatVatRate(settings.vatRateBp, lang);
+  const rate = vatRateBp ? formatVatRate(vatRateBp, lang) : '';
+  const options = [0, ...settings.vatRatesBp.filter((bp) => bp > 0)];
 
   const rows = lines.map((line) => {
     const soundcheck = !missed.has(line.costLineId);
-    return { line, soundcheck, amounts: poLineAmounts(line.amountCents, soundcheck, vatLiable === true, settings) };
+    return { line, soundcheck, amounts: poLineAmounts(line.amountCents, soundcheck, vatRateBp ?? 0, settings) };
   });
   const sum = (pick: (a: (typeof rows)[number]['amounts']) => number) => rows.reduce((s, r) => s + pick(r.amounts), 0);
   const totals = {
@@ -55,11 +58,11 @@ export function CreatePoDialog({ lines, settings, pending, onConfirm, onClose }:
   const submit = (e: FormEvent) => {
     e.preventDefault();
     if (pending) return;
-    if (vatLiable === null) {
+    if (vatRateBp === null) {
       setShowRequired(true);
       return;
     }
-    onConfirm({ vatLiable, lines: rows.map((r) => ({ costLineId: r.line.costLineId, soundcheck: r.soundcheck })) });
+    onConfirm({ vatRateBp, lines: rows.map((r) => ({ costLineId: r.line.costLineId, soundcheck: r.soundcheck })) });
   };
 
   return (
@@ -69,28 +72,30 @@ export function CreatePoDialog({ lines, settings, pending, onConfirm, onClose }:
 
         <fieldset
           className="check-group fl-po-vat"
-          aria-invalid={showRequired && vatLiable === null ? true : undefined}
-          aria-describedby={showRequired && vatLiable === null ? errorId : undefined}
+          aria-invalid={showRequired && vatRateBp === null ? true : undefined}
+          aria-describedby={showRequired && vatRateBp === null ? errorId : undefined}
         >
           <legend>{t('freelancer.dialog.vatQuestion')}</legend>
           <div className="fl-po-radios">
-            {([true, false] as const).map((value) => (
-              <label key={String(value)} className="check">
+            {options.map((value) => (
+              <label key={value} className="check">
                 <input
                   type="radio"
-                  name="vatLiable"
+                  name="vatRateBp"
                   required
-                  checked={vatLiable === value}
+                  checked={vatRateBp === value}
                   onChange={() => {
-                    setVatLiable(value);
+                    setVatRateBp(value);
                     setShowRequired(false);
                   }}
                 />
-                {value ? t('freelancer.dialog.yes') : t('freelancer.dialog.no')}
+                {value > 0
+                  ? t('freelancer.dialog.yesRate', { rate: formatVatRate(value, lang) })
+                  : t('freelancer.dialog.no')}
               </label>
             ))}
           </div>
-          {showRequired && vatLiable === null && (
+          {showRequired && vatRateBp === null && (
             <p id={errorId} className="field-error" role="alert">
               {t('freelancer.dialog.vatRequired')}
             </p>
@@ -120,7 +125,7 @@ export function CreatePoDialog({ lines, settings, pending, onConfirm, onClose }:
                     rate={rate}
                     base={amounts.baseCents}
                     deduction={amounts.deductionCents}
-                    vat={vatLiable ? amounts.vatCents : null}
+                    vat={vatRateBp ? amounts.vatCents : null}
                     total={amounts.amountCents}
                     totalLabel={t('freelancer.dialog.lineTotal')}
                     money={money}
@@ -136,7 +141,7 @@ export function CreatePoDialog({ lines, settings, pending, onConfirm, onClose }:
             rate={rate}
             base={totals.base}
             deduction={totals.deduction}
-            vat={vatLiable ? totals.vat : null}
+            vat={vatRateBp ? totals.vat : null}
             total={totals.amount}
             totalLabel={t('freelancer.dialog.total')}
             money={money}

@@ -45,8 +45,9 @@ describe('public freelancer mock', () => {
     expect(Object.keys(view).sort()).toEqual(['lines', 'name', 'purchaseOrders', 'settings']);
     expect(view.settings).toEqual({
       soundcheckDeductionCents: db.reference.settings.loadInDeductionCents,
-      vatRateBp: db.freelancer.vatRateBp,
+      vatRatesBp: db.freelancer.vatRatesBp,
     });
+    expect(view.settings.vatRatesBp).toEqual([1350, 2550]);
     expect(view.name).toBe('Person 5');
     const ids = view.lines.map((l) => l.costLineId);
     expect(ids).toEqual([fx.lines.upcoming.id, fx.lines.played2.id, fx.lines.other.id, fx.lines.played1.id, fx.lines.paid.id]);
@@ -64,8 +65,9 @@ describe('public freelancer mock', () => {
     expect(po.number).toMatch(/^PERSON-5-\d{4}$/);
     expect(po.status).toBe('OPEN');
     expect(po.totalCents).toBe(fx.lines.played1.budgetedCents + fx.lines.played2.budgetedCents);
-    expect(Object.keys(po).sort()).toEqual(['createdAt', 'lines', 'number', 'paidAt', 'status', 'totalCents', 'vatLiable']);
+    expect(Object.keys(po).sort()).toEqual(['createdAt', 'lines', 'number', 'paidAt', 'status', 'totalCents', 'vatLiable', 'vatRateBp']);
     expect(po.vatLiable).toBe(false);
+    expect(po.vatRateBp).toBe(0);
     expect(po.lines.every((l) => l.soundcheck && l.deductionCents === 0 && l.vatCents === 0 && l.baseCents === l.amountCents)).toBe(true);
     expect(po.lines.map((l) => l.venue)).toEqual(['Venue Y', 'Venue X']);
 
@@ -90,7 +92,7 @@ describe('public freelancer mock', () => {
 
     // The API client exposes `details` on the error.
     const error = await publicFreelancersApi
-      .createPurchaseOrder(fx.token, { vatLiable: false, lines: [{ costLineId: fx.lines.upcoming.id, soundcheck: true }] }).catch((e: unknown) => e);
+      .createPurchaseOrder(fx.token, { vatRateBp: 0, lines: [{ costLineId: fx.lines.upcoming.id, soundcheck: true }] }).catch((e: unknown) => e);
     expect(error).toBeInstanceOf(ApiError);
     expect((error as ApiError).details).toEqual({ costLineIds: [fx.lines.upcoming.id] });
 
@@ -99,12 +101,12 @@ describe('public freelancer mock', () => {
     expect((await create(fx.token, [fx.lines.played1.id])).status).toBe(409);
   });
 
-  it('VAT-liable + missed sound check: deduction from settings, VAT from the rate, totals', async () => {
+  it('chosen VAT rate + missed sound check: deduction from settings, VAT from the rate, totals', async () => {
     db.reference.settings.loadInDeductionCents = 3000;
-    db.freelancer.vatRateBp = 1000;
+    db.freelancer.vatRatesBp = [1000, 2000];
     fx.lines.other.budgetedCents = 2001; // deduction capped at the fee; rounding
     const res = await post(fx.token, {
-      vatLiable: true,
+      vatRateBp: 1000,
       lines: [
         { costLineId: fx.lines.played1.id, soundcheck: false },
         { costLineId: fx.lines.played2.id, soundcheck: true },
@@ -114,6 +116,7 @@ describe('public freelancer mock', () => {
     expect(res.status).toBe(201);
     const po = (await res.json()) as PublicPurchaseOrder;
     expect(po.vatLiable).toBe(true);
+    expect(po.vatRateBp).toBe(1000);
     const byVenueRole = (venue: string, type: string) => po.lines.find((l) => l.venue === venue && l.type === type)!;
     const p1 = byVenueRole('Venue X', 'VOC');
     const p2 = byVenueRole('Venue Y', 'VOC');
@@ -128,20 +131,29 @@ describe('public freelancer mock', () => {
     // Partner view and paying use the final amount.
     const stored = db.freelancer.purchaseOrders.at(-1)!;
     expect(stored.vatLiable).toBe(true);
+    expect(stored.vatRateBp).toBe(1000);
     expect(stored.lines.find((l) => l.costLineId === fx.lines.played1.id)!.amountCents).toBe(p1.amountCents);
   });
 
-  it('validates the new body: vatLiable REQUIRED, lines INVALID_VALUE', async () => {
+  it('validates the new body: vatRateBp REQUIRED / INVALID_VALUE, lines INVALID_VALUE', async () => {
     const fields = async (body: unknown) =>
       ((await (await post(fx.token, body)).json()) as { error: { fields: Record<string, string> } }).error.fields;
-    expect(await fields({ lines: [{ costLineId: fx.lines.played1.id, soundcheck: true }] })).toEqual({ vatLiable: 'REQUIRED' });
-    expect(await fields({ vatLiable: 'yes', lines: [{ costLineId: fx.lines.played1.id, soundcheck: true }] })).toEqual({
-      vatLiable: 'INVALID_VALUE',
-    });
-    expect(await fields({ vatLiable: true, lines: [] })).toEqual({ lines: 'INVALID_VALUE' });
-    expect(await fields({ vatLiable: true, lines: [{ costLineId: fx.lines.played1.id }] })).toEqual({ lines: 'INVALID_VALUE' });
+    const one = [{ costLineId: fx.lines.played1.id, soundcheck: true }];
+    expect(await fields({ lines: one })).toEqual({ vatRateBp: 'REQUIRED' });
+    expect(await fields({ vatRateBp: 2400, lines: one })).toEqual({ vatRateBp: 'INVALID_VALUE' });
+    expect(await fields({ vatRateBp: '1350', lines: one })).toEqual({ vatRateBp: 'INVALID_VALUE' });
+    expect(await fields({ vatLiable: 'yes', lines: one })).toEqual({ vatLiable: 'INVALID_VALUE' });
+    expect(await fields({ vatRateBp: 1350, lines: [] })).toEqual({ lines: 'INVALID_VALUE' });
+    expect(await fields({ vatRateBp: 1350, lines: [{ costLineId: fx.lines.played1.id }] })).toEqual({ lines: 'INVALID_VALUE' });
     const dup = { costLineId: fx.lines.played1.id, soundcheck: true };
-    expect(await fields({ vatLiable: false, lines: [dup, dup] })).toEqual({ lines: 'INVALID_VALUE' });
+    expect(await fields({ vatRateBp: 0, lines: [dup, dup] })).toEqual({ lines: 'INVALID_VALUE' });
+  });
+
+  it('accepts the legacy vatLiable body: true = 1350, false = 0', async () => {
+    const yes = (await (await post(fx.token, { vatLiable: true, lines: [{ costLineId: fx.lines.played1.id, soundcheck: true }] })).json()) as PublicPurchaseOrder;
+    expect(yes).toMatchObject({ vatLiable: true, vatRateBp: 1350 });
+    const no = (await (await post(fx.token, { vatLiable: false, lines: [{ costLineId: fx.lines.played2.id, soundcheck: true }] })).json()) as PublicPurchaseOrder;
+    expect(no).toMatchObject({ vatLiable: false, vatRateBp: 0 });
   });
 
   it('a cancelled PO frees its lines again', async () => {

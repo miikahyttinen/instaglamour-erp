@@ -21,6 +21,7 @@ import { setLanguage } from '../../i18n';
 import { useLang } from '../../i18n/useLang';
 import { LanguageButtons } from '../../layout/LanguageButtons';
 import { formatDate, formatDateRange, formatMoney } from '../../lib/format';
+import { formatVatRate } from '../../lib/poAmounts';
 import { copyToClipboard } from '../offers/offerOptions';
 import { CreatePoDialog } from './CreatePoDialog';
 import { feeRoleLabel, purchaseOrderStatusLabel } from './freelancerLabels';
@@ -400,7 +401,11 @@ function PurchaseOrderItem({ po, isNew }: { po: PublicPurchaseOrder; isNew: bool
         </div>
         <div>
           <dt className="label">{t('freelancer.orders.vatLiable')}</dt>
-          <dd>{po.vatLiable ? t('freelancer.orders.vatLiableYes') : t('freelancer.orders.vatLiableNo')}</dd>
+          <dd>
+            {po.vatRateBp > 0
+              ? t('freelancer.orders.vatRate', { rate: formatVatRate(po.vatRateBp, lang) })
+              : t('freelancer.orders.noVat')}
+          </dd>
         </div>
         <div>
           <dt className="label">{t('freelancer.orders.status')}</dt>
