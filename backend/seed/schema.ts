@@ -18,6 +18,8 @@ import {
   isMusicianRole,
   LANGUAGES,
   LEGACY_OFFER_SETTING_KEYS,
+  PERFORMER_VAT_RATES_SETTING_KEY,
+  parsePerformerVatRates,
   LOGISTICS,
   MUSICIAN_ROLES,
   OFFER_DISPOSITIONS,
@@ -350,6 +352,9 @@ export function validateSeed(rawInput: unknown): ValidationResult {
       if (typeof value !== 'number') errors.push(`settings.${key}: must be an amount in cents`);
     } else if (ALL_OPTIONAL_NUMBER_SETTING_KEYS.includes(key as (typeof ALL_OPTIONAL_NUMBER_SETTING_KEYS)[number])) {
       if (typeof value !== 'number') errors.push(`settings.${key}: must be a whole number`);
+    } else if (key === PERFORMER_VAT_RATES_SETTING_KEY) {
+      if (typeof value !== 'string' || parsePerformerVatRates(value) === null)
+        errors.push(`settings.${key}: must be a text of comma-separated whole numbers 1…10000 (basis points), e.g. "1350,2550"`);
     } else if (ALL_OFFER_SETTING_KEYS.includes(key as (typeof ALL_OFFER_SETTING_KEYS)[number])) {
       if (typeof value !== 'string') errors.push(`settings.${key}: must be a text`);
     } else if (LEGACY_OFFER_SETTING_KEYS.includes(key as (typeof LEGACY_OFFER_SETTING_KEYS)[number])) {

@@ -124,8 +124,8 @@ export const ALL_SETTING_KEYS = Object.values(SETTING_KEYS);
 
 /**
  * Optional numeric settings (integers ≥ 0): the code has a default when the row is missing.
- * `fees.performer_vat_rate_bp` = VAT rate added to a VAT-liable freelancer's PO lines, in basis points
- * (TASK-050; 1350 = 13.5 %).
+ * `fees.performer_vat_rate_bp` = the former single VAT rate in basis points (TASK-050; 1350 = 13.5 %),
+ * still accepted: used as the first rate when `fees.performer_vat_rates_bp` is missing.
  */
 export const OPTIONAL_NUMBER_SETTING_KEYS = {
   performerVatRateBp: 'fees.performer_vat_rate_bp',
@@ -133,8 +133,37 @@ export const OPTIONAL_NUMBER_SETTING_KEYS = {
 
 export const ALL_OPTIONAL_NUMBER_SETTING_KEYS = Object.values(OPTIONAL_NUMBER_SETTING_KEYS);
 
-/** Default of `fees.performer_vat_rate_bp` when the setting is missing (api-contract 2026-11-04). */
+/**
+ * Former single VAT rate (TASK-050). Replaced by `fees.performer_vat_rates_bp`; if only this row
+ * exists, its value is used as the first rate.
+ */
 export const DEFAULT_PERFORMER_VAT_RATE_BP = 1350;
+
+/**
+ * `fees.performer_vat_rates_bp` = the VAT rates a freelancer can choose on a PO, comma-separated
+ * basis points stored as text (api-contract "Freelancer PO: VAT rate choice", 2026-11-04).
+ * "No VAT" (0) is always allowed in addition to these.
+ */
+export const PERFORMER_VAT_RATES_SETTING_KEY = 'fees.performer_vat_rates_bp';
+
+/** Default of `fees.performer_vat_rates_bp` when neither VAT setting row exists. */
+export const DEFAULT_PERFORMER_VAT_RATES_BP: readonly number[] = [1350, 2550];
+
+/** Highest accepted rate (100 %) in basis points. */
+export const MAX_PERFORMER_VAT_RATE_BP = 10000;
+
+/**
+ * Parse a `fees.performer_vat_rates_bp` value: comma-separated whole numbers 1…10000, unique, at least
+ * one. Returns null when the text is not valid.
+ */
+export function parsePerformerVatRates(text: string): number[] | null {
+  const parts = text.split(',').map((p) => p.trim());
+  if (parts.length === 0 || parts.some((p) => !/^\d{1,5}$/.test(p))) return null;
+  const rates = parts.map(Number);
+  if (rates.some((r) => r < 1 || r > MAX_PERFORMER_VAT_RATE_BP)) return null;
+  if (new Set(rates).size !== rates.length) return null;
+  return rates;
+}
 
 /** Text settings for offers (domain-model.md "Settings (additions)"); optional in the seed. */
 export const OFFER_SETTING_KEYS = {

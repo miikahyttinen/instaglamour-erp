@@ -228,7 +228,7 @@ describe('GET /api/public/freelancers/{token} (UC-033)', () => {
     const v = await view(await tokenOf(s.world.p1.id));
     expect(Object.keys(v).sort()).toEqual(['lines', 'name', 'purchaseOrders', 'settings']);
     // Settings for the amount preview: the load-in deduction setting, VAT rate default 1350 (no row)
-    expect(v.settings).toEqual({ soundcheckDeductionCents: FEES.loadInDeduction, vatRateBp: 1350 });
+    expect(v.settings).toEqual({ soundcheckDeductionCents: FEES.loadInDeduction, vatRatesBp: [1350, 2550] });
     expect(v.name).toBe('Person 1');
     expect(v.purchaseOrders).toEqual([]);
     expect(v.lines).toEqual([
@@ -282,7 +282,7 @@ describe('GET /api/public/freelancers/{token} (UC-033)', () => {
       ['amountCents', 'costLineId', 'description', 'eventEndDate', 'eventStartDate', 'purchaseOrderNumber', 'state', 'type', 'venue'].sort(),
     );
     expect(Object.keys(v.purchaseOrders[0]).sort()).toEqual(
-      ['createdAt', 'lines', 'number', 'paidAt', 'status', 'totalCents', 'vatLiable'].sort(),
+      ['createdAt', 'lines', 'number', 'paidAt', 'status', 'totalCents', 'vatLiable', 'vatRateBp'].sort(),
     );
     expect(Object.keys(v.purchaseOrders[0].lines[0]).sort()).toEqual(
       ['amountCents', 'baseCents', 'deductionCents', 'description', 'eventStartDate', 'soundcheck', 'type', 'vatCents', 'venue'].sort(),
@@ -351,6 +351,7 @@ describe('POST /api/public/freelancers/{token}/purchase-orders (BR-114…BR-116)
       totalCents: 60000,
       createdAt: expect.any(String),
       paidAt: null,
+      vatRateBp: 0,
       vatLiable: false,
       // Oldest event first; legacy body = no VAT, sound check on every line
       lines: [
@@ -380,6 +381,7 @@ describe('POST /api/public/freelancers/{token}/purchase-orders (BR-114…BR-116)
       cancelledAt: null,
       cancelledBy: null,
       cancelReason: null,
+      vatRateBp: 0,
       vatLiable: false,
       lines: [
         {

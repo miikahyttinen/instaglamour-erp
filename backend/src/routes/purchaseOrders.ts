@@ -111,7 +111,7 @@ export function purchaseOrderRoutes(app: FastifyInstance, deps: AppDeps): void {
       personId: person.id,
       // Partner POs have no VAT / sound check choice: amounts are the budgeted fees (TASK-050).
       lines: costLineIds.map((costLineId) => ({ costLineId, soundcheck: true })),
-      vatLiable: false,
+      vatRateBp: 0,
       isCurrent: () => true,
       eligibility: 'PARTNER',
       createdBy: me.id,

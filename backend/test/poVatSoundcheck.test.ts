@@ -13,10 +13,10 @@ import { call, createEvent, FEES, setSetting, startSession, UNKNOWN_ID, type Jso
 
 // ======================================================================== pure amount math
 describe('poLineAmount', () => {
-  const settings = { soundcheckDeductionCents: 10000, vatRateBp: 1350 };
+  const settings = { soundcheckDeductionCents: 10000 };
 
   it('sound check on, no VAT → the budgeted fee', () => {
-    expect(poLineAmount(30000, { soundcheck: true, vatLiable: false }, settings)).toEqual({
+    expect(poLineAmount(30000, { soundcheck: true, vatRateBp: 0 }, settings)).toEqual({
       baseCents: 30000,
       deductionCents: 0,
       vatCents: 0,
@@ -25,34 +25,34 @@ describe('poLineAmount', () => {
   });
 
   it('sound check off deducts the setting value, never below 0', () => {
-    expect(poLineAmount(30000, { soundcheck: false, vatLiable: false }, settings)).toEqual({
+    expect(poLineAmount(30000, { soundcheck: false, vatRateBp: 0 }, settings)).toEqual({
       baseCents: 30000,
       deductionCents: 10000,
       vatCents: 0,
       amountCents: 20000,
     });
-    expect(poLineAmount(4000, { soundcheck: false, vatLiable: true }, settings)).toEqual({
+    expect(poLineAmount(4000, { soundcheck: false, vatRateBp: 1350 }, settings)).toEqual({
       baseCents: 4000,
       deductionCents: 4000,
       vatCents: 0,
       amountCents: 0,
     });
-    expect(poLineAmount(30000, { soundcheck: false, vatLiable: false }, { ...settings, soundcheckDeductionCents: 7000 }))
+    expect(poLineAmount(30000, { soundcheck: false, vatRateBp: 0 }, { ...settings, soundcheckDeductionCents: 7000 }))
       .toMatchObject({ deductionCents: 7000, amountCents: 23000 });
   });
 
   it('VAT: round(net × rate) on the net after the deduction', () => {
-    expect(poLineAmount(30000, { soundcheck: true, vatLiable: true }, settings)).toMatchObject({ vatCents: 4050, amountCents: 34050 });
-    expect(poLineAmount(30000, { soundcheck: false, vatLiable: true }, settings)).toMatchObject({
+    expect(poLineAmount(30000, { soundcheck: true, vatRateBp: 1350 }, settings)).toMatchObject({ vatCents: 4050, amountCents: 34050 });
+    expect(poLineAmount(30000, { soundcheck: false, vatRateBp: 1350 }, settings)).toMatchObject({
       deductionCents: 10000,
       vatCents: 2700,
       amountCents: 22700,
     });
     // 10001 × 13.5 % = 1350.135 → 1350; 10004 → 1350.54 → 1351; 100 → 13.5 → 14 (half up)
-    expect(poLineAmount(10001, { soundcheck: true, vatLiable: true }, settings).vatCents).toBe(1350);
-    expect(poLineAmount(10004, { soundcheck: true, vatLiable: true }, settings).vatCents).toBe(1351);
-    expect(poLineAmount(100, { soundcheck: true, vatLiable: true }, settings).vatCents).toBe(14);
-    expect(poLineAmount(10000, { soundcheck: true, vatLiable: true }, { ...settings, vatRateBp: 2400 }).vatCents).toBe(2400);
+    expect(poLineAmount(10001, { soundcheck: true, vatRateBp: 1350 }, settings).vatCents).toBe(1350);
+    expect(poLineAmount(10004, { soundcheck: true, vatRateBp: 1350 }, settings).vatCents).toBe(1351);
+    expect(poLineAmount(100, { soundcheck: true, vatRateBp: 1350 }, settings).vatCents).toBe(14);
+    expect(poLineAmount(10000, { soundcheck: true, vatRateBp: 2400 }, settings).vatCents).toBe(2400);
   });
 });
 
@@ -175,7 +175,7 @@ describe('POST /api/public/freelancers/{token}/purchase-orders with VAT and soun
     const e = await playedEvent(PAST);
     const token = await tokenOf(s.world.p1.id);
     const v = (await anon('GET', `/api/public/freelancers/${token}`)).json();
-    expect(v.settings).toEqual({ soundcheckDeductionCents: 5000, vatRateBp: 2400 });
+    expect(v.settings).toEqual({ soundcheckDeductionCents: 5000, vatRatesBp: [2400, 2550] }); // old single rate = first
 
     const res = await createPo(token, { vatLiable: true, lines: [{ costLineId: lineOf(e, 'BASS').id, soundcheck: true }] });
     expect(res.json().lines[0]).toMatchObject({ baseCents: 20000, vatCents: 4800, amountCents: 24800 });
@@ -239,8 +239,8 @@ describe('POST /api/public/freelancers/{token}/purchase-orders with VAT and soun
       expect(res.json().error).toMatchObject({ code: 'VALIDATION_ERROR' });
       expect(res.json().error.fields).toEqual(fields);
     };
-    await expectFields({}, { vatLiable: 'REQUIRED', lines: 'REQUIRED' });
-    await expectFields({ lines: [line] }, { vatLiable: 'REQUIRED' });
+    await expectFields({}, { vatRateBp: 'REQUIRED', lines: 'REQUIRED' });
+    await expectFields({ lines: [line] }, { vatRateBp: 'REQUIRED' });
     await expectFields({ vatLiable: 'yes', lines: [line] }, { vatLiable: 'INVALID_VALUE' });
     await expectFields({ vatLiable: true }, { lines: 'REQUIRED' });
     await expectFields({ vatLiable: true, lines: [] }, { lines: 'INVALID_VALUE' });
@@ -257,7 +257,7 @@ describe('POST /api/public/freelancers/{token}/purchase-orders with VAT and soun
       soundcheck: true,
     }));
     await expectFields({ vatLiable: true, lines: many }, { lines: 'INVALID_VALUE' });
-    await expectFields({}, { vatLiable: 'REQUIRED', lines: 'REQUIRED' }, 'A'.repeat(43));
+    await expectFields({}, { vatRateBp: 'REQUIRED', lines: 'REQUIRED' }, 'A'.repeat(43));
   });
 });
 
