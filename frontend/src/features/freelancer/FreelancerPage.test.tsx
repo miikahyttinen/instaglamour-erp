@@ -3,7 +3,9 @@ import { delay, http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { formatMoney } from '../../lib/format';
 import { db } from '../../mocks/data';
+import { updateCostLine } from '../../mocks/eventStore';
 import { server } from '../../mocks/server';
+import { partnerA } from '../../test/eventFixtures';
 import { seedFreelancerFees } from '../../test/freelancerFixtures';
 import { renderApp, signInMock } from '../../test/renderApp';
 import { FREELANCER_LANG_KEY } from './freelancerLanguage';
@@ -233,6 +235,67 @@ describe('FreelancerPage /f/:token (UC-033)', () => {
       `+${fi(1148)}`,
       fi(9648),
     ]);
+  });
+
+  it('modal: "no sound check" already set on the gig → switch off and locked, deduction shown once', async () => {
+    db.reference.settings.loadInDeductionCents = 1500;
+    updateCostLine(db.events, fx.lines.played1, { joinsLoadIn: false }, 1500, partnerA().id);
+    expect(fx.lines.played1.budgetedCents).toBe(8500);
+    const bodies: unknown[] = [];
+    const capture = ({ request }: { request: Request }) => {
+      if (request.method === 'POST') void request.clone().json().then((b) => bodies.push(b));
+    };
+    server.events.on('request:start', capture);
+
+    const { user } = renderApp(`/f/${fx.token}`);
+    await screen.findByRole('heading', { level: 1, name: 'Person 5' });
+    await user.click(checkbox('Venue X'));
+    await user.click(checkbox('Venue Y'));
+    await user.click(createButton());
+    const d = dialog();
+    const lines = within(d).getAllByTestId('po-preview-line');
+    const venueX = lines.find((l) => l.textContent!.includes('Venue X'))!;
+    const venueY = lines.find((l) => l.textContent!.includes('Venue Y'))!;
+
+    const lockedSwitch = within(venueX).getByRole('switch', { name: /Venue X, Laulu$/ });
+    expect(lockedSwitch).not.toBeChecked();
+    expect(lockedSwitch).toBeDisabled();
+    expect(lockedSwitch).toHaveAccessibleDescription('Merkitty keikalle: ei soundcheckiä');
+    expect(within(venueX).getByText('Merkitty keikalle: ei soundcheckiä')).toBeInTheDocument();
+    await user.click(lockedSwitch);
+    expect(lockedSwitch).not.toBeChecked();
+    // Original fee, the deduction once, the budgeted amount.
+    expect(norm(venueX.textContent)).toContain(`Palkkio alv 0 %${fi(10000)}Soundcheck-vähennys−${fi(1500)}Summa${fi(8500)}`);
+
+    // Other line unchanged: on by default, not described, can be switched off.
+    const otherSwitch = within(venueY).getByRole('switch');
+    expect(otherSwitch).toBeChecked();
+    expect(otherSwitch).toBeEnabled();
+    expect(within(venueY).queryByText('Merkitty keikalle: ei soundcheckiä')).not.toBeInTheDocument();
+    await user.click(otherSwitch);
+
+    await user.click(within(d).getByRole('radio', { name: 'Kyllä, ALV 13,5 %' }));
+    expect(norm(venueX.textContent)).toContain(`ALV 13,5 %+${fi(1148)}Summa${fi(9648)}`);
+    const total = within(d).getByRole('region', { name: 'Ostotilaus yhteensä' });
+    expect(norm(total.textContent)).toBe(
+      `Palkkio alv 0 %${fi(20000)}Soundcheck-vähennys−${fi(3000)}ALV 13,5 %+${fi(2296)}Ostotilaus yhteensä${fi(19296)}`,
+    );
+
+    await user.click(confirmButton());
+    await screen.findByText(/Ostotilausnumero PERSON-5-\d{4} luotu/);
+    server.events.removeListener('request:start', capture);
+    expect(bodies).toEqual([
+      {
+        vatRateBp: 1350,
+        lines: [
+          { costLineId: fx.lines.played2.id, soundcheck: false },
+          { costLineId: fx.lines.played1.id, soundcheck: false },
+        ],
+      },
+    ]);
+    // The server (mock) gives the same final amount as the preview.
+    const first = within(screen.getByRole('region', { name: 'Ostotilaukset' })).getAllByRole('listitem')[0]!;
+    expect(norm(first.textContent)).toContain(fi(19296));
   });
 
   it('modal: Escape and Cancel close it without a request; focus returns to the button', async () => {

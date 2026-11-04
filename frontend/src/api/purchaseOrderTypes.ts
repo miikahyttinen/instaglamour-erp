@@ -144,6 +144,10 @@ export interface FreelancerLine {
   amountCents: Cents;
   state: FreelancerLineState;
   purchaseOrderNumber: string | null;
+  /** From the cost line. false = "no sound check" already set on the gig (switch locked off). */
+  joinsLoadIn: boolean | null;
+  /** Deduction already taken from the budgeted fee on the gig (when `joinsLoadIn = false`). */
+  loadInDeductionAppliedCents: Cents | null;
 }
 
 export interface PublicPurchaseOrderLine {

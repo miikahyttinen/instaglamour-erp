@@ -15,7 +15,7 @@ import type {
   PurchaseOrderEvent,
 } from '../api/types';
 import { todayIso } from '../lib/format';
-import { poLineAmounts, type PoAmountSettings } from '../lib/poAmounts';
+import { poLineAmountsFor, type PoAmountSettings } from '../lib/poAmounts';
 import { PERSON_IDS } from './eventSeed';
 import { mockId, nowTs, type EventState, type MockEvent, type MockPerson } from './eventStore';
 
@@ -123,6 +123,8 @@ function toFreelancerLine(state: FreelancerState, { line, event }: FeeLine, toda
     venue: event.venue,
     type: line.type,
     description: line.description,
+    joinsLoadIn: line.joinsLoadIn,
+    loadInDeductionAppliedCents: line.loadInDeductionAppliedCents,
   };
   if (line.paidAt !== null) {
     return {
@@ -200,10 +202,15 @@ export function newPurchaseOrder(
   choices?: PoChoices,
 ): PurchaseOrder {
   const lines = fees.map((fee) => {
-    const soundcheck = choices?.soundcheck[fee.line.id] ?? true;
-    const amounts = choices
-      ? poLineAmounts(amount(fee), soundcheck, choices.vatRateBp, choices.settings)
-      : { baseCents: amount(fee), deductionCents: 0, vatCents: 0, amountCents: amount(fee) };
+    // "No sound check" already set on the gig → the request's flag is ignored and the deduction
+    // already in the fee is shown once (never taken twice). Same rule for partner-created POs.
+    const { soundcheck, ...amounts } = poLineAmountsFor(
+      fee.line,
+      amount(fee),
+      choices?.soundcheck[fee.line.id] ?? true,
+      choices?.vatRateBp ?? 0,
+      choices?.settings ?? { soundcheckDeductionCents: 0 },
+    );
     return {
       costLineId: fee.line.id,
       eventId: fee.event.id,

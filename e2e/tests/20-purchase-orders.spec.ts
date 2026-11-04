@@ -46,7 +46,19 @@ import {
 const PRICE_CENTS = 4370000; // distinctive event price: must never reach the freelancer
 const PRICE_FORMS = ['4370000', '43700', '43 700', '43 700', '43 700', '43,700', '43.700'];
 const VIEW_KEYS = ['lines', 'name', 'purchaseOrders', 'settings'];
-const LINE_KEYS = ['amountCents', 'costLineId', 'description', 'eventEndDate', 'eventStartDate', 'purchaseOrderNumber', 'state', 'type', 'venue'];
+const LINE_KEYS = [
+  'amountCents',
+  'costLineId',
+  'description',
+  'eventEndDate',
+  'eventStartDate',
+  'joinsLoadIn',
+  'loadInDeductionAppliedCents',
+  'purchaseOrderNumber',
+  'state',
+  'type',
+  'venue',
+];
 const PUBLIC_PO_KEYS = ['createdAt', 'lines', 'number', 'paidAt', 'status', 'totalCents', 'vatLiable', 'vatRateBp'];
 const PUBLIC_PO_LINE_KEYS = ['amountCents', 'baseCents', 'deductionCents', 'description', 'eventStartDate', 'soundcheck', 'type', 'vatCents', 'venue'];
 
@@ -428,6 +440,64 @@ test('two parallel creates with the same line → one 201, one 409 COST_LINE_NOT
   const list = (await api(page).get(`/purchase-orders?q=${encodeURIComponent(ok.number.replace(/-\d+$/, ''))}`)) as { purchaseOrders: unknown[] };
   expect(list.purchaseOrders).toHaveLength(1);
   await Promise.all([a.dispose(), b.dispose()]);
+});
+
+test('"no sound check" already set on the gig → switch locked off, the deduction is made once (public and partner POs)', async ({ page, browser, baseURL }, testInfo) => {
+  await signIn(page);
+  const fee = 30000;
+  const setup = await personWithPlayedFee(page, testInfo, 'PO Locked', { month: '09', budgetedCents: fee });
+  await api(page).patch(`/cost-lines/${setup.lineId}`, { joinsLoadIn: false });
+  const gigLine = (await costLineOf(page, setup.eventId, setup.lineId)) as unknown as {
+    budgetedCents: number;
+    loadInDeductionAppliedCents: number | null;
+  };
+  const applied = gigLine.loadInDeductionAppliedCents ?? 0;
+  expect(gigLine.budgetedCents).toBe(fee - applied);
+  // A second line on the same gig for the partner-created PO.
+  const partnerLine = await addLine(page, setup.eventId, setup.person.id, 'BASS', fee);
+  await api(page).patch(`/cost-lines/${partnerLine}`, { joinsLoadIn: false });
+
+  const anon = await anonymous(browser, testInfo, baseURL!);
+  const fp = anon.page;
+  const view = await (await openFreelancer(anon, setup.sharePath)).json();
+  const settings = view.settings as { soundcheckDeductionCents: number; vatRatesBp: number[] };
+  const fl = view.lines.find((l: { costLineId: string }) => l.costLineId === setup.lineId);
+  expect(fl).toMatchObject({ joinsLoadIn: false, loadInDeductionAppliedCents: gigLine.loadInDeductionAppliedCents, amountCents: fee - applied });
+
+  await fp.getByRole('checkbox', { name: new RegExp(`${setup.venue}, Rummut$`) }).check();
+  await fp.getByRole('button', { name: 'Luo ostotilausnumero', exact: true }).click();
+  const modal = fp.getByRole('dialog', { name: 'Luo ostotilausnumero' });
+  const sw = modal.getByRole('switch', { name: new RegExp(`${setup.venue}, Rummut$`) });
+  await expect(sw).not.toBeChecked();
+  await expect(sw).toBeDisabled();
+  await expect(modal.getByText('Merkitty keikalle: ei soundcheckiä', { exact: true })).toBeVisible();
+  const rate = settings.vatRatesBp[0]!;
+  await modal.getByRole('radio', { name: `Kyllä, ALV ${fiRate(rate)}`, exact: true }).check();
+  const expected = poAmount(fee - applied, true, rate, settings); // budgeted × VAT, no second deduction
+  const modalTotal = modal.getByRole('region', { name: 'Ostotilaus yhteensä' });
+  await expect(modalTotal).toContainText(fiMoney(fee));
+  await expect(modalTotal).toContainText(fiMoney(expected));
+  if (applied > 0) {
+    await expect(modalTotal).toContainText('Soundcheck-vähennys');
+    await expect(modalTotal).toContainText(`−${fiMoney(applied)}`);
+  }
+  const postRes = fp.waitForResponse((r) => r.request().method() === 'POST' && r.url().includes('/purchase-orders'));
+  await modal.getByRole('button', { name: 'Vahvista ja luo', exact: true }).click();
+  const created = await postRes;
+  expect(created.status()).toBe(201);
+  const po = await created.json();
+  expect(po.totalCents).toBe(expected);
+  expect(po.lines[0]).toMatchObject({ soundcheck: false, baseCents: fee, deductionCents: applied, amountCents: expected });
+  await expect(modal).toBeHidden();
+  await anon.context.close();
+
+  // Partner-created PO: same rule, deduction shown once, never added again.
+  const byHand = (await api(page).post('/purchase-orders', { personId: setup.person.id, costLineIds: [partnerLine] })) as {
+    totalCents: number;
+    lines: { soundcheck: boolean; baseCents: number; deductionCents: number; amountCents: number }[];
+  };
+  expect(byHand.lines[0]).toMatchObject({ soundcheck: false, baseCents: fee, deductionCents: applied, amountCents: fee - applied });
+  expect(byHand.totalCents).toBe(fee - applied);
 });
 
 test('event cancel with a line on an open PO → error shown, event unchanged', async ({ page, request }, testInfo) => {
