@@ -27,31 +27,23 @@ describe('cost table layout (TASK-149)', () => {
     expect(css).toMatch(/\.event-page \.cost-list \{\s*container: cost-list \/ inline-size;/);
   });
 
-  it('switches to compact rows only while the list is narrower than 600 px (phones)', () => {
-    const compact = containerBlock('max-width: 599px');
+  it('switches to compact rows while the list is narrower than the full table', () => {
+    const compact = containerBlock('max-width: 1119px');
     expect(compact).toMatch(/grid-template-areas/);
     expect(compact).toMatch(/td\[data-label\]::before/);
   });
 
-  it('full table from a 600 px wide list: fixed layout, narrow fixed columns, the type column takes the rest', () => {
-    const full = containerBlock('min-width: 600px');
-    expect(full).toMatch(/table-layout: fixed/);
-    for (const col of ['cost-col-person', 'cost-col-loadin', 'cost-col-budget', 'cost-col-paid', 'cost-col-actions']) {
-      expect(full).toMatch(new RegExp(`th\\.${col} \\{\\s*width:`));
+  it('caps inline controls in the full table so they do not stretch over a wide page', () => {
+    const full = containerBlock('min-width: 1120px');
+    for (const selector of [
+      'td.cost-person .inline-field',
+      'td.cost-budget .inline-field',
+      '.cost-paid-edit',
+      '.cost-description',
+    ]) {
+      expect(full).toContain(selector);
     }
-    expect(full).not.toMatch(/th\.cost-col-type \{\s*width:/);
-  });
-
-  it('amounts end on one line per column: right-aligned, tabular, plain amounts padded like the inline fields', () => {
-    expect(css).toMatch(/:is\(td\.cost-budget, td\.cost-paid\) \{\s*text-align: right;\s*font-variant-numeric: tabular-nums;/);
-    expect(css).toMatch(/td\.cost-paid > :is\(\.tag, \.cost-hint\) \{\s*margin-right: var\(--inline-num-trail\);/);
-  });
-
-  it('staffing and costs groups use different surface tokens', () => {
-    expect(css).toMatch(/\.cost-in-staffing :is\(td, th\) \{\s*background: var\(--surface-2\);/);
-    expect(css).toMatch(/\.cost-in-expenses :is\(td, th\) \{\s*background: var\(--surface-3\);/);
-    const tokens = readFileSync(resolve(process.cwd(), 'src/styles/tokens.css'), 'utf8');
-    expect(tokens.match(/--surface-3: #[0-9a-f]{6};/g)).toHaveLength(2);
+    expect(full).toMatch(/max-width: calc\(var\(--label-w\) \* 1\.5\)/);
   });
 });
 

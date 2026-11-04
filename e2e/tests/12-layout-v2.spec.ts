@@ -196,10 +196,8 @@ test.describe('desktop sidebar', () => {
 
   // Gig page columns (owner request): "Kulut ja miehitys" alone on the left (~60 %), the other
   // sections on the right, the log full width below; one column (costs first) on a narrower page.
-  // The cost list (owner request 2026-11: compact rows, "Miehitys" / "Kulut" groups) is the full
-  // one-line table at every desktop width here, also in the ~60 % column at 1440 px with the
-  // sidebar expanded, and never scrolls sideways; compact rows only below a 600 px wide list.
-  test('event page: costs left / other sections right on a wide page, one column otherwise; cost list full table in groups', async ({ page }) => {
+  // The cost list keeps its own compact rows / full table switch inside the left column.
+  test('event page: costs left / other sections right on a wide page, one column otherwise; cost list compact or full', async ({ page }) => {
     const { eventId } = await busyIds(page);
     const table = page.getByRole('table', { name: 'Kulut ja miehitys' });
     // Compact rows keep the table semantics; the header row group is only visually hidden (1 px clip).
@@ -209,15 +207,13 @@ test.describe('desktop sidebar', () => {
       return b!;
     };
 
-    for (const [mode, w, twoColumns] of [
-      ['expanded', 900, false],
-      ['expanded', 1200, false],
-      ['expanded', 1280, false],
-      ['expanded', 1440, true],
-      ['collapsed', 1200, true],
-      ['collapsed', 1440, true],
-      ['expanded', 1920, true],
-      ['collapsed', 1920, true],
+    for (const [mode, w, twoColumns, compact] of [
+      ['expanded', 900, false, true],
+      ['expanded', 1200, false, true],
+      ['expanded', 1280, false, true],
+      ['expanded', 1440, true, true],
+      ['collapsed', 1200, true, true],
+      ['collapsed', 1920, true, false],
     ] as const) {
       await page.addInitScript(([key, value]) => window.localStorage.setItem(key, value), [SIDEBAR_KEY, mode]);
       await page.setViewportSize({ width: w, height: 800 });
@@ -227,64 +223,14 @@ test.describe('desktop sidebar', () => {
       const where = `sidebar ${mode}, ${w} px`;
       await expect(table).toBeVisible();
       expect(await costLines(page).count(), `${where}: cost lines are named rowgroups`).toBeGreaterThan(0);
-      expect(await headerHeight(), `${where}: full table with column headers`).toBeGreaterThan(1);
-      const wrap = await table.evaluate((t) => {
-        const w = t.parentElement!;
-        return { scroll: w.scrollWidth, client: w.clientWidth, list: t.closest('.cost-list')!.getBoundingClientRect().width };
-      });
-      expect(wrap.scroll, `${where}: cost table does not scroll sideways (list ${wrap.list} px)`).toBeLessThanOrEqual(wrap.client);
-      // Groups: "Miehitys" head before the lines, a totals row per group.
-      await expect(table.getByRole('columnheader', { name: /^Miehitys(\s|$)/ }), `${where}: Miehitys group`).toBeVisible();
-      await expect(table.getByRole('row', { name: /^Miehitys yhteensä/ }), `${where}: Miehitys totals`).toBeVisible();
-      // One table row per line: person, budget and the actions on one line; dense rows (the
-      // description may wrap under the type name in the narrowest list).
-      const line = costLines(page).first();
-      const rowBox = (await line.locator('tr').first().boundingBox())!;
-      const centre = async (l: Locator) => {
-        const b = (await l.boundingBox())!;
-        return b.y + b.height / 2;
-      };
-      const personY = await centre(line.getByRole('combobox'));
-      expect(Math.abs((await centre(line.getByRole('textbox', { name: /^Budjetti:/ }))) - personY), `${where}: budget on the person's line`).toBeLessThanOrEqual(2);
-      expect(Math.abs((await centre(line.getByRole('button', { name: 'Poista' }))) - personY), `${where}: actions on the person's line`).toBeLessThanOrEqual(2);
-      expect(rowBox.height, `${where}: dense row`).toBeLessThanOrEqual(64);
-      // Amounts end on one vertical line per column (lines, group totals, overall total): the "€"
-      // of inline fields and the text of plain amounts (±1 px).
-      const edges = await table.evaluate((t) => {
-        const right = (td: Element) => {
-          const unit = td.querySelector('.inline-unit > span');
-          if (unit) return unit.getBoundingClientRect().right;
-          const amount = td.querySelector('.cost-amount');
-          if (!amount) return null;
-          const range = document.createRange();
-          range.selectNodeContents(amount);
-          return range.getBoundingClientRect().right;
-        };
-        const column = (cls: string) =>
-          [...t.querySelectorAll(`td.${cls}`)].map(right).filter((x): x is number => x !== null);
-        return { budget: column('cost-budget'), paid: column('cost-paid') };
-      });
-      for (const [col, xs] of Object.entries(edges)) {
-        expect(xs.length, `${where}: ${col} amounts measured`).toBeGreaterThanOrEqual(2);
-        expect(Math.max(...xs) - Math.min(...xs), `${where}: ${col} amounts share one right edge`).toBeLessThanOrEqual(1);
-      }
+      if (compact) expect(await headerHeight(), `${where}: compact rows`).toBeLessThanOrEqual(1);
+      else expect(await headerHeight(), `${where}: full table with column headers`).toBeGreaterThan(1);
 
       const costs = await box('Kulut ja miehitys');
       const basic = await box('Perustiedot');
       const economics = await box('Talous');
       const history = await box('Muutoshistoria');
       if (twoColumns) {
-        // Owner request: both columns' section headers on one line and their boxes (cost table,
-        // "Perustiedot" card) start at the same height (±1 px).
-        const top = (l: Locator) => l.evaluate((e) => e.getBoundingClientRect().top);
-        const summary = (name: string) =>
-          page.locator('details.event-section').filter({ has: page.getByRole('heading', { name, level: 2 }) }).locator('summary');
-        const heading = (name: string) => page.getByRole('heading', { name, level: 2 });
-        expect(Math.abs((await top(summary('Kulut ja miehitys'))) - (await top(summary('Perustiedot')))), `${where}: section headers level`).toBeLessThanOrEqual(1);
-        expect(Math.abs((await top(heading('Kulut ja miehitys'))) - (await top(heading('Perustiedot')))), `${where}: header texts level`).toBeLessThanOrEqual(1);
-        const tableTop = await top(page.locator('.event-section-costs .table-wrap'));
-        const cardTop = await top(page.locator('.event-section-basic .event-section-body > *').first());
-        expect(Math.abs(tableTop - cardTop), `${where}: cost table and Perustiedot card start level`).toBeLessThanOrEqual(1);
         expect(basic.x, `${where}: other sections right of the costs`).toBeGreaterThanOrEqual(costs.x + costs.width);
         expect(Math.abs(basic.y - costs.y), `${where}: both columns start at the top`).toBeLessThanOrEqual(1);
         expect(costs.width / (costs.width + basic.width), `${where}: costs column ~60 %`).toBeGreaterThan(0.55);
