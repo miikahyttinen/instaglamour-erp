@@ -23,7 +23,7 @@ import {
   OFFER_SOURCES,
   TECHNICAL_SETUPS,
 } from '../src/domain/enums.js';
-import { LEGACY_INVOICE_STATUSES } from '../src/domain/invoicing.js';
+import { convertInvoiceRowStatus, LEGACY_INVOICE_ROW_STATUSES, LEGACY_INVOICE_STATUSES } from '../src/domain/invoicing.js';
 
 const cents = z.number().int().nonnegative();
 const name = z.string().trim().min(1).max(500);
@@ -54,11 +54,17 @@ const costLine = z.strictObject({
   paidBy: email.optional(),
 });
 
-/** An invoice row (TASK-046); status defaults to READY like the API. */
+/**
+ * An invoice row (TASK-046); status defaults to NOT_SENT like the API. The pre-v3 statuses READY / PAID
+ * are still accepted and converted (READY → NOT_SENT, PAID → SENT; TASK-049).
+ */
 const invoiceRow = z.strictObject({
   description: name,
   amountCents: z.number().int().positive(),
-  status: z.enum(INVOICE_ROW_STATUSES).default('READY'),
+  status: z
+    .enum([...INVOICE_ROW_STATUSES, ...LEGACY_INVOICE_ROW_STATUSES])
+    .default('NOT_SENT')
+    .transform(convertInvoiceRowStatus),
 });
 
 const event = z.strictObject({

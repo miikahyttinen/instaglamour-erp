@@ -53,7 +53,7 @@ const listQuery = z.object({
   notFullyStaffed: z.enum(['true', 'false'], { message: 'INVALID_VALUE' }).optional(),
   q: z.string().max(500).optional(),
   deleted: z.enum(['true', 'false'], { message: 'INVALID_VALUE' }).optional(),
-  // Repeatable (`?invoiceState=OPEN_INVOICES&invoiceState=NEEDS_INVOICES`): any of the given derived values.
+  // Repeatable (`?invoiceState=OPEN_INVOICES&invoiceState=PARTLY_INVOICED`): any of the given derived values.
   invoiceState: repeatableEnum(INVOICE_STATES),
 });
 
@@ -132,7 +132,10 @@ export function eventRoutes(app: FastifyInstance, deps: AppDeps): void {
       if (query.producerId && g.producerId !== query.producerId) return false;
       if (query.notFullyStaffed === 'true' && !isNotFullyStaffed(g.costLines)) return false;
       if (query.invoiceState) {
-        const inv = invoicing(eventEconomics(g).totalPriceCents, g.invoiceRows, isPlayed(g.status, start, today));
+        const inv = invoicing(eventEconomics(g).totalPriceCents, g.invoiceRows, {
+          played: isPlayed(g.status, start, today),
+          cancelled: g.status === 'CANCELLED',
+        });
         if (!query.invoiceState.includes(inv.invoiceState)) return false;
       }
       if (q && ![g.venue, g.lineupName, g.notes ?? '', g.client?.name ?? ''].some((s) => s.toLowerCase().includes(q)))

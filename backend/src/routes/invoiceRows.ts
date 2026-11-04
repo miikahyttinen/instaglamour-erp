@@ -1,5 +1,5 @@
 /**
- * Invoice row endpoints (docs/api-contract.md "Invoice rows", TASK-046). Every mutation returns
+ * Invoice row endpoints (docs/api-contract.md "Invoice rows", TASK-046; statuses per "Invoicing v3"). Every mutation returns
  * 200 EventDetail and logs INVOICE_ROW_ADDED / INVOICE_ROW_UPDATED / INVOICE_ROW_REMOVED.
  * Allowed on SOLD and CANCELLED events; a deleted event → 409 EVENT_DELETED.
  */
@@ -12,7 +12,7 @@ import type { Event, InvoiceRow, Prisma } from '../generated/prisma/client.js';
 import { notFound, parseInput } from '../http/errors.js';
 import { MAX_CENTS, requiredText } from '../events/schemas.js';
 import { toEventDetailDto } from '../events/serialize.js';
-import { assertNotDeleted, inTransaction, isUuid, logHistory, requireEventDetail } from '../events/store.js';
+import { assertNotDeleted, inTransaction, isUuid, lockEvent, logHistory, requireEventDetail } from '../events/store.js';
 
 type IdParams = { Params: { id: string } };
 
@@ -23,7 +23,7 @@ const amountCents = z
   .min(1, { message: 'INVALID_VALUE' })
   .max(MAX_CENTS, { message: 'INVALID_VALUE' });
 
-/** READY | SENT | PAID; anything else (incl. null) → INVALID_VALUE. */
+/** NOT_SENT | SENT; anything else (incl. null and the old READY / PAID) → INVALID_VALUE. */
 const status = z.enum(INVOICE_ROW_STATUSES, { message: 'INVALID_VALUE' });
 
 const createBody = z.object({
@@ -61,8 +61,9 @@ export function invoiceRowRoutes(app: FastifyInstance, deps: AppDeps): void {
     // A new row goes last: its creation time is after every existing row of the event.
     const latest = event.invoiceRows.reduce((max, r) => Math.max(max, r.createdAt.getTime()), 0);
     const createdAt = new Date(Math.max(Date.now(), latest + 1));
-    const rowStatus = body.status ?? 'READY';
+    const rowStatus = body.status ?? 'NOT_SENT';
     await inTransaction(db, async (tx) => {
+      await lockEvent(tx, event.id);
       const row = await tx.invoiceRow.create({
         data: {
           eventId: event.id,
@@ -111,6 +112,7 @@ export function invoiceRowRoutes(app: FastifyInstance, deps: AppDeps): void {
 
     if (changes.length > 0) {
       await inTransaction(db, async (tx) => {
+        await lockEvent(tx, row.eventId);
         const updated = await tx.invoiceRow.update({ where: { id: row.id }, data });
         await logHistory(tx, {
           eventId: row.eventId,
@@ -132,6 +134,7 @@ export function invoiceRowRoutes(app: FastifyInstance, deps: AppDeps): void {
     const me = request.requirePartner();
     const row = await requireMutableRow(request.params.id);
     await inTransaction(db, async (tx) => {
+      await lockEvent(tx, row.eventId);
       await tx.invoiceRow.delete({ where: { id: row.id } });
       await logHistory(tx, {
         eventId: row.eventId,

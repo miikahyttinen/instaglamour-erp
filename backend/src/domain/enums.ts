@@ -50,15 +50,12 @@ export const COST_TYPES = [...MUSICIAN_ROLES, ...INTERNAL_ROLES, ...EXPENSE_CATE
 /** Single choice (domain-model.md "TechnicalSetup"); an event may also have none (null). */
 export const TECHNICAL_SETUPS = ['HOUSE_TECH', 'SET_A', 'SET_B', 'SET_C'] as const satisfies readonly TechnicalSetup[];
 
-/** Status of one invoice row, set by hand (api-contract "Invoice rows"). */
-export const INVOICE_ROW_STATUSES = ['READY', 'SENT', 'PAID'] as const satisfies readonly InvoiceRowStatus[];
+/** Status of one invoice row, set by hand (api-contract "Invoicing v3"); payments are not tracked. */
+export const INVOICE_ROW_STATUSES = ['NOT_SENT', 'SENT'] as const satisfies readonly InvoiceRowStatus[];
 export type InvoiceRowStatusCode = (typeof INVOICE_ROW_STATUSES)[number];
 
-/**
- * Derived invoicing state of an event = the next invoicing action (api-contract "Invoicing: one label");
- * not stored. Order = precedence (first match wins).
- */
-export const INVOICE_STATES = ['PAID', 'ROWS_TO_INVOICE', 'OPEN_INVOICES', 'NEEDS_INVOICES', 'NONE'] as const;
+/** Derived invoicing state of an event (api-contract "Invoicing v3"); not stored. */
+export const INVOICE_STATES = ['OPEN_INVOICES', 'FULLY_INVOICED', 'PARTLY_INVOICED', 'NONE'] as const;
 export type InvoiceState = (typeof INVOICE_STATES)[number];
 
 /** Single choice (domain-model.md "Logistics"); an event may also have none (null). */

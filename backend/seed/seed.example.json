@@ -91,8 +91,8 @@
       "producer": "partner.b@example.com",
       "priceCents": 300000,
       "invoiceRows": [
-        { "description": "Ennakkomaksu", "amountCents": 100000, "status": "PAID" },
-        { "description": "Lasku", "amountCents": 150000, "status": "PAID" },
+        { "description": "Ennakkomaksu", "amountCents": 100000, "status": "SENT" },
+        { "description": "Lasku", "amountCents": 150000, "status": "SENT" },
         { "description": "Lasku 2", "amountCents": 50000, "status": "SENT" }
       ],
       "costLines": [

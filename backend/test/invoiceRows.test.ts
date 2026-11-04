@@ -1,6 +1,7 @@
 /**
- * Invoice rows per event (api-contract "Invoice rows", TASK-046): endpoints, derived fields
- * (invoiceState, api-contract "Invoicing: one label"), ?invoiceState= filter, history, seed/import. Synthetic data only (BR-090).
+ * Invoice rows per event (api-contract "Invoice rows", TASK-046; "Invoicing v3", TASK-049): endpoints,
+ * derived fields (sent / not sent / uninvoiced / balance, invoiceState), ?invoiceState= filter, history,
+ * seed/import. Synthetic data only (BR-090).
  */
 import path from 'node:path';
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -37,89 +38,68 @@ async function added(eventId: string, body: Record<string, unknown>): Promise<Js
 const lastRow = (event: Json): Json => event.invoiceRows[event.invoiceRows.length - 1];
 
 describe('EventSummary / EventDetail fields', () => {
-  it('a new event: no rows, needs invoices, balance = total price; old fields are gone', async () => {
+  it('a new played event: no rows, PARTLY_INVOICED, balance = uninvoiced = total price; old fields are gone', async () => {
     const event = await createEvent(s, { priceCents: 100000, additionalSalesCents: 20000 });
     const expected = {
       totalPriceCents: 120000,
+      sentCents: 0,
+      notSentCents: 0,
+      uninvoicedCents: 120000,
       balanceCents: 120000,
-      invoicedCents: 0,
-      paidCents: 0,
-      openCents: 0,
-      readyCents: 0,
-      invoiceState: 'NEEDS_INVOICES',
+      invoiceState: 'PARTLY_INVOICED',
     };
     expect(event).toMatchObject({ ...expected, invoiceRows: [] });
-    for (const field of ['invoiceStatus', 'invoiceStatusAt', 'invoiceStatusBy', 'prepaymentCents', 'invoiceCoverage', 'paymentState']) {
-      expect(event).not.toHaveProperty(field);
-    }
+    const removed = ['invoiceStatus', 'invoiceStatusAt', 'invoiceStatusBy', 'prepaymentCents', 'invoiceCoverage', 'paymentState'];
+    removed.push('paidCents', 'openCents', 'readyCents', 'invoicedCents', 'finalInvoiceCreatedAt');
+    for (const field of removed) expect(event).not.toHaveProperty(field);
     expect((await call(s, 'GET', `/api/events/${event.id}`)).json()).toMatchObject(expected);
     const summary = (await call(s, 'GET', '/api/events?year=2026')).json().events[0];
     expect(summary).toMatchObject(expected);
     expect(summary).not.toHaveProperty('invoiceRows'); // EventDetail only
-    expect(summary).not.toHaveProperty('invoiceCoverage');
-    expect(summary).not.toHaveProperty('paymentState');
+    for (const field of removed) expect(summary).not.toHaveProperty(field);
   });
 
-  it('an event with total 0: NONE without rows; READY → ROWS_TO_INVOICE, SENT → OPEN_INVOICES, PAID → PAID', async () => {
+  it('an event with total 0: NONE without rows; NOT_SENT → OPEN_INVOICES; SENT only → NONE', async () => {
     const event = await createEvent(s, { priceCents: 0, additionalSalesCents: 0 });
-    expect(event).toMatchObject({ totalPriceCents: 0, invoiceState: 'NONE', openCents: 0 });
+    expect(event).toMatchObject({ totalPriceCents: 0, invoiceState: 'NONE', uninvoicedCents: 0, balanceCents: 0 });
     let e = await added(event.id, { description: 'Lasku', amountCents: 1000 });
-    expect(e).toMatchObject({ invoiceState: 'ROWS_TO_INVOICE', readyCents: 1000, invoicedCents: 0 });
+    expect(e).toMatchObject({ invoiceState: 'OPEN_INVOICES', notSentCents: 1000, sentCents: 0, uninvoicedCents: 0 });
     e = (await patchRow(lastRow(e).id, { status: 'SENT' })).json();
-    expect(e).toMatchObject({ invoiceState: 'OPEN_INVOICES', openCents: 1000 });
-    e = (await patchRow(lastRow(e).id, { status: 'PAID' })).json();
-    expect(e).toMatchObject({ invoiceState: 'PAID', paidCents: 1000 });
+    expect(e).toMatchObject({ invoiceState: 'NONE', sentCents: 1000, notSentCents: 0, balanceCents: -1000 });
     e = (await deleteRow(lastRow(e).id)).json();
-    expect(e).toMatchObject({ invoiceState: 'NONE' });
+    expect(e).toMatchObject({ invoiceState: 'NONE', sentCents: 0 });
   });
 
   it('derived fields follow the rows (list and detail)', async () => {
     const event = await createEvent(s, { priceCents: 100000, additionalSalesCents: 20000 });
-    let e = await added(event.id, { description: 'Ennakkomaksu', amountCents: 30000, status: 'PAID' });
-    expect(e).toMatchObject({ balanceCents: 90000, invoicedCents: 30000, paidCents: 30000, openCents: 0, invoiceState: 'NEEDS_INVOICES' });
-    e = await added(event.id, { description: 'Lasku', amountCents: 90000 }); // READY = draft
-    const ready = { balanceCents: 90000, invoicedCents: 30000, paidCents: 30000, openCents: 0, readyCents: 90000, invoiceState: 'ROWS_TO_INVOICE' };
-    expect(e).toMatchObject(ready);
-    const listed = (await call(s, 'GET', '/api/events?year=2026')).json().events[0];
-    expect(listed).toMatchObject(ready);
-    e = (await patchRow(lastRow(e).id, { status: 'SENT' })).json();
-    expect(e).toMatchObject({
-      balanceCents: 90000,
-      invoicedCents: 120000,
-      paidCents: 30000,
-      openCents: 90000,
-      readyCents: 0,
-      invoiceState: 'OPEN_INVOICES',
-    });
-    e = (await patchRow(lastRow(e).id, { status: 'PAID' })).json();
-    const paid = {
-      balanceCents: 0,
-      invoicedCents: 120000,
-      paidCents: 120000,
-      openCents: 0,
-      invoiceState: 'PAID',
-    };
-    expect(e).toMatchObject(paid);
-    const summary = (await call(s, 'GET', '/api/events?year=2026')).json().events[0];
-    expect(summary).toMatchObject(paid);
+    let e = await added(event.id, { description: 'Ennakkomaksu', amountCents: 30000, status: 'SENT' });
+    expect(e).toMatchObject({ sentCents: 30000, notSentCents: 0, uninvoicedCents: 90000, balanceCents: 90000, invoiceState: 'PARTLY_INVOICED' });
+    e = await added(event.id, { description: 'Lasku', amountCents: 50000 }); // NOT_SENT by default
+    const open = { sentCents: 30000, notSentCents: 50000, uninvoicedCents: 40000, balanceCents: 90000, invoiceState: 'OPEN_INVOICES' };
+    expect(e).toMatchObject(open);
+    expect((await call(s, 'GET', '/api/events?year=2026')).json().events[0]).toMatchObject(open);
+    e = (await patchRow(lastRow(e).id, { amountCents: 90000, status: 'SENT' })).json();
+    const full = { sentCents: 120000, notSentCents: 0, uninvoicedCents: 0, balanceCents: 0, invoiceState: 'FULLY_INVOICED' };
+    expect(e).toMatchObject(full);
+    expect((await call(s, 'GET', '/api/events?year=2026')).json().events[0]).toMatchObject(full);
   });
 
-  it('the balance may be negative (overpaid); overpaid with READY rows is still PAID', async () => {
+  it('more sent than the total: balance negative, uninvoiced 0, still FULLY_INVOICED; a NOT_SENT row wins', async () => {
     const event = await createEvent(s, { priceCents: 100000 });
-    let e = await added(event.id, { description: 'Lasku', amountCents: 120000, status: 'PAID' });
-    expect(e).toMatchObject({ balanceCents: -20000, invoiceState: 'PAID' });
+    let e = await added(event.id, { description: 'Lasku', amountCents: 120000, status: 'SENT' });
+    expect(e).toMatchObject({ balanceCents: -20000, uninvoicedCents: 0, invoiceState: 'FULLY_INVOICED' });
     e = await added(event.id, { description: 'Lisälasku', amountCents: 5000 });
-    expect(e).toMatchObject({ balanceCents: -20000, readyCents: 5000, invoiceState: 'PAID' });
+    expect(e).toMatchObject({ balanceCents: -20000, notSentCents: 5000, invoiceState: 'OPEN_INVOICES' });
   });
 
-  it('NEEDS_INVOICES only for played events: upcoming (incl. today) and cancelled fall to NONE', async () => {
+  it('PARTLY_INVOICED only for played events: upcoming (incl. today) and cancelled without rows are NONE', async () => {
     const played = await createEvent(s, { startDate: '2026-06-14', priceCents: 100000 });
     const today = await createEvent(s, { startDate: '2026-06-15', priceCents: 100000 });
     const upcoming = await createEvent(s, { startDate: '2026-07-01', priceCents: 100000 });
     const cancelled = await createEvent(s, { startDate: '2026-05-01', priceCents: 100000 });
     await call(s, 'POST', `/api/events/${cancelled.id}/cancel`, { reason: 'Client cancelled' });
     const expected: Record<string, [boolean, string]> = {
-      [played.id]: [true, 'NEEDS_INVOICES'],
+      [played.id]: [true, 'PARTLY_INVOICED'],
       [today.id]: [false, 'NONE'],
       [upcoming.id]: [false, 'NONE'],
       [cancelled.id]: [false, 'NONE'],
@@ -131,38 +111,40 @@ describe('EventSummary / EventDetail fields', () => {
     expect(Object.fromEntries(listed.map((e) => [e.id, e.invoiceState]))).toEqual(
       Object.fromEntries(Object.entries(expected).map(([id, [, state]]) => [id, state])),
     );
-    // Rules 1–3 are unchanged for upcoming events.
-    let e = await added(upcoming.id, { description: 'Ennakkomaksu', amountCents: 30000, status: 'PAID' });
-    expect(e).toMatchObject({ invoiceState: 'NONE', paidCents: 30000, balanceCents: 70000 });
+    // Upcoming: a partial SENT row stays NONE; NOT_SENT → OPEN_INVOICES; all sent → FULLY_INVOICED.
+    let e = await added(upcoming.id, { description: 'Ennakkomaksu', amountCents: 30000, status: 'SENT' });
+    expect(e).toMatchObject({ invoiceState: 'NONE', sentCents: 30000, balanceCents: 70000 });
     e = await added(upcoming.id, { description: 'Lasku', amountCents: 70000 });
-    expect(e).toMatchObject({ invoiceState: 'ROWS_TO_INVOICE' });
-    e = (await patchRow(lastRow(e).id, { status: 'SENT' })).json();
     expect(e).toMatchObject({ invoiceState: 'OPEN_INVOICES' });
-    e = (await patchRow(lastRow(e).id, { status: 'PAID' })).json();
-    expect(e).toMatchObject({ invoiceState: 'PAID' });
+    e = (await patchRow(lastRow(e).id, { status: 'SENT' })).json();
+    expect(e).toMatchObject({ invoiceState: 'FULLY_INVOICED' });
   });
 
-  it('an upcoming event becomes NEEDS_INVOICES the day after its start date (Helsinki)', async () => {
+  it('an upcoming event becomes PARTLY_INVOICED the day after its start date (Helsinki)', async () => {
     const event = await createEvent(s, { startDate: '2026-06-15', priceCents: 100000 });
     expect((await call(s, 'GET', `/api/events/${event.id}`)).json()).toMatchObject({ played: false, invoiceState: 'NONE' });
     vi.setSystemTime(new Date('2026-06-15T20:59:00.000Z')); // 23:59 in Helsinki
     expect((await call(s, 'GET', `/api/events/${event.id}`)).json()).toMatchObject({ played: false, invoiceState: 'NONE' });
     vi.setSystemTime(new Date('2026-06-15T21:00:00.000Z')); // 00:00 on the 16th in Helsinki
-    expect((await call(s, 'GET', `/api/events/${event.id}`)).json()).toMatchObject({ played: true, invoiceState: 'NEEDS_INVOICES' });
+    expect((await call(s, 'GET', `/api/events/${event.id}`)).json()).toMatchObject({ played: true, invoiceState: 'PARTLY_INVOICED' });
   });
 
   it('a cancelled event with rows keeps its derived fields (same formulas)', async () => {
     const event = await createEvent(s, { priceCents: 100000 });
-    await added(event.id, { description: 'Lasku', amountCents: 40000, status: 'SENT' });
+    const row = lastRow(await added(event.id, { description: 'Lasku', amountCents: 40000 }));
     await call(s, 'POST', `/api/events/${event.id}/cancel`, { reason: 'Client cancelled' });
-    const expected = { status: 'CANCELLED', openCents: 40000, invoiceState: 'OPEN_INVOICES' };
+    let expected: Json = { status: 'CANCELLED', notSentCents: 40000, uninvoicedCents: 60000, invoiceState: 'OPEN_INVOICES' };
     expect((await call(s, 'GET', `/api/events/${event.id}`)).json()).toMatchObject(expected);
     expect((await call(s, 'GET', '/api/events?year=2026&status=CANCELLED')).json().events[0]).toMatchObject(expected);
+    // Cancelled with a sent row below the total: PARTLY_INVOICED (only cancelled without rows is NONE).
+    await patchRow(row.id, { status: 'SENT' });
+    expected = { status: 'CANCELLED', sentCents: 40000, balanceCents: 60000, invoiceState: 'PARTLY_INVOICED' };
+    expect((await call(s, 'GET', `/api/events/${event.id}`)).json()).toMatchObject(expected);
   });
 });
 
 describe('POST /api/events/{id}/invoice-rows', () => {
-  it('adds a READY row by default with created/status at/by = now/me and logs INVOICE_ROW_ADDED', async () => {
+  it('adds a NOT_SENT row by default with created/status at/by = now/me and logs INVOICE_ROW_ADDED', async () => {
     const event = await createEvent(s);
     const res = await addRow(event.id, { description: '  Lasku 1  ', amountCents: 50000 });
     expect(res.statusCode).toBe(200);
@@ -175,22 +157,24 @@ describe('POST /api/events/{id}/invoice-rows', () => {
         eventId: event.id,
         description: 'Lasku 1',
         amountCents: 50000,
-        status: 'READY',
+        status: 'NOT_SENT',
         statusAt: NOW,
         statusBy: s.world.a.id,
         createdAt: NOW,
         createdBy: s.world.a.id,
+        auto: false,
       },
     ]);
     const [entry] = await history(s, event.id);
     expect(entry).toMatchObject({
       type: 'INVOICE_ROW_ADDED',
       partnerId: s.world.a.id,
-      details: { invoiceRowId: e.invoiceRows[0].id, description: 'Lasku 1', amountCents: 50000, status: 'READY' },
+      details: { invoiceRowId: e.invoiceRows[0].id, description: 'Lasku 1', amountCents: 50000, status: 'NOT_SENT' },
     });
+    expect(entry!.details).not.toHaveProperty('auto');
   });
 
-  it.each(['READY', 'SENT', 'PAID'])('accepts status %s', async (status) => {
+  it.each(['NOT_SENT', 'SENT'])('accepts status %s', async (status) => {
     const event = await createEvent(s);
     expect(lastRow(await added(event.id, { description: 'Lasku', amountCents: 1, status })).status).toBe(status);
   });
@@ -215,6 +199,8 @@ describe('POST /api/events/{id}/invoice-rows', () => {
     [{ description: 'Lasku', amountCents: '1000' }, { amountCents: 'INVALID_VALUE' }],
     [{ description: 'Lasku', amountCents: 3_000_000_000 }, { amountCents: 'INVALID_VALUE' }],
     [{ description: 'Lasku', amountCents: 1000, status: 'INVOICED' }, { status: 'INVALID_VALUE' }],
+    [{ description: 'Lasku', amountCents: 1000, status: 'READY' }, { status: 'INVALID_VALUE' }], // pre-v3
+    [{ description: 'Lasku', amountCents: 1000, status: 'PAID' }, { status: 'INVALID_VALUE' }], // pre-v3
     [{ description: 'Lasku', amountCents: 1000, status: null }, { status: 'INVALID_VALUE' }],
     [{}, { description: 'REQUIRED', amountCents: 'REQUIRED' }],
   ])('%j → 400 %j', async (body, fields) => {
@@ -272,7 +258,7 @@ describe('PATCH /api/invoice-rows/{id}', () => {
     vi.setSystemTime(new Date('2026-06-16T10:00:00.000Z'));
     const res = await patchRow(row.id, { description: 'Lasku 1', amountCents: 40000 });
     expect(res.statusCode).toBe(200);
-    expect(lastRow(res.json())).toMatchObject({ description: 'Lasku 1', amountCents: 40000, status: 'READY', statusAt: NOW });
+    expect(lastRow(res.json())).toMatchObject({ description: 'Lasku 1', amountCents: 40000, status: 'NOT_SENT', statusAt: NOW });
     const [entry] = await history(s, eventId);
     expect(entry).toMatchObject({
       type: 'INVOICE_ROW_UPDATED',
@@ -289,13 +275,13 @@ describe('PATCH /api/invoice-rows/{id}', () => {
   });
 
   it('any status → any status; at/by follow the last status change', async () => {
-    const { eventId, row } = await eventWithRow({ description: 'Lasku', amountCents: 50000, status: 'PAID' });
+    const { eventId, row } = await eventWithRow({ description: 'Lasku', amountCents: 50000, status: 'SENT' });
     const b = { ...s, cookie: await login(s.app, 'partner.b@example.com') };
     vi.setSystemTime(new Date('2026-06-16T10:00:00.000Z'));
-    const res = await call(b, 'PATCH', `/api/invoice-rows/${row.id}`, { status: 'READY' });
+    const res = await call(b, 'PATCH', `/api/invoice-rows/${row.id}`, { status: 'NOT_SENT' });
     expect(res.statusCode).toBe(200);
     expect(lastRow(res.json())).toMatchObject({
-      status: 'READY',
+      status: 'NOT_SENT',
       statusAt: '2026-06-16T10:00:00.000Z',
       statusBy: s.world.b.id,
       createdAt: NOW,
@@ -305,14 +291,14 @@ describe('PATCH /api/invoice-rows/{id}', () => {
     expect(entry).toMatchObject({
       type: 'INVOICE_ROW_UPDATED',
       partnerId: s.world.b.id,
-      details: { changes: [{ field: 'status', from: 'PAID', to: 'READY' }] },
+      details: { changes: [{ field: 'status', from: 'SENT', to: 'NOT_SENT' }] },
     });
   });
 
   it('the same values or an empty body are a no-op: 200, no history, nothing changes', async () => {
     const { eventId, row } = await eventWithRow();
     const before = await history(s, eventId);
-    for (const body of [{}, { description: 'Lasku', amountCents: 50000, status: 'READY' }, { description: ' Lasku ' }]) {
+    for (const body of [{}, { description: 'Lasku', amountCents: 50000, status: 'NOT_SENT' }, { description: ' Lasku ' }]) {
       const res = await patchRow(row.id, body);
       expect(res.statusCode).toBe(200);
       expect(lastRow(res.json())).toEqual(row);
@@ -328,6 +314,9 @@ describe('PATCH /api/invoice-rows/{id}', () => {
     [{ amountCents: null }, { amountCents: 'REQUIRED' }],
     [{ amountCents: 1.5 }, { amountCents: 'INVALID_VALUE' }],
     [{ status: 'NONE' }, { status: 'INVALID_VALUE' }],
+    [{ status: 'READY' }, { status: 'INVALID_VALUE' }],
+    [{ status: 'PAID' }, { status: 'INVALID_VALUE' }],
+    [{ status: null }, { status: 'INVALID_VALUE' }],
   ])('%j → 400 %j', async (body, fields) => {
     const { row } = await eventWithRow();
     const res = await patchRow(row.id, body);
@@ -362,7 +351,7 @@ describe('DELETE /api/invoice-rows/{id}', () => {
     const row = lastRow(await added(event.id, { description: 'Lasku', amountCents: 50000, status: 'SENT' }));
     const res = await deleteRow(row.id);
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toMatchObject({ id: event.id, invoiceRows: [], invoiceState: 'NEEDS_INVOICES', openCents: 0, invoicedCents: 0 });
+    expect(res.json()).toMatchObject({ id: event.id, invoiceRows: [], invoiceState: 'PARTLY_INVOICED', sentCents: 0, notSentCents: 0 });
     const [entry] = await history(s, event.id);
     expect(entry).toMatchObject({
       type: 'INVOICE_ROW_REMOVED',
@@ -391,7 +380,7 @@ describe('removed TASK-045 inputs', () => {
     const before = await history(s, event.id);
     const res = await call(s, 'PATCH', `/api/events/${event.id}`, { invoiceStatus: 'PAID', prepaymentCents: 1000 });
     expect(res.statusCode).toBe(200);
-    expect(res.json().event).toMatchObject({ invoiceState: 'NEEDS_INVOICES', balanceCents: 100000 });
+    expect(res.json().event).toMatchObject({ invoiceState: 'PARTLY_INVOICED', balanceCents: 100000 });
     expect(await history(s, event.id)).toHaveLength(before.length);
   });
 });
@@ -406,15 +395,15 @@ describe('GET /api/events ?invoiceState=', () => {
   // venue, total, rows → invoiceState
   async function world() {
     const rows: [string, number, [string, number][], string?][] = [
-      ['Venue A', 0, []], // NONE
-      ['Venue B', 100000, []], // NEEDS_INVOICES
-      ['Venue C', 100000, [['PAID', 1000]]], // NEEDS_INVOICES
-      ['Venue D', 100000, [['READY', 1000], ['SENT', 1000]]], // ROWS_TO_INVOICE
-      ['Venue E', 100000, [['PAID', 50000], ['SENT', 50000]]], // OPEN_INVOICES
-      ['Venue F', 100000, [['PAID', 100000]]], // PAID
-      ['Venue G', 100000, [['PAID', 120000], ['READY', 1000]]], // PAID (overpaid with READY rows)
-      ['Venue H', 100000, [], '2026-07-01'], // NONE (upcoming: never NEEDS_INVOICES)
-      ['Venue I', 100000, [['PAID', 1000]], '2026-06-15'], // NONE (starts today: not played yet)
+      ['Venue A', 0, []], // NONE (total 0)
+      ['Venue B', 100000, []], // PARTLY_INVOICED (played, nothing sent)
+      ['Venue C', 100000, [['SENT', 1000]]], // PARTLY_INVOICED
+      ['Venue D', 100000, [['NOT_SENT', 1000], ['SENT', 1000]]], // OPEN_INVOICES
+      ['Venue E', 100000, [['SENT', 100000], ['NOT_SENT', 1000]]], // OPEN_INVOICES (beats FULLY_INVOICED)
+      ['Venue F', 100000, [['SENT', 60000], ['SENT', 40000]]], // FULLY_INVOICED
+      ['Venue G', 100000, [['SENT', 120000]]], // FULLY_INVOICED (more than the total)
+      ['Venue H', 100000, [], '2026-07-01'], // NONE (upcoming)
+      ['Venue I', 100000, [['SENT', 1000]], '2026-06-15'], // NONE (starts today: not played yet)
     ];
     for (const [venue, priceCents, list, startDate = '2026-05-01'] of rows) {
       const event = await createEvent(s, { venue, priceCents, additionalSalesCents: 0, startDate });
@@ -426,12 +415,17 @@ describe('GET /api/events ?invoiceState=', () => {
     await world();
     expect(await venues('')).toEqual(['Venue A', 'Venue B', 'Venue C', 'Venue D', 'Venue E', 'Venue F', 'Venue G', 'Venue H', 'Venue I']);
     expect(await venues('&invoiceState=NONE')).toEqual(['Venue A', 'Venue H', 'Venue I']);
-    expect(await venues('&invoiceState=NEEDS_INVOICES')).toEqual(['Venue B', 'Venue C']);
-    expect(await venues('&invoiceState=ROWS_TO_INVOICE')).toEqual(['Venue D']);
-    expect(await venues('&invoiceState=OPEN_INVOICES')).toEqual(['Venue E']);
-    expect(await venues('&invoiceState=PAID')).toEqual(['Venue F', 'Venue G']);
-    expect(await venues('&invoiceState=OPEN_INVOICES&invoiceState=NEEDS_INVOICES')).toEqual(['Venue B', 'Venue C', 'Venue E']);
-    expect(await venues('&invoiceState=NONE&invoiceState=PAID&invoiceState=PAID')).toEqual(['Venue A', 'Venue F', 'Venue G', 'Venue H', 'Venue I']);
+    expect(await venues('&invoiceState=PARTLY_INVOICED')).toEqual(['Venue B', 'Venue C']);
+    expect(await venues('&invoiceState=OPEN_INVOICES')).toEqual(['Venue D', 'Venue E']);
+    expect(await venues('&invoiceState=FULLY_INVOICED')).toEqual(['Venue F', 'Venue G']);
+    expect(await venues('&invoiceState=OPEN_INVOICES&invoiceState=PARTLY_INVOICED')).toEqual(['Venue B', 'Venue C', 'Venue D', 'Venue E']);
+    expect(await venues('&invoiceState=NONE&invoiceState=FULLY_INVOICED&invoiceState=FULLY_INVOICED')).toEqual([
+      'Venue A',
+      'Venue F',
+      'Venue G',
+      'Venue H',
+      'Venue I',
+    ]);
   });
 
   it('the summary carries the same invoiceState the filter uses', async () => {
@@ -440,12 +434,12 @@ describe('GET /api/events ?invoiceState=', () => {
     const byVenue = Object.fromEntries(events.map((e) => [e.venue, e.invoiceState]));
     expect(byVenue).toEqual({
       'Venue A': 'NONE',
-      'Venue B': 'NEEDS_INVOICES',
-      'Venue C': 'NEEDS_INVOICES',
-      'Venue D': 'ROWS_TO_INVOICE',
+      'Venue B': 'PARTLY_INVOICED',
+      'Venue C': 'PARTLY_INVOICED',
+      'Venue D': 'OPEN_INVOICES',
       'Venue E': 'OPEN_INVOICES',
-      'Venue F': 'PAID',
-      'Venue G': 'PAID',
+      'Venue F': 'FULLY_INVOICED',
+      'Venue G': 'FULLY_INVOICED',
       'Venue H': 'NONE',
       'Venue I': 'NONE',
     });
@@ -459,21 +453,22 @@ describe('GET /api/events ?invoiceState=', () => {
 
   it('combines with the status filter (cancelled events too)', async () => {
     const event = await createEvent(s, { venue: 'Venue A' });
-    await added(event.id, { description: 'Lasku', amountCents: 1000, status: 'SENT' });
+    await added(event.id, { description: 'Lasku', amountCents: 1000 });
     await call(s, 'POST', `/api/events/${event.id}/cancel`, { reason: 'Client cancelled' });
     await createEvent(s, { venue: 'Venue B' });
     expect(await venues('&invoiceState=OPEN_INVOICES')).toEqual([]); // default status=SOLD
     expect(await venues('&status=ALL&invoiceState=OPEN_INVOICES')).toEqual(['Venue A']);
-    expect(await venues('&status=CANCELLED&invoiceState=NEEDS_INVOICES')).toEqual([]);
-    expect(await venues('&status=ALL&invoiceState=NEEDS_INVOICES')).toEqual(['Venue B']);
+    expect(await venues('&status=CANCELLED&invoiceState=PARTLY_INVOICED')).toEqual([]);
+    expect(await venues('&status=ALL&invoiceState=PARTLY_INVOICED')).toEqual(['Venue B']);
     expect(await venues('&status=ALL&invoiceState=NONE')).toEqual([]); // the cancelled one has an open invoice
     await call(s, 'DELETE', `/api/invoice-rows/${(await call(s, 'GET', `/api/events/${event.id}`)).json().invoiceRows[0].id}`);
-    expect(await venues('&status=ALL&invoiceState=NONE')).toEqual(['Venue A']); // cancelled, invoiced < total → NONE
-    expect(await venues('&status=ALL&invoiceState=NEEDS_INVOICES')).toEqual(['Venue B']);
+    expect(await venues('&status=ALL&invoiceState=NONE')).toEqual(['Venue A']); // cancelled without rows → NONE
+    expect(await venues('&status=ALL&invoiceState=PARTLY_INVOICED')).toEqual(['Venue B']);
   });
 
-  it('an unknown invoiceState value → 400 INVALID_VALUE (old coverage/payment values too)', async () => {
-    for (const value of ['UNKNOWN', 'PAID&invoiceState=nope', 'paid', 'FULLY_PAID', 'FULLY_INVOICED', 'PARTLY_PAID', 'READY', 'SENT', '']) {
+  it('an unknown invoiceState value → 400 INVALID_VALUE (old values too)', async () => {
+    const old = ['PAID', 'ROWS_TO_INVOICE', 'NEEDS_INVOICES', 'FULLY_PAID', 'PARTLY_PAID', 'READY', 'SENT', 'NOT_SENT'];
+    for (const value of ['UNKNOWN', 'NONE&invoiceState=nope', 'open_invoices', '', ...old]) {
       const res = await call(s, 'GET', `/api/events?year=2026&invoiceState=${value}`);
       expect(res.statusCode).toBe(400);
       expect(res.json().error).toMatchObject({ code: 'VALIDATION_ERROR', fields: { invoiceState: 'INVALID_VALUE' } });
@@ -504,27 +499,31 @@ describe('seed / import', () => {
     await resetDb();
   });
 
-  it('loads invoiceRows in file order (status default READY; created/status by stay null); re-run adds nothing', async () => {
+  it('loads invoiceRows in file order (default NOT_SENT, legacy READY/PAID converted; created/status by null); re-run adds nothing', async () => {
     const doc = example();
     doc.events.forEach(bare);
     doc.events[0]!.invoiceRows = [
       { description: 'Ennakkomaksu', amountCents: 50000, status: 'PAID' },
       { description: 'Lasku', amountCents: 20000 },
       { description: 'Lasku 2', amountCents: 10000, status: 'SENT' },
+      { description: 'Lasku 3', amountCents: 5000, status: 'READY' },
+      { description: 'Lasku 4', amountCents: 4000, status: 'NOT_SENT' },
     ];
     await loadSeed(testDb(), doc);
     const rows = await rowsOf(doc.events[0]!);
     expect(rows.map((r) => [r.description, r.amountCents, r.status, r.createdById, r.statusById])).toEqual([
-      ['Ennakkomaksu', 50000, 'PAID', null, null],
-      ['Lasku', 20000, 'READY', null, null],
+      ['Ennakkomaksu', 50000, 'SENT', null, null],
+      ['Lasku', 20000, 'NOT_SENT', null, null],
       ['Lasku 2', 10000, 'SENT', null, null],
+      ['Lasku 3', 5000, 'NOT_SENT', null, null],
+      ['Lasku 4', 4000, 'NOT_SENT', null, null],
     ]);
     expect(await rowsOf(doc.events[1]!)).toEqual([]);
     await loadSeed(testDb(), doc);
-    expect(await testDb().invoiceRow.count()).toBe(3);
+    expect(await testDb().invoiceRow.count()).toBe(5);
   });
 
-  it('converts the legacy invoiceStatus / prepaymentCents like the migration', async () => {
+  it('converts the legacy invoiceStatus / prepaymentCents (prepayment → SENT, READY → NOT_SENT, INVOICED/PAID → SENT)', async () => {
     const doc = example();
     doc.events.forEach(bare);
     const total = (e: Record<string, unknown>) => (e.priceCents as number) + ((e.additionalSalesCents as number) ?? 0);
@@ -534,11 +533,11 @@ describe('seed / import', () => {
     await loadSeed(testDb(), doc);
     const pick = (rows: Awaited<ReturnType<typeof rowsOf>>) => rows.map((r) => [r.description, r.amountCents, r.status]);
     expect(pick(await rowsOf(doc.events[0]!))).toEqual([
-      ['Ennakkomaksu', 50000, 'PAID'],
+      ['Ennakkomaksu', 50000, 'SENT'],
       ['Lasku', total(doc.events[0]!) - 50000, 'SENT'],
     ]);
-    expect(pick(await rowsOf(doc.events[1]!))).toEqual([['Ennakkomaksu', 10000, 'PAID']]);
-    expect(pick(await rowsOf(doc.events[2]!))).toEqual([['Lasku', total(doc.events[2]!), 'READY']]);
+    expect(pick(await rowsOf(doc.events[1]!))).toEqual([['Ennakkomaksu', 10000, 'SENT']]);
+    expect(pick(await rowsOf(doc.events[2]!))).toEqual([['Lasku', total(doc.events[2]!), 'NOT_SENT']]);
   });
 
   it('the example seed validates', () => {
