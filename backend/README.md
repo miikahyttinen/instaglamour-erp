@@ -116,6 +116,17 @@ spoof it and bypass the limit).
   `personId` → 400 `UNKNOWN_REFERENCE`, field errors for `personId` and `costLineIds` come together.
   `GET /api/people/{id}/po-eligible-lines?eventId=` lists the same eligible set, newest event first;
   an unknown or malformed `eventId` gives `[]`. The freelancer link keeps the played-only rule (BR-114).
+- **VAT and sound check** (2026-11-04, TASK-050): the public POST takes `{ vatLiable, lines: [{ costLineId,
+  soundcheck }] }` (legacy `{ costLineIds }` = `vatLiable: false`, all `soundcheck: true`). Per line
+  (`src/purchaseOrders/amounts.ts`): `base` = budgeted fee; `soundcheck: false` → `deduction =
+  min(base, setting fees.load_in_deduction)`; VAT-liable → `vat = round((base − deduction) × rate_bp / 10000)`
+  with `fees.performer_vat_rate_bp` (optional setting, default 1350 when the row is missing; seedable);
+  `amount = base − deduction + vat`. Settings are read inside the creating transaction. Stored on
+  `purchase_order.vat_liable` and `purchase_order_line.base_cents/soundcheck/deduction_cents/vat_cents`
+  (migration `20261104130000_po_vat_soundcheck` backfilled old lines: base = amount, soundcheck true, 0, 0).
+  Totals = Σ amount; paying sets each cost line's actual = its line amount (incl. VAT). The cost line's
+  budgeted fee is not changed. Partner POs always use soundcheck true / no VAT. `FreelancerView.settings`
+  = `{ soundcheckDeductionCents, vatRateBp }` for the UI preview.
 - **One active PO per cost line:** `purchase_order_line.active` is true while the PO is OPEN/PAID; the
   partial unique index `purchase_order_line_active_cost_line_key` backs the code check. Line snapshots
   (`cost_line_ref`, event, type, description, amount) keep cancelled POs intact if a freed cost line is
@@ -258,7 +269,8 @@ src/routes/publicOffers.ts  GET /api/public/offers/{token} and its token-scoped 
 src/purchaseOrders/ purchase orders (UC-033/034, BR-113…119): number slug + global sequence (number.ts),
                    freelancer link tokens (token.ts; the DB column default gives every new person one),
                    create / pay / unpay / cancel + serializers (store.ts), BR-118 lock checks (lock.ts),
-                   costLineIds parsing shared by both create endpoints (input.ts)
+                   request parsing for both create endpoints (input.ts), VAT / sound check
+                   line amounts + their settings (amounts.ts)
 src/routes/purchaseOrders.ts  partner PO endpoints (incl. manual create, po-eligible-lines)
                    + /api/people/{id}/freelancer-link(/regenerate)
 src/routes/publicFreelancers.ts  public freelancer view + create PO (no session; noindex; shared limiter)

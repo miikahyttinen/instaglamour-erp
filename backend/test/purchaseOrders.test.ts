@@ -7,7 +7,7 @@ import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { currentYear } from '../src/domain/dates.js';
 import { PUBLIC_RATE_LIMIT } from '../src/http/publicGuard.js';
 import { closeTestDb, resetDb, testDb } from './helpers.js';
-import { call, createEvent, history, startSession, UNKNOWN_ID, type Json, type Session } from './eventFixtures.js';
+import { call, createEvent, FEES, history, startSession, UNKNOWN_ID, type Json, type Session } from './eventFixtures.js';
 
 let s: Session;
 
@@ -38,6 +38,9 @@ async function tokenOf(personId: string): Promise<string> {
 
 /** The given fields of each row, e.g. pick(lines, 'state', 'amountCents') → [['PAID', 1000], …]. */
 const pick = (rows: Record<string, unknown>[], ...keys: string[]): unknown[][] => rows.map((r) => keys.map((k) => r[k]));
+
+/** PO line breakdown with sound check and no VAT (legacy body, 30000 VOC fee). */
+const NO_EXTRAS = { baseCents: 30000, soundcheck: true, deductionCents: 0, vatCents: 0 };
 
 const lineOf = (event: Json, type: string): Json => event.costLines.find((l: Json) => l.type === type);
 
@@ -223,7 +226,9 @@ describe('GET /api/public/freelancers/{token} (UC-033)', () => {
     const extraLine = extra.event.costLines.at(-1);
 
     const v = await view(await tokenOf(s.world.p1.id));
-    expect(Object.keys(v).sort()).toEqual(['lines', 'name', 'purchaseOrders']);
+    expect(Object.keys(v).sort()).toEqual(['lines', 'name', 'purchaseOrders', 'settings']);
+    // Settings for the amount preview: the load-in deduction setting, VAT rate default 1350 (no row)
+    expect(v.settings).toEqual({ soundcheckDeductionCents: FEES.loadInDeduction, vatRateBp: 1350 });
     expect(v.name).toBe('Person 1');
     expect(v.purchaseOrders).toEqual([]);
     expect(v.lines).toEqual([
@@ -276,8 +281,12 @@ describe('GET /api/public/freelancers/{token} (UC-033)', () => {
     expect(Object.keys(v.lines[0]).sort()).toEqual(
       ['amountCents', 'costLineId', 'description', 'eventEndDate', 'eventStartDate', 'purchaseOrderNumber', 'state', 'type', 'venue'].sort(),
     );
-    expect(Object.keys(v.purchaseOrders[0]).sort()).toEqual(['createdAt', 'lines', 'number', 'paidAt', 'status', 'totalCents']);
-    expect(Object.keys(v.purchaseOrders[0].lines[0]).sort()).toEqual(['amountCents', 'description', 'eventStartDate', 'type', 'venue']);
+    expect(Object.keys(v.purchaseOrders[0]).sort()).toEqual(
+      ['createdAt', 'lines', 'number', 'paidAt', 'status', 'totalCents', 'vatLiable'].sort(),
+    );
+    expect(Object.keys(v.purchaseOrders[0].lines[0]).sort()).toEqual(
+      ['amountCents', 'baseCents', 'deductionCents', 'description', 'eventStartDate', 'soundcheck', 'type', 'vatCents', 'venue'].sort(),
+    );
   });
 
   it('404 for unknown, malformed, regenerated tokens and inactive people', async () => {
@@ -342,10 +351,11 @@ describe('POST /api/public/freelancers/{token}/purchase-orders (BR-114…BR-116)
       totalCents: 60000,
       createdAt: expect.any(String),
       paidAt: null,
-      // Oldest event first
+      vatLiable: false,
+      // Oldest event first; legacy body = no VAT, sound check on every line
       lines: [
-        { eventStartDate: PAST, venue: 'Venue X', type: 'VOC', description: null, amountCents: 30000 },
-        { eventStartDate: PAST_2, venue: 'Venue X', type: 'VOC', description: null, amountCents: 30000 },
+        { eventStartDate: PAST, venue: 'Venue X', type: 'VOC', description: null, amountCents: 30000, ...NO_EXTRAS },
+        { eventStartDate: PAST_2, venue: 'Venue X', type: 'VOC', description: null, amountCents: 30000, ...NO_EXTRAS },
       ],
     });
 
@@ -370,6 +380,7 @@ describe('POST /api/public/freelancers/{token}/purchase-orders (BR-114…BR-116)
       cancelledAt: null,
       cancelledBy: null,
       cancelReason: null,
+      vatLiable: false,
       lines: [
         {
           costLineId: lineOf(g1, 'VOC').id,
@@ -380,6 +391,7 @@ describe('POST /api/public/freelancers/{token}/purchase-orders (BR-114…BR-116)
           type: 'VOC',
           description: null,
           amountCents: 30000,
+          ...NO_EXTRAS,
         },
         expect.objectContaining({ costLineId: lineOf(g2, 'VOC').id, eventId: g2.id, eventStartDate: PAST_2 }),
       ],
@@ -404,7 +416,7 @@ describe('POST /api/public/freelancers/{token}/purchase-orders (BR-114…BR-116)
     expect((await poByNumber(a.number)).personName).toBe('Person 1');
   });
 
-  it('400 costLineIds: REQUIRED / INVALID_VALUE (checked before the token)', async () => {
+  it('400 legacy costLineIds: REQUIRED / INVALID_VALUE (checked before the token)', async () => {
     const token = await tokenOf(s.world.p1.id);
     const url = `/api/public/freelancers/${token}/purchase-orders`;
     const expectField = async (payload: unknown, code: string, t = url) => {
@@ -412,7 +424,6 @@ describe('POST /api/public/freelancers/{token}/purchase-orders (BR-114…BR-116)
       expect(res.statusCode).toBe(400);
       expect(res.json().error).toMatchObject({ code: 'VALIDATION_ERROR', fields: { costLineIds: code } });
     };
-    await expectField({}, 'REQUIRED');
     await expectField({ costLineIds: null }, 'REQUIRED');
     await expectField({ costLineIds: [] }, 'INVALID_VALUE');
     await expectField({ costLineIds: 'x' }, 'INVALID_VALUE');
@@ -421,7 +432,7 @@ describe('POST /api/public/freelancers/{token}/purchase-orders (BR-114…BR-116)
     await expectField({ costLineIds: [UNKNOWN_ID, UNKNOWN_ID.toUpperCase()] }, 'INVALID_VALUE');
     const many = Array.from({ length: 201 }, (_, i) => `00000000-0000-4000-8000-${String(i).padStart(12, '0')}`);
     await expectField({ costLineIds: many }, 'INVALID_VALUE');
-    await expectField({}, 'REQUIRED', `/api/public/freelancers/${'A'.repeat(43)}/purchase-orders`);
+    await expectField({ costLineIds: null }, 'REQUIRED', `/api/public/freelancers/${'A'.repeat(43)}/purchase-orders`);
   });
 
   it('409 COST_LINE_NOT_ELIGIBLE lists exactly the offending ids; nothing is created', async () => {

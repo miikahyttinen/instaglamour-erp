@@ -94,6 +94,24 @@ describe('validateSeed', () => {
   });
 });
 
+describe('seed: optional VAT rate setting (TASK-050)', () => {
+  it('fees.performer_vat_rate_bp is optional, must be a whole number, and is stored when given', async () => {
+    const bad = example();
+    bad.settings = { ...(bad.settings as object), 'fees.performer_vat_rate_bp': 'x' };
+    const result = validateSeed(bad);
+    expect(result.ok ? [] : result.errors).toContain('settings.fees.performer_vat_rate_bp: must be a whole number');
+    const fraction = example();
+    fraction.settings = { ...(fraction.settings as object), 'fees.performer_vat_rate_bp': 13.5 };
+    expect(validateSeed(fraction).ok).toBe(false);
+
+    const data = example();
+    data.settings = { ...(data.settings as object), 'fees.performer_vat_rate_bp': 2400 };
+    expect(validateSeed(data).ok).toBe(true);
+    await loadSeed(testDb(), data);
+    expect((await testDb().setting.findUniqueOrThrow({ where: { key: 'fees.performer_vat_rate_bp' } })).valueCents).toBe(2400);
+  });
+});
+
 describe('validateSeed: technical setup / logistics (TASK-010)', () => {
   it('rejects the old multi-select list with a conversion hint', () => {
     const data = example();

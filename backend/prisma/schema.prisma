@@ -678,6 +678,8 @@ model PurchaseOrder {
   cancelledAt   DateTime?           @map("cancelled_at")
   cancelledById String?             @map("cancelled_by") @db.Uuid
   cancelReason  String?             @map("cancel_reason")
+  /// The freelancer is VAT-liable (TASK-050): line amounts include VAT. Partner-created POs: false.
+  vatLiable     Boolean             @default(false) @map("vat_liable")
   createdAt     DateTime            @default(now()) @map("created_at")
   updatedAt     DateTime            @updatedAt @map("updated_at")
 
@@ -705,7 +707,15 @@ model PurchaseOrderLine {
   eventId         String   @map("event_id") @db.Uuid
   type            CostType
   description     String?
+  /// Final amount = baseCents - deductionCents + vatCents (TASK-050); paid as the cost line's actual.
   amountCents     Int      @map("amount_cents")
+  /// The cost line's budgeted fee at creation (alv 0 %).
+  baseCents       Int      @map("base_cents")
+  /// false = sound check skipped: deductionCents = min(base, load-in deduction setting).
+  soundcheck      Boolean  @default(true)
+  deductionCents  Int      @default(0) @map("deduction_cents")
+  /// VAT added when the PO is VAT-liable (part of the cost).
+  vatCents        Int      @default(0) @map("vat_cents")
   active          Boolean  @default(true)
   position        Int
   createdAt       DateTime @default(now()) @map("created_at")

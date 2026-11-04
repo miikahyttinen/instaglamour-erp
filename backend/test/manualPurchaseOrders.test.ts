@@ -136,9 +136,18 @@ describe('POST /api/purchase-orders', () => {
       cancelledAt: null,
       cancelledBy: null,
       cancelReason: null,
+      vatLiable: false,
       lines: [
-        // Oldest event first on the PO
-        expect.objectContaining({ costLineId: lineOf(played, 'VOC').id, eventId: played.id, amountCents: 30000 }),
+        // Oldest event first on the PO; partner POs have no VAT / sound check choice
+        expect.objectContaining({
+          costLineId: lineOf(played, 'VOC').id,
+          eventId: played.id,
+          amountCents: 30000,
+          baseCents: 30000,
+          soundcheck: true,
+          deductionCents: 0,
+          vatCents: 0,
+        }),
         expect.objectContaining({ costLineId: lineOf(upcoming, 'VOC').id, eventId: upcoming.id, eventStartDate: FUTURE }),
       ],
     });

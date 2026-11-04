@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { isIsoDate } from '../src/domain/dates.js';
 import {
   ALL_OFFER_SETTING_KEYS,
+  ALL_OPTIONAL_NUMBER_SETTING_KEYS,
   ALL_SETTING_KEYS,
   COST_TYPES,
   DESCRIPTION_REQUIRED_TYPES,
@@ -347,6 +348,8 @@ export function validateSeed(rawInput: unknown): ValidationResult {
   for (const [key, value] of Object.entries(data.settings)) {
     if (ALL_SETTING_KEYS.includes(key as (typeof ALL_SETTING_KEYS)[number])) {
       if (typeof value !== 'number') errors.push(`settings.${key}: must be an amount in cents`);
+    } else if (ALL_OPTIONAL_NUMBER_SETTING_KEYS.includes(key as (typeof ALL_OPTIONAL_NUMBER_SETTING_KEYS)[number])) {
+      if (typeof value !== 'number') errors.push(`settings.${key}: must be a whole number`);
     } else if (ALL_OFFER_SETTING_KEYS.includes(key as (typeof ALL_OFFER_SETTING_KEYS)[number])) {
       if (typeof value !== 'string') errors.push(`settings.${key}: must be a text`);
     } else if (LEGACY_OFFER_SETTING_KEYS.includes(key as (typeof LEGACY_OFFER_SETTING_KEYS)[number])) {

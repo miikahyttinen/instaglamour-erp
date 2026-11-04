@@ -19,6 +19,8 @@ import { Prisma, type PurchaseOrderStatus } from '../generated/prisma/client.js'
 import { AppError, notFound } from '../http/errors.js';
 import { compareCostLines, costLinePurchaseOrderInclude } from '../events/serialize.js';
 import { logHistory } from '../events/store.js';
+import { loadPoAmountSettings, poLineAmount } from './amounts.js';
+import type { PoLineRequest } from './input.js';
 import { purchaseOrderNumber } from './number.js';
 
 type Tx = Prisma.TransactionClient;
@@ -56,6 +58,7 @@ export function toPurchaseOrderDto(po: PurchaseOrderWithLines) {
     cancelledAt: po.cancelledAt?.toISOString() ?? null,
     cancelledBy: po.cancelledById,
     cancelReason: po.cancelReason,
+    vatLiable: po.vatLiable,
     lines: po.lines.map((l) => ({
       costLineId: l.costLineRef,
       eventId: l.eventId,
@@ -65,6 +68,10 @@ export function toPurchaseOrderDto(po: PurchaseOrderWithLines) {
       type: l.type,
       description: lineDescription(l),
       amountCents: l.amountCents,
+      baseCents: l.baseCents,
+      soundcheck: l.soundcheck,
+      deductionCents: l.deductionCents,
+      vatCents: l.vatCents,
     })),
   };
 }
@@ -77,12 +84,17 @@ export function toPublicPurchaseOrderDto(po: PurchaseOrderWithLines) {
     totalCents: po.totalCents,
     createdAt: po.createdAt.toISOString(),
     paidAt: po.paidAt?.toISOString() ?? null,
+    vatLiable: po.vatLiable,
     lines: po.lines.map((l) => ({
       eventStartDate: isoFromDate(l.event.startDate),
       venue: l.event.venue,
       type: l.type,
       description: lineDescription(l),
       amountCents: l.amountCents,
+      baseCents: l.baseCents,
+      soundcheck: l.soundcheck,
+      deductionCents: l.deductionCents,
+      vatCents: l.vatCents,
     })),
   };
 }
@@ -153,6 +165,7 @@ export async function loadFreelancerView(db: Db, person: { id: string; name: str
       compareCostLines(a, b),
   );
 
+  const settings = await loadPoAmountSettings(db);
   const purchaseOrders = await db.purchaseOrder.findMany({
     where: { personId: person.id },
     include: purchaseOrderInclude,
@@ -188,6 +201,7 @@ export async function loadFreelancerView(db: Db, person: { id: string; name: str
       };
     }),
     purchaseOrders: purchaseOrders.map(toPublicPurchaseOrderDto),
+    settings,
   };
 }
 
@@ -260,7 +274,10 @@ export async function createPurchaseOrder(
   db: Db,
   input: {
     personId: string;
-    costLineIds: readonly string[];
+    /** Requested lines; partner POs send every line with `soundcheck: true`. */
+    lines: readonly PoLineRequest[];
+    /** VAT-liable freelancer (TASK-050); partner POs: false. */
+    vatLiable: boolean;
     isCurrent: (person: LinkPerson) => boolean;
     eligibility: PoEligibility;
     createdBy: string | null;
@@ -269,7 +286,8 @@ export async function createPurchaseOrder(
 ): Promise<PurchaseOrderWithLines> {
   const today = input.today ?? todayIso();
   const requirePlayed = input.eligibility === 'FREELANCER';
-  const ids = [...input.costLineIds];
+  const ids = input.lines.map((l) => l.costLineId);
+  const soundcheckById = new Map(input.lines.map((l) => [l.costLineId, l.soundcheck]));
   return db.$transaction(async (tx) => {
     await lockPerson(tx, input.personId);
     const person = await tx.person.findUnique({
@@ -315,21 +333,31 @@ export async function createPurchaseOrder(
         (a.event.id < b.event.id ? -1 : a.event.id > b.event.id ? 1 : 0) ||
         compareCostLines(a, b),
     );
+    const settings = await loadPoAmountSettings(tx);
+    const priced = ordered.map((line) => {
+      const soundcheck = soundcheckById.get(line.id) ?? true;
+      return { line, soundcheck, ...poLineAmount(line.budgetedCents, { soundcheck, vatLiable: input.vatLiable }, settings) };
+    });
     const [{ seq }] = await tx.$queryRaw<[{ seq: number }]>`SELECT nextval('purchase_order_seq')::int AS "seq"`;
     const po = await tx.purchaseOrder.create({
       data: {
         number: purchaseOrderNumber(person.name, seq),
         seq,
         personId: person.id,
-        totalCents: ordered.reduce((sum, l) => sum + l.budgetedCents, 0),
+        vatLiable: input.vatLiable,
+        totalCents: priced.reduce((sum, p) => sum + p.amountCents, 0),
         lines: {
-          create: ordered.map((l, position) => ({
+          create: priced.map(({ line: l, soundcheck, baseCents, deductionCents, vatCents, amountCents }, position) => ({
             costLineId: l.id,
             costLineRef: l.id,
             eventId: l.eventId,
             type: l.type,
             description: l.description,
-            amountCents: l.budgetedCents,
+            amountCents,
+            baseCents,
+            soundcheck,
+            deductionCents,
+            vatCents,
             position,
           })),
         },

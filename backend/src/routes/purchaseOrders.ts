@@ -109,7 +109,9 @@ export function purchaseOrderRoutes(app: FastifyInstance, deps: AppDeps): void {
 
     const po = await createPurchaseOrder(db, {
       personId: person.id,
-      costLineIds,
+      // Partner POs have no VAT / sound check choice: amounts are the budgeted fees (TASK-050).
+      lines: costLineIds.map((costLineId) => ({ costLineId, soundcheck: true })),
+      vatLiable: false,
       isCurrent: () => true,
       eligibility: 'PARTNER',
       createdBy: me.id,
