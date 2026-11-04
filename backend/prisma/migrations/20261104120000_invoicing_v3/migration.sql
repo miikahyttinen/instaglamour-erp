@@ -17,6 +17,9 @@ DROP TYPE "InvoiceRowStatus";
 ALTER TYPE "InvoiceRowStatus_new" RENAME TO "InvoiceRowStatus";
 ALTER TABLE "invoice_row" ALTER COLUMN "status" SET DEFAULT 'NOT_SENT';
 
+-- Rows made by the final invoice job are marked (InvoiceRow.auto); every existing row is a normal one
+ALTER TABLE "invoice_row" ADD COLUMN "auto" BOOLEAN NOT NULL DEFAULT false;
+
 -- Automatic final invoice: created at most once per event
 ALTER TABLE "event" ADD COLUMN "final_invoice_created_at" TIMESTAMP(3);
 

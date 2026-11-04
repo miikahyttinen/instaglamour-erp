@@ -70,6 +70,7 @@ export function toInvoiceRowDto(row: InvoiceRow) {
     statusBy: row.statusById,
     createdAt: row.createdAt.toISOString(),
     createdBy: row.createdById,
+    auto: row.auto,
   };
 }
 

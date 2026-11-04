@@ -355,6 +355,8 @@ model InvoiceRow {
   statusById  String?          @map("status_by") @db.Uuid
   createdAt   DateTime         @default(now()) @map("created_at")
   createdById String?          @map("created_by") @db.Uuid
+  /// True only for the automatic final invoice "Loppulasku" (TASK-049).
+  auto        Boolean          @default(false)
 
   event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
   statusBy  Partner? @relation("InvoiceRowStatusBy", fields: [statusById], references: [id], onDelete: SetNull)

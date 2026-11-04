@@ -162,6 +162,7 @@ describe('POST /api/events/{id}/invoice-rows', () => {
         statusBy: s.world.a.id,
         createdAt: NOW,
         createdBy: s.world.a.id,
+        auto: false,
       },
     ]);
     const [entry] = await history(s, event.id);

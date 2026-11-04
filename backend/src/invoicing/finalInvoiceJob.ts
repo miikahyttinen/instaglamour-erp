@@ -4,7 +4,7 @@
  * Finds SOLD, non-deleted events whose last day (end date, else start date) ended at least 48 hours ago
  * (Europe/Helsinki, `finalInvoiceDueAt`), with total > 0, uninvoicedCents > 0 and no final invoice yet
  * (`final_invoice_created_at` null). Each gets one NOT_SENT row "Loppulasku" for uninvoicedCents
- * (created/status by nobody), a history entry INVOICE_ROW_ADDED with `details.auto: true` and no
+ * (created/status by nobody, `auto: true`), a history entry INVOICE_ROW_ADDED with `details.auto: true` and no
  * partner, and `final_invoice_created_at` — so it happens at most once per event; deleting the row
  * does not bring it back.
  *
@@ -79,6 +79,7 @@ async function createFinalInvoice(db: Db, eventId: string, now: Date): Promise<b
         statusById: null,
         createdAt,
         createdById: null,
+        auto: true,
       },
     });
     await logHistory(tx, {

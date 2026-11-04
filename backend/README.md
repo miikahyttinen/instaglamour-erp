@@ -182,7 +182,8 @@ Replace the TASK-045 event invoice status and prepayment (and, before that, the 
 Payments are not tracked (TASK-049).
 
 - Table `invoice_row` (event FK, `description`, `amount_cents` > 0 DB check, `status` enum
-  `InvoiceRowStatus` NOT_SENT | SENT, `status_at`/`status_by` = last status change, `created_at`/`created_by`).
+  `InvoiceRowStatus` NOT_SENT | SENT, `status_at`/`status_by` = last status change, `created_at`/`created_by`,
+  `auto` = true only for the job's Loppulasku, exposed as `InvoiceRow.auto`).
   `created_by`/`status_by` are null for rows made by a migration, the seed/import or the final invoice job.
 - `EventDetail.invoiceRows` (creation order). EventSummary/EventDetail derive (`src/domain/invoicing.ts`,
   api-contract "Invoicing v3"): `sentCents = Σ SENT`, `notSentCents = Σ NOT_SENT`,
@@ -203,7 +204,7 @@ Payments are not tracked (TASK-049).
 - `GET /api/events?invoiceState=OPEN_INVOICES&invoiceState=PARTLY_INVOICED`: repeatable (any of the values);
   unknown value → 400 `INVALID_VALUE`.
 - Migration `20261104120000_invoicing_v3`: READY → NOT_SENT, SENT / PAID → SENT (no rows deleted, at/by kept),
-  adds `event.final_invoice_created_at` and makes `event_history.partner_id` nullable (automatic entries).
+  adds `invoice_row.auto` (false) and `event.final_invoice_created_at` and makes `event_history.partner_id` nullable (automatic entries).
   Old history entries keep their READY / PAID texts.
 - Earlier: migration `20261031140000_invoice_rows` converted the TASK-045 status + prepayment into rows.
 - Seed/import: optional `invoiceRows` per event (status NOT_SENT | SENT, legacy READY → NOT_SENT and
@@ -218,7 +219,7 @@ Payments are not tracked (TASK-049).
 - Due when the event's last day (end date, else start date) has ended in Helsinki + 48 h, i.e. at
   00:00 Helsinki time three days after that day (`finalInvoiceDueAt`; e.g. 10 June → 13 June 00:00).
 - For SOLD, non-deleted events with total > 0, `uninvoicedCents` > 0 and `final_invoice_created_at` null:
-  one NOT_SENT row "Loppulasku" for `uninvoicedCents` (created/status by null), history `INVOICE_ROW_ADDED`
+  one NOT_SENT row "Loppulasku" for `uninvoicedCents` (created/status by null, `auto: true`), history `INVOICE_ROW_ADDED`
   with `details.auto: true` and `partnerId: null`, and `final_invoice_created_at` set (not exposed in the
   API; `updated_at` unchanged). Once per event: deleting the row does not bring it back.
 - Concurrency: each event in its own transaction that locks the event row `FOR UPDATE` and re-checks

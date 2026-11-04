@@ -1,7 +1,7 @@
 /**
  * Migration 20261104120000_invoicing_v3 (TASK-049): invoice row statuses READY → NOT_SENT and
  * SENT / PAID → SENT (no rows deleted, everything else kept), event.final_invoice_created_at added
- * (null), event_history.partner_id nullable. Runs the real migration files on a populated scratch
+ * (null), invoice_row.auto added (false), event_history.partner_id nullable. Runs the real migration files on a populated scratch
  * schema inside a transaction that is rolled back. Synthetic data only.
  */
 import { readdirSync, readFileSync } from 'node:fs';
@@ -102,7 +102,7 @@ async function migrate(): Promise<Result> {
 
         const rows = await q(
           `SELECT "id"::text, "event_id"::text, "description", "amount_cents", "status"::text, "status_at"::text,
-                  "status_by"::text, "created_at"::text, "created_by"::text
+                  "status_by"::text, "created_at"::text, "created_by"::text, "auto"
            FROM "invoice_row" ORDER BY "id"`,
         );
         const events = await q(
@@ -166,6 +166,7 @@ describe('migration 20261104120000_invoicing_v3', () => {
         status_by: by ? id(by) : null,
         created_at: '2026-05-01 00:00:00',
         created_by: createdBy ? id(createdBy) : null,
+        auto: false,
       })),
     );
     expect(r.enumValues).toEqual(['NOT_SENT', 'SENT']);

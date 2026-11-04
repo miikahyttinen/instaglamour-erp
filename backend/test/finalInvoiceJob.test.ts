@@ -52,6 +52,7 @@ describe('runFinalInvoiceJob', () => {
         statusBy: null,
         createdAt: DUE,
         createdBy: null,
+        auto: true,
       },
     ]);
     expect(e).toMatchObject({ notSentCents: 120000, uninvoicedCents: 0, balanceCents: 120000, invoiceState: 'OPEN_INVOICES' });
@@ -90,6 +91,7 @@ describe('runFinalInvoiceJob', () => {
       ['Lasku', 20000, 'NOT_SENT'],
       ['Loppulasku', 70000, 'NOT_SENT'],
     ]);
+    expect(e.invoiceRows.map((r: { auto: boolean }) => r.auto)).toEqual([false, false, true]);
     expect(e).toMatchObject({ sentCents: 30000, notSentCents: 90000, uninvoicedCents: 0 });
   });
 
