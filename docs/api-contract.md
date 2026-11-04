@@ -596,7 +596,14 @@ One derived value **`invoiceState`** = the next invoicing action; first match wi
 - Setting `fees.performer_vat_rates_bp` (comma-separated basis points, default `1350,2550`; replaces `fees.performer_vat_rate_bp`, whose value, if present, is used as the first rate). `FreelancerView.settings` = `{ soundcheckDeductionCents, vatRatesBp: [1350, 2550] }`.
 - `PurchaseOrder` and `PublicPurchaseOrder` gain `vatRateBp` (stored); legacy `vatLiable: true` = the first configured rate; `vatLiable` stays in responses (= vatRateBp > 0). Migration: existing POs `vat_liable = true` → `vat_rate_bp = 1350`, else 0. Line math unchanged with the chosen rate.
 
+## Freelancer PO: sound check already set on the gig (owner request 2026-11-04) — no double deduction
+- `FreelancerLine` gains `joinsLoadIn: boolean|null` and `loadInDeductionAppliedCents: int|null` (from the cost line).
+- If the cost line already has `joinsLoadIn = false` (the deduction is already in `budgetedCents`, BR-026): the modal shows the sound check switch **off and locked** with the note "Merkitty keikalle: ei soundcheckiä / Set on the gig: no sound check", and **no second deduction** is made.
+- Server (public create): for such a line the request's `soundcheck` is ignored; the PO line is stored as `soundcheck: false`, `baseCents = budgetedCents + loadInDeductionAppliedCents`, `deductionCents = loadInDeductionAppliedCents` (so the breakdown shows the original fee and the deduction once), and `amountCents` = (budgeted) × VAT as before. Lines with `joinsLoadIn = true` work as before (switch on by default; off → deduct `settings.loadInDeductionCents` once).
+- The partner-created PO path applies the same rule (deduction shown once, never added again).
+
 ## Change log
+- 2026-11-04 – Freelancer PO: no double sound-check deduction; gig-level load-in setting shown/locked in the modal (PM)
 - 2026-11-04 – Freelancer PO VAT: choice No / 13.5 % / 25.5 % (vatRateBp) (PM)
 - 2026-11-04 – Freelancer PO: VAT-liable choice (+ rate setting) and per-gig sound check (deduction from settings) (PM)
 - 2026-11-04 – Invoicing v3: rows NOT_SENT/SENT, no payments, states OPEN_INVOICES/FULLY_INVOICED/PARTLY_INVOICED/NONE, automatic Loppulasku 48 h after the gig (PM)
