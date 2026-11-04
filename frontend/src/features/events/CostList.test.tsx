@@ -67,18 +67,27 @@ describe('cost list (UC-005)', () => {
     await waitFor(() => expect(historyItems()[0]).toHaveTextContent('Roudaus ja soundcheck: ei → kyllä'));
   });
 
-  it('marks paid with the budget as editable default, edits the paid amount inline, and unmarks', async () => {
+  it('marks paid in place: the button turns into the amount input, Enter saves; edits inline and unmarks', async () => {
     const event = addMockEvent();
     const { user } = await openEvent(event.id);
+    // Unpaid: the actual cell shows only the button (no "unpaid" tag).
+    expect(line('Basso')).not.toHaveTextContent('Maksamatta');
     await user.click(within(line('Basso')).getByRole('button', { name: 'Merkitse maksetuksi' }));
-    const amount = within(line('Basso')).getByRole('textbox', { name: 'Maksettu summa' });
+    const amount = within(line('Basso')).getByRole('textbox', { name: 'Toteutunut summa: Basso' });
+    expect(within(line('Basso')).queryByRole('button', { name: 'Merkitse maksetuksi' })).not.toBeInTheDocument();
+    // Same cell, no extra row; prefilled with the budget, focused and selected.
+    expect(amount.closest('td')).toHaveClass('cost-paid');
+    expect(line('Basso').querySelectorAll('tr')).toHaveLength(1);
     expect(amount).toHaveValue('100,00');
-    await user.clear(amount);
-    await user.type(amount, '90');
-    await user.click(within(line('Basso')).getByRole('button', { name: 'Merkitse maksetuksi' }));
+    expect(amount).toHaveFocus();
+    const input = amount as HTMLInputElement;
+    expect([input.selectionStart, input.selectionEnd]).toEqual([0, 6]);
+    await user.keyboard('90{Enter}');
 
-    const actual = await within(line('Basso')).findByRole('textbox', { name: 'Maksettu summa: Basso' });
-    expect(actual).toHaveValue('90,00');
+    const actual = await within(line('Basso')).findByRole('textbox', { name: 'Toteutunut summa: Basso' });
+    await waitFor(() => expect(actual).toHaveValue('90,00'));
+    // Saved with Enter: keyboard focus moves to the paid amount that replaced the input.
+    await waitFor(() => expect(actual).toHaveFocus());
     expect(line('Basso')).toHaveTextContent(/· Partner A/);
     expect(mockLine(event, 'BASS')).toMatchObject({ actualCents: 10000 - 1000, paidBy: partnerA().id });
     expect(econTile('Kulut')).toHaveTextContent(/90,00\s€\s*Toteuma$/);
@@ -92,12 +101,61 @@ describe('cost list (UC-005)', () => {
     await waitFor(() => expect(mockLine(event, 'BASS').actualCents).toBe(8000));
     expect(mockLine(event, 'BASS')).toMatchObject({ paidAt, paidBy: partnerA().id });
     await waitFor(() => expect(econTile('Kulut')).toHaveTextContent(/80,00\s€\s*Toteuma$/));
-    expect(within(line('Basso')).getByRole('textbox', { name: 'Maksettu summa: Basso' })).toHaveValue('80,00');
+    expect(within(line('Basso')).getByRole('textbox', { name: 'Toteutunut summa: Basso' })).toHaveValue('80,00');
 
     await user.click(within(line('Basso')).getByRole('button', { name: 'Poista maksumerkintä' }));
-    await waitFor(() => expect(line('Basso')).toHaveTextContent('Maksamatta'));
-    expect(within(line('Basso')).queryByRole('textbox', { name: 'Maksettu summa: Basso' })).not.toBeInTheDocument();
+    expect(await within(line('Basso')).findByRole('button', { name: 'Merkitse maksetuksi' })).toBeInTheDocument();
+    expect(line('Basso')).not.toHaveTextContent('Maksamatta');
+    expect(within(line('Basso')).queryByRole('textbox', { name: 'Toteutunut summa: Basso' })).not.toBeInTheDocument();
     await waitFor(() => expect(historyItems()[0]).toHaveTextContent(/Basso: aiemmin maksettu 80,00\s€/));
+  });
+
+  it('pay input: blur saves the prefilled budget', async () => {
+    const event = addMockEvent();
+    const { user } = await openEvent(event.id);
+    await user.click(within(line('Basso')).getByRole('button', { name: 'Merkitse maksetuksi' }));
+    await user.tab();
+    await waitFor(() => expect(mockLine(event, 'BASS')).toMatchObject({ actualCents: 10000, paidBy: partnerA().id }));
+    expect(await within(line('Basso')).findByRole('textbox', { name: 'Toteutunut summa: Basso' })).toHaveValue('100,00');
+  });
+
+  it('pay input: Esc cancels back to the focused button; invalid input shows the error and is not sent', async () => {
+    const event = addMockEvent();
+    const { user } = await openEvent(event.id);
+    let posts = 0;
+    server.events.on('request:start', ({ request }) => {
+      if (request.method === 'POST' && request.url.endsWith('/pay')) posts += 1;
+    });
+    const button = () => within(line('Basso')).getByRole('button', { name: 'Merkitse maksetuksi' });
+    await user.click(button());
+    await user.keyboard('{Escape}');
+    expect(button()).toHaveFocus();
+    expect(within(line('Basso')).queryByRole('textbox', { name: /Toteutunut summa/ })).not.toBeInTheDocument();
+
+    await user.click(button());
+    await user.keyboard('-10{Enter}');
+    const amount = within(line('Basso')).getByRole('textbox', { name: 'Toteutunut summa: Basso' });
+    expect(amount).toHaveAttribute('aria-invalid', 'true');
+    expect(amount).toHaveAccessibleDescription('Summa ei voi olla negatiivinen.');
+    await user.clear(amount);
+    await user.type(amount, 'abc');
+    await user.tab();
+    expect(await within(line('Basso')).findByText('Virheellinen arvo.')).toBeInTheDocument();
+    expect(within(line('Basso')).getByRole('textbox', { name: 'Toteutunut summa: Basso' })).toBeInTheDocument();
+    expect(posts).toBe(0);
+    expect(mockLine(event, 'BASS').paidAt).toBeNull();
+    server.events.removeAllListeners();
+  });
+
+  it('pay input: a server error keeps the input with the error; nothing is marked paid', async () => {
+    const event = addMockEvent();
+    server.use(http.post('*/api/cost-lines/:id/pay', () => errorResponse(409, 'COST_NOT_PAYABLE', 'Not payable')));
+    const { user } = await openEvent(event.id);
+    await user.click(within(line('Basso')).getByRole('button', { name: 'Merkitse maksetuksi' }));
+    await user.keyboard('{Enter}');
+    const amount = within(line('Basso')).getByRole('textbox', { name: 'Toteutunut summa: Basso' });
+    await waitFor(() => expect(amount).toHaveAttribute('aria-invalid', 'true'));
+    expect(mockLine(event, 'BASS').paidAt).toBeNull();
   });
 
   it('has no pay action for fuel', async () => {

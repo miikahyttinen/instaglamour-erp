@@ -1,6 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
 import { CircleCheck, Trash2 } from 'lucide-react';
-import { useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import type { CostType } from '../../api/enums';
@@ -20,6 +20,7 @@ import { parseMoneyField } from '../../lib/moneyField';
 import { usePartner, useReference } from '../../reference/useReference';
 import { EventPurchaseOrder } from './EventPurchaseOrder';
 import { InlinePersonSelect, PersonSelect } from './PersonSelect';
+import { PayControl } from './PayControl';
 import { personName, useApplyEvent } from './queries';
 
 interface Props {
@@ -56,8 +57,8 @@ export function CostList({ event, people, readOnly, onWarnings }: Props) {
       {event.costLines.length === 0 ? (
         <p className="table-empty">{t('costs.empty')}</p>
       ) : (
-        // Hand-written .data-table (not <DataTable>): each line is its own named <tbody>, so the
-        // pay form can open in a full-width row right under their line.
+        // Hand-written .data-table (not <DataTable>): each line is its own named <tbody>, so an
+        // action error can open in a full-width row right under their line.
         <div className="table-wrap">
           <table className="data-table cost-table">
             <caption className="visually-hidden">{t('event.sections.costs')}</caption>
@@ -132,7 +133,7 @@ function CostLineItem({ line, people, readOnly, columnCount, onResult }: LinePro
   const { t } = useTranslation();
   const lang = useLang();
   const paidBy = usePartner(line.paidBy);
-  const [mode, setMode] = useState<'view' | 'pay' | 'remove'>('view');
+  const [mode, setMode] = useState<'view' | 'remove'>('view');
   const typeLabel = costTypeLabel(t, line.type);
   const label = line.description ? `${typeLabel} (${line.description})` : typeLabel;
   const paid = line.paidAt !== null;
@@ -152,7 +153,16 @@ function CostLineItem({ line, people, readOnly, columnCount, onResult }: LinePro
   });
   const run = (action: () => Promise<EventWithWarnings>) => mutation.mutate(action);
   const update = async (body: CostLineUpdate) => onResult(await costLinesApi.update(line.id, body));
-  const hasExtraRow = (mutation.isError && mode !== 'remove') || mode === 'pay';
+  const hasExtraRow = mutation.isError && mode !== 'remove';
+  const paidCell = useRef<HTMLTableCellElement>(null);
+  // Marked paid with Enter: keep the keyboard focus on the amount that replaced the pay input.
+  const focusPaidAmount = useRef(false);
+  useEffect(() => {
+    if (paid && focusPaidAmount.current) {
+      focusPaidAmount.current = false;
+      paidCell.current?.querySelector('input')?.focus();
+    }
+  }, [paid]);
 
   return (
     <tbody className={paid ? 'cost-group is-paid' : 'cost-group'} aria-label={label}>
@@ -231,12 +241,12 @@ function CostLineItem({ line, people, readOnly, columnCount, onResult }: LinePro
           )}
         </td>
 
-        <td className="cost-paid" data-label={t('event.actual')} title={lockedHint}>
+        <td ref={paidCell} className="cost-paid" data-label={t('event.actual')} title={lockedHint}>
           {paid && !readOnly && !po ? (
             // Paid: the amount stays editable (POST pay on a paid line updates the amount only).
             <div className="cost-paid-edit">
               <InlineMoney
-                label={`${t('costs.paidAmount')}: ${label}`}
+                label={`${t('costs.actualAmount')}: ${label}`}
                 hideLabel
                 required
                 value={line.actualCents ?? 0}
@@ -263,6 +273,17 @@ function CostLineItem({ line, people, readOnly, columnCount, onResult }: LinePro
             </span>
           ) : line.type === 'FUEL' ? (
             <span className="cost-hint">{t('costs.fuelHint')}</span>
+          ) : !readOnly && !po ? (
+            // Unpaid: only the button, which turns into the amount input in place (no "unpaid" tag).
+            <PayControl
+              inputLabel={`${t('costs.actualAmount')}: ${label}`}
+              initialCents={line.budgetedCents}
+              onPay={async (actualCents, via) => {
+                const result = await costLinesApi.pay(line.id, { actualCents });
+                focusPaidAmount.current = via === 'enter';
+                onResult(result);
+              }}
+            />
           ) : (
             <StatusTag>{t('costs.unpaid')}</StatusTag>
           )}
@@ -271,9 +292,9 @@ function CostLineItem({ line, people, readOnly, columnCount, onResult }: LinePro
         {!readOnly && (
           <td className="cost-actions">
             {po && <span className="cost-hint cost-po-hint">{lockedHint}</span>}
-            {mode !== 'pay' && !po && (
+            {!po && (
               <div className="cost-actions-inner">
-                {paid ? (
+                {paid && (
                   <Button
                     size="sm"
                     disabled={mutation.isPending}
@@ -281,12 +302,6 @@ function CostLineItem({ line, people, readOnly, columnCount, onResult }: LinePro
                   >
                     {t('costs.unmarkPaid')}
                   </Button>
-                ) : (
-                  line.type !== 'FUEL' && (
-                    <Button size="sm" onClick={() => setMode('pay')}>
-                      {t('costs.markPaid')}
-                    </Button>
-                  )
                 )}
                 <IconButton
                   variant="ghost"
@@ -335,56 +350,10 @@ function CostLineItem({ line, people, readOnly, columnCount, onResult }: LinePro
                 {Object.values(apiFieldErrors(t, mutation.error))[0] ?? apiErrorMessage(t, mutation.error)}
               </p>
             )}
-            {mode === 'pay' && (
-              <PayForm
-                line={line}
-                pending={mutation.isPending}
-                onSubmit={(actualCents) => run(() => costLinesApi.pay(line.id, { actualCents }))}
-                onCancel={() => setMode('view')}
-              />
-            )}
           </td>
         </tr>
       )}
     </tbody>
-  );
-}
-
-function PayForm({
-  line,
-  pending,
-  onSubmit,
-  onCancel,
-}: {
-  line: CostLine;
-  pending: boolean;
-  onSubmit: (actualCents: number) => void;
-  onCancel: () => void;
-}) {
-  const { t } = useTranslation();
-  const lang = useLang();
-  const [amount, setAmount] = useState(centsToInput(line.budgetedCents, lang));
-  const [error, setError] = useState<string>();
-  const submit = (e: FormEvent) => {
-    e.preventDefault();
-    const parsed = parseMoneyField(amount, lang, true);
-    if (parsed.error) return setError(t(`fields.${parsed.error}`));
-    onSubmit(parsed.cents ?? 0);
-  };
-  return (
-    <form className="cost-inline-form cost-pay-form" onSubmit={submit} noValidate>
-      <Field label={t('costs.paidAmount')} error={error}>
-        {(p) => <MoneyInput {...p} value={amount} onChange={setAmount} />}
-      </Field>
-      <div className="inline-actions">
-        <Button type="submit" size="sm" variant="primary" disabled={pending}>
-          {t('costs.confirmPaid')}
-        </Button>
-        <Button size="sm" onClick={onCancel}>
-          {t('common.cancel')}
-        </Button>
-      </div>
-    </form>
   );
 }
 

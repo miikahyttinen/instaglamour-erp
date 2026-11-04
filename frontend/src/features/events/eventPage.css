@@ -334,25 +334,15 @@
   background: var(--surface-2);
 }
 
-/* Pay form in the row under a line */
-.event-page .cost-inline-form {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: var(--space-2) var(--space-3);
+/* Unpaid line: "Mark paid" turns into the actual-amount input in the same place. Button and input
+   share one width (the paid amount's width), so the cell does not jump when it switches. */
+.event-page .cost-table .cost-pay-button,
+.event-page .cost-table .cost-pay-input {
+  width: calc(var(--label-w) - var(--space-5));
+  max-width: 100%;
 }
-.event-page .cost-inline-form .field {
-  flex: 0 1 calc(var(--label-w) + var(--space-7));
-  min-width: 0;
-}
-.event-page .cost-inline-form .form-row {
-  flex: 1 1 calc(var(--label-w) * 2 + var(--space-7));
-}
-.event-page .cost-inline-form label {
-  margin-top: 0;
-}
-.event-page .cost-inline-form .inline-actions {
-  margin-top: 0;
+.event-page .cost-table .cost-pay-button {
+  justify-content: center;
 }
 
 .event-page .cost-totals {
@@ -395,12 +385,8 @@
   color: var(--label);
 }
 
-/* Phone: the add-line form and the totals stack (the lines use the compact rows below). */
+/* Phone: the totals stack (the lines use the compact rows below). */
 @media (max-width: 599px) {
-  .event-page .cost-inline-form .field,
-  .event-page .cost-inline-form .form-row {
-    flex: 1 1 100%;
-  }
   .event-page .cost-totals {
     flex-direction: column;
     gap: var(--space-1);
