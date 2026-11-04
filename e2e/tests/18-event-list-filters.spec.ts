@@ -347,7 +347,8 @@ test('gig statuses and "Laskutus": invoice rows, one invoicing state tag on the 
 
   // Played gig: no rows / part sent → blue "Osittain laskutettu"; a cancelled past gig → "–". The
   // played gig is from yesterday (organisation time zone), so the automatic final invoice (48 h
-  // after the gig) cannot appear during the test.
+  // after the gig) cannot appear during the test — and the job is off in the e2e backend anyway
+  // (INVOICE_JOB_ENABLED=false, scripts/env.mjs).
   const yesterday = new Date(Date.now() - 24 * 3600 * 1000).toLocaleDateString('sv-SE', { timeZone: 'Europe/Helsinki' });
   const played = await createEventViaApi(page, { startDate: yesterday, venue: `${venue} Played` });
   const playedGig = async () => (await api(page).get(`/events/${played.id}`)) as Record<string, unknown>;
