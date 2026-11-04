@@ -1,7 +1,7 @@
 # TASK-180: Cost list — no hint text on fuel lines
 
 - **owner:** ui
-- **status:** todo
+- **status:** done
 - **spec:** owner request 2026-11-04 (BR-008 unchanged)
 - **depends on:** none
 
