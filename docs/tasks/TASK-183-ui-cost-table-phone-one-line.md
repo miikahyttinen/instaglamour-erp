@@ -1,7 +1,7 @@
 # TASK-183: Cost table on phone — one line per cost line
 
 - **owner:** ui
-- **status:** todo
+- **status:** done
 - **spec:** owner request 2026-11-05 ("fit table lines to one line on mobile, font can be smaller")
 - **depends on:** none
 
