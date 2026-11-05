@@ -1,7 +1,7 @@
 # TASK-182: Gig page cost table — ~20 % narrower, numbers aligned with headers
 
 - **owner:** ui
-- **status:** todo
+- **status:** done
 - **spec:** owner request 2026-11-05
 - **depends on:** none
 
