@@ -15,7 +15,16 @@ import {
   test,
   trackWrites,
 } from './helpers';
-import { costField, costLine, costLines, createEventViaApi, econTile, suffix, totalPriceLine } from './events';
+import {
+  costField,
+  costLine,
+  costLines,
+  createEventViaApi,
+  econTile,
+  expandCostLine,
+  suffix,
+  totalPriceLine,
+} from './events';
 import { yearFigure } from './year';
 
 // Flow 2: create event from a template → cost lines → assign a person → load-in switch → mark paid →
@@ -57,6 +66,7 @@ test('create an event from a template, staff it, switch load-in, mark paid', asy
 
   // Assign a person to the vocals line.
   const voc = costLine(page, 'Laulu');
+  await expandCostLine(page, 'Laulu');
   await voc.getByLabel('Henkilö: Laulu').selectOption({ label: 'Person 8' });
   await expect(voc.getByLabel('Henkilö: Laulu')).toHaveValue(/.+/);
   await expect(voc.getByLabel('Henkilö: Laulu').locator('option:checked')).toHaveText('Person 8');
@@ -151,6 +161,7 @@ test('double booking shows a warning naming the other event', async ({ page }, t
 
   await page.goto(`/gigs/${event.id}`);
   const guitar = costLine(page, 'Kitara');
+  await expandCostLine(page, 'Kitara');
   await guitar.getByLabel('Henkilö: Kitara').selectOption({ label: 'Person 1' });
   const warning = page.getByRole('alert').filter({ hasText: 'Päällekkäinen keikka' });
   await expect(warning).toContainText('Person 1 on samaan aikaan myös keikalla (17.10.2026):');
@@ -185,6 +196,7 @@ test('cost lines are edited in place; Esc and invalid amounts are not saved', as
   await expect(econTile(page, 'Kulut').budget).toHaveText(fiMoney(budgeted - fee + guitarBudget));
 
   // Description: Enter saves; the line is then named after it.
+  await expandCostLine(page, 'Toimisto');
   expect(await editInline(page, costField(page, 'Kuvaus', 'Toimisto'), note, { commit: 'Enter' })).toEqual({
     description: note,
   });

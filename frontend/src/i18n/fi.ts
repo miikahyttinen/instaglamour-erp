@@ -437,6 +437,8 @@ const fi = {
     loadIn: 'Roudaus ja soundcheck',
     unpaid: 'Maksamatta',
     markPaid: 'Merkitse maksetuksi',
+    markPaidLabel: 'Merkitse maksetuksi: {{line}}',
+    showDetails: 'Näytä lisätiedot: {{line}}',
     actualAmount: 'Toteutunut summa',
     removeTitle: 'Poista kulurivi',
     removeConfirm: 'Poistetaanko rivi {{line}}?',

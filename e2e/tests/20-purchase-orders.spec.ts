@@ -1,4 +1,4 @@
-import { createEventViaApi, costField, costLine, suffix } from './events';
+import { createEventViaApi, costField, costLine, expandCostLine, suffix } from './events';
 import {
   api,
   CURRENT_YEAR,
@@ -312,6 +312,8 @@ test('freelancer link → create PO → mark paid → event lines paid and locke
   await page.goto(`/gigs/${event1.id}`);
   await expect(pageHead(page)).toBeVisible();
   const drums = costLine(page, 'Rummut');
+  // Phones: the PO tag and the locked person / load-in controls are in the line's detail area.
+  await expandCostLine(page, 'Rummut');
   const tagLink = drums.getByRole('link', { name: `Ostotilaus ${po.number}` });
   await expect(tagLink).toBeVisible();
   await expect(tagLink).toHaveAttribute('href', `/purchase-orders/${paid.id}`);
