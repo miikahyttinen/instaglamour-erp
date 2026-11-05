@@ -1,7 +1,7 @@
 # TASK-181: Cost list — musician/technical roles first, lighter grey rows
 
 - **owner:** ui
-- **status:** todo
+- **status:** done
 - **spec:** owner request 2026-11-05
 - **depends on:** none
 
