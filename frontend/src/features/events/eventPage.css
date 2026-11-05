@@ -4,8 +4,9 @@
      sidebar state counts) costs on the left (3 : 2), other sections on the right, log below.
    - Basic info / price: Card + FieldList (one label column).
    - Economics: 2 tiles per row, 4 from 1200 px in one column (2 in the right column).
-   - Cost table: compact rows while .cost-list is narrower than the full table (< 680 px; two
-     columns on phones); full table when it fits. */
+   - Cost table: compact rows while .cost-list is narrower than the full table (< 680 px; one
+     line per cost line with an expandable detail area on phones, TASK-183); full table when it
+     fits. */
 
 /* ---------- Header ---------- */
 
@@ -323,6 +324,13 @@
   background: var(--surface-2);
 }
 
+/* Phone-only cells (TASK-183: one-line summary and the detail chevron) and the pay button's
+   phone icon; shown by the phone rules below. */
+.event-page .cost-table .cost-phone-only,
+.event-page .cost-table .cost-pay-icon {
+  display: none;
+}
+
 /* Unpaid line: "Mark paid" turns into the actual-amount input in the same place. Button and input
    share one width (the paid amount's width), so the cell does not jump when it switches. */
 .event-page .cost-table .cost-pay-button,
@@ -433,7 +441,8 @@
     .event-page .cost-table :is(th, td):first-child {
       padding-left: var(--cell-pad-x);
     }
-    .event-page .cost-table :is(th, td):last-child {
+    /* The last visible cell (the phone-only chevron cell is hidden here). */
+    .event-page .cost-table tr > :is(th, td):nth-last-child(1 of :not(.cost-phone-only)) {
       padding-right: var(--cell-pad-x);
     }
     .event-page .cost-table thead th.cost-col-loadin {
@@ -599,35 +608,184 @@
   }
 }
 
-/* Phones (list < 600 px): two columns — type · budget, person · actual, then the load-in switch
-   (label beside it) and the actions on their own lines, right-aligned on one line. */
+/* Phones (list < 600 px, TASK-183): every line is one row in a smaller font — "Type · Person"
+   (truncated), budget, actual (paid amount or an icon-only "Mark paid") and a chevron. The chevron
+   opens a detail area under the row (type + description, person, load-in, remove / PO hint), as
+   more grid rows of the same line, so the first row never changes. One compact header row above
+   the lines uses the same columns. The summary and chevron cells exist only here (.cost-phone-only). */
 @container cost-list (max-width: 599px) {
-  .event-page .cost-table tbody tr:not(.cost-extra-row) {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .event-page .cost-table {
+    --cost-phone-money-w: 6.75em;
+    --cost-phone-toggle-w: 2rem;
+    --control-h: 2rem;
+    font-size: 0.8125rem;
+  }
+  .event-page .cost-table :is(input, select, textarea, .btn) {
+    font-size: inherit;
+  }
+  .event-page .cost-table :is(thead tr, tbody tr:not(.cost-extra-row)) {
+    display: grid;
+    grid-template-columns:
+      minmax(0, 1fr) var(--cost-phone-money-w) var(--cost-phone-money-w)
+      var(--cost-phone-toggle-w);
+    grid-template-areas: 'summary budget paid toggle';
+    align-items: center;
+    gap: var(--space-1) var(--space-2);
+    padding: var(--space-1) var(--cell-pad-x);
+  }
+  .event-page .cost-table tbody.is-expanded tr:not(.cost-extra-row) {
     grid-template-areas:
-      'type budget'
-      'person paid'
-      'loadin loadin'
-      'actions actions';
-    gap: var(--space-1) var(--space-3);
-    padding: var(--list-row-pad-y) var(--cell-pad-x);
+      'summary budget paid toggle'
+      'type type type type'
+      'person person person person'
+      'loadin loadin loadin loadin'
+      'actions actions actions actions';
+  }
+
+  /* Header row: Tyyppi / Budjetti / Toteuma over their columns. */
+  .event-page .cost-table thead {
+    display: block;
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip: auto;
+    background: var(--surface-2);
+    border-bottom: var(--hairline) solid var(--border);
+  }
+  .event-page .cost-table thead th {
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+  .event-page .cost-table thead th.cost-col-type {
+    grid-area: summary;
+  }
+  .event-page .cost-table thead th.cost-col-budget {
+    grid-area: budget;
+    text-align: right;
+  }
+  .event-page .cost-table thead th.cost-col-paid {
+    grid-area: paid;
+    text-align: right;
+  }
+  .event-page .cost-table thead :is(th.cost-col-person, th.cost-col-loadin, th.cost-col-actions) {
+    display: none;
+  }
+
+  /* Row: summary · budget · actual · chevron. */
+  .event-page .cost-table td.cost-phone-only {
+    display: block;
+  }
+  .event-page .cost-table td.cost-summary {
+    grid-area: summary;
+    min-width: 0;
+  }
+  .event-page .cost-table .cost-summary-text {
+    display: block;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  .event-page .cost-table td.cost-toggle {
+    grid-area: toggle;
+    justify-self: end;
+  }
+  .event-page .cost-table .cost-toggle-button {
+    width: var(--cost-phone-toggle-w);
+    min-width: var(--cost-phone-toggle-w);
+    min-height: var(--cost-phone-toggle-w);
+    padding: 0;
+  }
+  .event-page .cost-table td.cost-budget,
+  .event-page .cost-table td.cost-paid {
+    min-width: 0;
+    text-align: right;
+  }
+  .event-page .cost-table td.cost-paid {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+  }
+  /* The header row carries the titles: no small labels in the amount cells. */
+  .event-page .cost-table :is(td.cost-budget, td.cost-paid)[data-label]::before {
+    content: none;
+  }
+  /* Money fields fill their column; the state icon sits left of the value so the "€" ends on the
+     column edge, under the right-aligned title. */
+  .event-page .cost-table :is(td.cost-budget, td.cost-paid) .inline-numeric,
+  .event-page .cost-table .cost-paid-edit,
+  .event-page .cost-table .cost-pay-input {
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+  }
+  .event-page .cost-table :is(td.cost-budget, td.cost-paid) .inline-numeric > .inline-control {
+    flex-direction: row-reverse;
+    gap: 0;
+    margin-left: 0;
+    margin-right: calc(-1 * (var(--inline-pad-x) + var(--hairline)));
+  }
+  .event-page .cost-table :is(td.cost-budget, td.cost-paid) .inline-numeric .inline-state:not(.is-saving, .is-saved, .is-error) {
+    display: none;
+  }
+  /* "Mark paid": an icon-only check button (≥ 32 px); its amount input takes the whole cell. */
+  .event-page .cost-table .cost-pay-button {
+    width: var(--cost-phone-toggle-w);
+    min-width: var(--cost-phone-toggle-w);
+    max-width: none;
+    padding: 0;
+  }
+  .event-page .cost-table .cost-pay-button .cost-pay-icon {
+    display: inline-block;
+  }
+  .event-page .cost-table .cost-pay-button .cost-pay-text {
+    display: none;
+  }
+  .event-page .cost-table tbody.cost-draft td.cost-draft-paid {
+    grid-area: paid;
+  }
+  /* Draft: the surface covers the whole line (incl. the grid gaps), as the musician shade does. */
+  .event-page .cost-table tbody.cost-draft {
+    background: var(--surface-2);
+  }
+  .event-page .cost-table tbody.cost-draft td,
+  .event-page .cost-table tbody.cost-draft tr:hover td {
+    background: transparent;
+  }
+
+  /* Detail area: hidden until the chevron opens it. */
+  .event-page .cost-table tbody:not(.is-expanded) :is(td.cost-type, td.cost-person, td.cost-loadin, td.cost-actions) {
+    display: none;
+  }
+  .event-page .cost-table tbody.is-expanded td.cost-type {
+    padding-top: var(--space-2);
+    border-top: var(--hairline) dashed var(--border);
+  }
+  .event-page .cost-table td.cost-type .inline-field:first-child:has(select) {
+    max-width: 100%;
   }
   .event-page .cost-table td.cost-loadin {
     grid-area: loadin;
   }
   .event-page .cost-table td.cost-actions {
-    justify-self: end;
+    justify-self: stretch;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
   }
-  .event-page .cost-table td.cost-actions:empty,
-  .event-page .cost-table tbody.cost-draft td.cost-draft-paid {
+  .event-page .cost-table td.cost-actions:empty {
     display: none;
+  }
+  .event-page .cost-table .cost-po-hint {
+    white-space: normal;
   }
   .event-page .cost-actions-inner {
     flex-wrap: nowrap;
     justify-content: flex-end;
-  }
-  .event-page .cost-table td.cost-paid {
-    grid-template-rows: auto auto;
+    margin-left: auto;
   }
   .event-page .cost-table .cost-loadin-switch .inline-switch {
     display: flex;

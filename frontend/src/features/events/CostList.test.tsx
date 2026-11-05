@@ -88,9 +88,9 @@ describe('cost list (UC-005)', () => {
     const { user } = await openEvent(event.id);
     // Unpaid: the actual cell shows only the button (no "unpaid" tag).
     expect(line('Basso')).not.toHaveTextContent('Maksamatta');
-    await user.click(within(line('Basso')).getByRole('button', { name: 'Merkitse maksetuksi' }));
+    await user.click(within(line('Basso')).getByRole('button', { name: /^Merkitse maksetuksi/ }));
     const amount = within(line('Basso')).getByRole('textbox', { name: 'Toteutunut summa: Basso' });
-    expect(within(line('Basso')).queryByRole('button', { name: 'Merkitse maksetuksi' })).not.toBeInTheDocument();
+    expect(within(line('Basso')).queryByRole('button', { name: /^Merkitse maksetuksi/ })).not.toBeInTheDocument();
     // Same cell, no extra row; prefilled with the budget, focused and selected.
     expect(amount.closest('td')).toHaveClass('cost-paid');
     expect(line('Basso').querySelectorAll('tr')).toHaveLength(1);
@@ -127,7 +127,7 @@ describe('cost list (UC-005)', () => {
     // Clearing the amount (blur) unmarks the line paid via POST unpay.
     await user.clear(within(line('Basso')).getByRole('textbox', { name: 'Toteutunut summa: Basso' }));
     await user.tab();
-    expect(await within(line('Basso')).findByRole('button', { name: 'Merkitse maksetuksi' })).toBeInTheDocument();
+    expect(await within(line('Basso')).findByRole('button', { name: /^Merkitse maksetuksi/ })).toBeInTheDocument();
     expect(mockLine(event, 'BASS')).toMatchObject({ paidAt: null, actualCents: null });
     expect(line('Basso')).not.toHaveTextContent('Maksamatta');
     expect(within(line('Basso')).queryByRole('textbox', { name: 'Toteutunut summa: Basso' })).not.toBeInTheDocument();
@@ -141,14 +141,14 @@ describe('cost list (UC-005)', () => {
     server.events.on('request:start', ({ request }) => {
       if (request.method === 'POST' && request.url.endsWith('/pay')) pays += 1;
     });
-    await user.click(within(line('Basso')).getByRole('button', { name: 'Merkitse maksetuksi' }));
+    await user.click(within(line('Basso')).getByRole('button', { name: /^Merkitse maksetuksi/ }));
     await user.keyboard('{Enter}');
     const actual = await within(line('Basso')).findByRole('textbox', { name: 'Toteutunut summa: Basso' });
     await waitFor(() => expect(actual).toHaveFocus());
     expect(pays).toBe(1);
     await user.clear(actual);
     await user.type(actual, '0{Enter}');
-    const button = await within(line('Basso')).findByRole('button', { name: 'Merkitse maksetuksi' });
+    const button = await within(line('Basso')).findByRole('button', { name: /^Merkitse maksetuksi/ });
     await waitFor(() => expect(button).toHaveFocus());
     expect(mockLine(event, 'BASS').paidAt).toBeNull();
     expect(pays).toBe(1);
@@ -159,7 +159,7 @@ describe('cost list (UC-005)', () => {
     const event = addMockEvent();
     server.use(http.post('*/api/cost-lines/:id/unpay', () => errorResponse(409, 'COST_NOT_PAYABLE', 'Not payable')));
     const { user } = await openEvent(event.id);
-    await user.click(within(line('Basso')).getByRole('button', { name: 'Merkitse maksetuksi' }));
+    await user.click(within(line('Basso')).getByRole('button', { name: /^Merkitse maksetuksi/ }));
     await user.keyboard('{Enter}');
     const actual = await within(line('Basso')).findByRole('textbox', { name: 'Toteutunut summa: Basso' });
     await user.clear(actual);
@@ -172,7 +172,7 @@ describe('cost list (UC-005)', () => {
     expect(actual).not.toHaveAccessibleDescription('Virheellinen arvo.');
     expect(actual).toHaveAccessibleDescription(/.+/);
     expect(mockLine(event, 'BASS').paidAt).not.toBeNull();
-    expect(within(line('Basso')).queryByRole('button', { name: 'Merkitse maksetuksi' })).not.toBeInTheDocument();
+    expect(within(line('Basso')).queryByRole('button', { name: /^Merkitse maksetuksi/ })).not.toBeInTheDocument();
   });
 
   it('read-only (deleted gig): a paid line shows just the amount', async () => {
@@ -192,7 +192,7 @@ describe('cost list (UC-005)', () => {
   it('pay input: blur saves the prefilled budget', async () => {
     const event = addMockEvent();
     const { user } = await openEvent(event.id);
-    await user.click(within(line('Basso')).getByRole('button', { name: 'Merkitse maksetuksi' }));
+    await user.click(within(line('Basso')).getByRole('button', { name: /^Merkitse maksetuksi/ }));
     await user.tab();
     await waitFor(() => expect(mockLine(event, 'BASS')).toMatchObject({ actualCents: 10000, paidBy: partnerA().id }));
     expect(await within(line('Basso')).findByRole('textbox', { name: 'Toteutunut summa: Basso' })).toHaveValue('100,00');
@@ -205,7 +205,7 @@ describe('cost list (UC-005)', () => {
     server.events.on('request:start', ({ request }) => {
       if (request.method === 'POST' && request.url.endsWith('/pay')) posts += 1;
     });
-    const button = () => within(line('Basso')).getByRole('button', { name: 'Merkitse maksetuksi' });
+    const button = () => within(line('Basso')).getByRole('button', { name: /^Merkitse maksetuksi/ });
     await user.click(button());
     await user.keyboard('{Escape}');
     expect(button()).toHaveFocus();
@@ -244,7 +244,7 @@ describe('cost list (UC-005)', () => {
     const event = addMockEvent();
     server.use(http.post('*/api/cost-lines/:id/pay', () => errorResponse(409, 'COST_NOT_PAYABLE', 'Not payable')));
     const { user } = await openEvent(event.id);
-    await user.click(within(line('Basso')).getByRole('button', { name: 'Merkitse maksetuksi' }));
+    await user.click(within(line('Basso')).getByRole('button', { name: /^Merkitse maksetuksi/ }));
     await user.keyboard('{Enter}');
     const amount = within(line('Basso')).getByRole('textbox', { name: 'Toteutunut summa: Basso' });
     await waitFor(() => expect(amount).toHaveAttribute('aria-invalid', 'true'));
@@ -255,7 +255,7 @@ describe('cost list (UC-005)', () => {
     const event = addMockEvent();
     addCostLine(db.events, event, { type: 'FUEL', personId: null, description: null, budgetedCents: 10000 }, partnerA().id);
     await openEvent(event.id);
-    expect(within(line('Polttoaine')).queryByRole('button', { name: 'Merkitse maksetuksi' })).not.toBeInTheDocument();
+    expect(within(line('Polttoaine')).queryByRole('button', { name: /^Merkitse maksetuksi/ })).not.toBeInTheDocument();
     const cell = line('Polttoaine').querySelector('td.cost-paid')!;
     expect(cell).toBeEmptyDOMElement();
   });
@@ -268,7 +268,7 @@ describe('cost list (UC-005)', () => {
     await screen.findByRole('table', { name: 'Kulut ja miehitys' });
     const cell = line('Polttoaine').querySelector('td.cost-paid')!;
     expect(cell).toBeEmptyDOMElement();
-    expect(within(line('Polttoaine')).queryByRole('button', { name: 'Merkitse maksetuksi' })).not.toBeInTheDocument();
+    expect(within(line('Polttoaine')).queryByRole('button', { name: /^Merkitse maksetuksi/ })).not.toBeInTheDocument();
   });
 
   it('adds lines (OTHER needs a description), edits them inline and removes them', async () => {

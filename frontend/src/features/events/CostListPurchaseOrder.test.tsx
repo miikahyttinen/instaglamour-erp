@@ -35,7 +35,7 @@ describe('cost lines on a purchase order (BR-118)', () => {
     expect(within(voc).getByRole('combobox', { name: 'Henkilö: Laulu' })).toBeDisabled();
     expect(within(voc).getByRole('textbox', { name: 'Budjetti: Laulu' })).toBeDisabled();
     expect(within(voc).getByRole('switch', { name: 'Roudaus ja soundcheck' })).toBeDisabled();
-    expect(within(voc).queryByRole('button', { name: 'Merkitse maksetuksi' })).not.toBeInTheDocument();
+    expect(within(voc).queryByRole('button', { name: /^Merkitse maksetuksi/ })).not.toBeInTheDocument();
     expect(within(voc).queryByRole('button', { name: 'Poista' })).not.toBeInTheDocument();
     expect(within(voc).getAllByText(`Ostotilauksella ${po.number}`).length).toBeGreaterThan(0);
 
@@ -56,7 +56,7 @@ describe('cost lines on a purchase order (BR-118)', () => {
     await openEvent(event.id);
     const voc = line('Laulu');
     expect(within(voc).queryByRole('textbox', { name: /Toteutunut summa/ })).not.toBeInTheDocument();
-    expect(within(voc).queryByRole('button', { name: 'Merkitse maksetuksi' })).not.toBeInTheDocument();
+    expect(within(voc).queryByRole('button', { name: /^Merkitse maksetuksi/ })).not.toBeInTheDocument();
     const cell = voc.querySelector('td.cost-paid')!;
     expect(cell.textContent).toMatch(/^[\d\s]+,\d\d\s€$/);
     expect(cell).not.toHaveTextContent('Maksettu');

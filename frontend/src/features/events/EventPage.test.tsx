@@ -451,7 +451,7 @@ describe('event page (UC-004, UC-007)', () => {
     expect(last('combobox', 'Tekniikka')).toBeDisabled();
     expect(last('combobox', 'Logistiikka')).toBeDisabled();
     expect(last('switch', 'Talon teknikko')).toBeDisabled();
-    expect(screen.queryAllByRole('button', { name: 'Merkitse maksetuksi' })).toHaveLength(0);
+    expect(screen.queryAllByRole('button', { name: /^Merkitse maksetuksi/ })).toHaveLength(0);
     const restore = screen.getAllByRole('button', { name: 'Palauta keikka' }).at(-1)!;
     await user.click(restore);
     expect(await screen.findByText('Keikka palautettu poistosta.')).toBeInTheDocument();

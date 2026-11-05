@@ -1,4 +1,4 @@
-import { createEventViaApi, costLine, suffix } from './events';
+import { createEventViaApi, costLine, expandCostLine, suffix } from './events';
 import { api, CURRENT_YEAR, expect, expectNoHorizontalScroll, fiMoney, isMobile, PARTNER_A, signIn, tagOf, test } from './helpers';
 import { costLineOf, createPersonViaApi, poByNumber, poFutureYear, poRow, poTable } from './po';
 
@@ -62,6 +62,8 @@ test('gig page → create PO for one person → PO listed, lines tagged, log sho
   // Notice with a link; the drums line is tagged, the bass and the other person's lines are not.
   await expect(page.getByRole('status').filter({ hasText: `Ostotilaus ${body.number} luotu.` })).toBeVisible();
   await expect(page.getByRole('link', { name: `Avaa ostotilaus ${body.number}` })).toHaveAttribute('href', `/purchase-orders/${body.id}`);
+  // Phones: the PO tag is in the line's detail area.
+  await expandCostLine(page, `Rummut (${drumsDesc})`);
   await expect(costLine(page, `Rummut (${drumsDesc})`).getByRole('link', { name: `Ostotilaus ${body.number}` })).toBeVisible();
   await expect(costLine(page, `Basso (${bassDesc})`).getByRole('link', { name: /^Ostotilaus / })).toHaveCount(0);
   expect((await costLineOf(page, event.id, drums)).purchaseOrder?.number).toBe(body.number);

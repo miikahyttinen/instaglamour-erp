@@ -499,3 +499,76 @@ test('one theme toggle switches the theme and the choice survives a reload', asy
     before === 'dark' ? 'Vaihda tummaan teemaan' : 'Vaihda vaaleaan teemaan',
   );
 });
+
+// TASK-183: on phones (cost list < 600 px) every cost line is one row in a smaller font —
+// "Type · Person" (ellipsis), budget, actual, chevron — under one compact header row on the same
+// columns; the chevron opens a detail area under the row without moving the row itself.
+test.describe('phone cost rows', () => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(!isMobile(testInfo), 'Phone layout (< 600 px cost list).');
+    await signIn(page);
+  });
+
+  test('each cost line is one row (summary · budget · actual · chevron); the chevron expands only its line', async ({ page }) => {
+    const { eventId } = await busyIds(page);
+    const table = page.getByRole('table', { name: 'Kulut ja miehitys' });
+    for (const w of [375, 414]) {
+      const where = `${w} px`;
+      await page.setViewportSize({ width: w, height: 812 });
+      await openLoaded(page, `/gigs/${eventId}`);
+      await expect(table).toBeVisible();
+      await expectNoHorizontalScroll(page, `event page, ${where}`);
+
+      // Header row: Tyyppi / Budjetti / Toteuma on one line.
+      const header = (name: string) => table.getByRole('columnheader', { name, exact: true });
+      const headerBoxes = await Promise.all(['Tyyppi', 'Budjetti', 'Toteuma'].map((n) => header(n).boundingBox()));
+      for (const b of headerBoxes) expect(b, `${where}: header visible`).not.toBeNull();
+      expect(Math.abs(headerBoxes[0]!.y - headerBoxes[1]!.y), `${where}: one header row`).toBeLessThanOrEqual(2);
+      expect(Math.abs(headerBoxes[0]!.y - headerBoxes[2]!.y), `${where}: one header row`).toBeLessThanOrEqual(2);
+
+      const lines = costLines(page);
+      const count = await lines.count();
+      expect(count, `${where}: cost lines`).toBeGreaterThan(1);
+      for (let i = 0; i < count; i++) {
+        const row = lines.nth(i).locator('tr').first();
+        const rowBox = (await row.boundingBox())!;
+        expect(rowBox.height, `${where}: line ${i} is one row`).toBeLessThanOrEqual(48);
+        const summary = row.locator('td.cost-summary');
+        await expect(summary).toBeVisible();
+        expect(await summary.evaluate((e) => getComputedStyle(e).fontSize), `${where}: smaller font`).toBe('13px');
+        const toggle = row.getByRole('button', { name: /^Näytä lisätiedot: / });
+        await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+        const toggleBox = (await toggle.boundingBox())!;
+        expect(toggleBox.height, `${where}: chevron ≥ 32 px`).toBeGreaterThanOrEqual(32);
+        expect(toggleBox.x + toggleBox.width, `${where}: chevron inside the row`).toBeLessThanOrEqual(rowBox.x + rowBox.width + 1);
+        // Detail cells are hidden while collapsed.
+        await expect(row.locator('td.cost-person')).toBeHidden();
+        // The budget amount ends under its right-aligned title.
+        const budget = (await row.locator('td.cost-budget').boundingBox())!;
+        expect(
+          Math.abs(budget.x + budget.width - (headerBoxes[1]!.x + headerBoxes[1]!.width)),
+          `${where}: budget under its title`,
+        ).toBeLessThanOrEqual(2);
+      }
+
+      // Expand the first line: the detail area opens under it; the row itself stays put.
+      const first = lines.first();
+      const row = first.locator('tr').first();
+      const budgetBefore = (await row.locator('td.cost-budget').boundingBox())!;
+      const toggle = row.getByRole('button', { name: /^Näytä lisätiedot: / });
+      await toggle.click();
+      await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+      await expect(first.locator('td.cost-person select')).toBeVisible();
+      await expect(first.locator('td.cost-type')).toBeVisible();
+      const budgetAfter = (await row.locator('td.cost-budget').boundingBox())!;
+      expect(Math.abs(budgetAfter.y - budgetBefore.y), `${where}: row unchanged`).toBeLessThanOrEqual(1);
+      expect(Math.abs(budgetAfter.height - budgetBefore.height), `${where}: row unchanged`).toBeLessThanOrEqual(1);
+      // Only that line expands.
+      await expect(lines.nth(1).locator('td.cost-person')).toBeHidden();
+      await expectNoHorizontalScroll(page, `event page, expanded line, ${where}`);
+      await toggle.click();
+      await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+      await expect(first.locator('td.cost-person')).toBeHidden();
+    }
+  });
+});

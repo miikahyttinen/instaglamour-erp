@@ -1,3 +1,4 @@
+import { Check } from 'lucide-react';
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { buttonClass } from '../../components/buttonClass';
@@ -10,6 +11,8 @@ import { parseMoneyField } from '../../lib/moneyField';
 interface Props {
   /** Accessible name of the input, e.g. "Toteutunut summa: Basso". */
   inputLabel: string;
+  /** Accessible name of the button, e.g. "Merkitse maksetuksi: Basso" (icon-only on phones). */
+  buttonLabel: string;
   /** Prefill (the budgeted amount). */
   initialCents: number;
   /** POST /cost-lines/{id}/pay; reject with an `ApiError` on failure. */
@@ -23,7 +26,7 @@ interface Props {
  * since 0 is not a payment. On success the line becomes
  * paid and the parent renders the paid amount instead.
  */
-export function PayControl({ inputLabel, initialCents, onPay }: Props) {
+export function PayControl({ inputLabel, buttonLabel, initialCents, onPay }: Props) {
   const { t } = useTranslation();
   const lang = useLang();
   const [editing, setEditing] = useState(false);
@@ -115,9 +118,12 @@ export function PayControl({ inputLabel, initialCents, onPay }: Props) {
         ref={buttonRef}
         type="button"
         className={buttonClass({ size: 'sm', className: 'cost-pay-button' })}
+        aria-label={buttonLabel}
         onClick={open}
       >
-        {t('costs.markPaid')}
+        {/* Phones (TASK-183): only the check icon; wider: only the text. */}
+        <Check className="btn-icon cost-pay-icon" aria-hidden="true" />
+        <span className="cost-pay-text">{t('costs.markPaid')}</span>
       </button>
     );
   }

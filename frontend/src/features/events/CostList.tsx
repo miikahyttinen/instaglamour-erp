@@ -1,5 +1,5 @@
 import { useMutation } from '@tanstack/react-query';
-import { Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState, type RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -85,19 +85,23 @@ export function CostList({ event, people, readOnly, onWarnings }: Props) {
             <caption className="visually-hidden">{t('event.sections.costs')}</caption>
             <thead>
               <tr>
-                <th scope="col">{t('costs.type')}</th>
-                <th scope="col">{t('costs.person')}</th>
+                <th scope="col" className="cost-col-type">
+                  {t('costs.type')}
+                </th>
+                <th scope="col" className="cost-col-person">
+                  {t('costs.person')}
+                </th>
                 <th scope="col" className="cost-col-loadin">
                   {t('costs.loadIn')}
                 </th>
-                <th scope="col" className="num">
+                <th scope="col" className="num cost-col-budget">
                   {t('costs.budgeted')}
                 </th>
-                <th scope="col" className="num">
+                <th scope="col" className="num cost-col-paid">
                   {t('event.actual')}
                 </th>
                 {!readOnly && (
-                  <th scope="col">
+                  <th scope="col" className="cost-col-actions">
                     <span className="visually-hidden">{t('event.actions.label')}</span>
                   </th>
                 )}
@@ -167,6 +171,9 @@ function CostLineItem({ line, people, readOnly, columnCount, onResult }: LinePro
   const { t } = useTranslation();
   const lang = useLang();
   const [mode, setMode] = useState<'view' | 'remove'>('view');
+  // Phone (TASK-183): the row is one line; type, person, description, load-in and remove open in a
+  // detail area under it. The CSS shows the summary / chevron cells on phones only.
+  const [expanded, setExpanded] = useState(false);
   const typeLabel = costTypeLabel(t, line.type);
   const label = line.description ? `${typeLabel} (${line.description})` : typeLabel;
   const paid = line.paidAt !== null;
@@ -204,7 +211,9 @@ function CostLineItem({ line, people, readOnly, columnCount, onResult }: LinePro
 
   return (
     <tbody
-      className={['cost-group', musician && 'is-musician', paid && 'is-paid'].filter(Boolean).join(' ')}
+      className={['cost-group', musician && 'is-musician', paid && 'is-paid', expanded && 'is-expanded']
+        .filter(Boolean)
+        .join(' ')}
       aria-label={label}
     >
       <tr>
@@ -238,6 +247,8 @@ function CostLineItem({ line, people, readOnly, columnCount, onResult }: LinePro
             />
           )}
         </td>
+
+        <CostSummaryCell typeLabel={typeLabel} personName={personName(people, line.personId)} />
 
         <td className="cost-person" data-label={t('costs.person')} title={lockedHint}>
           {readOnly ? (
@@ -316,6 +327,7 @@ function CostLineItem({ line, people, readOnly, columnCount, onResult }: LinePro
             // Unpaid: only the button, which turns into the amount input in place (no "unpaid" tag).
             <PayControl
               inputLabel={`${t('costs.actualAmount')}: ${label}`}
+              buttonLabel={t('costs.markPaidLabel', { line: label })}
               initialCents={line.budgetedCents}
               onPay={async (actualCents, via) => {
                 const result = await costLinesApi.pay(line.id, { actualCents });
@@ -326,6 +338,16 @@ function CostLineItem({ line, people, readOnly, columnCount, onResult }: LinePro
           ) : (
             <StatusTag>{t('costs.unpaid')}</StatusTag>
           )}
+        </td>
+
+        <td className="cost-toggle cost-phone-only">
+          <IconButton
+            icon={expanded ? ChevronUp : ChevronDown}
+            label={t('costs.showDetails', { line: label })}
+            className="cost-toggle-button"
+            aria-expanded={expanded}
+            onClick={() => setExpanded((open) => !open)}
+          />
         </td>
 
         {!readOnly && (
@@ -494,7 +516,8 @@ function DraftCostRow({ event, people, columnCount, typeRef, onSaved, onDiscard 
   return (
     <tbody
       ref={rowRef}
-      className="cost-group cost-draft"
+      // Phone (TASK-183): the draft's fields are always shown in the detail area.
+      className="cost-group cost-draft is-expanded"
       aria-label={label}
       aria-busy={add.isPending || undefined}
       onBlur={(e) => {
@@ -567,6 +590,11 @@ function DraftCostRow({ event, people, columnCount, typeRef, onSaved, onDiscard 
           </InlineFieldFrame>
         </td>
 
+        <CostSummaryCell
+          typeLabel={type ? costTypeLabel(t, type) : label}
+          personName={personName(people, personId)}
+        />
+
         <td className="cost-person" data-label={t('costs.person')}>
           <PersonSelect
             label={`${t('costs.person')}: ${label}`}
@@ -613,6 +641,8 @@ function DraftCostRow({ event, people, columnCount, typeRef, onSaved, onDiscard 
 
         <td className="cost-paid cost-draft-paid" />
 
+        <td className="cost-toggle cost-phone-only" />
+
         <td className="cost-actions">
           <div className="cost-actions-inner">
             <IconButton
@@ -642,5 +672,15 @@ function DraftCostRow({ event, people, columnCount, typeRef, onSaved, onDiscard 
         </tr>
       )}
     </tbody>
+  );
+}
+
+/** Phone row (TASK-183): "Type · Person" on one line, truncated (person omitted when none). */
+function CostSummaryCell({ typeLabel, personName }: { typeLabel: string; personName: string | null }) {
+  const text = personName ? `${typeLabel} · ${personName}` : typeLabel;
+  return (
+    <td className="cell-primary cost-summary cost-phone-only" title={text}>
+      <span className="cost-summary-text">{text}</span>
+    </td>
   );
 }
