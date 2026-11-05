@@ -25,6 +25,7 @@ import { useLang } from '../../i18n/useLang';
 import { centsToInput, formatMoney } from '../../lib/format';
 import { parseMoneyField } from '../../lib/moneyField';
 import { useReference } from '../../reference/useReference';
+import { orderCostLines } from './costLineOrder';
 import { EventPurchaseOrder } from './EventPurchaseOrder';
 import { selectablePeople } from './personOptions';
 import { InlinePersonSelect, PersonSelect } from './PersonSelect';
@@ -100,7 +101,7 @@ export function CostList({ event, people, readOnly, onWarnings }: Props) {
                 )}
               </tr>
             </thead>
-            {event.costLines.map((line) => (
+            {orderCostLines(event.costLines).map((line) => (
               <CostLineItem
                 key={line.id}
                 line={line}
@@ -200,7 +201,10 @@ function CostLineItem({ line, people, readOnly, columnCount, onResult }: LinePro
   }, [paid]);
 
   return (
-    <tbody className={paid ? 'cost-group is-paid' : 'cost-group'} aria-label={label}>
+    <tbody
+      className={['cost-group', musician && 'is-musician', paid && 'is-paid'].filter(Boolean).join(' ')}
+      aria-label={label}
+    >
       <tr>
         <td className="cell-primary cost-type">
           <span className="cost-type-name">{typeLabel}</span>

@@ -1,12 +1,15 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { http } from 'msw';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { MUSICIAN_ROLES, type CostType } from '../../api/enums';
+import type { CostLine } from '../../api/types';
 import { db } from '../../mocks/data';
 import { addCostLine, linesOf } from '../../mocks/eventStore';
 import { server } from '../../mocks/server';
 import { errorResponse } from '../../mocks/util';
 import { addMockEvent, mockLine, partnerA, staffMockEvent, TEST_YEAR } from '../../test/eventFixtures';
 import { renderApp, signInMock } from '../../test/renderApp';
+import { orderCostLines } from './costLineOrder';
 
 // The cost table has one named row group (<tbody>) per cost line.
 const costs = () => screen.getByRole('table', { name: 'Kulut ja miehitys' });
@@ -475,5 +478,81 @@ describe('cost list: new line as an inline draft row (TASK-179)', () => {
     expect(screen.queryByText('Ei kulurivejä.')).not.toBeInTheDocument();
     await user.keyboard('{Escape}');
     expect(screen.queryByRole('table', { name: 'Kulut ja miehitys' })).not.toBeInTheDocument();
+  });
+});
+
+describe('cost list: musician-role lines first (TASK-181)', () => {
+  beforeEach(() => {
+    signInMock().selectedYear = TEST_YEAR;
+  });
+  const isMusician = (type: string) => (MUSICIAN_ROLES as readonly string[]).includes(type);
+  const groups = () => Array.from(costs().querySelectorAll<HTMLElement>('tbody.cost-group'));
+  const groupNames = () => groups().map((g) => g.getAttribute('aria-label'));
+  const musicianFlags = () => groups().map((g) => g.classList.contains('is-musician'));
+  /** Musician lines first (all shaded), then the others (none shaded). */
+  const expectGrouped = () => {
+    const flags = musicianFlags();
+    const firstOther = flags.indexOf(false);
+    expect(firstOther).toBeGreaterThan(0);
+    expect(flags.slice(0, firstOther).every(Boolean)).toBe(true);
+    expect(flags.slice(firstOther)).not.toContain(true);
+    return firstOther;
+  };
+
+  /** Puts the event's non-musician lines in front of its musician lines in the mock store (= API order). */
+  function nonMusiciansFirst(eventId: string) {
+    const own = linesOf(db.events, eventId);
+    const reordered = [...own.filter((l) => !isMusician(l.type)), ...own.filter((l) => isMusician(l.type))];
+    db.events.costLines = [...db.events.costLines.filter((l) => l.eventId !== eventId), ...reordered];
+  }
+
+  it('orderCostLines keeps the API order within each group (stable)', () => {
+    const l = (id: string, type: CostType) => ({ id, type }) as CostLine;
+    const ordered = orderCostLines([l('1', 'FUEL'), l('2', 'BASS'), l('3', 'OFFICE'), l('4', 'MIX'), l('5', 'DJ'), l('6', 'OTHER')]);
+    expect(ordered.map((x) => x.id)).toEqual(['2', '4', '5', '1', '3', '6']);
+  });
+
+  it('lists musician lines first (shaded rows), then the others in their API order', async () => {
+    const event = addMockEvent();
+    nonMusiciansFirst(event.id);
+    addCostLine(db.events, event, { type: 'FUEL', personId: null, description: null, budgetedCents: 1000 }, partnerA().id);
+    addCostLine(db.events, event, { type: 'DJ', personId: null, description: null, budgetedCents: 2000 }, partnerA().id);
+    await openEvent(event.id);
+    const firstOther = expectGrouped();
+    const names = groupNames();
+    expect(names[firstOther - 1]).toBe('DJ'); // last musician line in the API order
+    expect(names.at(-1)).toBe('Polttoaine'); // last other line in the API order
+  });
+
+  it('a saved draft musician line moves up into the musician group; the keyboard focus stays put', async () => {
+    const event = addMockEvent();
+    nonMusiciansFirst(event.id);
+    const { user } = await openEvent(event.id);
+    const musiciansBefore = musicianFlags().filter(Boolean).length;
+    const addButton = screen.getByRole('button', { name: '+ Lisää rivi' });
+    await user.click(addButton);
+    await user.selectOptions(draftField('combobox', 'Tyyppi'), 'Oma rooli');
+    await user.type(draftField('textbox', 'Kuvaus'), 'Synthetic role');
+    await user.type(draftField('textbox', 'Budjetti'), '70');
+    // Keyboard out of the row: budget → trash → "Lisää rivi" saves the draft.
+    await user.tab();
+    await user.tab();
+    expect(addButton).toHaveFocus();
+    await screen.findByRole('rowgroup', { name: 'Oma rooli (Synthetic role)' });
+    expect(within(costs()).queryByRole('rowgroup', { name: 'Uusi kulurivi' })).not.toBeInTheDocument();
+    expect(groupNames().indexOf('Oma rooli (Synthetic role)')).toBe(musiciansBefore);
+    expect(expectGrouped()).toBe(musiciansBefore + 1);
+    expect(addButton).toHaveFocus();
+  });
+
+  it('uses the same order in the read-only (deleted gig) view', async () => {
+    const event = addMockEvent();
+    addCostLine(db.events, event, { type: 'PARKING', personId: null, description: null, budgetedCents: 500 }, partnerA().id);
+    nonMusiciansFirst(event.id);
+    event.deletedAt = new Date().toISOString();
+    renderApp(`/gigs/${event.id}`);
+    await screen.findByRole('table', { name: 'Kulut ja miehitys' });
+    expectGrouped();
+    expect(groupNames().at(-1)).toBe('Pysäköinti');
   });
 });
