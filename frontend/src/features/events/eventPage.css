@@ -4,8 +4,8 @@
      sidebar state counts) costs on the left (3 : 2), other sections on the right, log below.
    - Basic info / price: Card + FieldList (one label column).
    - Economics: 2 tiles per row, 4 from 1200 px in one column (2 in the right column).
-   - Cost table: compact rows while .cost-list is narrower than the full table (two columns on
-     phones); full table when it fits. */
+   - Cost table: compact rows while .cost-list is narrower than the full table (< 680 px; two
+     columns on phones); full table when it fits. */
 
 /* ---------- Header ---------- */
 
@@ -251,25 +251,20 @@
   font-weight: var(--fw-regular);
   color: var(--text-muted);
 }
-/* Inline description under the type name (NFR-8). */
+/* Inline description under the type name (NFR-8). Text fields are sized to their content
+   (TASK-182: was --label-w), the money fields below to "12 345,00 €". */
 .event-page .cost-table .cost-description {
   margin-top: var(--space-1);
-  min-width: var(--label-w);
+  min-width: calc(var(--label-w) - var(--space-6) - var(--space-2));
   font-weight: var(--fw-regular);
 }
-.event-page .cost-table td.cost-budget .inline-field {
-  min-width: calc(var(--label-w) - var(--space-6));
-}
 /* Paid line: inline actual amount only (who / when is in the gig log, TASK-178). */
-.event-page .cost-table .cost-paid-edit {
-  min-width: calc(var(--label-w) - var(--space-5));
-}
 .event-page .cost-table .cost-paid-edit .inline-numeric input,
 .event-page .cost-table .cost-paid-amount {
   color: var(--ok-fg);
 }
 .event-page .cost-table td.cost-person .inline-field {
-  min-width: var(--label-w);
+  min-width: calc(var(--label-w) - var(--space-5));
 }
 /* PersonSelect "new person" mode: name input + its actions. */
 .event-page .person-create {
@@ -414,7 +409,7 @@
    table fills the width, but inline controls keep readable widths instead of stretching across
    a 1920 px screen; the actual amount stays next to its paid-by line under the "Actual" header. */
 @media (min-width: 600px) {
-  @container cost-list (min-width: 1120px) {
+  @container cost-list (min-width: 680px) {
     .event-page .cost-table .cost-description {
       max-width: calc(var(--label-w) * 2);
     }
@@ -429,19 +424,46 @@
     .event-page .cost-table .cost-paid-edit {
       max-width: calc(var(--label-w) * 1.25);
     }
+    /* TASK-182: half the usual cell padding between columns (the outer edges keep --cell-pad-x,
+       so the first column still lines up with the cards); the load-in header wraps per word. */
+    .event-page .cost-table :is(th, td) {
+      padding-left: var(--space-2);
+      padding-right: var(--space-2);
+    }
+    .event-page .cost-table :is(th, td):first-child {
+      padding-left: var(--cell-pad-x);
+    }
+    .event-page .cost-table :is(th, td):last-child {
+      padding-right: var(--cell-pad-x);
+    }
+    .event-page .cost-table thead th.cost-col-loadin {
+      width: var(--space-7);
+    }
+    /* Text fields take their width from the min-widths above (and grow with the column), not
+       from the inputs' default ~20-character size. */
+    .event-page .cost-table :is(td.cost-type, td.cost-person) .inline-control > :is(input, select) {
+      width: 0;
+    }
+    /* On one line when there is room; on the narrowest full table (e.g. 1280 px with the sidebar
+       collapsed) "Mark paid" may wrap between its words instead of widening the table. */
+    .event-page .cost-table .cost-pay-button {
+      white-space: normal;
+      text-align: center;
+    }
     /* Draft row: the type select gets the width of a type name + description. */
     .event-page .cost-table tbody.cost-draft td.cost-type .inline-field:first-child {
-      min-width: var(--label-w);
+      min-width: calc(var(--label-w) - var(--space-5));
       max-width: calc(var(--label-w) * 2);
     }
   }
 }
 
-/* Compact rows while the list is narrower than the full table (~1120 px): phones (TASK-175: no
-   cards) and e.g. 600–1439 px with the sidebar expanded. Each line keeps the table surface and
+/* Compact rows while the list is narrower than the full table (680 px, TASK-182: the trimmed table
+   is 672 px at its narrowest, inside a 2 px frame): phones (TASK-175: no cards) and e.g. 900 px
+   with the sidebar expanded or 1200 px collapsed (two page columns). Each line keeps the table surface and
    hairlines, on three equal columns: type · load-in switch (musician lines) · actions, then
    person · budget · actual with their own small labels. Phones: two columns, see below. */
-@container cost-list (max-width: 1119px) {
+@container cost-list (max-width: 679px) {
   .event-page .cost-table,
   .event-page .cost-table tbody {
     display: block;
@@ -617,6 +639,46 @@
   }
 }
 
+/* Budget and actual amounts (TASK-182), full table and the ≥ 600 px compact rows (the phone layout
+   above is unchanged): right-aligned under a right-aligned title, all ending on the same edge.
+   The money fields are sized to "12 345,00 €"; their state icon moves to the left of the value and
+   the quiet box's inner padding reaches into the cell padding (as on the left of text fields),
+   so the "€" ends exactly where the title and plain amounts end. */
+@container cost-list (min-width: 600px) {
+  .event-page .cost-table {
+    --cost-money-w: 6.25rem;
+  }
+  .event-page .cost-table td.cost-paid {
+    text-align: right;
+  }
+  .event-page .cost-table :is(td.cost-budget, td.cost-paid) .inline-numeric {
+    width: var(--cost-money-w);
+    max-width: none;
+    min-width: 0;
+    margin-left: auto;
+  }
+  .event-page .cost-table :is(td.cost-budget, td.cost-paid) .inline-numeric > .inline-control {
+    flex-direction: row-reverse;
+    margin-left: 0;
+    margin-right: calc(-1 * (var(--inline-pad-x) + var(--hairline)));
+  }
+  .event-page .cost-table .cost-paid-edit {
+    min-width: 0;
+    max-width: none;
+  }
+  /* "Mark paid" as wide as its text; the amount input that replaces it ends on the same edge. */
+  .event-page .cost-table .cost-pay-button {
+    width: auto;
+    max-width: none;
+  }
+}
+/* Compact rows: the cell's small title right-aligned over the amount as well. */
+@container cost-list (min-width: 600px) and (max-width: 679px) {
+  .event-page .cost-table td.cost-paid {
+    justify-items: end;
+  }
+}
+
 /* ---------- History ---------- */
 
 .event-page .history-filter {
@@ -676,8 +738,8 @@
   }
 }
 
-/* Very wide page (e.g. 1920 px, sidebar collapsed): 2 : 1 lets the cost list reach the full
-   table (≥ 1120 px) while the right column stays ~600 px. */
+/* Very wide page (e.g. 1920 px, sidebar collapsed): 2 : 1 gives the cost list more room while
+   the right column stays ~600 px. */
 @container event-page (min-width: 1700px) {
   .event-page .event-sections {
     grid-template-columns: minmax(0, 2fr) minmax(28rem, 1fr);

@@ -28,13 +28,13 @@ describe('cost table layout (TASK-149)', () => {
   });
 
   it('switches to compact rows while the list is narrower than the full table', () => {
-    const compact = containerBlock('max-width: 1119px');
+    const compact = containerBlock('max-width: 679px');
     expect(compact).toMatch(/grid-template-areas/);
     expect(compact).toMatch(/td\[data-label\]::before/);
   });
 
   it('caps inline controls in the full table so they do not stretch over a wide page', () => {
-    const full = containerBlock('min-width: 1120px');
+    const full = containerBlock('min-width: 680px');
     for (const selector of [
       'td.cost-person .inline-field',
       'td.cost-budget .inline-field',
@@ -44,6 +44,23 @@ describe('cost table layout (TASK-149)', () => {
       expect(full).toContain(selector);
     }
     expect(full).toMatch(/max-width: calc\(var\(--label-w\) \* 1\.5\)/);
+  });
+});
+
+describe('cost table widths and amount alignment (TASK-182)', () => {
+  it('trims the full table: half cell padding between columns, text inputs sized by min-width', () => {
+    const full = containerBlock('min-width: 680px');
+    expect(full).toMatch(/\.cost-table :is\(th, td\) \{\s*padding-left: var\(--space-2\);\s*padding-right: var\(--space-2\);/);
+    expect(full).toMatch(/:is\(td\.cost-type, td\.cost-person\) \.inline-control > :is\(input, select\) \{\s*width: 0;/);
+  });
+
+  it('from 600 px the budget and actual amounts end on the right edge of their column title', () => {
+    const wide = containerBlock('min-width: 600px');
+    expect(wide).toMatch(/--cost-money-w:/);
+    expect(wide).toMatch(/td\.cost-paid \{\s*text-align: right;/);
+    expect(wide).toMatch(
+      /:is\(td\.cost-budget, td\.cost-paid\) \.inline-numeric > \.inline-control \{\s*flex-direction: row-reverse;\s*margin-left: 0;\s*margin-right: calc\(-1 \* \(var\(--inline-pad-x\) \+ var\(--hairline\)\)\);/,
+    );
   });
 });
 

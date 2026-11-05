@@ -208,10 +208,12 @@ test.describe('desktop sidebar', () => {
     };
 
     for (const [mode, w, twoColumns, compact] of [
+      // TASK-182: the trimmed full table fits a 680 px list (e.g. 1280 px with either sidebar state).
       ['expanded', 900, false, true],
-      ['expanded', 1200, false, true],
-      ['expanded', 1280, false, true],
-      ['expanded', 1440, true, true],
+      ['expanded', 1200, false, false],
+      ['expanded', 1280, false, false],
+      ['collapsed', 1280, true, false],
+      ['expanded', 1440, true, false],
       ['collapsed', 1200, true, true],
       ['collapsed', 1920, true, false],
     ] as const) {
