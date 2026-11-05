@@ -4,8 +4,8 @@
      sidebar state counts) costs on the left (3 : 2), other sections on the right, log below.
    - Basic info / price: Card + FieldList (one label column).
    - Economics: 2 tiles per row, 4 from 1200 px in one column (2 in the right column).
-   - Cost table: compact rows while .cost-list is narrower than the full table (two columns on
-     phones); full table when it fits. */
+   - Cost table: compact rows while .cost-list is narrower than the full table (< 680 px; two
+     columns on phones); full table when it fits. */
 
 /* ---------- Header ---------- */
 
@@ -409,7 +409,7 @@
    table fills the width, but inline controls keep readable widths instead of stretching across
    a 1920 px screen; the actual amount stays next to its paid-by line under the "Actual" header. */
 @media (min-width: 600px) {
-  @container cost-list (min-width: 1120px) {
+  @container cost-list (min-width: 680px) {
     .event-page .cost-table .cost-description {
       max-width: calc(var(--label-w) * 2);
     }
@@ -444,6 +444,12 @@
     .event-page .cost-table :is(td.cost-type, td.cost-person) .inline-control > :is(input, select) {
       width: 0;
     }
+    /* On one line when there is room; on the narrowest full table (e.g. 1280 px with the sidebar
+       collapsed) "Mark paid" may wrap between its words instead of widening the table. */
+    .event-page .cost-table .cost-pay-button {
+      white-space: normal;
+      text-align: center;
+    }
     /* Draft row: the type select gets the width of a type name + description. */
     .event-page .cost-table tbody.cost-draft td.cost-type .inline-field:first-child {
       min-width: calc(var(--label-w) - var(--space-5));
@@ -452,11 +458,12 @@
   }
 }
 
-/* Compact rows while the list is narrower than the full table (~1120 px): phones (TASK-175: no
-   cards) and e.g. 600–1439 px with the sidebar expanded. Each line keeps the table surface and
+/* Compact rows while the list is narrower than the full table (680 px, TASK-182: the trimmed table
+   is 672 px at its narrowest, inside a 2 px frame): phones (TASK-175: no cards) and e.g. 900 px
+   with the sidebar expanded or 1200 px collapsed (two page columns). Each line keeps the table surface and
    hairlines, on three equal columns: type · load-in switch (musician lines) · actions, then
    person · budget · actual with their own small labels. Phones: two columns, see below. */
-@container cost-list (max-width: 1119px) {
+@container cost-list (max-width: 679px) {
   .event-page .cost-table,
   .event-page .cost-table tbody {
     display: block;
@@ -663,11 +670,10 @@
   .event-page .cost-table .cost-pay-button {
     width: auto;
     max-width: none;
-    white-space: nowrap;
   }
 }
 /* Compact rows: the cell's small title right-aligned over the amount as well. */
-@container cost-list (min-width: 600px) and (max-width: 1119px) {
+@container cost-list (min-width: 600px) and (max-width: 679px) {
   .event-page .cost-table td.cost-paid {
     justify-items: end;
   }
@@ -732,8 +738,8 @@
   }
 }
 
-/* Very wide page (e.g. 1920 px, sidebar collapsed): 2 : 1 lets the cost list reach the full
-   table (≥ 1120 px) while the right column stays ~600 px. */
+/* Very wide page (e.g. 1920 px, sidebar collapsed): 2 : 1 gives the cost list more room while
+   the right column stays ~600 px. */
 @container event-page (min-width: 1700px) {
   .event-page .event-sections {
     grid-template-columns: minmax(0, 2fr) minmax(28rem, 1fr);
