@@ -251,25 +251,20 @@
   font-weight: var(--fw-regular);
   color: var(--text-muted);
 }
-/* Inline description under the type name (NFR-8). */
+/* Inline description under the type name (NFR-8). Text fields are sized to their content
+   (TASK-182: was --label-w), the money fields below to "12 345,00 €". */
 .event-page .cost-table .cost-description {
   margin-top: var(--space-1);
-  min-width: var(--label-w);
+  min-width: calc(var(--label-w) - var(--space-6) - var(--space-2));
   font-weight: var(--fw-regular);
 }
-.event-page .cost-table td.cost-budget .inline-field {
-  min-width: calc(var(--label-w) - var(--space-6));
-}
 /* Paid line: inline actual amount only (who / when is in the gig log, TASK-178). */
-.event-page .cost-table .cost-paid-edit {
-  min-width: calc(var(--label-w) - var(--space-5));
-}
 .event-page .cost-table .cost-paid-edit .inline-numeric input,
 .event-page .cost-table .cost-paid-amount {
   color: var(--ok-fg);
 }
 .event-page .cost-table td.cost-person .inline-field {
-  min-width: var(--label-w);
+  min-width: calc(var(--label-w) - var(--space-5));
 }
 /* PersonSelect "new person" mode: name input + its actions. */
 .event-page .person-create {
@@ -429,9 +424,29 @@
     .event-page .cost-table .cost-paid-edit {
       max-width: calc(var(--label-w) * 1.25);
     }
+    /* TASK-182: half the usual cell padding between columns (the outer edges keep --cell-pad-x,
+       so the first column still lines up with the cards); the load-in header wraps per word. */
+    .event-page .cost-table :is(th, td) {
+      padding-left: var(--space-2);
+      padding-right: var(--space-2);
+    }
+    .event-page .cost-table :is(th, td):first-child {
+      padding-left: var(--cell-pad-x);
+    }
+    .event-page .cost-table :is(th, td):last-child {
+      padding-right: var(--cell-pad-x);
+    }
+    .event-page .cost-table thead th.cost-col-loadin {
+      width: var(--space-7);
+    }
+    /* Text fields take their width from the min-widths above (and grow with the column), not
+       from the inputs' default ~20-character size. */
+    .event-page .cost-table :is(td.cost-type, td.cost-person) .inline-control > :is(input, select) {
+      width: 0;
+    }
     /* Draft row: the type select gets the width of a type name + description. */
     .event-page .cost-table tbody.cost-draft td.cost-type .inline-field:first-child {
-      min-width: var(--label-w);
+      min-width: calc(var(--label-w) - var(--space-5));
       max-width: calc(var(--label-w) * 2);
     }
   }
@@ -614,6 +629,47 @@
   }
   .event-page .cost-table .cost-loadin-switch .inline-switch > span {
     margin-bottom: 0;
+  }
+}
+
+/* Budget and actual amounts (TASK-182), full table and the ≥ 600 px compact rows (the phone layout
+   above is unchanged): right-aligned under a right-aligned title, all ending on the same edge.
+   The money fields are sized to "12 345,00 €"; their state icon moves to the left of the value and
+   the quiet box's inner padding reaches into the cell padding (as on the left of text fields),
+   so the "€" ends exactly where the title and plain amounts end. */
+@container cost-list (min-width: 600px) {
+  .event-page .cost-table {
+    --cost-money-w: 6.25rem;
+  }
+  .event-page .cost-table td.cost-paid {
+    text-align: right;
+  }
+  .event-page .cost-table :is(td.cost-budget, td.cost-paid) .inline-numeric {
+    width: var(--cost-money-w);
+    max-width: none;
+    min-width: 0;
+    margin-left: auto;
+  }
+  .event-page .cost-table :is(td.cost-budget, td.cost-paid) .inline-numeric > .inline-control {
+    flex-direction: row-reverse;
+    margin-left: 0;
+    margin-right: calc(-1 * (var(--inline-pad-x) + var(--hairline)));
+  }
+  .event-page .cost-table .cost-paid-edit {
+    min-width: 0;
+    max-width: none;
+  }
+  /* "Mark paid" as wide as its text; the amount input that replaces it ends on the same edge. */
+  .event-page .cost-table .cost-pay-button {
+    width: auto;
+    max-width: none;
+    white-space: nowrap;
+  }
+}
+/* Compact rows: the cell's small title right-aligned over the amount as well. */
+@container cost-list (min-width: 600px) and (max-width: 1119px) {
+  .event-page .cost-table td.cost-paid {
+    justify-items: end;
   }
 }
 

@@ -49,6 +49,15 @@ describe('cost list (UC-005)', () => {
     expect(mockLine(event, 'DRUMS').personId).toBe(db.events.people.find((p) => p.name === 'Person 4')!.id);
   });
 
+  it('budget and actual titles are right-aligned number columns, like their amounts (TASK-182)', async () => {
+    const event = addMockEvent();
+    await openEvent(event.id);
+    for (const name of ['Budjetti', 'Toteuma']) {
+      expect(within(costs()).getByRole('columnheader', { name })).toHaveClass('num');
+    }
+    expect(budget('Kitara').closest('td')).toHaveClass('num', 'cost-budget');
+  });
+
   it('warns about double booking, naming the other event, without blocking', async () => {
     const other = addMockEvent({ startDate: `${TEST_YEAR}-06-01`, venue: 'Venue Y', lineupTemplateId: db.reference.lineupTemplates[1]!.id });
     staffMockEvent(other, ['Person 1']);

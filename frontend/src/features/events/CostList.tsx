@@ -93,7 +93,9 @@ export function CostList({ event, people, readOnly, onWarnings }: Props) {
                 <th scope="col" className="num">
                   {t('costs.budgeted')}
                 </th>
-                <th scope="col">{t('event.actual')}</th>
+                <th scope="col" className="num">
+                  {t('event.actual')}
+                </th>
                 {!readOnly && (
                   <th scope="col">
                     <span className="visually-hidden">{t('event.actions.label')}</span>

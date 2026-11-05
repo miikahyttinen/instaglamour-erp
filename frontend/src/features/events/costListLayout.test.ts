@@ -47,6 +47,23 @@ describe('cost table layout (TASK-149)', () => {
   });
 });
 
+describe('cost table widths and amount alignment (TASK-182)', () => {
+  it('trims the full table: half cell padding between columns, text inputs sized by min-width', () => {
+    const full = containerBlock('min-width: 1120px');
+    expect(full).toMatch(/\.cost-table :is\(th, td\) \{\s*padding-left: var\(--space-2\);\s*padding-right: var\(--space-2\);/);
+    expect(full).toMatch(/:is\(td\.cost-type, td\.cost-person\) \.inline-control > :is\(input, select\) \{\s*width: 0;/);
+  });
+
+  it('from 600 px the budget and actual amounts end on the right edge of their column title', () => {
+    const wide = containerBlock('min-width: 600px');
+    expect(wide).toMatch(/--cost-money-w:/);
+    expect(wide).toMatch(/td\.cost-paid \{\s*text-align: right;/);
+    expect(wide).toMatch(
+      /:is\(td\.cost-budget, td\.cost-paid\) \.inline-numeric > \.inline-control \{\s*flex-direction: row-reverse;\s*margin-left: 0;\s*margin-right: calc\(-1 \* \(var\(--inline-pad-x\) \+ var\(--hairline\)\)\);/,
+    );
+  });
+});
+
 describe('gig page columns (owner request)', () => {
   it('the page is a size container; two columns (costs ~60 % left) only from a 1080 px wide page', () => {
     expect(css).toMatch(/\.event-page \{\s*container: event-page \/ inline-size;/);
