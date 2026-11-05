@@ -319,6 +319,15 @@
   background: var(--surface-2);
 }
 
+/* Musician-role lines are listed first (TASK-181) on a slightly different grey than the other
+   lines, so the two groups are easy to tell apart; hover still uses --surface-2. */
+.event-page .cost-table tbody.is-musician tr:not(.cost-extra-row) td {
+  background: var(--surface-musician);
+}
+.event-page .cost-table tbody.is-musician tr:not(.cost-extra-row):hover td {
+  background: var(--surface-2);
+}
+
 /* Unpaid line: "Mark paid" turns into the actual-amount input in the same place. Button and input
    share one width (the paid amount's width), so the cell does not jump when it switches. */
 .event-page .cost-table .cost-pay-button,
@@ -458,6 +467,14 @@
     padding: var(--cell-pad-y) var(--cell-pad-x);
   }
   .event-page .cost-table tbody tr:hover td {
+    background: transparent;
+  }
+  /* Stacked rows: the shade covers the whole line (incl. the grid gaps), cells stay transparent. */
+  .event-page .cost-table tbody.is-musician {
+    background: var(--surface-musician);
+  }
+  .event-page .cost-table tbody.is-musician tr:not(.cost-extra-row) td,
+  .event-page .cost-table tbody.is-musician tr:not(.cost-extra-row):hover td {
     background: transparent;
   }
   .event-page .cost-table td,
