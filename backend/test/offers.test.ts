@@ -718,7 +718,7 @@ describe('GET /api/offers/{id}/event-draft (BR-105)', () => {
       startDate: EVENT_DATE,
       endDate: null,
       lineupTemplateId: null,
-      lineupName: 'Event 1',
+      lineupName: null,
       venue: 'Venue X, City A',
       technicalSetup: null,
       logistics: null,
@@ -751,8 +751,8 @@ describe('GET /api/offers/{id}/event-draft (BR-105)', () => {
     const offer = await createWonOffer();
     await testDb().client.update({ where: { id: clientA.id }, data: { deletedAt: new Date() } });
     const body = (await draft(offer.id)).json();
-    expect(body).toMatchObject({ clientId: null, lineupName: 'Event 1' });
-    const res = await call(s, 'POST', `/api/offers/${offer.id}/convert`, body);
+    expect(body).toMatchObject({ clientId: null, lineupTemplateId: null, lineupName: null });
+    const res = await call(s, 'POST', `/api/offers/${offer.id}/convert`, { ...body, lineupName: 'Lineup X' });
     expect(res.statusCode).toBe(201);
     expect(res.json().event).toMatchObject({ clientId: null, offerId: offer.id });
   });
@@ -782,10 +782,20 @@ describe('GET /api/offers/{id}/event-draft (BR-105)', () => {
 
 describe('POST /api/offers/{id}/convert with an edited EventCreate', () => {
   const convert = (id: string, body: unknown) => call(s, 'POST', `/api/offers/${id}/convert`, body);
-  const draftOf = async (id: string) =>
+  const rawDraftOf = async (id: string) =>
     (await call(s, 'GET', `/api/offers/${id}/event-draft`)).json<Record<string, unknown>>();
+  // The draft as the partner submits it after choosing a custom lineup (the draft has no lineup).
+  const draftOf = async (id: string) => ({ ...(await rawDraftOf(id)), lineupName: 'Event 1' });
 
-  it('the unchanged draft gives the same event as no body', async () => {
+  it('the unchanged draft needs a lineup choice (no lineup prefill) → 400 REQUIRED, nothing created', async () => {
+    const offer = await createWonOffer({ sellerId: s.world.b.id });
+    const res = await convert(offer.id, await rawDraftOf(offer.id));
+    expect(res.statusCode).toBe(400);
+    expect(res.json()).toEqual(validation({ lineupName: 'REQUIRED' }));
+    expect(await testDb().event.count()).toBe(0);
+  });
+
+  it('the draft with the event name as custom lineup gives the same event as no body', async () => {
     const offer = await createWonOffer({ sellerId: s.world.b.id });
     const res = await convert(offer.id, await draftOf(offer.id));
     expect(res.statusCode).toBe(201);
@@ -978,7 +988,7 @@ describe('BR-109: only accepted, upcoming offers convert', () => {
     }
     // With a body too.
     const withBody = await createWonOffer({ eventDate: today(), eventName: 'With body' });
-    const res = await convert(withBody.id, (await draft(withBody.id)).json());
+    const res = await convert(withBody.id, { ...(await draft(withBody.id)).json<Record<string, unknown>>(), lineupName: 'Lineup X' });
     expect(res.statusCode).toBe(201);
   });
 
