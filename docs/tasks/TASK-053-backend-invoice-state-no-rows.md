@@ -1,7 +1,7 @@
 # TASK-053: invoiceState — played gig without invoice rows is NONE, not PARTLY_INVOICED
 
 - **owner:** backend
-- **status:** todo
+- **status:** done
 - **spec:** docs/api-contract.md "Invoicing: no label before the first invoice (owner decision 2026-11-07)"
 - **depends on:** none
 
