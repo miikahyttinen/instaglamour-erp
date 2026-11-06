@@ -844,7 +844,10 @@ test('convert to event: prefilled editable modal → event from the edited value
 
   // Prefilled from the offer (BR-105); every field editable.
   await expect(field(page, 'Alkupäivä')).toHaveValue(`${year}-09-19`);
-  await expect(field(page, 'Kokoonpano')).toHaveValue(ev);
+  // No lineup on the draft (TASK-186): "Oma kokoonpano" with the offer's event name as the custom name.
+  await expect(field(page, 'Kokoonpano')).toHaveValue('custom');
+  await expect(field(page, 'Kokoonpano').locator('option:checked')).toHaveText('Oma kokoonpano');
+  await expect(field(page, 'Kokoonpanon nimi')).toHaveValue(ev);
   await expect(field(page, 'Paikka')).toHaveValue('Venue Q, City Q');
   await expect(field(page, 'Asiakas').locator('option:checked')).toHaveText(client.name);
   await expect(field(page, 'Myyjä')).toHaveValue(partnerB);
@@ -852,9 +855,9 @@ test('convert to event: prefilled editable modal → event from the edited value
   await expect(field(page, 'Hinta (alv 0 %)')).toHaveValue('5000,00');
   await expectNoHorizontalScroll(page, 'convert modal');
 
-  // Edit: date, lineup name, producer, price.
+  // Edit: date, custom lineup name, producer, price.
   await field(page, 'Alkupäivä').fill(`${year}-09-20`);
-  await field(page, 'Kokoonpano').fill(`${ev} live`);
+  await field(page, 'Kokoonpanon nimi').fill(`${ev} live`);
   await field(page, 'Tuottaja').selectOption(partnerA);
   await field(page, 'Hinta (alv 0 %)').fill('5500');
 
