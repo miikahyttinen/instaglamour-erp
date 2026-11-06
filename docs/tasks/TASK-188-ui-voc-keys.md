@@ -1,7 +1,7 @@
 # TASK-188: UI — musician role VOC_KEYS "Vocal & Keys"
 
 - **owner:** ui
-- **status:** todo
+- **status:** done
 - **spec:** docs/api-contract.md "New musician role "Vocal & Keys" (owner request 2026-11-07)"
 - **depends on:** none
 
