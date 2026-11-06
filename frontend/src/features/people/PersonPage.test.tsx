@@ -210,6 +210,16 @@ describe('person page (UC-014 A2)', () => {
     expect(within(roles).getByRole('checkbox', { name: 'Miksaus' })).toBeChecked();
   });
 
+  it('roles: offered from reference personRoles; no Piano and no "Oma rooli" (TASK-187)', async () => {
+    renderApp(`/people/${person('Person 5').id}`);
+    const roles = await screen.findByRole('group', { name: 'Roolit' });
+    const labels = within(roles).getAllByRole('checkbox').map((c) => c.getAttribute('aria-label') ?? c.closest('label')?.textContent);
+    expect(labels).toContain('Koskettimet');
+    expect(labels).not.toContain('Piano');
+    expect(labels).not.toContain('Oma rooli');
+    expect(within(roles).getByRole('checkbox', { name: 'Koskettimet' })).toBeChecked();
+  });
+
   it('roles: a failed save shows the error; Esc restores the saved roles', async () => {
     server.use(
       http.patch('/api/people/:id', () =>

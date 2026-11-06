@@ -96,7 +96,7 @@ test('freelancer link → create PO → mark paid → event lines paid and locke
   const drums1 = await addLine(page, event1.id, person.id, 'DRUMS', 30000); // selectable
   const keys1 = await addLine(page, event1.id, person.id, 'KEYS', 10000); // goes on the other-year PO
   const zero1 = await addLine(page, event1.id, person.id, 'GUITAR', 0); // 0 € → hidden
-  await addLine(page, event1.id, other.id, 'PIANO', 70000); // another person → hidden
+  await addLine(page, event1.id, other.id, 'KEYS', 70000); // another person → hidden
   const bass2 = await addLine(page, event2.id, person.id, 'BASS', 40000); // selectable
   const backing2 = await addLine(page, event2.id, person.id, 'BACKING_VOC', 20000); // paid outside a PO
   await api(page).post(`/cost-lines/${backing2}/pay`, {});

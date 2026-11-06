@@ -170,6 +170,16 @@ describe('history descriptions (UC-013)', () => {
     expect(en(removed)).toMatch(/^Horn 2 · /);
   });
 
+  it('still labels PIANO (merged into KEYS) as "Piano" in old entries (TASK-187)', () => {
+    const added: EventHistoryEntry = {
+      ...base,
+      type: 'COST_ADDED',
+      details: { costLineId: 'l', type: 'PIANO', personId: 'p1', budgetedCents: 10000 },
+    };
+    expect(describeEntry(i18n.getFixedT('fi'), 'fi', added, ctx).lines[0]).toMatch(/^Piano · Person 1 · /);
+    expect(describeEntry(i18n.getFixedT('en'), 'en', added, ctx).lines[0]).toMatch(/^Piano · /);
+  });
+
   it('old entries keep their invoice status and prepayment texts (TASK-172)', () => {
     const entry: EventHistoryEntry = {
       ...base,

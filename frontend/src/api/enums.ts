@@ -12,7 +12,6 @@ export const MUSICIAN_ROLES = [
   'GUITAR',
   'DRUMS',
   'KEYS',
-  'PIANO',
   'MIX',
   'SAX',
   'TRUMPET',
@@ -24,10 +23,18 @@ export const MUSICIAN_ROLES = [
 export type MusicianRole = (typeof MUSICIAN_ROLES)[number];
 
 /**
- * Roles removed on 2026-10-30 (api-contract "Role cleanup"; converted to TRUMPET / SAX|TROMBONE /
- * MIX). Stored history entries keep these codes, so history still labels them (`legacyCostType`).
+ * Roles a person can have: every musician role but OTHER_ROLE, which is a cost line type only
+ * (api-contract "Piano merged into Keys; custom role is not a person role"). Mirrors
+ * `reference.costTypes.personRoles`; used only until the reference data has loaded.
  */
-export const LEGACY_COST_TYPES = ['HORN_1', 'HORN_2', 'TECHNICIAN'] as const;
+export const PERSON_ROLES = MUSICIAN_ROLES.filter((r) => r !== 'OTHER_ROLE');
+
+/**
+ * Roles removed on 2026-10-30 (api-contract "Role cleanup"; converted to TRUMPET / SAX|TROMBONE /
+ * MIX) and PIANO, merged into KEYS on 2026-11-07. Stored history entries keep these codes, so
+ * history still labels them (`legacyCostType`).
+ */
+export const LEGACY_COST_TYPES = ['HORN_1', 'HORN_2', 'TECHNICIAN', 'PIANO'] as const;
 export type LegacyCostType = (typeof LEGACY_COST_TYPES)[number];
 
 export const INTERNAL_ROLES = ['OFFICE', 'SALES', 'PRODUCTION'] as const;

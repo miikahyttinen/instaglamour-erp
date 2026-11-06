@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { MemoryRouter, useLocation } from 'react-router-dom';
@@ -194,12 +194,12 @@ describe('people register (UC-014)', () => {
   });
 
   it('shows roles as tags and the played event count', async () => {
-    db.events.people.find((p) => p.name === 'Person 5')!.roles = ['KEYS', 'PIANO'];
+    db.events.people.find((p) => p.name === 'Person 5')!.roles = ['KEYS', 'MIX'];
     await openPeople();
     const head = within(list()).getAllByRole('columnheader').map((th) => th.textContent);
     expect(head).toEqual(expect.arrayContaining(['Roolit', 'Keikkoja', 'Osakas']));
-    const tags = within(row('Person 5')).getAllByText(/Koskettimet|Piano/);
-    expect(tags.map((t) => t.textContent)).toEqual(['Koskettimet', 'Piano']);
+    const tags = within(row('Person 5')).getAllByText(/Koskettimet|Miksaus/);
+    expect(tags.map((t) => t.textContent)).toEqual(['Koskettimet', 'Miksaus']);
     tags.forEach((tag) => expect(tag).toHaveClass('tag'));
     const count = within(row('Person 5')).getByRole('cell', { name: '0' });
     expect(count).toHaveClass('num');
@@ -234,6 +234,10 @@ describe('people register (UC-014)', () => {
     expect(within(roleSelect).getAllByRole('option').map((o) => (o as HTMLOptionElement).value)).not.toEqual(
       expect.arrayContaining(['HORN_1', 'HORN_2', 'TECHNICIAN']),
     );
+    // Piano is merged into Keys; "Oma rooli" is a cost line type only, not a person role (TASK-187).
+    expect(options).toContain('Koskettimet');
+    expect(options).not.toContain('Piano');
+    expect(options).not.toContain('Oma rooli');
     await user.selectOptions(roleSelect, 'Basso');
     await waitFor(() => expect(names()).toEqual(['Person 2']));
     expect(queries.at(-1)).toContain('role=BASS');
@@ -256,6 +260,31 @@ describe('people register (UC-014)', () => {
     await openPeople('/people?role=HORN_1');
     expect(screen.getByRole('combobox', { name: 'Rooli' })).toHaveDisplayValue('Kaikki roolit');
     expect(names()).toContain('Person 1');
+  });
+
+  it('ignores role=OTHER_ROLE and role=PIANO in the URL (not person roles; TASK-187)', async () => {
+    for (const code of ['OTHER_ROLE', 'PIANO']) {
+      const queries: string[] = [];
+      server.events.on('request:start', ({ request }) => {
+        const url = new URL(request.url);
+        if (request.method === 'GET' && url.pathname === '/api/people') queries.push(url.search);
+      });
+      await openPeople(`/people?role=${code}`);
+      expect(screen.getByRole('combobox', { name: 'Rooli' })).toHaveDisplayValue('Kaikki roolit');
+      expect(names()).toContain('Person 1');
+      expect(queries.every((q) => !new URLSearchParams(q).has('role'))).toBe(true);
+      server.events.removeAllListeners();
+      cleanup();
+    }
+  });
+
+  it('role filter choices come from reference.costTypes.personRoles', async () => {
+    db.reference.costTypes.personRoles = ['VOC', 'DJ'];
+    await openPeople();
+    const roleSelect = screen.getByRole('combobox', { name: 'Rooli' });
+    await waitFor(() =>
+      expect(within(roleSelect).getAllByRole('option').map((o) => (o as HTMLOptionElement).value)).toEqual(['', 'VOC', 'DJ']),
+    );
   });
 
   it('reads the filters from the URL', async () => {
