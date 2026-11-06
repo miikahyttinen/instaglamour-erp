@@ -643,7 +643,7 @@ A **lineup** (`LineupTemplate`, UI "Kokoonpano") is the cost template of a gig: 
   **"Kokoonpanot / Lineups"** (`/settings/lineups`, default) and **"Tietojen tuonti / Data import"** (`/settings/import`, the existing import page). The old import URL redirects there.
 
 ## Piano merged into Keys; custom role is not a person role (owner decision 2026-11-07)
-- Musician role **`PIANO` is removed** from `CostType` / `MUSICIAN_ROLES` and `/api/reference.costTypes`; it is merged into **`KEYS`**, labelled FI **"Koskettimet / piano"**, EN **"Keys / piano"**.
+- Musician role **`PIANO` is removed** from `CostType` / `MUSICIAN_ROLES` and `/api/reference.costTypes`; it is merged into **`KEYS`**, label unchanged (FI **"Koskettimet"**, EN **"Keys"**).
   Migration converts `PIANO` → `KEYS` in cost lines, lineup lines and person `roles` (person roles de-duplicated, kept in `MUSICIAN_ROLES` order).
   Stored history details keep the old code; the UI still labels `PIANO` ("Piano") in history only. Seed/import accept `PIANO` and convert it to `KEYS`.
 - **`OTHER_ROLE` ("Oma rooli / Custom role") is a cost line type only, never a person role.** It stays in `MUSICIAN_ROLES` for cost lines (load-in switch, double booking, gig count), but:
