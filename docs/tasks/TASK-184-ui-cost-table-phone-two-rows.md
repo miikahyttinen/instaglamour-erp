@@ -1,7 +1,7 @@
 # TASK-184: Cost table on phone — two rows per line, no expand; PO tag replaces the lock hint
 
 - **owner:** ui
-- **status:** todo
+- **status:** done
 - **spec:** owner request 2026-11-06
 - **depends on:** TASK-183 (replaces its expand/chevron design)
 
