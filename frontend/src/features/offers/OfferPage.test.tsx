@@ -150,6 +150,7 @@ describe('offer page (UC-029, UC-031)', () => {
     await user.click(await screen.findByRole('button', { name: 'Muuta keikaksi: Event 1' }));
     const dialog = screen.getByRole('dialog', { name: 'Muuta keikaksi' });
     expect(await within(dialog).findByText('Tarkista, että tiedot ovat oikein.')).toBeInTheDocument();
+    await user.selectOptions(within(dialog).getByRole('combobox', { name: 'Kokoonpano' }), 'Template A');
     await user.click(within(dialog).getByRole('button', { name: 'Muuta keikaksi' }));
     expect(await screen.findByText(/Keikka luotu\./)).toBeInTheDocument();
     const eventLink = await screen.findByRole('link', { name: 'Keikka: Event 1' });

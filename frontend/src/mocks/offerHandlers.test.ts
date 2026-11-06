@@ -149,7 +149,7 @@ describe('offers mock (contract → Offers, BR-102…BR-106)', () => {
     expect(db.events.events.filter((g) => g.offerId === offer.id)).toHaveLength(1);
   });
 
-  it('event-draft prefills per BR-105, falls back to the caller for an inactive seller, 409s', async () => {
+  it('event-draft prefills per BR-105 (no lineup), falls back to the caller for an inactive seller, 409s', async () => {
     const offer = addMockOffer({
       clientId,
       city: 'City Y',
@@ -157,10 +157,11 @@ describe('offers mock (contract → Offers, BR-102…BR-106)', () => {
       sellerId: db.partners[1]!.id,
       disposition: 'WON',
     });
+    // No lineup prefill (owner 2026-11-07): not the event name, no lineup.
     expect(await offersApi.eventDraft(offer.id)).toMatchObject({
       startDate: offer.eventDate,
       venue: 'Venue X, City Y',
-      lineupName: 'Event 1',
+      lineupName: null,
       lineupTemplateId: null,
       clientId,
       priceCents: 50000,

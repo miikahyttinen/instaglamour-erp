@@ -264,7 +264,12 @@ export const offerHandlers = [
     if (offer.eventId) return alreadyConverted();
     const blocked = notConvertible(offer);
     if (blocked) return blocked;
-    const draft: EventCreate = eventInputFromOffer(offer, { isActive: isActivePartner, callerId: me.id });
+    const draft: EventCreate = {
+      ...eventInputFromOffer(offer, { isActive: isActivePartner, callerId: me.id }),
+      // No lineup prefill (owner 2026-11-07); the body-less convert keeps the BR-105 defaults.
+      lineupTemplateId: null,
+      lineupName: null,
+    };
     // A deleted client can't be linked (UC-027): the draft leaves it empty.
     if (!db.events.clients.some((c) => c.id === draft.clientId && c.deletedAt === null)) draft.clientId = null;
     return HttpResponse.json(draft);
