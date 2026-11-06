@@ -145,7 +145,6 @@ export function EventBasicFields({
           field="notes"
           rows={3}
           placeholder="–"
-          hint={readOnly ? undefined : t('eventForm.noCustomerData')}
           disabled={readOnly}
           onSave={(notes) => patch({ notes })}
         />

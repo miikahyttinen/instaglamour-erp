@@ -312,7 +312,7 @@ export function NewEventPage() {
             </Field>
           </div>
 
-          <Field label={t('eventForm.notes')} error={errors.notes} hint={t('eventForm.noCustomerData')}>
+          <Field label={t('eventForm.notes')} error={errors.notes}>
             {(p) => (
               <textarea {...p} rows={4} value={form.notes} onChange={(e) => set('notes', e.target.value)} />
             )}
