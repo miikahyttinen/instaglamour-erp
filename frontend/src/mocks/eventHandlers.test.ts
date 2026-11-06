@@ -248,11 +248,14 @@ describe('event mocks', () => {
     });
   });
 
-  it('PARTLY_INVOICED for played gigs and cancelled gigs with rows; upcoming and row-less cancelled gigs are NONE', async () => {
+  it('PARTLY_INVOICED for played and cancelled gigs with rows; row-less played, upcoming and row-less cancelled gigs are NONE', async () => {
     const pastYear = 2020;
     const played = await eventsApi.create(eventInput({ startDate: `${pastYear}-03-01` }));
-    expect(played).toMatchObject({ played: true, invoiceState: 'PARTLY_INVOICED' });
-    // Part sent, nothing open → still partly invoiced.
+    // Played without invoice rows → no label yet (owner decision 2026-11-07); the list filter agrees.
+    expect(played).toMatchObject({ played: true, invoiceState: 'NONE' });
+    const before = await fetch(`/api/events?year=${pastYear}&invoiceState=NONE`);
+    expect(((await before.json()) as { events: { id: string }[] }).events.map((g) => g.id)).toContain(played.id);
+    // First row: part sent, nothing open → partly invoiced.
     const part = await invoiceRowsApi.create(played.id, { description: 'Part', amountCents: 1000, status: 'SENT' });
     expect(part.invoiceState).toBe('PARTLY_INVOICED');
 

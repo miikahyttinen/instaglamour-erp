@@ -18,13 +18,13 @@ const UPCOMING = { played: false, cancelled: false };
 const CANCELLED = { played: false, cancelled: true };
 
 describe('invoicing()', () => {
-  it('no rows: nothing sent, everything uninvoiced, balance = total', () => {
+  it('no rows: nothing sent, everything uninvoiced, balance = total; played without rows → NONE', () => {
     expect(invoicing(100000, [], PLAYED)).toEqual({
       sentCents: 0,
       notSentCents: 0,
       uninvoicedCents: 100000,
       balanceCents: 100000,
-      invoiceState: 'PARTLY_INVOICED',
+      invoiceState: 'NONE',
     });
   });
 
@@ -67,8 +67,9 @@ describe('invoicing()', () => {
     ['cancelled, total 0, no rows', 0, [], CANCELLED, 'NONE'],
     ['played, total 0, no rows', 0, [], PLAYED, 'NONE'],
     ['played, total 0, SENT rows (nothing matches)', 0, [row('SENT', 1000)], PLAYED, 'NONE'],
-    // 4. PARTLY_INVOICED: played and sent < total
-    ['played, no rows', 100000, [], PLAYED, 'PARTLY_INVOICED'],
+    ['played, no rows (no label before the first invoice)', 100000, [], PLAYED, 'NONE'],
+    // 4. PARTLY_INVOICED: ≥ 1 row, played (or cancelled) and sent < total
+    ['played, one SENT row below the total', 100000, [row('SENT', 1000)], PLAYED, 'PARTLY_INVOICED'],
     ['played, SENT part', 100000, [row('SENT', 40000)], PLAYED, 'PARTLY_INVOICED'],
     ['played, SENT total − 1', 100000, [row('SENT', 99999)], PLAYED, 'PARTLY_INVOICED'],
     ['cancelled with rows, SENT part', 100000, [row('SENT', 30000)], CANCELLED, 'PARTLY_INVOICED'],
