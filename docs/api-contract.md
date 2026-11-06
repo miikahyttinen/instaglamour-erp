@@ -618,6 +618,8 @@ A **lineup** (`LineupTemplate`, UI "Kokoonpano") is the cost template of a gig: 
   `LineupLine = { type: CostType, description: string|null, defaultCents: int }` (in display order). `eventCount` = gigs (incl. deleted) linked to it.
   - `description` required for `OTHER` / `OTHER_ROLE` (`DESCRIPTION_REQUIRED`), ≤ 500 chars; `defaultCents` ≥ 0 int; ≤ 100 lines; the same type may appear several times.
   - `name` required, ≤ 500 chars, unique case-insensitively among all lineups → `name: DUPLICATE`.
+  - Line errors use field keys `lines[<index>].<field>` (e.g. `lines[2].description: DESCRIPTION_REQUIRED`, `lines[0].defaultCents: NEGATIVE_AMOUNT`, `lines[1].type: INVALID_VALUE`); more than 100 lines → `lines: TOO_LONG`.
+  - No single-lineup GET; clients use the list.
 - `GET /api/lineup-templates` → 200 `[LineupTemplate]` (all, active first, then by name).
 - `POST /api/lineup-templates` `{ name, lines? }` → 201 `LineupTemplate` (active).
 - `PATCH /api/lineup-templates/{id}` `{ name?, active?, lines? }` → 200 `LineupTemplate`. `lines` replaces the whole list. Changes never affect existing gigs.
