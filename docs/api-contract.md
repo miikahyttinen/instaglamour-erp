@@ -39,6 +39,7 @@ The UI translates `code` and the field codes; it never shows `message` to users.
 | 409 | `COST_NOT_PAYABLE` | Paying a `FUEL` line |
 | 409 | `BUDGET_NOT_EMPTY` | Copy budget into a year that already has budget numbers |
 | 409 | `CLIENT_IN_USE` | Deleting a client that gigs/offers link to |
+| 409 | `LINEUP_IN_USE` | Deleting a lineup that gigs link to |
 | 409 | `ALREADY_CONVERTED` | Converting an offer that already has a gig |
 | 409 | `CANNOT_REMOVE_SELF` / `LAST_PARTNER` | Removing own partner status / the last active partner |
 | 409 | `COST_LINE_ON_PURCHASE_ORDER` | Changing person/amount/paid state of, or deleting, a cost line on an open/paid PO; cancelling/deleting a gig with lines on an open PO |
@@ -609,7 +610,38 @@ One derived value **`invoiceState`** = the next invoicing action; first match wi
 - Automatic SALES/PRODUCTION lines (BR-021/027 seller/producer) already use partners and are unaffected.
 - UI: the person picker on these lines lists only active partners.
 
+## Lineups and settings page (owner decision 2026-11-06) — replaces template roles and default fee settings
+A **lineup** (`LineupTemplate`, UI "Kokoonpano") is the cost template of a gig: an ordered list of cost lines of **any** `CostType`
+(musician roles, `OFFICE`/`SALES`/`PRODUCTION`, expenses) with a default amount. Lineups now define all default fees.
+
+- `LineupTemplate = { id, name, active: boolean, lines: [LineupLine], eventCount: int }` where
+  `LineupLine = { type: CostType, description: string|null, defaultCents: int }` (in display order). `eventCount` = gigs (incl. deleted) linked to it.
+  - `description` required for `OTHER` / `OTHER_ROLE` (`DESCRIPTION_REQUIRED`), ≤ 500 chars; `defaultCents` ≥ 0 int; ≤ 100 lines; the same type may appear several times.
+  - `name` required, ≤ 500 chars, unique case-insensitively among all lineups → `name: DUPLICATE`.
+- `GET /api/lineup-templates` → 200 `[LineupTemplate]` (all, active first, then by name).
+- `POST /api/lineup-templates` `{ name, lines? }` → 201 `LineupTemplate` (active).
+- `PATCH /api/lineup-templates/{id}` `{ name?, active?, lines? }` → 200 `LineupTemplate`. `lines` replaces the whole list. Changes never affect existing gigs.
+- `DELETE /api/lineup-templates/{id}` → 204; 409 `LINEUP_IN_USE` when `eventCount > 0` (deactivate instead). Unknown id → 404.
+- Any signed-in partner may use these endpoints.
+- `GET /api/reference`: `lineupTemplates` = **active** lineups only, shape `{ id, name, lines: [LineupLine] }` (the old `roles` field is removed).
+  `settings` **loses** `officeDefaultCents`, `salesDefaultCents`, `productionDefaultCents` (only `loadInDeductionCents` and the existing others remain).
+- **Gig create** (`POST /api/events`): `lineupTemplateId` must be an **active** lineup (inactive/unknown → 400 `lineupTemplateId: UNKNOWN_REFERENCE`); still optional (custom `lineupName` instead).
+  - With a lineup: one cost line per lineup line, in order: `budgetedCents = defaultCents`, `description` copied; musician roles `joinsLoadIn: true`;
+    `SALES` lines get person = seller, `PRODUCTION` lines person = producer, other lines no person.
+    If the lineup has no `SALES` line one is added (seller, 0 €); same for `PRODUCTION` (producer, 0 €). No automatic `OFFICE` line.
+  - Without a lineup (custom): `OFFICE` (0 €), `SALES` (seller, 0 €) and `PRODUCTION` (producer, 0 €).
+  - Offer → gig conversion uses the same rules.
+- Settings keys `fees.office_default`, `fees.sales_default`, `fees.production_default` are **removed**.
+  Migration: every existing lineup gets `lines` = its old roles (`type` = role, `defaultCents` = old `defaultFeeCents`, in order) followed by
+  `OFFICE`, `SALES`, `PRODUCTION` lines with the old setting values (so new gigs get the same amounts as before); then the three setting rows are deleted. Template table gains `active` (default true).
+- Seed / import: `lineupTemplates[]` accept `lines: [{ type, description?, defaultCents }]`; the old `roles: [{ role, defaultFeeCents }]` is still accepted
+  and converted like the migration (roles, then OFFICE/SALES/PRODUCTION with the file's old `fees.*_default` values if given, else 0). The three old settings keys are accepted and otherwise ignored; they're no longer required.
+  Re-run rule unchanged in spirit: an existing lineup's lines are set from the file only when it has no lines yet.
+- UI: the menu item "Tietojen tuonti / Data import" is replaced by **"Asetukset / Settings"** (`/settings`), a page with two sections/tabs:
+  **"Kokoonpanot / Lineups"** (`/settings/lineups`, default) and **"Tietojen tuonti / Data import"** (`/settings/import`, the existing import page). The old import URL redirects there.
+
 ## Change log
+- 2026-11-06 – Lineups (CRUD, lines of any cost type with default amounts, active flag), default fee settings removed, Settings page (PM)
 - 2026-11-04 – SALES/PRODUCTION cost lines: person must be an active partner (400 NOT_PARTNER) (PM)
 - 2026-11-04 – Freelancer PO: no double sound-check deduction; gig-level load-in setting shown/locked in the modal (PM)
 - 2026-11-04 – Freelancer PO VAT: choice No / 13.5 % / 25.5 % (vatRateBp) (PM)

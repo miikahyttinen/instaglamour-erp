@@ -37,8 +37,8 @@ Rules only — concrete values are seeded settings (`domain-model.md`).
 ## Costs and staffing
 | ID | Rule |
 |---|---|
-| BR-020 | A gig created from a template gets one cost line per template role (no person) with the role's default fee and `joins_load_in = true`. |
-| BR-021 | Every new gig gets `OFFICE`, `SALES` (person = seller) and `PRODUCTION` (person = producer) lines with the default fees from settings. |
+| BR-020 | **Revised 2026-11-06:** a gig created from a lineup gets one cost line per lineup line (any cost type) with its default amount and description; musician roles `joins_load_in = true`, no person except SALES (seller) / PRODUCTION (producer). Lineup edits never change existing gigs. |
+| BR-021 | **Revised 2026-11-06:** every new gig has a `SALES` (seller) and `PRODUCTION` (producer) line — from the lineup, or added with 0 € if the lineup lacks one. A gig without a lineup gets `OFFICE`, `SALES`, `PRODUCTION` at 0 €. There are no default fee settings; lineups define all fees. |
 | BR-022 | Double booking applies to **performers only** (musician-role lines: musicians, Mix, DJ, Technician…). Putting a person on a musician-role line when they already have a musician-role line on another non-cancelled, non-deleted gig with overlapping dates shows a warning naming that gig; it doesn't block. Internal lines (Office, Sales, Production) and expenses never trigger or count towards the warning. |
 | BR-023 | A gig with a musician-role line without a person is "not fully staffed". |
 | BR-024 | One person may have several lines on a gig; several people may share a role (e.g. Production split). |
