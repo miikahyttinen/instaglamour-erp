@@ -23,7 +23,7 @@ import {
   PERFORMER_VAT_RATES_SETTING_KEY,
   parsePerformerVatRates,
   LOGISTICS,
-  MUSICIAN_ROLES,
+  PERSON_ROLES,
   OFFER_DISPOSITIONS,
   OFFER_SOURCES,
   TECHNICAL_SETUPS,
@@ -45,9 +45,12 @@ const singleChoice = (field: string, values: readonly string[]) => (issue: { inp
       'see seed/README.md (HOUSE_TECHNICIAN → houseTechnician: true, VAN → logistics: "OWN_VAN", OWN_PA → omit)'
     : `must be one of ${values.join(', ')}`;
 
-/** Roles a person can play (TASK-027): musician-role codes, no duplicates. Filled only when empty. */
+/**
+ * Roles a person can play (TASK-027): person-role codes (musician roles except OTHER_ROLE, which is
+ * dropped before validation), no duplicates. Filled only when empty.
+ */
 const personRoles = z
-  .array(z.enum(MUSICIAN_ROLES))
+  .array(z.enum(PERSON_ROLES))
   .refine((roles) => new Set(roles).size === roles.length, 'must not contain the same role twice')
   .optional();
 
@@ -317,13 +320,14 @@ const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'obj
 const records = (v: unknown): Record<string, unknown>[] => (Array.isArray(v) ? v.filter(isRecord) : []);
 
 /**
- * Removed roles (TASK-041): HORN_1, HORN_2 and TECHNICIAN in person roles, template roles and cost
- * line types are converted before validation, the same way the migration
- * 20261030120000_remove_legacy_roles converted stored data (`convertLegacyRole`). HORN_2 is decided
- * by the person's roles in the file (cost lines: the line's person; no person or no roles →
- * TROMBONE). A person's converted roles are de-duplicated (e.g. HORN_1 + TRUMPET → TRUMPET) unless
- * the file's list already repeats a code, which stays an error. Returns a converted copy; anything
- * that isn't in the expected shape is left for the schema to report.
+ * Removed roles: HORN_1, HORN_2 and TECHNICIAN (TASK-041) and PIANO (TASK-052) in person roles,
+ * lineup roles/lines and cost line types are converted before validation, the same way the
+ * migrations 20261030120000_remove_legacy_roles and 20261107120000_piano_keys_person_roles converted
+ * stored data (`convertLegacyRole`). HORN_2 is decided by the person's roles in the file (cost lines:
+ * the line's person; no person or no roles → TROMBONE). OTHER_ROLE is silently dropped from person
+ * roles (it is a cost line type only, 2026-11-07). A person's converted roles are de-duplicated
+ * (e.g. PIANO + KEYS → KEYS) unless the file's list already repeats a code, which stays an error.
+ * Returns a converted copy; anything that isn't in the expected shape is left for the schema to report.
  */
 function convertLegacyRoles(input: unknown): unknown {
   if (!isRecord(input)) return input;
@@ -334,18 +338,22 @@ function convertLegacyRoles(input: unknown): unknown {
     }
   }
   const convertPerson = (p: unknown): unknown => {
-    if (!isRecord(p) || !Array.isArray(p.roles) || !p.roles.some(isLegacyRole)) return p;
-    const roles: unknown[] = p.roles;
+    if (!isRecord(p) || !Array.isArray(p.roles) || !p.roles.some((r) => isLegacyRole(r) || r === 'OTHER_ROLE')) return p;
+    const roles: unknown[] = p.roles.filter((r) => r !== 'OTHER_ROLE');
     const converted = roles.map((r) => (isLegacyRole(r) ? convertLegacyRole(r, roles) : r));
     const hadDuplicates = new Set(roles).size !== roles.length;
     return { ...p, roles: hadDuplicates ? converted : [...new Set(converted)] };
   };
   const convertTemplate = (t: unknown): unknown => {
-    if (!isRecord(t) || !Array.isArray(t.roles)) return t;
-    return {
-      ...t,
-      roles: t.roles.map((r: unknown) => (isRecord(r) && isLegacyRole(r.role) ? { ...r, role: convertLegacyRole(r.role) } : r)),
-    };
+    if (!isRecord(t)) return t;
+    const out: Record<string, unknown> = { ...t };
+    if (Array.isArray(t.roles)) {
+      out.roles = t.roles.map((r: unknown) => (isRecord(r) && isLegacyRole(r.role) ? { ...r, role: convertLegacyRole(r.role) } : r));
+    }
+    if (Array.isArray(t.lines)) {
+      out.lines = t.lines.map((l: unknown) => (isRecord(l) && isLegacyRole(l.type) ? { ...l, type: convertLegacyRole(l.type) } : l));
+    }
+    return out;
   };
   const convertLine = (c: unknown): unknown => {
     if (!isRecord(c) || !isLegacyRole(c.type)) return c;

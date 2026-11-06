@@ -74,7 +74,7 @@ Partners, templates, people, clients and budget categories are referenced by ema
   "people": [                         // non-partner people; don't repeat partner names here
     { "name": "Person 1", "active": true,                                       // active default true
       "roles": ["GUITAR", "BACKING_VOC"] }  // optional; roles the person can play: musician-role codes
-                                            // (VOC … OTHER_ROLE), no duplicates; filled only when empty
+                                            // (VOC … DJ; OTHER_ROLE is dropped), no duplicates; filled only when empty
   ],
   "lineupTemplates": [                // lineups ("Kokoonpanot"): all default fees of a new event
     { "name": "Template A",           // unique, case-insensitive
@@ -258,8 +258,12 @@ stored data:
 | `HORN_1` | `TRUMPET` |
 | `TECHNICIAN` | `MIX` |
 | `HORN_2` | `SAX` if the person's `roles` **in the file** contain `SAX` but not `TROMBONE` (cost lines: the line's `person`; person roles: that person's own list), otherwise `TROMBONE` (also for legacy lineup `roles` and lines without a person) |
+| `PIANO` | `KEYS` (TASK-052, migration `20261107120000_piano_keys_person_roles`; also in lineup `lines`) |
 
-A person's converted roles are de-duplicated (`["HORN_1", "TRUMPET"]` → `["TRUMPET"]`); a list that
+`OTHER_ROLE` (custom role) is a cost line type only, never a person role: it is silently dropped from
+person `roles` (TASK-052).
+
+A person's converted roles are de-duplicated (`["PIANO", "KEYS"]` → `["KEYS"]`); a list that
 already repeats a code is still an error. Updating your `seed.local.json` to the new codes is recommended
 but not required.
 

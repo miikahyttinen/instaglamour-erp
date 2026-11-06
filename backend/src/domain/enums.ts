@@ -12,23 +12,27 @@ import type {
   TechnicalSetup,
 } from '../generated/prisma/enums.js';
 
-/** People roles that play / work the event: load-in switch and staffing check apply (BR-023, BR-026). */
-export const MUSICIAN_ROLES = [
+/**
+ * Roles a person can have (TASK-027; api-contract "Piano merged into Keys; custom role is not a person
+ * role", 2026-11-07): the musician roles without OTHER_ROLE, which is a cost line type only.
+ */
+export const PERSON_ROLES = [
   'VOC',
   'BACKING_VOC',
   'BASS',
   'GUITAR',
   'DRUMS',
   'KEYS',
-  'PIANO',
   'MIX',
   'SAX',
   'TRUMPET',
   'TROMBONE',
   'VIOLIN',
   'DJ',
-  'OTHER_ROLE',
 ] as const satisfies readonly CostType[];
+
+/** People roles that play / work the event: load-in switch and staffing check apply (BR-023, BR-026). */
+export const MUSICIAN_ROLES = [...PERSON_ROLES, 'OTHER_ROLE'] as const satisfies readonly CostType[];
 
 export const INTERNAL_ROLES = ['OFFICE', 'SALES', 'PRODUCTION'] as const satisfies readonly CostType[];
 
@@ -69,18 +73,27 @@ export function isMusicianRole(type: string): type is MusicianRole {
   return musicianRoleSet.has(type);
 }
 
-/** Person roles as the contract shows them: musician roles only, unique, in MUSICIAN_ROLES order. */
-export function normalizeRoles(roles: readonly string[]): MusicianRole[] {
+export type PersonRole = (typeof PERSON_ROLES)[number];
+
+const personRoleSet: ReadonlySet<string> = new Set(PERSON_ROLES);
+
+export function isPersonRole(code: unknown): code is PersonRole {
+  return typeof code === 'string' && personRoleSet.has(code);
+}
+
+/** Person roles as the contract shows them: person roles only, unique, in MUSICIAN_ROLES order. */
+export function normalizeRoles(roles: readonly string[]): PersonRole[] {
   const set = new Set(roles);
-  return MUSICIAN_ROLES.filter((r) => set.has(r));
+  return PERSON_ROLES.filter((r) => set.has(r));
 }
 
 /**
- * Musician roles removed on 2026-10-30 (TASK-041). The API rejects them (400 INVALID_VALUE); seed
- * and import files may still contain them and are converted like the migration
- * 20261030120000_remove_legacy_roles did with the stored data.
+ * Removed musician roles: HORN_1, HORN_2, TECHNICIAN (2026-10-30, TASK-041) and PIANO (2026-11-07,
+ * TASK-052). The API rejects them (400 INVALID_VALUE); seed and import files may still contain them
+ * and are converted like the migrations 20261030120000_remove_legacy_roles and
+ * 20261107120000_piano_keys_person_roles did with the stored data.
  */
-export const LEGACY_ROLES = ['HORN_1', 'HORN_2', 'TECHNICIAN'] as const;
+export const LEGACY_ROLES = ['HORN_1', 'HORN_2', 'TECHNICIAN', 'PIANO'] as const;
 export type LegacyRole = (typeof LEGACY_ROLES)[number];
 
 const legacyRoleSet: ReadonlySet<string> = new Set(LEGACY_ROLES);
@@ -90,11 +103,13 @@ export function isLegacyRole(code: unknown): code is LegacyRole {
 }
 
 /**
- * The current code for a removed role: HORN_1 → TRUMPET, TECHNICIAN → MIX, HORN_2 → SAX when the
- * person's roles contain SAX but not TROMBONE, otherwise TROMBONE (also when there is no person).
+ * The current code for a removed role: HORN_1 → TRUMPET, TECHNICIAN → MIX, PIANO → KEYS, HORN_2 → SAX
+ * when the person's roles contain SAX but not TROMBONE, otherwise TROMBONE (also when there is no person).
  */
-export function convertLegacyRole(code: LegacyRole, personRoles: readonly unknown[] = []): MusicianRole {
+export function convertLegacyRole(code: LegacyRole, personRoles: readonly unknown[] = []): PersonRole {
   switch (code) {
+    case 'PIANO':
+      return 'KEYS';
     case 'HORN_1':
       return 'TRUMPET';
     case 'TECHNICIAN':

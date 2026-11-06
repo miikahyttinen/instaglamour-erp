@@ -127,7 +127,11 @@ describe('PATCH /api/people/{id} roles', () => {
 
   it('rejects duplicates, non-musician codes and non-lists with roles: INVALID_VALUE', async () => {
     const id = s.world.p1.id;
-    for (const roles of [['VOC', 'VOC'], ['OFFICE'], ['FUEL'], ['NOPE'], ['HORN_1'], ['VOC', 'HORN_2'], ['TECHNICIAN'], 'VOC', null, [1], [null]]) {
+    for (const roles of [
+      ['VOC', 'VOC'], ['OFFICE'], ['FUEL'], ['NOPE'], ['HORN_1'], ['VOC', 'HORN_2'], ['TECHNICIAN'], 'VOC', null, [1], [null],
+      // TASK-052: PIANO is removed; OTHER_ROLE is never a person role
+      ['PIANO'], ['KEYS', 'PIANO'], ['OTHER_ROLE'], ['VOC', 'OTHER_ROLE'],
+    ]) {
       const res = await call(s, 'PATCH', `/api/people/${id}`, { roles });
       expect(res.statusCode, JSON.stringify(roles)).toBe(400);
       expect(res.json().error).toMatchObject({ code: 'VALIDATION_ERROR', fields: { roles: 'INVALID_VALUE' } });
@@ -160,11 +164,12 @@ describe('GET /api/people?role=', () => {
     expect(await names('role=BASS&active=false')).toEqual(['Person 2']);
     expect(await names('role=BASS&partner=false')).toEqual(['Person 1']);
     expect(await names('role=BASS&partner=true')).toEqual(['Partner A']);
-    expect(await names('role=PIANO')).toEqual([]);
+    expect(await names('role=KEYS')).toEqual([]);
   });
 
   it('rejects an unknown or non-musician role code', async () => {
-    for (const role of ['NOPE', 'OFFICE', 'FUEL', 'voc', 'HORN_1', 'HORN_2', 'TECHNICIAN']) {
+    // TASK-052: PIANO is removed (merged into KEYS); OTHER_ROLE is a cost line type, not a person role
+    for (const role of ['NOPE', 'OFFICE', 'FUEL', 'voc', 'HORN_1', 'HORN_2', 'TECHNICIAN', 'PIANO', 'OTHER_ROLE']) {
       const res = await call(s, 'GET', `/api/people?role=${role}`);
       expect(res.statusCode).toBe(400);
       expect(res.json().error).toMatchObject({ code: 'VALIDATION_ERROR', fields: { role: 'INVALID_VALUE' } });
