@@ -43,6 +43,7 @@ enum CostType {
   // Musician roles
   VOC
   BACKING_VOC
+  VOC_KEYS
   BASS
   GUITAR
   DRUMS

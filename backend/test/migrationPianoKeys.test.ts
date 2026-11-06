@@ -215,7 +215,8 @@ describe(`migration ${UNDER_TEST}`, () => {
     expect(r.history).toEqual([{ details: { costLine: { type: 'PIANO' } } }]);
 
     // The enum equals the app's list, the default still works, PIANO is rejected
-    expect(r.enumValues).toEqual([...COST_TYPES]);
+    // (VOC_KEYS was added later, TASK-054)
+    expect(r.enumValues).toEqual(COST_TYPES.filter((t) => t !== 'VOC_KEYS'));
     expect(r.enumValues).not.toContain('PIANO');
     expect(r.enumValues).toContain('OTHER_ROLE');
     expect(r.newPersonRoles).toEqual([]);

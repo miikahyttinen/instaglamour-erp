@@ -70,11 +70,11 @@ describe('GET /api/reference', () => {
     // TASK-052: PIANO merged into KEYS
     for (const removed of ['HORN_1', 'HORN_2', 'TECHNICIAN', 'PIANO']) expect(body.costTypes.musicianRoles).not.toContain(removed);
     expect(body.costTypes.musicianRoles).toEqual(
-      ['VOC', 'BACKING_VOC', 'BASS', 'GUITAR', 'DRUMS', 'KEYS', 'MIX', 'SAX', 'TRUMPET', 'TROMBONE', 'VIOLIN', 'DJ', 'OTHER_ROLE'],
+      ['VOC', 'BACKING_VOC', 'VOC_KEYS', 'BASS', 'GUITAR', 'DRUMS', 'KEYS', 'MIX', 'SAX', 'TRUMPET', 'TROMBONE', 'VIOLIN', 'DJ', 'OTHER_ROLE'],
     );
     // TASK-052: OTHER_ROLE is a cost line type only, never a person role
     expect(body.costTypes.personRoles).toEqual(
-      ['VOC', 'BACKING_VOC', 'BASS', 'GUITAR', 'DRUMS', 'KEYS', 'MIX', 'SAX', 'TRUMPET', 'TROMBONE', 'VIOLIN', 'DJ'],
+      ['VOC', 'BACKING_VOC', 'VOC_KEYS', 'BASS', 'GUITAR', 'DRUMS', 'KEYS', 'MIX', 'SAX', 'TRUMPET', 'TROMBONE', 'VIOLIN', 'DJ'],
     );
     expect(INTERNAL_ROLES).toHaveLength(3);
     expect(body.costTypes.expenseCategories[0]).toBe('FUEL');

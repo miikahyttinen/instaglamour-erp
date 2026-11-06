@@ -19,6 +19,7 @@ import type {
 export const PERSON_ROLES = [
   'VOC',
   'BACKING_VOC',
+  'VOC_KEYS',
   'BASS',
   'GUITAR',
   'DRUMS',
