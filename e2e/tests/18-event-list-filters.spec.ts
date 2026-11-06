@@ -234,8 +234,9 @@ test('Kate-%: the actual percentage is on a second line in the table, beside it 
 // status "Lähettämättä" yellow, "Lähetetty" green), an add form, and Lähetetty / Lähettämättä /
 // Laskuttamatta (= total − sent; warning when negative). No payments. Invoicing state (api-contract
 // "Invoicing v3"): ONE tag, first match wins — Avoimia laskuja (yellow, any row not sent) ·
-// Laskutettu (solid dark green, sent ≥ total) · "–" (upcoming, row-less cancelled, total 0) · Osittain
-// laskutettu (blue, played or cancelled with rows, sent < total); on the gig card and in the list "Laskutus" cell (one
+// Laskutettu (solid dark green, sent ≥ total) · "–" (no rows — also a played gig before its first
+// invoice, owner decision 2026-11-07 —, upcoming, total 0) · Osittain laskutettu (blue, played or
+// cancelled with ≥ 1 row, sent < total); on the gig card and in the list "Laskutus" cell (one
 // line), with one filter (f.invoiceState).
 test('gig statuses and "Laskutus": invoice rows, one invoicing state tag on the gig page and in the list, one filter', async ({ page }, testInfo) => {
   const { year, north } = await setup(page, testInfo);
@@ -345,14 +346,19 @@ test('gig statuses and "Laskutus": invoice rows, one invoicing state tag on the 
   await expect(stateGroup).toHaveText('–');
   expect((await apiGig()).invoiceState).toBe('NONE');
 
-  // Played gig: no rows / part sent → blue "Osittain laskutettu"; a cancelled past gig → "–". The
+  // Played gig: no rows → "–" (no label before the first invoice); part sent → blue "Osittain
+  // laskutettu"; a cancelled past gig → "–". The
   // played gig is from yesterday (organisation time zone), so the automatic final invoice (48 h
   // after the gig) cannot appear during the test — and the job is off in the e2e backend anyway
   // (INVOICE_JOB_ENABLED=false, scripts/env.mjs).
   const yesterday = new Date(Date.now() - 24 * 3600 * 1000).toLocaleDateString('sv-SE', { timeZone: 'Europe/Helsinki' });
   const played = await createEventViaApi(page, { startDate: yesterday, venue: `${venue} Played` });
   const playedGig = async () => (await api(page).get(`/events/${played.id}`)) as Record<string, unknown>;
-  expect((await playedGig()).invoiceState).toBe('PARTLY_INVOICED');
+  expect((await playedGig()).invoiceState).toBe('NONE');
+  await page.goto(`/gigs/${played.id}`);
+  await expect(pageHead(page).getByText('Soitettu', { exact: true })).toHaveClass(/tag-ok/);
+  await expect(stateTag).toHaveCount(0);
+  await expect(stateGroup).toHaveText('–');
   await api(page).post(`/events/${played.id}/invoice-rows`, { description: 'Part', amountCents: 1000, status: 'SENT' });
   await page.goto(`/gigs/${played.id}`);
   await expect(pageHead(page).getByText('Soitettu', { exact: true })).toHaveClass(/tag-ok/);
