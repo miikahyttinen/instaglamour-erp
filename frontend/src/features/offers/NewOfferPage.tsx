@@ -4,6 +4,7 @@ import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import type { FieldCode, OfferEventType, OfferSource } from '../../api/enums';
+import { isMusicianRole } from '../../api/enums';
 import { offersApi } from '../../api/endpoints';
 import type { OfferCreate } from '../../api/types';
 import { useSignedInPartner } from '../../auth/SignedInContext';
@@ -109,7 +110,16 @@ export function NewOfferPage() {
 
   const fillFromTemplate = (templateId: string) => {
     const template = reference?.lineupTemplates.find((tpl) => tpl.id === templateId);
-    if (template) set('lineup', template.roles.map((r) => costTypeLabel(t, r.role)).join('\n'));
+    // The offer lists the performers: the lineup's musician-role lines (own role = its description).
+    if (template) {
+      const performers = template.lines.filter((line) => isMusicianRole(line.type));
+      set(
+        'lineup',
+        performers
+          .map((line) => (line.type === 'OTHER_ROLE' && line.description ? line.description : costTypeLabel(t, line.type)))
+          .join('\n'),
+      );
+    }
   };
 
   const priceParsed = parseMoneyField(form.price, lang, false);

@@ -8,7 +8,9 @@ export const PARTNER_C = 'partner.c@example.com';
 // Values from backend/seed/seed.example.json (all synthetic).
 export const SEED = {
   templateB: { name: 'Template B', roleFeeCents: 20000, roles: ['VOC', 'GUITAR', 'DJ'] },
-  internalFeeCents: 10000, // office / sales / production defaults
+  // Template B's OFFICE / SALES / PRODUCTION lines (the old default fee settings, migrated into
+  // the lineup's lines; TASK-051/186). A custom lineup gets them at 0 €.
+  internalFeeCents: 10000,
   loadInDeductionCents: 1000,
 };
 

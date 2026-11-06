@@ -34,7 +34,7 @@ describe('app shell', () => {
       ['Tehtävät', 'Tehtävät', false],
       ['Tunnit', 'Tunnit 2030', true],
       ['Budjetti', 'Budjetti 2030', true],
-      ['Tietojen tuonti', 'Tietojen tuonti', false],
+      ['Asetukset', 'Asetukset', false],
       ['Vuosi', 'Vuosi 2030', true],
     ] as const) {
       await user.click(within(mainNav()).getByRole('link', { name: label }));
@@ -355,7 +355,7 @@ describe('app shell', () => {
         'Tehtävät',
         'Tunnit',
         'Budjetti',
-        'Tietojen tuonti',
+        'Asetukset',
       ]);
       for (const link of links) expect(link.querySelector('svg')).not.toBeNull();
       expect(within(mainNav()).getByRole('link', { name: 'Keikat' })).toHaveAttribute('aria-current', 'page');

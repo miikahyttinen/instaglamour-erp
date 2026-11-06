@@ -22,7 +22,7 @@ import { Notice } from '../../components/Notice';
 import { StatusTag } from '../../components/StatusTag';
 import { apiErrorMessage, apiFieldErrors, costTypeLabel } from '../../i18n/labels';
 import { useLang } from '../../i18n/useLang';
-import { centsToInput, formatMoney } from '../../lib/format';
+import { formatMoney } from '../../lib/format';
 import { parseMoneyField } from '../../lib/moneyField';
 import { useReference } from '../../reference/useReference';
 import { orderCostLines } from './costLineOrder';
@@ -446,15 +446,6 @@ function DraftCostRow({ event, people, columnCount, typeRef, onSaved, onDiscard 
     setGeneralError(null);
   };
 
-  const internalDefault = (code: CostType): number | null => {
-    const s = reference?.settings;
-    if (!s) return null;
-    if (code === 'OFFICE') return s.officeDefaultCents;
-    if (code === 'SALES') return s.salesDefaultCents;
-    if (code === 'PRODUCTION') return s.productionDefaultCents;
-    return null;
-  };
-
   const onTypeChange = (code: CostType | '') => {
     setType(code);
     clearError('type');
@@ -463,8 +454,6 @@ function DraftCostRow({ event, people, columnCount, typeRef, onSaved, onDiscard 
     if (personId !== null && !selectablePeople(people, null, code).some((p) => p.id === personId)) {
       setPersonId(null);
     }
-    const fee = code ? internalDefault(code) : null;
-    if (fee !== null && budget.trim() === '') setBudget(centsToInput(fee, lang));
   };
 
   /** The focus left the row: save, drop (completely empty) or show what is missing. */

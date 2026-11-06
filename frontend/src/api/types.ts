@@ -348,21 +348,45 @@ export interface PublicOffer {
 
 // ---------- Reference data ----------
 
-export interface TemplateRole {
-  role: CostType;
-  defaultFeeCents: Cents;
+/** One line of a lineup (cost template), in display order. */
+export interface LineupLine {
+  type: CostType;
+  /** Required for `OTHER` / `OTHER_ROLE` (`DESCRIPTION_REQUIRED`); ≤ 500 chars. */
+  description: string | null;
+  defaultCents: Cents;
 }
 
+/** `GET /api/lineup-templates` item (UI "Kokoonpano"). */
 export interface LineupTemplate {
   id: Id;
   name: string;
-  roles: TemplateRole[];
+  active: boolean;
+  lines: LineupLine[];
+  /** Gigs (incl. deleted) linked to the lineup; > 0 → can't be deleted (`LINEUP_IN_USE`). */
+  eventCount: number;
+}
+
+/** `POST /api/lineup-templates`. */
+export interface LineupTemplateCreate {
+  name: string;
+  lines?: LineupLine[];
+}
+
+/** `PATCH /api/lineup-templates/{id}`; `lines` replaces the whole list. */
+export interface LineupTemplateUpdate {
+  name?: string;
+  active?: boolean;
+  lines?: LineupLine[];
+}
+
+/** Active lineups in `GET /api/reference`. */
+export interface ReferenceLineup {
+  id: Id;
+  name: string;
+  lines: LineupLine[];
 }
 
 export interface Settings {
-  officeDefaultCents: Cents;
-  salesDefaultCents: Cents;
-  productionDefaultCents: Cents;
   loadInDeductionCents: Cents;
 }
 
@@ -379,7 +403,8 @@ export interface BudgetCategoryInput {
 
 export interface ReferenceData {
   partners: Partner[];
-  lineupTemplates: LineupTemplate[];
+  /** Active lineups only. */
+  lineupTemplates: ReferenceLineup[];
   settings: Settings;
   costTypes: {
     musicianRoles: MusicianRole[];

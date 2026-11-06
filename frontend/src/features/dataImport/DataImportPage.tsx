@@ -8,7 +8,6 @@ import { buttonClass } from '../../components/buttonClass';
 import { DataTable, type DataTableColumn } from '../../components/DataTable';
 import { Dialog } from '../../components/Dialog';
 import { Notice } from '../../components/Notice';
-import { PageHead } from '../../components/PageHead';
 import { SectionLabel } from '../../components/SectionLabel';
 import { apiErrorMessage } from '../../i18n/labels';
 import { useLang } from '../../i18n/useLang';
@@ -110,8 +109,10 @@ export function DataImportPage() {
   const totals = imported ? summaryTotals(imported) : null;
 
   return (
-    <section className="page import-page">
-      <PageHead title={t('pages.dataImport')} subtitle={t('dataImport.intro')} />
+    // Settings page tab "Data import" (/settings/import): the settings layout has the page head.
+    <div className="import-page">
+      <h2 className="visually-hidden">{t('pages.dataImport')}</h2>
+      <p className="settings-intro">{t('dataImport.intro')}</p>
 
       <section className="import-section" aria-labelledby="import-file-title">
         <SectionLabel id="import-file-title">{t('dataImport.fileTitle')}</SectionLabel>
@@ -205,7 +206,7 @@ export function DataImportPage() {
           </div>
         </Dialog>
       )}
-    </section>
+    </div>
   );
 }
 

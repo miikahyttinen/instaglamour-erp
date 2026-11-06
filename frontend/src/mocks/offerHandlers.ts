@@ -297,8 +297,7 @@ export const offerHandlers = [
     }
     const event = createEvent(db.events, input, me.id, {
       templates: db.reference.lineupTemplates,
-      settings: db.reference.settings,
-      partners: db.partners,
+          partners: db.partners,
     });
     event.offerId = offer.id;
     markConverted(db.offers, offer, event.id, me.id);

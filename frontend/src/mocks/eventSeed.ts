@@ -1,8 +1,8 @@
 // Synthetic demo events for `npm run dev:mock` and tests (BR-090: no real names or numbers).
 // Dates are in the current year so the default event list shows something.
 import type { MusicianRole } from '../api/enums';
-import type { LineupTemplate, Partner, Settings } from '../api/types';
-import type { EventState, MockClient, MockPerson, NewEventInput } from './eventStore';
+import type { Partner } from '../api/types';
+import type { EventState, LineupForCreate, MockClient, MockPerson, NewEventInput } from './eventStore';
 import {
   addAutoFinalInvoice,
   addCostLine,
@@ -65,14 +65,14 @@ export function seedClients(): MockClient[] {
 export function seedEventState(
   state: EventState,
   partners: Partner[],
-  reference: { lineupTemplates: LineupTemplate[]; settings: Settings },
+  reference: { lineupTemplates: LineupForCreate[] },
   year = new Date().getFullYear(),
 ): void {
   state.people = seedPeople(partners);
   state.clients = seedClients();
   const [a, b] = partners;
   if (!a || !b) return;
-  const ctx = { templates: reference.lineupTemplates, settings: reference.settings, partners };
+  const ctx = { templates: reference.lineupTemplates, partners };
   const [templateA, templateB] = reference.lineupTemplates;
   const base: NewEventInput = {
     startDate: `${year}-01-01`,

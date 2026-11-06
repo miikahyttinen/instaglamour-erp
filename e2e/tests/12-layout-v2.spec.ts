@@ -22,7 +22,7 @@ import { busyIds, MAIN_PAGE_NAMES, mainPages, openLoaded, type BusyIds } from '.
 // Read-only flows: nothing here changes the shared database.
 
 // Ten items: Asiakkaat after Keikat (TASK-015…139); Vuosi first, then Tarjoukset (TASK-142);
-// Ostotilaukset after Keikat (TASK-152); Tietojen tuonti last (TASK-154).
+// Ostotilaukset after Keikat (TASK-152); Asetukset last (TASK-154, TASK-186).
 const NAV: { label: string; path: string }[] = [
   { label: 'Vuosi', path: '/' },
   { label: 'Tarjoukset', path: '/offers' },
@@ -33,7 +33,8 @@ const NAV: { label: string; path: string }[] = [
   { label: 'Tehtävät', path: '/tasks' },
   { label: 'Tunnit', path: '/hours' },
   { label: 'Budjetti', path: '/budget' },
-  { label: 'Tietojen tuonti', path: '/import' },
+  // Settings replaced Data import (TASK-186); /settings opens the Lineups tab.
+  { label: 'Asetukset', path: '/settings/lineups' },
 ];
 const SIDEBAR_KEY = 'ig-sidebar'; // frontend/src/layout/sidebarState.ts
 /**

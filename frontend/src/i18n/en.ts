@@ -1,5 +1,6 @@
 // English UI texts. Must have exactly the same keys as fi.ts (checked by i18n.test.ts).
 import { en as dataImportEn } from '../features/dataImport/i18n';
+import { en as settingsEn } from '../features/settings/i18n';
 import { en as budgetEn } from '../features/budget/i18n';
 import { en as clientsEn } from '../features/clients/i18n';
 import { en as freelancerEn } from '../features/freelancer/i18n';
@@ -31,7 +32,7 @@ const en: Resources = {
     tasks: 'Tasks',
     hours: 'Hours',
     budget: 'Budget',
-    dataImport: 'Data import',
+    settings: 'Settings',
     collapse: 'Collapse menu',
     expand: 'Expand menu',
     close: 'Close menu',
@@ -83,6 +84,7 @@ const en: Resources = {
     hours: 'Hours {{year}}',
     budget: 'Budget {{year}}',
     dataImport: 'Data import',
+    settings: 'Settings',
     notFound: 'Page not found.',
     backHome: 'Go to home',
   },
@@ -96,6 +98,7 @@ const en: Resources = {
     COST_NOT_PAYABLE: 'Fuel is an estimate and cannot be marked paid.',
     BUDGET_NOT_EMPTY: 'The year already has budget numbers.',
     CLIENT_IN_USE: 'The client is in use: gigs or offers are linked to it.',
+    LINEUP_IN_USE: 'The lineup is in use: gigs are linked to it.',
     ALREADY_CONVERTED: 'A gig has already been made from this offer.',
     OFFER_NOT_CONVERTIBLE: 'Only an accepted offer whose date has not passed can be converted to a gig.',
     CANNOT_REMOVE_SELF: 'You cannot remove your own partner status.',
@@ -326,7 +329,7 @@ const en: Resources = {
     lineup: 'Lineup',
     chooseLineup: 'Choose a lineup',
     customLineup: 'Custom lineup',
-    templateRoles: 'Roles: {{roles}}',
+    lineupPreview: '{{count}} lines, default amounts total {{total}}',
     lineupName: 'Lineup name',
     venue: 'Venue',
     technicalSetup: 'Technical setup',
@@ -518,6 +521,7 @@ const en: Resources = {
   ...hoursEn,
   budget: budgetEn,
   ...dataImportEn,
+  ...settingsEn,
 };
 
 export default en;

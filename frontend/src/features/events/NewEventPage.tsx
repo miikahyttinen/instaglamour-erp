@@ -13,18 +13,20 @@ import { Field, MoneyInput } from '../../components/fields';
 import { Notice } from '../../components/Notice';
 import { PageHead } from '../../components/PageHead';
 import { SectionLabel } from '../../components/SectionLabel';
-import { apiErrorMessage, apiFieldErrors, costTypeLabel } from '../../i18n/labels';
+import { apiErrorMessage, apiFieldErrors } from '../../i18n/labels';
 import { useLang } from '../../i18n/useLang';
 import { formatMoney } from '../../lib/format';
 import { parseMoneyField } from '../../lib/moneyField';
 import { partnerOptions } from '../../reference/partners';
 import { useReference } from '../../reference/useReference';
 import { ClientSelect } from '../clients/ClientSelect';
+import { CUSTOM_LINEUP, lineupPreview } from './lineupChoice';
+import { LineupOptions } from './LineupOptions';
 import { NONE_LABEL, useLogisticsOptions, useTechnicalSetupOptions } from './eventOptions';
 import { useApplyEvent } from './queries';
 import './newEvent.css';
 
-const CUSTOM = 'custom';
+const CUSTOM = CUSTOM_LINEUP;
 
 interface FormState {
   startDate: string;
@@ -207,23 +209,11 @@ export function NewEventPage() {
           <Field
             label={t('eventForm.lineup')}
             error={errors.lineup}
-            hint={
-              template
-                ? t('eventForm.templateRoles', {
-                    roles: template.roles.map((r) => costTypeLabel(t, r.role)).join(', '),
-                  })
-                : undefined
-            }
+            hint={lineupPreview(t, lang, template)}
           >
             {(p) => (
               <select {...p} value={form.lineup} onChange={(e) => set('lineup', e.target.value)}>
-                <option value="">{t('eventForm.chooseLineup')}</option>
-                {reference?.lineupTemplates.map((tpl) => (
-                  <option key={tpl.id} value={tpl.id}>
-                    {tpl.name}
-                  </option>
-                ))}
-                <option value={CUSTOM}>{t('eventForm.customLineup')}</option>
+                <LineupOptions lineups={reference?.lineupTemplates} />
               </select>
             )}
           </Field>

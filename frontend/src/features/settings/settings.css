@@ -1,0 +1,204 @@
+/* Settings page (lineups + data import tabs). Design tokens only; mobile-first. */
+
+/* ---------- Tabs under the page head (same look as the hours tabs) ---------- */
+.settings-page .settings-tabs {
+  display: flex;
+  gap: var(--space-3);
+  margin: calc(var(--section-gap) * -1 + var(--space-2)) 0 var(--section-gap);
+  border-bottom: var(--hairline) solid var(--border);
+}
+.settings-page .settings-tabs a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap);
+  color: var(--text-muted);
+  text-decoration: none;
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  border-bottom: var(--hairline) solid transparent;
+  margin-bottom: calc(var(--hairline) * -1);
+}
+.settings-page .settings-tabs a:hover {
+  color: var(--text);
+}
+.settings-page .settings-tabs a.active {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}
+
+.settings-page .settings-intro {
+  margin: 0 0 var(--space-4);
+  color: var(--text-muted);
+  max-width: 60ch;
+}
+.settings-page .settings-intro-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+.settings-page .settings-intro-row .settings-intro {
+  margin: 0;
+}
+.settings-page .settings-load-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.settings-page .settings-load-error p {
+  margin: 0;
+}
+.settings-page .notice {
+  margin-bottom: var(--space-4);
+}
+
+/* ---------- Lineup list ---------- */
+.settings-page .lineup-new-form {
+  max-width: calc(var(--label-w) * 3);
+  margin-bottom: var(--section-gap);
+}
+.settings-page .lineup-new-form .field:first-child label {
+  margin-top: 0;
+}
+/* Inactive lineups: after the active ones, muted. */
+.settings-page .lineups-table tr.is-inactive td,
+.settings-page .lineups-table tr.is-inactive a {
+  color: var(--text-muted);
+}
+@media (min-width: 600px) {
+  .settings-page .lineups-table :is(.lineup-col-count, .lineup-col-total, .lineup-col-status) {
+    width: 1%;
+    white-space: nowrap;
+  }
+}
+
+/* ---------- Lineup editor ---------- */
+.settings-page .lineup-fields {
+  max-width: calc(var(--label-w) * 3);
+  margin-bottom: var(--space-2);
+}
+.settings-page .lineup-gig-count {
+  margin: 0 0 var(--section-gap);
+}
+.settings-page .lineup-section {
+  margin-bottom: var(--section-gap);
+}
+.settings-page .lineup-delete {
+  margin-top: var(--section-gap);
+}
+
+/* Lines table: the gig cost table's look (musician lines on their own grey, draft row on
+   --surface-2), compact two-row lines on narrow containers. */
+.settings-page .lineup-lines {
+  container: lineup-lines / inline-size;
+}
+.settings-page .lineup-lines-table tr.is-musician td {
+  background: var(--surface-musician);
+}
+.settings-page .lineup-lines-table tr.is-musician:hover td,
+.settings-page .lineup-lines-table tr.lineup-draft td {
+  background: var(--surface-2);
+}
+.settings-page .lineup-lines-table .lineup-col-amount,
+.settings-page .lineup-lines-table td.lineup-amount {
+  width: 10em;
+}
+.settings-page .lineup-lines-table .lineup-col-actions,
+.settings-page .lineup-lines-table td.lineup-actions {
+  width: 1%;
+  white-space: nowrap;
+}
+.settings-page .lineup-actions-inner {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-1);
+}
+.settings-page .lineup-remove:hover:not(:disabled) {
+  color: var(--danger-fg);
+  border-color: var(--danger-border);
+}
+.settings-page .lineup-lines > .field-error {
+  margin: var(--space-2) 0 0;
+}
+.settings-page .lineup-total {
+  display: flex;
+  justify-content: flex-end;
+  margin: var(--space-3) 0;
+}
+.settings-page .lineup-total > div {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-1);
+}
+.settings-page .lineup-total dt {
+  font-family: var(--font-mono);
+  font-weight: var(--fw-medium);
+  font-size: var(--fs-meta);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  color: var(--label);
+}
+.settings-page .lineup-total dd {
+  margin: 0;
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-bold);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Narrow (phones, ~375 px): each line is two rows — type + amount, then description + actions. */
+@container lineup-lines (max-width: 599px) {
+  .settings-page .lineup-lines-table,
+  .settings-page .lineup-lines-table tbody {
+    display: block;
+  }
+  .settings-page .lineup-lines-table thead {
+    display: none;
+  }
+  .settings-page .lineup-lines-table tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 8.5em;
+    grid-template-areas:
+      'type amount'
+      'description actions';
+    align-items: center;
+    column-gap: var(--space-2);
+    border-bottom: var(--hairline) solid var(--border);
+    padding: var(--space-1) 0;
+  }
+  .settings-page .lineup-lines-table tbody tr:last-child {
+    border-bottom: 0;
+  }
+  .settings-page .lineup-lines-table td,
+  .settings-page .lineup-lines-table tbody tr:last-child td {
+    display: block;
+    width: auto;
+    border-bottom: 0;
+    padding: var(--space-1) var(--space-2);
+  }
+  .settings-page .lineup-lines-table td.lineup-type {
+    grid-area: type;
+  }
+  .settings-page .lineup-lines-table td.lineup-amount {
+    grid-area: amount;
+  }
+  .settings-page .lineup-lines-table td.lineup-description {
+    grid-area: description;
+  }
+  .settings-page .lineup-lines-table td.lineup-actions {
+    grid-area: actions;
+  }
+  .settings-page .lineup-lines-table tr.is-musician {
+    background: var(--surface-musician);
+  }
+  .settings-page .lineup-lines-table tr.lineup-draft {
+    background: var(--surface-2);
+  }
+}

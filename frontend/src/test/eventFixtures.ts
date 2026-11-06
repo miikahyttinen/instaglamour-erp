@@ -30,7 +30,7 @@ export function addMockEvent(overrides: Partial<NewEventInput> = {}): MockEvent 
       ...overrides,
     },
     partnerA().id,
-    { templates: db.reference.lineupTemplates, settings: db.reference.settings, partners: db.partners },
+    { templates: db.reference.lineupTemplates, partners: db.partners },
   );
 }
 

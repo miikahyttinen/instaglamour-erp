@@ -625,9 +625,28 @@ partner status"; a 409 shows as an `alert` inside the dialog. Success notices: "
   on a 20 March event, Person 4 paid in the previous year) come from `seedPartnerPurchaseOrders`. Test
   helpers: `src/test/purchaseOrderFixtures.ts`.
 
+### Settings (`src/features/settings/`, TASK-186)
+
+- **Nav:** "Asetukset / Settings" (icon `Settings`, cog), the last menu item; `/settings` →
+  `/settings/lineups`. Tabs: **Kokoonpanot / Lineups** and **Tietojen tuonti / Data import**
+  (`/settings/import`, the page below). The old `/import` URL redirects there.
+- **Lineups list:** `GET /api/lineup-templates` (no single GET: the editor picks from the list) —
+  name, status tag, line count, gig count, sum of default amounts; inactive last and muted. "Uusi
+  kokoonpano" asks the name inline, `POST`s it and opens `/settings/lineups/:id`.
+- **Editor:** inline name (`PATCH name`, DUPLICATE inline), active switch (`PATCH active`), lines
+  table (`LineupLinesTable.tsx`, the cost table's look: type select with the same groups,
+  description, default amount, move up/down, remove, draft row). Every line change sends the whole
+  list (`PATCH lines`), queued so quick edits build on the newest saved list. Delete only when
+  `eventCount` is 0; 409 `LINEUP_IN_USE` in the dialog.
+- **Gig create / offer convert:** lineup select = active reference lineups + "Oma kokoonpano", with a
+  preview (lines, total default amount) under it (`events/lineupChoice.ts`, `events/LineupOptions.tsx`).
+- **Mock:** `mocks/lineupHandlers.ts`; lineups live in `db.reference.lineupTemplates` (all, incl.
+  inactive); `/api/reference` lists the active ones. Gig create follows BR-020/021 (revised).
+  Line field errors use keys `lines[i].<field>` (the UI shows the first field error).
+
 ### Data import (`src/features/dataImport/`, UC-035, BR-120/121)
 
-- **Nav:** "Tietojen tuonti / Data import" (icon `Upload`), the last menu item; route `/import`.
+- **Nav:** Settings → "Tietojen tuonti / Data import" tab; route `/settings/import` (old `/import` redirects).
 - **File:** chooser (`.json`) or drag & drop on the dashed box; shows name and size. Files over 10 MB
   are rejected in the browser (`IMPORT_MAX_BYTES`), non-`.json` drops too. The file is read as text and
   parsed with `JSON.parse` (parse error → message); the parsed document is the request body, the file

@@ -23,7 +23,11 @@ describe('new event (UC-002)', () => {
 
     await user.type(screen.getByLabelText('Alkupäivä'), `${TEST_YEAR}-06-01`);
     await user.selectOptions(screen.getByRole('combobox', { name: 'Kokoonpano' }), 'Template A');
-    expect(screen.getByText('Roolit: Laulu, Kitara, Basso, Rummut')).toBeInTheDocument();
+    // Active lineups only (Template C is inactive) + custom; a preview of the chosen one.
+    expect(
+      within(screen.getByRole('combobox', { name: 'Kokoonpano' })).getAllByRole('option').map((o) => o.textContent),
+    ).toEqual(['Valitse kokoonpano', 'Template A', 'Template B', 'Oma kokoonpano']);
+    expect(screen.getByText(/^7 riviä, oletussummat yhteensä 430,00\s€$/)).toBeInTheDocument();
     await user.type(screen.getByRole('textbox', { name: 'Paikka' }), 'Venue X');
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
     const setup = screen.getByRole('combobox', { name: 'Tekniikka' });
@@ -80,6 +84,9 @@ describe('new event (UC-002)', () => {
     await user.click(screen.getByRole('button', { name: 'Luo keikka' }));
     expect(await screen.findByRole('heading', { name: 'Lineup Z · Venue X' })).toBeInTheDocument();
     expect(lines().map((li) => li.getAttribute('aria-label'))).toEqual(['Toimisto', 'Myynti', 'Tuotanto']);
+    // No default fee settings any more: a custom lineup's lines start at 0 €.
+    const created = db.events.events.at(-1)!;
+    expect(db.events.costLines.filter((l) => l.eventId === created.id).map((l) => l.budgetedCents)).toEqual([0, 0, 0]);
     // Nothing chosen: technical setup and logistics are sent as null, house technician as false.
     expect(db.events.events.at(-1)).toMatchObject({ technicalSetup: null, logistics: null, houseTechnician: false });
   });

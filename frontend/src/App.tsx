@@ -1,13 +1,12 @@
 import { QueryClientProvider, type QueryClient } from '@tanstack/react-query';
 import { LucideProvider } from 'lucide-react';
 import { lazy, Suspense } from 'react';
-import { Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider } from './auth/AuthProvider';
 import { RequireAuth } from './auth/RequireAuth';
 import { SignInPage } from './auth/SignInPage';
 import { BudgetPage } from './features/budget/BudgetPage';
 import { ClientsRoutes } from './features/clients/ClientsRoutes';
-import { DataImportPage } from './features/dataImport/DataImportPage';
 import { EventsRoutes } from './features/events/EventsRoutes';
 import { LegacyEventsRedirect } from './features/events/LegacyEventsRedirect';
 import { FreelancerPage } from './features/freelancer/FreelancerPage';
@@ -16,6 +15,7 @@ import { OffersRoutes } from './features/offers/OffersRoutes';
 import { PublicOfferPage } from './features/offers/PublicOfferPage';
 import { PeopleRoutes } from './features/people/PeopleRoutes';
 import { PurchaseOrdersRoutes } from './features/purchaseOrders/PurchaseOrdersRoutes';
+import { SettingsRoutes } from './features/settings/SettingsRoutes';
 import { TasksPage } from './features/tasks/TasksPage';
 import { YearPage } from './features/year/YearPage';
 import { AppShell } from './layout/AppShell';
@@ -59,7 +59,9 @@ export function AppRoutes() {
         <Route path="tasks/*" element={<TasksPage />} />
         <Route path="hours/*" element={<HoursRoutes />} />
         <Route path="budget/*" element={<BudgetPage />} />
-        <Route path="import" element={<DataImportPage />} />
+        <Route path="settings/*" element={<SettingsRoutes />} />
+        {/* Old data import URL (before the settings page). */}
+        <Route path="import" element={<Navigate to="/settings/import" replace />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>

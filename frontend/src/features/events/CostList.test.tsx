@@ -295,10 +295,10 @@ describe('cost list (UC-005)', () => {
     expect(budget('Muu kulu (Stage rental)')).toHaveValue('100,00');
     expect(within(costs()).queryByRole('rowgroup', { name: 'Uusi kulurivi' })).not.toBeInTheDocument();
 
-    // Office default fee is suggested from settings; Esc drops the draft.
+    // No default fee settings (lineups define the amounts): nothing is prefilled; Esc drops the draft.
     await user.click(screen.getByRole('button', { name: '+ Lisää rivi' }));
     await user.selectOptions(draftField('combobox', 'Tyyppi'), 'Tuotanto');
-    expect(draftField('textbox', 'Budjetti')).toHaveValue('10,00');
+    expect(draftField('textbox', 'Budjetti')).toHaveValue('');
     await user.keyboard('{Escape}');
     expect(within(costs()).queryByRole('rowgroup', { name: 'Uusi kulurivi' })).not.toBeInTheDocument();
     expect(linesOf(db.events, event.id).filter((l) => l.type === 'PRODUCTION')).toHaveLength(1);
