@@ -177,7 +177,7 @@
       "priceCents": 100000,
       "costLines": [
         { "type": "VOC", "person": "Person 8", "budgetedCents": 20000 },
-        { "type": "PIANO", "person": "Person 9", "budgetedCents": 20000 },
+        { "type": "KEYS", "person": "Person 9", "budgetedCents": 20000 },
         { "type": "OFFICE", "budgetedCents": 10000 },
         { "type": "SALES", "person": "Partner E", "budgetedCents": 10000 },
         { "type": "PRODUCTION", "person": "Partner E", "budgetedCents": 10000 }

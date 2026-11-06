@@ -47,7 +47,6 @@ enum CostType {
   GUITAR
   DRUMS
   KEYS
-  PIANO
   MIX
   SAX
   TRUMPET

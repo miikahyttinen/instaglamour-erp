@@ -219,6 +219,36 @@ describe('POST /api/import', () => {
     expect(template.lines.map((r) => r.type)).toEqual(['VOC', 'TRUMPET', 'TROMBONE', 'OFFICE', 'SALES', 'PRODUCTION']);
   });
 
+  it('converts PIANO to KEYS and drops OTHER_ROLE from person roles (TASK-052)', async () => {
+    const doc = example() as Doc & {
+      people: Record<string, unknown>[];
+      lineupTemplates: Record<string, unknown>[];
+      events: { costLines?: Record<string, unknown>[] }[];
+    };
+    doc.people[2]!.roles = ['PIANO', 'OTHER_ROLE', 'KEYS', 'VOC'];
+    doc.lineupTemplates[0] = {
+      name: doc.lineupTemplates[0]!.name,
+      lines: [
+        { type: 'VOC', defaultCents: 10000 },
+        { type: 'PIANO', defaultCents: 10000 },
+        { type: 'OTHER_ROLE', description: 'Role 1', defaultCents: 10000 },
+      ],
+    };
+    const event = doc.events.find((e) => (e.costLines ?? []).length > 0)!;
+    event.costLines = [{ type: 'PIANO', budgetedCents: 10000 }, ...event.costLines!];
+    const res = await post(doc, '?filename=old.json');
+    expect(res.statusCode).toBe(200);
+    const db = testDb();
+    expect((await db.person.findFirstOrThrow({ where: { name: doc.people[2]!.name as string } })).roles).toEqual(['VOC', 'KEYS']);
+    const template = await db.lineupTemplate.findFirstOrThrow({
+      where: { name: doc.lineupTemplates[0].name as string },
+      include: { lines: { orderBy: { position: 'asc' } } },
+    });
+    expect(template.lines.map((r) => r.type)).toEqual(['VOC', 'KEYS', 'OTHER_ROLE']);
+    expect(await db.costLine.count({ where: { type: 'KEYS', personId: null } })).toBeGreaterThanOrEqual(1);
+    for (const p of await db.person.findMany()) expect(p.roles).not.toContain('OTHER_ROLE');
+  });
+
   it('rejects a document with both `events` and `gigs` and imports nothing (TASK-032)', async () => {
     const before = await snapshot();
     const res = await post({ ...example(), gigs: [] });

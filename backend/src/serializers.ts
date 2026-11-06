@@ -1,6 +1,6 @@
 /** Database rows → contract JSON shapes (docs/api-contract.md "Shared objects"). */
 import { currentYear } from './domain/dates.js';
-import { normalizeRoles, type MusicianRole } from './domain/enums.js';
+import { normalizeRoles, type PersonRole } from './domain/enums.js';
 import type { Partner, Person } from './generated/prisma/client.js';
 
 export interface PartnerDto {
@@ -34,7 +34,7 @@ export interface PersonDto {
   /** UC-032: null = never a partner. */
   partner: PersonPartner | null;
   /** TASK-027: roles the person can play, unique, in MUSICIAN_ROLES order. */
-  roles: MusicianRole[];
+  roles: PersonRole[];
   /** TASK-027: played SOLD non-deleted events with a musician-role line for the person (all years). */
   eventCount: number;
 }

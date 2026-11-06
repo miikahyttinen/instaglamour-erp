@@ -234,8 +234,9 @@ describe(`migration ${UNDER_TEST}`, () => {
     // History keeps the old codes
     expect(r.history).toEqual([{ details: { costLine: { type: 'HORN_1', from: 'TECHNICIAN' } } }]);
 
-    // The enum equals the app's list, the default still works, old codes are rejected
-    expect(r.enumValues).toEqual([...COST_TYPES]);
+    // The enum equals the app's list of that time (PIANO was removed later, TASK-052), the default
+    // still works, old codes are rejected
+    expect(r.enumValues).toEqual([...COST_TYPES].flatMap((t) => (t === 'KEYS' ? ['KEYS', 'PIANO'] : [t])));
     expect(r.enumValues).not.toContain('HORN_1');
     expect(r.newPersonRoles).toEqual([]);
     expect(r.oldCodeRejected).toBe(true);

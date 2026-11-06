@@ -40,7 +40,7 @@ import {
   LEGACY_OFFER_SETTING_KEYS,
   normalizeRoles,
   OFFER_SETTING_KEYS,
-  type MusicianRole,
+  type PersonRole,
 } from '../src/domain/enums.js';
 import { newShareToken } from '../src/offers/shareToken.js';
 import { convertOfferInTx } from '../src/offers/store.js';
@@ -257,7 +257,7 @@ export async function loadSeed(db: Db, input: unknown, options: LoadSeedOptions 
  * TASK-027: the file's roles for a person, but only when the person has none yet (app edits are never
  * overwritten). Null = nothing to fill.
  */
-function rolesToFill(current: readonly string[], fromFile: readonly string[] | undefined): MusicianRole[] | null {
+function rolesToFill(current: readonly string[], fromFile: readonly string[] | undefined): PersonRole[] | null {
   if (!fromFile || fromFile.length === 0 || current.length > 0) return null;
   return normalizeRoles(fromFile);
 }
@@ -266,12 +266,12 @@ async function upsertPersonByName(
   tx: Tx,
   name: string,
   active: boolean,
-  roles: readonly MusicianRole[] | undefined,
+  roles: readonly PersonRole[] | undefined,
   counts: SeedCounts,
 ): Promise<string> {
   const existing = await tx.person.findFirst({ where: { name }, orderBy: { createdAt: 'asc' } });
   if (existing) {
-    const data: { active?: boolean; roles?: MusicianRole[] } = {};
+    const data: { active?: boolean; roles?: PersonRole[] } = {};
     if (existing.active !== active) data.active = active;
     const fill = rolesToFill(existing.roles, roles);
     if (fill) data.roles = fill;

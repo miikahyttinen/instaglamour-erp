@@ -1,7 +1,7 @@
 /** GET /api/reference (docs/api-contract.md "Reference data"). */
 import type { FastifyInstance } from 'fastify';
 import { loadActiveBudgetCategories, toBudgetCategoryDto } from '../budget/store.js';
-import { EXPENSE_CATEGORIES, INTERNAL_ROLES, LOGISTICS, MUSICIAN_ROLES, SETTING_KEYS, TECHNICAL_SETUPS } from '../domain/enums.js';
+import { EXPENSE_CATEGORIES, INTERNAL_ROLES, LOGISTICS, MUSICIAN_ROLES, PERSON_ROLES, SETTING_KEYS, TECHNICAL_SETUPS } from '../domain/enums.js';
 import { toLineupLineDto } from '../lineups/store.js';
 import { toPartnerDto } from '../serializers.js';
 import type { AppDeps } from '../app.js';
@@ -45,6 +45,8 @@ export function referenceRoutes(app: FastifyInstance, deps: AppDeps): void {
       settings,
       costTypes: {
         musicianRoles: [...MUSICIAN_ROLES],
+        /** musicianRoles without OTHER_ROLE: the roles a person can have (2026-11-07). */
+        personRoles: [...PERSON_ROLES],
         internalRoles: [...INTERNAL_ROLES],
         expenseCategories: [...EXPENSE_CATEGORIES],
       },

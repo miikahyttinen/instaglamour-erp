@@ -10,7 +10,7 @@ import { isUuid, yearDateRange } from '../events/store.js';
 import { currentSessionTokenHash } from '../auth/session.js';
 import { isAllowedEmail } from '../auth/allowedEmail.js';
 import { grantPartner, normalizeEmail, revokePartner } from '../partners/store.js';
-import { MUSICIAN_ROLES, isMusicianRole, normalizeRoles, type MusicianRole } from '../domain/enums.js';
+import { PERSON_ROLES, isPersonRole, normalizeRoles, type PersonRole } from '../domain/enums.js';
 import { toPersonDtoWithCount, toPersonDtos } from '../people/store.js';
 import { personInclude } from '../serializers.js';
 
@@ -20,13 +20,16 @@ const listQuery = z.object({
   active: z.enum(['true', 'false', 'all'], { message: 'INVALID_VALUE' }).default('true'),
   /** UC-032: true = has an active partner, false = doesn't (never a partner or removed). */
   partner: z.enum(['true', 'false'], { message: 'INVALID_VALUE' }).optional(),
-  /** TASK-027: people whose roles include this musician role. */
-  role: z.enum(MUSICIAN_ROLES, { message: 'INVALID_VALUE' }).optional(),
+  /** TASK-027: people whose roles include this role (person roles only: OTHER_ROLE → INVALID_VALUE). */
+  role: z.enum(PERSON_ROLES, { message: 'INVALID_VALUE' }).optional(),
 });
 const createBody = z.object({ name: requiredText() });
-/** A whole-list replacement: musician-role codes, no duplicates; any problem → `roles: INVALID_VALUE`. */
-const rolesInput = z.custom<MusicianRole[]>(
-  (v) => Array.isArray(v) && v.every((r) => typeof r === 'string' && isMusicianRole(r)) && new Set(v).size === v.length,
+/**
+ * A whole-list replacement: person-role codes (musician roles except OTHER_ROLE), no duplicates; any
+ * problem → `roles: INVALID_VALUE`.
+ */
+const rolesInput = z.custom<PersonRole[]>(
+  (v) => Array.isArray(v) && v.every((r) => isPersonRole(r)) && new Set(v).size === v.length,
   { message: 'INVALID_VALUE' },
 );
 const updateBody = z.object({
@@ -83,7 +86,7 @@ export function peopleRoutes(app: FastifyInstance, deps: AppDeps): void {
     const person = await requirePerson(request.params.id);
     const warnings = body.name === undefined ? [] : await duplicateWarnings(body.name, person.id);
 
-    const data: { name?: string; active?: boolean; roles?: MusicianRole[] } = {};
+    const data: { name?: string; active?: boolean; roles?: PersonRole[] } = {};
     if (body.name !== undefined && body.name !== person.name) data.name = body.name;
     if (body.active !== undefined && body.active !== person.active) data.active = body.active;
     if (body.roles !== undefined) {
