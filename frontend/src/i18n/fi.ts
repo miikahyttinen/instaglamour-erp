@@ -345,7 +345,6 @@ const fi = {
     additionalSalesDescription: 'Lisämyynnin kuvaus',
     totalPrice: 'Kokonaishinta',
     notes: 'Muistiinpanot',
-    noCustomerData: 'Älä kirjoita laskutustietoja muistiinpanoihin.',
     create: 'Luo keikka',
     creating: 'Luodaan…',
   },

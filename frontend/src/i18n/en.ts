@@ -342,7 +342,6 @@ const en: Resources = {
     additionalSalesDescription: 'Additional sales description',
     totalPrice: 'Total price',
     notes: 'Notes',
-    noCustomerData: 'Do not put invoicing details in the notes.',
     create: 'Create gig',
     creating: 'Creating…',
   },
