@@ -502,7 +502,8 @@ test('one theme toggle switches the theme and the choice survives a reload', asy
 
 // TASK-184 (replaces TASK-183's expandable rows): on phones (cost list < 600 px) every cost line
 // shows everything in two rows in a smaller font — type · person picker · budget · actual, then
-// description · load-in switch (musician lines) · remove / PO tag — under one compact header row
+// description (under type + person, same width on every line) · load-in switch (musician lines,
+// under the budget) · remove / PO tag (under the actual) — under one compact header row
 // (Tyyppi / Henkilö / Budjetti / Toteuma). No chevron, nothing hidden.
 test.describe('phone cost rows', () => {
   test.beforeEach(async ({ page }, testInfo) => {
@@ -536,6 +537,7 @@ test.describe('phone cost rows', () => {
       const count = await lines.count();
       expect(count, `${where}: cost lines`).toBeGreaterThan(1);
       let musicianSeen = false;
+      let descriptionWidth: number | undefined;
       for (let i = 0; i < count; i++) {
         const line = lines.nth(i);
         const name = (await line.getAttribute('aria-label'))!;
@@ -548,6 +550,8 @@ test.describe('phone cost rows', () => {
         expect(await type.evaluate((e) => getComputedStyle(e).fontSize), `${where}: smaller font`).toBe('13px');
         const person = line.getByRole('combobox', { name: `Henkilö: ${name}`, exact: true });
         await expect(person).toBeVisible();
+        // The picker has room for about ten characters ("Partner A").
+        expect((await box(person)).width, `${where}: ${name} person picker width`).toBeGreaterThanOrEqual(80);
         const row1 = await Promise.all([type, person, line.locator('td.cost-budget')].map(box));
         for (const b of row1.slice(1)) {
           expect(Math.abs(mid(row1[0]) - mid(b)), `${where}: ${name} row 1 on one line`).toBeLessThanOrEqual(6);
@@ -572,6 +576,14 @@ test.describe('phone cost rows', () => {
           expect(b.y, `${where}: ${name} row 2 under row 1`).toBeGreaterThanOrEqual(row1[1].y + row1[1].height - 1);
         }
         expect(Math.abs(mid(row2[0]) - mid(row2[1])), `${where}: ${name} row 2 on one line`).toBeLessThanOrEqual(6);
+        // Row 2 looks the same on every line: the description has one width, the remove button
+        // ends under the actual column's title.
+        descriptionWidth ??= row2[0].width;
+        expect(Math.abs(row2[0].width - descriptionWidth), `${where}: ${name} description width`).toBeLessThanOrEqual(1);
+        expect(
+          Math.abs(row2[1].x + row2[1].width - (headerBoxes[3]!.x + headerBoxes[3]!.width)),
+          `${where}: ${name} remove under the actual column`,
+        ).toBeLessThanOrEqual(2);
         expect(row2[1].height, `${where}: remove ≥ 32 px`).toBeGreaterThanOrEqual(32);
         expect(row2[1].x + row2[1].width, `${where}: remove inside the line`).toBeLessThanOrEqual(lineBox.x + lineBox.width + 1);
         const loadIn = line.getByRole('switch', { name: 'Roudaus ja soundcheck', exact: true });
@@ -580,6 +592,9 @@ test.describe('phone cost rows', () => {
           const switchBox = await box(loadIn);
           expect(Math.abs(mid(switchBox) - mid(row2[1])), `${where}: ${name} load-in in row 2`).toBeLessThanOrEqual(6);
           expect(switchBox.x, `${where}: ${name} load-in after the description`).toBeGreaterThanOrEqual(row2[0].x + row2[0].width - 1);
+          expect(switchBox.x + switchBox.width, `${where}: ${name} load-in under the budget`).toBeLessThanOrEqual(
+            headerBoxes[2]!.x + headerBoxes[2]!.width + 1,
+          );
         }
       }
       expect(musicianSeen, `${where}: a musician line with the load-in switch`).toBe(true);

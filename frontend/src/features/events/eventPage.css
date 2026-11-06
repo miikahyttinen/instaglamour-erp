@@ -606,14 +606,25 @@
 /* Phones (list < 600 px, TASK-184; replaces TASK-183's expandable rows): every line shows
    everything in two rows, in a smaller font, on four columns:
      row 1: type · person picker · budget · actual (paid amount or an icon-only "Mark paid")
-     row 2: description (to the load-in switch) · load-in switch (musician lines) · remove / PO tag
-   The type cell is `display: contents`, so its type name and description are placed in the two
-   rows separately. One compact header row above the lines uses the row-1 columns. */
+     row 2: description (under type + person) · load-in switch (under budget, musician lines) ·
+            remove / PO tag (under actual)
+   Row 2 looks the same on every line. The type cell is `display: contents`, so its type name and
+   description are placed in the two rows separately. One compact header row above the lines uses
+   the row-1 columns. Room for the person picker: tighter gaps and inner padding, a fixed narrow
+   type column (ellipsis) and money columns sized to "12 345,00 €". */
 @container cost-list (max-width: 599px) {
   .event-page .cost-table {
-    --cost-phone-money-w: 6em;
+    --cost-phone-type-w: 5.25em;
+    --cost-phone-money-w: 5.5em;
     --control-h: 2rem;
+    --inline-pad-x: var(--space-1);
     font-size: 0.8125rem;
+  }
+  .event-page .cost-table select {
+    padding-right: var(--space-4);
+    background-position:
+      right 9px center,
+      right 4px center;
   }
   .event-page .cost-table :is(input, select, textarea, .btn) {
     font-size: inherit;
@@ -621,33 +632,24 @@
   .event-page .cost-table :is(thead tr, tbody tr:not(.cost-extra-row)) {
     display: grid;
     grid-template-columns:
-      minmax(0, 4fr) minmax(0, 5fr) var(--cost-phone-money-w) var(--cost-phone-money-w);
+      var(--cost-phone-type-w) minmax(0, 1fr) var(--cost-phone-money-w) var(--cost-phone-money-w);
     grid-template-areas: 'type person budget paid';
     align-items: center;
     gap: var(--space-1) var(--space-2);
-    padding: var(--space-1) var(--cell-pad-x);
+    padding: var(--space-1) var(--space-2);
   }
-  /* Row 2: the description takes what the load-in switch and the remove button / PO tag leave. */
+  /* Row 2, the same on every line: description under type + person, load-in switch under the
+     budget, remove / PO tag under the actual. */
   .event-page .cost-table tbody tr:not(.cost-extra-row) {
-    grid-template-areas:
-      'type person budget paid'
-      'desc desc desc actions';
-  }
-  .event-page .cost-table tbody.is-musician tr:not(.cost-extra-row) {
     grid-template-areas:
       'type person budget paid'
       'desc desc loadin actions';
   }
-  /* The PO tag is wider than the remove button: it gets both money columns. */
-  .event-page .cost-table tbody.has-po tr:not(.cost-extra-row) {
+  /* A PO line without a load-in switch: the tag may use both money columns (still right-aligned). */
+  .event-page .cost-table tbody.has-po:not(.is-musician) tr:not(.cost-extra-row) {
     grid-template-areas:
       'type person budget paid'
       'desc desc actions actions';
-  }
-  .event-page .cost-table tbody.is-musician.has-po tr:not(.cost-extra-row) {
-    grid-template-areas:
-      'type person budget paid'
-      'desc loadin actions actions';
   }
 
   /* Header row: Tyyppi / Henkilö / Budjetti / Toteuma over the row-1 columns. */
