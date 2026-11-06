@@ -135,6 +135,7 @@ const fi = {
   costType: {
     VOC: 'Laulu',
     BACKING_VOC: 'Taustalaulu',
+    VOC_KEYS: 'Laulu & koskettimet',
     BASS: 'Basso',
     GUITAR: 'Kitara',
     DRUMS: 'Rummut',

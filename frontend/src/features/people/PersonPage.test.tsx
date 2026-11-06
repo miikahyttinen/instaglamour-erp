@@ -220,6 +220,13 @@ describe('person page (UC-014 A2)', () => {
     expect(within(roles).getByRole('checkbox', { name: 'Koskettimet' })).toBeChecked();
   });
 
+  it('roles: "Laulu & koskettimet" (VOC_KEYS) is offered right after Taustalaulu (TASK-188)', async () => {
+    renderApp(`/people/${person('Person 5').id}`);
+    const roles = await screen.findByRole('group', { name: 'Roolit' });
+    const labels = within(roles).getAllByRole('checkbox').map((c) => c.getAttribute('aria-label') ?? c.closest('label')?.textContent);
+    expect(labels.indexOf('Laulu & koskettimet')).toBe(labels.indexOf('Taustalaulu') + 1);
+  });
+
   it('roles: a failed save shows the error; Esc restores the saved roles', async () => {
     server.use(
       http.patch('/api/people/:id', () =>

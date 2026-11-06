@@ -278,6 +278,16 @@ describe('people register (UC-014)', () => {
     }
   });
 
+  it('role filter offers VOC_KEYS "Laulu & koskettimet" after Taustalaulu (TASK-188)', async () => {
+    await openPeople();
+    const roleSelect = screen.getByRole('combobox', { name: 'Rooli' });
+    await waitFor(() => {
+      const values = within(roleSelect).getAllByRole('option').map((o) => (o as HTMLOptionElement).value);
+      expect(values.indexOf('VOC_KEYS')).toBe(values.indexOf('BACKING_VOC') + 1);
+    });
+    expect(within(roleSelect).getByRole('option', { name: 'Laulu & koskettimet' })).toBeInTheDocument();
+  });
+
   it('role filter choices come from reference.costTypes.personRoles', async () => {
     db.reference.costTypes.personRoles = ['VOC', 'DJ'];
     await openPeople();

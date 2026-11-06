@@ -272,6 +272,15 @@ describe('cost list (UC-005)', () => {
     expect(within(line('Polttoaine')).queryByRole('button', { name: /^Merkitse maksetuksi/ })).not.toBeInTheDocument();
   });
 
+  it('offers "Laulu & koskettimet" (VOC_KEYS) as a musician line type (TASK-188)', async () => {
+    const event = addMockEvent();
+    const { user } = await openEvent(event.id);
+    await user.click(screen.getByRole('button', { name: '+ Lisää rivi' }));
+    const musicians = within(draftField('combobox', 'Tyyppi')).getAllByRole('group')[0]!;
+    const labels = within(musicians).getAllByRole('option').map((o) => o.textContent);
+    expect(labels.indexOf('Laulu & koskettimet')).toBe(labels.indexOf('Taustalaulu') + 1);
+  });
+
   it('adds lines (OTHER needs a description), edits them inline and removes them', async () => {
     const event = addMockEvent();
     const { user } = await openEvent(event.id);
