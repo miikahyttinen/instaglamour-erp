@@ -7,7 +7,7 @@ import { db } from '../../mocks/data';
 import { addCostLine, linesOf } from '../../mocks/eventStore';
 import { server } from '../../mocks/server';
 import { errorResponse } from '../../mocks/util';
-import { addMockEvent, mockLine, partnerA, staffMockEvent, TEST_YEAR } from '../../test/eventFixtures';
+import { addMockEvent, mockLine, partnerA, person, staffMockEvent, TEST_YEAR } from '../../test/eventFixtures';
 import { renderApp, signInMock } from '../../test/renderApp';
 import { orderCostLines } from './costLineOrder';
 
@@ -61,6 +61,7 @@ describe('cost list (UC-005)', () => {
   it('warns about double booking, naming the other event, without blocking', async () => {
     const other = addMockEvent({ startDate: `${TEST_YEAR}-06-01`, venue: 'Venue Y', lineupTemplateId: db.reference.lineupTemplates[1]!.id });
     staffMockEvent(other, ['Person 1']);
+    person('Person 1').roles.push('BASS'); // the bass picker lists only bassists (TASK-185)
     const event = addMockEvent({ sellerId: db.partners[2]!.id, producerId: db.partners[2]!.id });
     const { user } = await openEvent(event.id);
     await user.selectOptions(within(line('Basso')).getByRole('combobox'), 'Person 1');
@@ -452,6 +453,7 @@ describe('cost list: new line as an inline draft row (TASK-179)', () => {
   it('saves with a person and shows the double-booking warning', async () => {
     const other = addMockEvent({ startDate: `${TEST_YEAR}-06-01`, venue: 'Venue Y', lineupTemplateId: db.reference.lineupTemplates[1]!.id });
     staffMockEvent(other, ['Person 1']);
+    person('Person 1').roles.push('BASS'); // the bass picker lists only bassists (TASK-185)
     const event = addMockEvent({ sellerId: db.partners[2]!.id, producerId: db.partners[2]!.id });
     const { user } = await openEvent(event.id);
     await user.click(screen.getByRole('button', { name: '+ Lisää rivi' }));

@@ -429,6 +429,7 @@ const en: Resources = {
     newPerson: '+ New person…',
     newPersonName: "New person's name",
     createPerson: 'Add person',
+    newPersonRoleFailed: 'The person was added, but saving their role failed: {{error}}',
     description: 'Description',
     budgeted: 'Budget',
     loadIn: 'Load-in & soundcheck',

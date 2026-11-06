@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import type { CostType } from '../../api/enums';
-import { isMusicianRole, isPartnerOnlyType } from '../../api/enums';
+import { isMusicianRole } from '../../api/enums';
 import { costLinesApi } from '../../api/endpoints';
 import type {
   CostLine,
@@ -248,7 +248,7 @@ function CostLineItem({ line, people, readOnly, columnCount, onResult }: LinePro
               value={line.personId}
               people={people}
               disabled={po !== null}
-              partnersOnly={isPartnerOnlyType(line.type)}
+              type={line.type}
               onSave={(personId) => update({ personId })}
             />
           )}
@@ -458,9 +458,10 @@ function DraftCostRow({ event, people, columnCount, typeRef, onSaved, onDiscard 
   const onTypeChange = (code: CostType | '') => {
     setType(code);
     clearError('type');
-    // SALES / PRODUCTION: drop a chosen person who isn't an active partner (it would be rejected).
-    if (code && isPartnerOnlyType(code) && personId !== null) {
-      if (!selectablePeople(people, null, true).some((p) => p.id === personId)) setPersonId(null);
+    // Drop a chosen person the new type doesn't offer: not an active partner on SALES /
+    // PRODUCTION (it would be rejected), or without the role on a musician line (TASK-185).
+    if (personId !== null && !selectablePeople(people, null, code).some((p) => p.id === personId)) {
+      setPersonId(null);
     }
     const fee = code ? internalDefault(code) : null;
     if (fee !== null && budget.trim() === '') setBudget(centsToInput(fee, lang));
@@ -574,7 +575,7 @@ function DraftCostRow({ event, people, columnCount, typeRef, onSaved, onDiscard 
             label={`${t('costs.person')}: ${label}`}
             value={personId}
             people={people}
-            partnersOnly={type !== '' && isPartnerOnlyType(type)}
+            type={type}
             error={errors.personId}
             onChange={(id) => {
               setPersonId(id);

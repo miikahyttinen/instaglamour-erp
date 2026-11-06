@@ -85,7 +85,7 @@ describe('cost lines on a purchase order (BR-118)', () => {
     const { user } = await openEvent(event.id);
     // Someone else put the guitar line on a PO meanwhile.
     server.use(http.patch('/api/cost-lines/:id', () => onPurchaseOrder('PERSON-2-0099')));
-    await user.selectOptions(within(line('Kitara')).getByRole('combobox', { name: 'Henkilö: Kitara' }), 'Person 2');
+    await user.selectOptions(within(line('Kitara')).getByRole('combobox', { name: 'Henkilö: Kitara' }), 'Person 3');
     expect((await within(line('Kitara')).findAllByText(/Rivi on ostotilauksella PERSON-2-0099/)).length).toBeGreaterThan(0);
   });
 });
