@@ -236,7 +236,10 @@ describe(`migration ${UNDER_TEST}`, () => {
 
     // The enum equals the app's list of that time (PIANO was removed later, TASK-052), the default
     // still works, old codes are rejected
-    expect(r.enumValues).toEqual([...COST_TYPES].flatMap((t) => (t === 'KEYS' ? ['KEYS', 'PIANO'] : [t])));
+    // and VOC_KEYS was added later, TASK-054
+    expect(r.enumValues).toEqual(
+      COST_TYPES.filter((t) => t !== 'VOC_KEYS').flatMap((t) => (t === 'KEYS' ? ['KEYS', 'PIANO'] : [t])),
+    );
     expect(r.enumValues).not.toContain('HORN_1');
     expect(r.newPersonRoles).toEqual([]);
     expect(r.oldCodeRejected).toBe(true);
