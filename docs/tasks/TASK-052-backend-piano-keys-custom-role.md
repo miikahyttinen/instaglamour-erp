@@ -1,7 +1,7 @@
 # TASK-052: PIANO → KEYS; OTHER_ROLE not a person role
 
 - **owner:** backend
-- **status:** todo
+- **status:** done
 - **spec:** docs/api-contract.md "Piano merged into Keys; custom role is not a person role (owner decision 2026-11-07)"
 - **depends on:** none
 

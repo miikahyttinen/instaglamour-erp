@@ -1,7 +1,7 @@
 # TASK-187: UI — Keys/piano label, PIANO removed; custom role not offered as a person role
 
 - **owner:** ui
-- **status:** todo
+- **status:** done
 - **spec:** docs/api-contract.md "Piano merged into Keys; custom role is not a person role (owner decision 2026-11-07)"
 - **depends on:** none (build against the contract)
 
