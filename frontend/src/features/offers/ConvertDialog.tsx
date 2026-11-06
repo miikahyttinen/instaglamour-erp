@@ -58,12 +58,13 @@ const FIELD_TO_CONTROL: Record<string, keyof FormState> = {
 };
 
 function formFromDraft(draft: EventCreate, lang: Language, reference: ReferenceData | undefined): FormState {
-  // Only active lineups can be chosen; any other draft lineup falls back to a custom name.
+  // The lineup is not prefilled (BR-105, owner 2026-11-07): the partner picks an active lineup or
+  // "Custom lineup" and types its name. A draft name (e.g. the offer's event name) is never used.
   const template = reference?.lineupTemplates.find((tpl) => tpl.id === draft.lineupTemplateId);
   return {
     startDate: draft.startDate,
-    lineup: template ? template.id : CUSTOM_LINEUP,
-    lineupName: draft.lineupName ?? '',
+    lineup: template ? template.id : '',
+    lineupName: '',
     venue: draft.venue,
     clientId: draft.clientId ?? null,
     price: centsToInput(draft.priceCents, lang),
@@ -74,7 +75,7 @@ function formFromDraft(draft: EventCreate, lang: Language, reference: ReferenceD
 
 /**
  * Convert to event (UC-031): a small modal prefilled from `GET /api/offers/{id}/event-draft`
- * (BR-105) with the key fields editable and a yellow review tag. Confirm sends the draft merged
+ * (BR-105) with the key fields editable (lineup must be chosen) and a yellow review tag. Confirm sends the draft merged
  * with the edited fields to `POST /api/offers/{id}/convert`. The other event fields are edited
  * later on the event page.
  */

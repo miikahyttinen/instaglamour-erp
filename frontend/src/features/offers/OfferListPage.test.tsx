@@ -283,6 +283,7 @@ describe('offer list (UC-028)', () => {
     await user.click(screen.getByRole('button', { name: 'Muuta keikaksi: Event 1' }));
     const dialog = screen.getByRole('dialog', { name: 'Muuta keikaksi' });
     expect(await within(dialog).findByRole('textbox', { name: 'Paikka' })).toHaveValue('Venue X, City Y');
+    await user.selectOptions(within(dialog).getByRole('combobox', { name: 'Kokoonpano' }), 'Template A');
     await user.click(within(dialog).getByRole('button', { name: 'Muuta keikaksi' }));
 
     expect(await screen.findByText('Keikka luotu tarjouksesta Event 1.', { exact: false })).toBeInTheDocument();

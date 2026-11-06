@@ -770,6 +770,11 @@ async function expectConvertModal(page: Page): Promise<void> {
 const convertModal = (page: Page) => page.getByRole('dialog', { name: 'Muuta keikaksi' });
 const field = (page: Page, label: string) => convertModal(page).getByLabel(label, { exact: true });
 const confirmButton = (page: Page) => convertModal(page).getByRole('button', { name: 'Muuta keikaksi' });
+/** The lineup is not prefilled (TASK-189): pick "Oma kokoonpano" and type its name. */
+async function chooseCustomLineup(page: Page, name: string): Promise<void> {
+  await field(page, 'Kokoonpano').selectOption({ label: 'Oma kokoonpano' });
+  await field(page, 'Kokoonpanon nimi').fill(name);
+}
 
 test('convert to event: prefilled editable modal → event from the edited values, offer WON / ACCEPTED, links both ways, one request on a double click', async ({ page }, testInfo) => {
   const tag = tagOf(testInfo);
@@ -821,11 +826,11 @@ test('convert to event: prefilled editable modal → event from the edited value
     await expect(offerRow(page, ev).getByRole('button', { name: `Muuta keikaksi: ${ev}` })).toBeVisible();
   }
 
-  // API draft per BR-105.
+  // API draft per BR-105: no lineup prefill (owner 2026-11-07, TASK-055).
   expect(await api(page).get(`/offers/${offer.id}/event-draft`)).toMatchObject({
     startDate: `${year}-09-19`,
     venue: 'Venue Q, City Q',
-    lineupName: ev,
+    lineupName: null,
     lineupTemplateId: null,
     clientId: client.id,
     priceCents: 500000,
@@ -844,16 +849,34 @@ test('convert to event: prefilled editable modal → event from the edited value
 
   // Prefilled from the offer (BR-105); every field editable.
   await expect(field(page, 'Alkupäivä')).toHaveValue(`${year}-09-19`);
-  // No lineup on the draft (TASK-186): "Oma kokoonpano" with the offer's event name as the custom name.
-  await expect(field(page, 'Kokoonpano')).toHaveValue('custom');
-  await expect(field(page, 'Kokoonpano').locator('option:checked')).toHaveText('Oma kokoonpano');
-  await expect(field(page, 'Kokoonpanon nimi')).toHaveValue(ev);
+  // No lineup prefill (TASK-189): no choice and no custom name field until the partner picks one.
+  await expect(field(page, 'Kokoonpano')).toHaveValue('');
+  await expect(field(page, 'Kokoonpano').locator('option:checked')).toHaveText('Valitse kokoonpano');
+  await expect(field(page, 'Kokoonpanon nimi')).toHaveCount(0);
   await expect(field(page, 'Paikka')).toHaveValue('Venue Q, City Q');
   await expect(field(page, 'Asiakas').locator('option:checked')).toHaveText(client.name);
   await expect(field(page, 'Myyjä')).toHaveValue(partnerB);
   await expect(field(page, 'Tuottaja')).toHaveValue(partnerB);
   await expect(field(page, 'Hinta (alv 0 %)')).toHaveValue('5000,00');
   await expectNoHorizontalScroll(page, 'convert modal');
+
+  // A lineup must be chosen: no choice → REQUIRED on the select; "Oma kokoonpano" with an empty
+  // name (never the event name) → REQUIRED on the name. Nothing is sent.
+  const early: string[] = [];
+  const onEarly = (r: { method: () => string; url: () => string }) => {
+    if (r.method() === 'POST' && r.url().endsWith(`/api/offers/${offer.id}/convert`)) early.push(r.url());
+  };
+  page.on('request', onEarly);
+  await confirmButton(page).click();
+  await expect(field(page, 'Kokoonpano')).toHaveAttribute('aria-invalid', 'true');
+  await expect(field(page, 'Kokoonpano')).toHaveAccessibleDescription('Pakollinen tieto.');
+  await field(page, 'Kokoonpano').selectOption({ label: 'Oma kokoonpano' });
+  await expect(field(page, 'Kokoonpanon nimi')).toHaveValue('');
+  await confirmButton(page).click();
+  await expect(field(page, 'Kokoonpanon nimi')).toHaveAccessibleDescription('Pakollinen tieto.');
+  await expect(convertModal(page)).toBeVisible();
+  page.off('request', onEarly);
+  expect(early).toHaveLength(0);
 
   // Edit: date, custom lineup name, producer, price.
   await field(page, 'Alkupäivä').fill(`${year}-09-20`);
@@ -1006,6 +1029,7 @@ test('convert modal: Cancel / Esc close it; validation errors next to the fields
   await expect(field(page, 'Paikka')).toHaveAttribute('aria-invalid', 'true');
   expect(writes).toEqual([]);
   await field(page, 'Paikka').fill('Venue R');
+  await chooseCustomLineup(page, cancelled.eventName);
   const created = page.waitForResponse((r) => r.url().endsWith(`/api/offers/${cancelled.id}/convert`));
   await confirmButton(page).click();
   const { event } = await (await created).json();
@@ -1020,6 +1044,7 @@ test('convert modal: Cancel / Esc close it; validation errors next to the fields
   await actions.getByRole('button', { name: `Muuta keikaksi: ${stale.eventName}` }).click();
   await expectConvertModal(page);
   const other = await api(page).post(`/offers/${stale.id}/convert`);
+  await chooseCustomLineup(page, stale.eventName);
   const conflict = page.waitForResponse((r) => r.url().endsWith(`/api/offers/${stale.id}/convert`));
   await confirmButton(page).click();
   expect((await conflict).status()).toBe(409);
@@ -1034,6 +1059,7 @@ test('convert modal: Cancel / Esc close it; validation errors next to the fields
   await actions.getByRole('button', { name: `Muuta keikaksi: ${lost.eventName}` }).click();
   await expectConvertModal(page);
   await setDisposition(page, lost.id, 'LOST_PRICE');
+  await chooseCustomLineup(page, lost.eventName);
   const refused = page.waitForResponse((r) => r.url().endsWith(`/api/offers/${lost.id}/convert`));
   await confirmButton(page).click();
   expect((await refused).status()).toBe(409);
@@ -1089,6 +1115,7 @@ test('convert modal: a zero-delay double click on "Muuta keikaksi" sends one req
   const actions = page.getByRole('group', { name: 'Tarjouksen toiminnot' });
   await actions.getByRole('button', { name: `Muuta keikaksi: ${offer.eventName}` }).click();
   await expectConvertModal(page);
+  await chooseCustomLineup(page, offer.eventName);
   await confirmButton(page).dblclick();
   await expect(convertModal(page)).toHaveCount(0);
   await expect(actions.getByRole('link', { name: `Keikka: ${offer.eventName}` })).toBeVisible();

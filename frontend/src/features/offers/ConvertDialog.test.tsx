@@ -45,9 +45,10 @@ describe('convert offer to event in a modal (UC-031, BR-105)', () => {
     expect(review).toHaveTextContent('Tarkista, että tiedot ovat oikein.');
     expect(review.querySelector('.tag-warn')).not.toBeNull();
     expect(d.getByLabelText('Alkupäivä')).toHaveValue(offer.eventDate);
-    // No lineup on the draft: "Custom lineup" with the offer's name.
-    expect(d.getByRole('combobox', { name: 'Kokoonpano' })).toHaveDisplayValue('Oma kokoonpano');
-    expect(d.getByRole('textbox', { name: 'Kokoonpanon nimi' })).toHaveValue('Event 1');
+    // The lineup is not prefilled (BR-105, 2026-11-07): no choice, no custom name field.
+    expect(d.getByRole('combobox', { name: 'Kokoonpano' })).toHaveValue('');
+    expect(d.getByRole('combobox', { name: 'Kokoonpano' })).toHaveDisplayValue('Valitse kokoonpano');
+    expect(d.queryByRole('textbox', { name: 'Kokoonpanon nimi' })).not.toBeInTheDocument();
     expect(d.getByRole('textbox', { name: 'Paikka' })).toHaveValue('Venue X, City Y');
     expect(d.getByRole('combobox', { name: 'Asiakas' })).toHaveValue(clientId);
     expect(d.getByRole('textbox', { name: 'Hinta (alv 0 %)' })).toHaveValue('1234,56');
@@ -73,8 +74,10 @@ describe('convert offer to event in a modal (UC-031, BR-105)', () => {
     const venue = d.getByRole('textbox', { name: 'Paikka' });
     await user.clear(venue);
     await user.type(venue, 'Venue Q');
+    await user.selectOptions(d.getByRole('combobox', { name: 'Kokoonpano' }), 'Oma kokoonpano');
     const lineup = d.getByRole('textbox', { name: 'Kokoonpanon nimi' });
-    await user.clear(lineup);
+    // The custom name starts empty: the offer's event name is never put there.
+    expect(lineup).toHaveValue('');
     await user.type(lineup, 'Lineup Q');
     await user.selectOptions(d.getByRole('combobox', { name: 'Tuottaja' }), partnerB().id);
     await user.selectOptions(d.getByRole('combobox', { name: 'Asiakas' }), '');
@@ -99,7 +102,13 @@ describe('convert offer to event in a modal (UC-031, BR-105)', () => {
     expect(screen.getByRole('link', { name: 'Avaa keikka' })).toHaveAttribute('href', `/gigs/${events[0]!.id}`);
     expect(offer).toMatchObject({ eventId: events[0]!.id, disposition: 'WON' });
     await waitFor(() => expect(requests).toHaveLength(1));
-    expect(requests[0]).toMatchObject({ startDate: offer.eventDate, venue: 'Venue Q', priceCents: 200000 });
+    expect(requests[0]).toMatchObject({
+      startDate: offer.eventDate,
+      venue: 'Venue Q',
+      priceCents: 200000,
+      lineupTemplateId: null,
+      lineupName: 'Lineup Q',
+    });
   });
 
   it('lineup select: active lineups + custom, a preview, and the gig gets the lineup (no custom name)', async () => {
@@ -163,12 +172,46 @@ describe('convert offer to event in a modal (UC-031, BR-105)', () => {
     expect(d.getByRole('button', { name: 'Peruuta' })).toHaveFocus();
   });
 
+  it('requires a lineup choice, and a name for a custom lineup; nothing is sent until then', async () => {
+    const offer = addMockOffer({ clientId, eventName: 'Event 1' });
+    const requests: string[] = [];
+    server.events.on('request:start', ({ request }) => {
+      if (request.method === 'POST' && request.url.endsWith(`/api/offers/${offer.id}/convert`)) requests.push(request.url);
+    });
+    const { user } = await openConvert(offer.id);
+    const d = within(dialog());
+    const select = d.getByRole('combobox', { name: 'Kokoonpano' });
+    await user.click(d.getByRole('button', { name: 'Muuta keikaksi' }));
+    expect(select).toHaveAttribute('aria-invalid', 'true');
+    expect(select).toHaveAccessibleDescription('Pakollinen tieto.');
+
+    await user.selectOptions(select, 'Oma kokoonpano');
+    const name = d.getByRole('textbox', { name: 'Kokoonpanon nimi' });
+    expect(name).toHaveValue('');
+    await user.click(d.getByRole('button', { name: 'Muuta keikaksi' }));
+    expect(name).toHaveAccessibleDescription('Pakollinen tieto.');
+    expect(select).not.toHaveAttribute('aria-invalid');
+    await user.type(name, '   ');
+    await user.click(d.getByRole('button', { name: 'Muuta keikaksi' }));
+    expect(name).toHaveAccessibleDescription('Pakollinen tieto.');
+    expect(requests).toHaveLength(0);
+    expect(offer.eventId).toBeNull();
+
+    await user.clear(name);
+    await user.type(name, 'Lineup Q');
+    await user.click(d.getByRole('button', { name: 'Muuta keikaksi' }));
+    expect(await screen.findByText(/Keikka luotu\./)).toBeInTheDocument();
+    server.events.removeAllListeners();
+    expect(requests).toHaveLength(1);
+    expect(db.events.events.find((g) => g.offerId === offer.id)).toMatchObject({ lineupName: 'Lineup Q' });
+  });
+
   it('shows client-side and server field errors next to the fields', async () => {
     const offer = addMockOffer({ clientId, eventName: 'Event 1' });
     const { user } = await openConvert(offer.id);
     const d = within(dialog());
+    await user.selectOptions(d.getByRole('combobox', { name: 'Kokoonpano' }), 'Oma kokoonpano');
     await user.clear(d.getByRole('textbox', { name: 'Paikka' }));
-    await user.clear(d.getByRole('textbox', { name: 'Kokoonpanon nimi' }));
     await user.click(d.getByRole('button', { name: 'Muuta keikaksi' }));
     expect(d.getByRole('textbox', { name: 'Paikka' })).toHaveAccessibleDescription('Pakollinen tieto.');
     expect(d.getByRole('textbox', { name: 'Kokoonpanon nimi' })).toHaveAccessibleDescription('Pakollinen tieto.');
@@ -196,6 +239,7 @@ describe('convert offer to event in a modal (UC-031, BR-105)', () => {
     const offer = addMockOffer({ clientId, eventName: 'Event 1' });
     const { user } = await openConvert(offer.id);
     offer.eventId = '00000000-0000-4000-8000-00000000ffff'; // converted elsewhere meanwhile
+    await user.selectOptions(within(dialog()).getByRole('combobox', { name: 'Kokoonpano' }), 'Template A');
     await user.click(within(dialog()).getByRole('button', { name: 'Muuta keikaksi' }));
     const d = within(dialog());
     expect(await d.findByText(/Tarjouksesta on jo tehty keikka\./)).toBeInTheDocument();
@@ -225,6 +269,7 @@ describe('convert offer to event in a modal (UC-031, BR-105)', () => {
     const offer = addMockOffer({ clientId, eventName: 'Event 1' });
     const { user } = await openConvert(offer.id);
     offer.disposition = 'LOST_PRICE'; // changed elsewhere meanwhile
+    await user.selectOptions(within(dialog()).getByRole('combobox', { name: 'Kokoonpano' }), 'Template A');
     await user.click(within(dialog()).getByRole('button', { name: 'Muuta keikaksi' }));
     const d = within(dialog());
     expect(
