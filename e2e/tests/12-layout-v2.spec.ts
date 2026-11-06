@@ -500,75 +500,104 @@ test('one theme toggle switches the theme and the choice survives a reload', asy
   );
 });
 
-// TASK-183: on phones (cost list < 600 px) every cost line is one row in a smaller font —
-// "Type · Person" (ellipsis), budget, actual, chevron — under one compact header row on the same
-// columns; the chevron opens a detail area under the row without moving the row itself.
+// TASK-184 (replaces TASK-183's expandable rows): on phones (cost list < 600 px) every cost line
+// shows everything in two rows in a smaller font — type · person picker · budget · actual, then
+// description (under type + person, same width on every line) · load-in switch (musician lines,
+// under the budget) · remove / PO tag (under the actual) — under one compact header row
+// (Tyyppi / Henkilö / Budjetti / Toteuma). No chevron, nothing hidden.
 test.describe('phone cost rows', () => {
   test.beforeEach(async ({ page }, testInfo) => {
     test.skip(!isMobile(testInfo), 'Phone layout (< 600 px cost list).');
     await signIn(page);
   });
 
-  test('each cost line is one row (summary · budget · actual · chevron); the chevron expands only its line', async ({ page }) => {
+  test('each cost line is two rows (type · person · budget · actual / description · load-in · remove), no chevron', async ({ page }) => {
     const { eventId } = await busyIds(page);
     const table = page.getByRole('table', { name: 'Kulut ja miehitys' });
+    const box = async (l: Locator) => (await l.boundingBox())!;
+    const mid = (b: { y: number; height: number }) => b.y + b.height / 2;
     for (const w of [375, 414]) {
       const where = `${w} px`;
       await page.setViewportSize({ width: w, height: 812 });
       await openLoaded(page, `/gigs/${eventId}`);
       await expect(table).toBeVisible();
       await expectNoHorizontalScroll(page, `event page, ${where}`);
+      await expect(table.getByRole('button', { name: /^Näytä lisätiedot/ })).toHaveCount(0);
+      await expect(table.locator('[aria-expanded]')).toHaveCount(0);
 
-      // Header row: Tyyppi / Budjetti / Toteuma on one line.
+      // Header row: Tyyppi / Henkilö / Budjetti / Toteuma on one line.
       const header = (name: string) => table.getByRole('columnheader', { name, exact: true });
-      const headerBoxes = await Promise.all(['Tyyppi', 'Budjetti', 'Toteuma'].map((n) => header(n).boundingBox()));
+      const headerBoxes = await Promise.all(['Tyyppi', 'Henkilö', 'Budjetti', 'Toteuma'].map((n) => header(n).boundingBox()));
       for (const b of headerBoxes) expect(b, `${where}: header visible`).not.toBeNull();
-      expect(Math.abs(headerBoxes[0]!.y - headerBoxes[1]!.y), `${where}: one header row`).toBeLessThanOrEqual(2);
-      expect(Math.abs(headerBoxes[0]!.y - headerBoxes[2]!.y), `${where}: one header row`).toBeLessThanOrEqual(2);
+      for (const b of headerBoxes.slice(1)) {
+        expect(Math.abs(headerBoxes[0]!.y - b!.y), `${where}: one header row`).toBeLessThanOrEqual(2);
+      }
 
       const lines = costLines(page);
       const count = await lines.count();
       expect(count, `${where}: cost lines`).toBeGreaterThan(1);
+      let musicianSeen = false;
+      let descriptionWidth: number | undefined;
       for (let i = 0; i < count; i++) {
-        const row = lines.nth(i).locator('tr').first();
-        const rowBox = (await row.boundingBox())!;
-        expect(rowBox.height, `${where}: line ${i} is one row`).toBeLessThanOrEqual(48);
-        const summary = row.locator('td.cost-summary');
-        await expect(summary).toBeVisible();
-        expect(await summary.evaluate((e) => getComputedStyle(e).fontSize), `${where}: smaller font`).toBe('13px');
-        const toggle = row.getByRole('button', { name: /^Näytä lisätiedot: / });
-        await expect(toggle).toHaveAttribute('aria-expanded', 'false');
-        const toggleBox = (await toggle.boundingBox())!;
-        expect(toggleBox.height, `${where}: chevron ≥ 32 px`).toBeGreaterThanOrEqual(32);
-        expect(toggleBox.x + toggleBox.width, `${where}: chevron inside the row`).toBeLessThanOrEqual(rowBox.x + rowBox.width + 1);
-        // Detail cells are hidden while collapsed.
-        await expect(row.locator('td.cost-person')).toBeHidden();
-        // The budget amount ends under its right-aligned title.
-        const budget = (await row.locator('td.cost-budget').boundingBox())!;
-        expect(
-          Math.abs(budget.x + budget.width - (headerBoxes[1]!.x + headerBoxes[1]!.width)),
-          `${where}: budget under its title`,
-        ).toBeLessThanOrEqual(2);
-      }
+        const line = lines.nth(i);
+        const name = (await line.getAttribute('aria-label'))!;
+        const lineBox = await box(line);
+        expect(lineBox.height, `${where}: ${name} is two rows (≤ 80 px)`).toBeLessThanOrEqual(80);
 
-      // Expand the first line: the detail area opens under it; the row itself stays put.
-      const first = lines.first();
-      const row = first.locator('tr').first();
-      const budgetBefore = (await row.locator('td.cost-budget').boundingBox())!;
-      const toggle = row.getByRole('button', { name: /^Näytä lisätiedot: / });
-      await toggle.click();
-      await expect(toggle).toHaveAttribute('aria-expanded', 'true');
-      await expect(first.locator('td.cost-person select')).toBeVisible();
-      await expect(first.locator('td.cost-type')).toBeVisible();
-      const budgetAfter = (await row.locator('td.cost-budget').boundingBox())!;
-      expect(Math.abs(budgetAfter.y - budgetBefore.y), `${where}: row unchanged`).toBeLessThanOrEqual(1);
-      expect(Math.abs(budgetAfter.height - budgetBefore.height), `${where}: row unchanged`).toBeLessThanOrEqual(1);
-      // Only that line expands.
-      await expect(lines.nth(1).locator('td.cost-person')).toBeHidden();
-      await expectNoHorizontalScroll(page, `event page, expanded line, ${where}`);
-      await toggle.click();
-      await expect(toggle).toHaveAttribute('aria-expanded', 'false');
-      await expect(first.locator('td.cost-person')).toBeHidden();
+        // Row 1: type, person picker, budget, actual — on one line.
+        const type = line.locator('.cost-type-name');
+        await expect(type).toBeVisible();
+        expect(await type.evaluate((e) => getComputedStyle(e).fontSize), `${where}: smaller font`).toBe('13px');
+        const person = line.getByRole('combobox', { name: `Henkilö: ${name}`, exact: true });
+        await expect(person).toBeVisible();
+        // The picker has room for about ten characters ("Partner A").
+        expect((await box(person)).width, `${where}: ${name} person picker width`).toBeGreaterThanOrEqual(80);
+        const row1 = await Promise.all([type, person, line.locator('td.cost-budget')].map(box));
+        for (const b of row1.slice(1)) {
+          expect(Math.abs(mid(row1[0]) - mid(b)), `${where}: ${name} row 1 on one line`).toBeLessThanOrEqual(6);
+        }
+        // The budget amount ends under its right-aligned title.
+        expect(
+          Math.abs(row1[2].x + row1[2].width - (headerBoxes[2]!.x + headerBoxes[2]!.width)),
+          `${where}: ${name} budget under its title`,
+        ).toBeLessThanOrEqual(2);
+        const pay = line.getByRole('button', { name: `Merkitse maksetuksi: ${name}`, exact: true });
+        if (await pay.count()) {
+          const payBox = await box(pay);
+          expect(payBox.height, `${where}: pay button ≥ 32 px`).toBeGreaterThanOrEqual(32);
+          expect(Math.abs(mid(payBox) - mid(row1[0])), `${where}: ${name} pay button in row 1`).toBeLessThanOrEqual(6);
+        }
+
+        // Row 2: description, (load-in switch), remove — under row 1.
+        const description = line.getByRole('textbox', { name: `Kuvaus: ${name}`, exact: true });
+        const remove = line.getByRole('button', { name: 'Poista', exact: true });
+        const row2 = await Promise.all([description, remove].map(box));
+        for (const b of row2) {
+          expect(b.y, `${where}: ${name} row 2 under row 1`).toBeGreaterThanOrEqual(row1[1].y + row1[1].height - 1);
+        }
+        expect(Math.abs(mid(row2[0]) - mid(row2[1])), `${where}: ${name} row 2 on one line`).toBeLessThanOrEqual(6);
+        // Row 2 looks the same on every line: the description has one width, the remove button
+        // ends under the actual column's title.
+        descriptionWidth ??= row2[0].width;
+        expect(Math.abs(row2[0].width - descriptionWidth), `${where}: ${name} description width`).toBeLessThanOrEqual(1);
+        expect(
+          Math.abs(row2[1].x + row2[1].width - (headerBoxes[3]!.x + headerBoxes[3]!.width)),
+          `${where}: ${name} remove under the actual column`,
+        ).toBeLessThanOrEqual(2);
+        expect(row2[1].height, `${where}: remove ≥ 32 px`).toBeGreaterThanOrEqual(32);
+        expect(row2[1].x + row2[1].width, `${where}: remove inside the line`).toBeLessThanOrEqual(lineBox.x + lineBox.width + 1);
+        const loadIn = line.getByRole('switch', { name: 'Roudaus ja soundcheck', exact: true });
+        if (await loadIn.count()) {
+          musicianSeen = true;
+          const switchBox = await box(loadIn);
+          expect(Math.abs(mid(switchBox) - mid(row2[1])), `${where}: ${name} load-in in row 2`).toBeLessThanOrEqual(6);
+          expect(switchBox.x, `${where}: ${name} load-in after the description`).toBeGreaterThanOrEqual(row2[0].x + row2[0].width - 1);
+          expect(switchBox.x + switchBox.width, `${where}: ${name} load-in under the budget`).toBeLessThanOrEqual(
+            headerBoxes[2]!.x + headerBoxes[2]!.width + 1,
+          );
+        }
+      }
+      expect(musicianSeen, `${where}: a musician line with the load-in switch`).toBe(true);
     }
   });
 });

@@ -37,7 +37,13 @@ describe('cost lines on a purchase order (BR-118)', () => {
     expect(within(voc).getByRole('switch', { name: 'Roudaus ja soundcheck' })).toBeDisabled();
     expect(within(voc).queryByRole('button', { name: /^Merkitse maksetuksi/ })).not.toBeInTheDocument();
     expect(within(voc).queryByRole('button', { name: 'Poista' })).not.toBeInTheDocument();
-    expect(within(voc).getAllByText(`Ostotilauksella ${po.number}`).length).toBeGreaterThan(0);
+    // TASK-184: the tag sits in the actions cell in place of the remove button and replaces the
+    // "Ostotilauksella …" text; the lock hint is its title.
+    expect(tag.closest('td')).toHaveClass('cost-actions');
+    expect(tag).toHaveAttribute('title', `Ostotilauksella ${po.number}`);
+    expect(voc.querySelector('td.cost-type .cost-po-tag')).toBeNull();
+    expect(voc.querySelector('.cost-po-hint')).toBeNull();
+    expect(within(voc).queryByText(`Ostotilauksella ${po.number}`)).not.toBeInTheDocument();
 
     // The description stays editable.
     const description = within(voc).getByRole('textbox', { name: 'Kuvaus: Laulu' });

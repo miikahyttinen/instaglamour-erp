@@ -64,6 +64,36 @@ describe('cost table widths and amount alignment (TASK-182)', () => {
   });
 });
 
+describe('cost table on phones: two rows per line (TASK-184)', () => {
+  const phone = () => containerBlock('max-width: 599px');
+
+  it('row 1 = type · person · budget · actual, row 2 = description · load-in · remove / PO tag', () => {
+    const block = phone();
+    expect(block).toMatch(/grid-template-areas: 'type person budget paid';/);
+    // Row 2 is the same on every line: description under type + person, switch under the budget,
+    // remove / PO tag under the actual; only a PO line without a switch lets the tag use both.
+    expect(block).toMatch(
+      /tbody tr:not\(\.cost-extra-row\) \{\s*grid-template-areas:\s*'type person budget paid'\s*'desc desc loadin actions';/,
+    );
+    expect(block).toMatch(
+      /tbody\.has-po:not\(\.is-musician\) tr:not\(\.cost-extra-row\) \{\s*grid-template-areas:\s*'type person budget paid'\s*'desc desc actions actions';/,
+    );
+    expect(block.match(/'desc /g)).toHaveLength(2);
+    // Fixed narrow type column, so the person column lines up on every line.
+    expect(block).toMatch(/grid-template-columns:\s*var\(--cost-phone-type-w\) minmax\(0, 1fr\) var\(--cost-phone-money-w\) var\(--cost-phone-money-w\);/);
+    // The type cell's parts go to different rows.
+    expect(block).toMatch(/td\.cost-type \{\s*display: contents;/);
+    expect(block).toMatch(/\.cost-type-name \{\s*grid-area: type;/);
+    expect(block).toMatch(/\.cost-description,\s*\.event-page \.cost-table \.cost-type-description \{\s*grid-area: desc;/);
+    expect(block).toMatch(/font-size: 0\.8125rem;/);
+  });
+
+  it('no chevron / detail area rules are left, and the load-in label is only visually hidden', () => {
+    expect(css).not.toMatch(/is-expanded|cost-toggle|cost-summary|cost-phone-only|cost-po-hint/);
+    expect(phone()).toMatch(/\.cost-loadin-switch \.inline-switch > span \{\s*position: absolute;[\s\S]*?clip: rect\(0 0 0 0\);/);
+  });
+});
+
 describe('gig page columns (owner request)', () => {
   it('the page is a size container; two columns (costs ~60 % left) only from a 1080 px wide page', () => {
     expect(css).toMatch(/\.event-page \{\s*container: event-page \/ inline-size;/);

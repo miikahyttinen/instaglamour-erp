@@ -435,7 +435,6 @@ const en: Resources = {
     unpaid: 'Not paid',
     markPaid: 'Mark paid',
     markPaidLabel: 'Mark paid: {{line}}',
-    showDetails: 'Show details: {{line}}',
     actualAmount: 'Actual amount',
     removeTitle: 'Remove cost line',
     removeConfirm: 'Remove the line {{line}}?',

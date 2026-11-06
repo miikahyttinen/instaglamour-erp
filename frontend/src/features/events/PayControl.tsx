@@ -121,7 +121,7 @@ export function PayControl({ inputLabel, buttonLabel, initialCents, onPay }: Pro
         aria-label={buttonLabel}
         onClick={open}
       >
-        {/* Phones (TASK-183): only the check icon; wider: only the text. */}
+        {/* Phones (TASK-183 / TASK-184): only the check icon; wider: only the text. */}
         <Check className="btn-icon cost-pay-icon" aria-hidden="true" />
         <span className="cost-pay-text">{t('costs.markPaid')}</span>
       </button>

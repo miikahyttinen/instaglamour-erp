@@ -1,4 +1,4 @@
-import { createEventViaApi, costField, costLine, expandCostLine, suffix } from './events';
+import { createEventViaApi, costField, costLine, suffix } from './events';
 import {
   api,
   CURRENT_YEAR,
@@ -312,10 +312,12 @@ test('freelancer link → create PO → mark paid → event lines paid and locke
   await page.goto(`/gigs/${event1.id}`);
   await expect(pageHead(page)).toBeVisible();
   const drums = costLine(page, 'Rummut');
-  // Phones: the PO tag and the locked person / load-in controls are in the line's detail area.
-  await expandCostLine(page, 'Rummut');
+  // TASK-184: the PO tag replaces the remove button (actions cell); its title is the lock hint.
   const tagLink = drums.getByRole('link', { name: `Ostotilaus ${po.number}` });
   await expect(tagLink).toBeVisible();
+  await expect(tagLink).toHaveAttribute('title', `Ostotilauksella ${po.number}`);
+  await expect(drums.locator('td.cost-actions').getByRole('link', { name: `Ostotilaus ${po.number}` })).toBeVisible();
+  await expect(drums.getByText(`Ostotilauksella ${po.number}`, { exact: true })).toHaveCount(0);
   await expect(tagLink).toHaveAttribute('href', `/purchase-orders/${paid.id}`);
   await expect(drums).toContainText(fiMoney(drumsAmount));
   await expect(costField(page, 'Budjetti', 'Rummut')).toBeDisabled();
