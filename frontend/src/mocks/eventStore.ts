@@ -129,8 +129,9 @@ export interface InvoiceFigures {
  * Derived invoicing figures of a gig (api-contract "Invoicing v3"): sent = Σ SENT, notSent =
  * Σ NOT_SENT, uninvoiced = max(total − sent − notSent, 0), balance = total − sent.
  * State, first match wins: any NOT_SENT row → OPEN_INVOICES; sent ≥ total > 0 → FULLY_INVOICED;
- * played (SOLD, start date passed) or cancelled with rows, and sent < total → PARTLY_INVOICED;
- * otherwise NONE (upcoming not fully sent, cancelled without rows, total 0 with only SENT rows).
+ * at least one row, played (SOLD, start date passed) or cancelled, and sent < total → PARTLY_INVOICED;
+ * otherwise NONE (no rows at all — also a played gig before its first invoice, owner decision
+ * 2026-11-07 —, upcoming not fully sent, total 0 with only SENT rows).
  */
 export function invoiceFigures(
   rows: Pick<InvoiceRow, 'status' | 'amountCents'>[],
@@ -147,7 +148,7 @@ export function invoiceFigures(
     ? 'OPEN_INVOICES'
     : total > 0 && sentCents >= total
       ? 'FULLY_INVOICED'
-      : (played || (cancelled && rows.length > 0)) && sentCents < total
+      : rows.length > 0 && (played || cancelled) && sentCents < total
         ? 'PARTLY_INVOICED'
         : 'NONE';
   return {

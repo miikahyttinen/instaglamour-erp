@@ -27,11 +27,13 @@ export interface Invoicing {
  * Sums and the derived invoiceState, first match wins:
  * 1. OPEN_INVOICES — any NOT_SENT row
  * 2. FULLY_INVOICED — sent ≥ total and total > 0
- * 3. NONE — upcoming (not played yet), or cancelled / total 0 without rows
- * 4. PARTLY_INVOICED — played (BR-010: SOLD, start date before today in Helsinki) and sent < total.
- *    A cancelled event that has (SENT) rows but sent < total is also PARTLY_INVOICED: rule 3 only
- *    makes cancelled events without rows NONE.
- * Anything else (e.g. a total-0 event with only SENT rows) → NONE.
+ * 3. NONE — no invoice rows at all (also a played event, e.g. during the 48 h before the automatic
+ *    Loppulasku: no label before the first invoice, owner decision 2026-11-07), upcoming (not
+ *    played yet), or total 0
+ * 4. PARTLY_INVOICED — at least one invoice row (here: only SENT rows), sent < total, and the event
+ *    is played (BR-010: SOLD, start date before today in Helsinki) or cancelled.
+ * Anything else (e.g. a total-0 event with only SENT rows) → NONE. The `?invoiceState=` filter uses
+ * this same derivation.
  */
 export function invoicing(
   totalPriceCents: number,
@@ -63,7 +65,7 @@ function invoiceState(
   // Amounts are > 0 (DB check), so notSentCents > 0 ⇔ some NOT_SENT row.
   if (notSentCents > 0) return 'OPEN_INVOICES';
   if (totalPriceCents > 0 && sentCents >= totalPriceCents) return 'FULLY_INVOICED';
-  if (sentCents < totalPriceCents && (event.played || (event.cancelled && rowCount > 0))) return 'PARTLY_INVOICED';
+  if (rowCount > 0 && sentCents < totalPriceCents && (event.played || event.cancelled)) return 'PARTLY_INVOICED';
   return 'NONE';
 }
 

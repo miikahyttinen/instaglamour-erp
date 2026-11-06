@@ -308,7 +308,8 @@ describe('event list (UC-003)', () => {
       return t ? `${[...t.classList].find((k) => k.startsWith('tag-'))} ${t.textContent}` : c.textContent;
     };
     expect(tag('Venue Zero')).toBe('–');
-    expect(tag('Venue New')).toBe('tag-info Osittain laskutettu');
+    // Played without invoice rows: no label before the first invoice (owner decision 2026-11-07).
+    expect(tag('Venue New')).toBe('–');
     expect(tag('Venue Open')).toBe('tag-yellow Avoimia laskuja');
     expect(tag('Venue Partly')).toBe('tag-info Osittain laskutettu');
     expect(tag('Venue Full')).toBe('tag-ok-strong Laskutettu');
@@ -318,7 +319,7 @@ describe('event list (UC-003)', () => {
     expect(cell('Venue Full', 'Laskuttamatta').querySelector('.event-balance-negative')).toHaveTextContent(/[-−]200,00\s€/);
 
     await user.click(within(table()).getByRole('button', { name: /^Laskutus/ }));
-    expect(venues()).toEqual(['Venue Zero', 'Venue Open', 'Venue New', 'Venue Partly', 'Venue Full']);
+    expect(venues()).toEqual(['Venue Zero', 'Venue New', 'Venue Open', 'Venue Partly', 'Venue Full']);
 
     // One filter button in the Laskutus header; no Maksut filter.
     expect(within(table()).queryByRole('button', { name: 'Suodata: Maksut' })).not.toBeInTheDocument();
@@ -338,7 +339,7 @@ describe('event list (UC-003)', () => {
     await user.click(within(popover).getByRole('checkbox', { name: 'Osittain laskutettu' }));
     await user.click(within(popover).getByRole('checkbox', { name: 'Laskutettu' }));
     await user.click(within(popover).getByRole('button', { name: 'OK' }));
-    expect(venues().sort()).toEqual(['Venue Full', 'Venue New', 'Venue Partly']);
+    expect(venues().sort()).toEqual(['Venue Full', 'Venue Partly']);
     expect(url()).toContain('f.invoiceState=PARTLY_INVOICED');
     expect(url()).toContain('FULLY_INVOICED');
     expect(within(table()).getByRole('button', { name: 'Suodata: Laskutus' })).toHaveAccessibleDescription('Suodatin käytössä');

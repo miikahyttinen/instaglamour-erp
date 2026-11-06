@@ -10,7 +10,8 @@ describe('invoiceFigures', () => {
   it.each([
     // [case, total, rows, state] — a played gig
     ['total 0, no rows', 0, rows(), 'NONE'],
-    ['no rows', 100000, rows(), 'PARTLY_INVOICED'],
+    ['no rows (no label before the first invoice)', 100000, rows(), 'NONE'],
+    ['one sent row below the total', 100000, rows(['SENT', 1000]), 'PARTLY_INVOICED'],
     ['not sent only', 100000, rows(['NOT_SENT', 100000]), 'OPEN_INVOICES'],
     ['part sent', 100000, rows(['SENT', 40000]), 'PARTLY_INVOICED'],
     ['sent + not sent (open wins)', 100000, rows(['SENT', 40000], ['NOT_SENT', 60000]), 'OPEN_INVOICES'],
