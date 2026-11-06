@@ -4,11 +4,10 @@
  */
 import { z } from 'zod';
 import { findActiveClient } from '../clients/store.js';
-import { defaultCostLines } from '../domain/costLines.js';
+import { defaultCostLines, type LineupLineInput } from '../domain/costLines.js';
 import { dateFromIso } from '../domain/dates.js';
-import type { CostType, Prisma } from '../generated/prisma/client.js';
+import type { Prisma } from '../generated/prisma/client.js';
 import { parseInput, validationError, type FieldCode } from '../http/errors.js';
-import type { FeeSettings } from '../routes/reference.js';
 import { flag, isoDate, logistics, LONG_TEXT_MAX, money, optionalText, requiredText, technicalSetup } from './schemas.js';
 import { isUuid, logHistory, type Tx } from './store.js';
 
@@ -32,15 +31,14 @@ export const eventCreateBody = z.object({
 
 export type EventCreateInput = z.infer<typeof eventCreateBody>;
 
-/** A validated EventCreate with what the insert needs (template roles, seller/producer persons). */
+/** A validated EventCreate with what the insert needs (lineup lines, seller/producer persons). */
 export interface PreparedEvent {
   input: EventCreateInput;
-  template: { id: string; name: string; roles: { role: CostType; defaultFeeCents: number }[] } | null;
+  /** The picked (active) lineup with its lines in order; null = custom lineup. */
+  template: { id: string; name: string; lines: LineupLineInput[] } | null;
   sellerPersonId: string;
   producerPersonId: string;
 }
-
-export type EventFees = Pick<FeeSettings, 'officeDefaultCents' | 'salesDefaultCents' | 'productionDefaultCents'>;
 
 /** Parse and validate a EventCreate body; 400 VALIDATION_ERROR exactly as `POST /api/events`. */
 export async function prepareEventCreate(db: Tx, rawBody: unknown): Promise<PreparedEvent> {
@@ -51,13 +49,22 @@ export async function prepareEventCreate(db: Tx, rawBody: unknown): Promise<Prep
 
   let template: PreparedEvent['template'] = null;
   if (input.lineupTemplateId) {
-    template = isUuid(input.lineupTemplateId)
+    const lineup = isUuid(input.lineupTemplateId)
       ? await db.lineupTemplate.findUnique({
           where: { id: input.lineupTemplateId },
-          include: { roles: { orderBy: { position: 'asc' } } },
+          include: { lines: { orderBy: { position: 'asc' } } },
         })
       : null;
-    if (!template) fields.lineupTemplateId = 'UNKNOWN_REFERENCE';
+    // Only active lineups can be picked (api-contract "Lineups and settings page").
+    if (lineup?.active) {
+      template = {
+        id: lineup.id,
+        name: lineup.name,
+        lines: lineup.lines.map((l) => ({ type: l.type, description: l.description, defaultCents: l.defaultCents })),
+      };
+    } else {
+      fields.lineupTemplateId = 'UNKNOWN_REFERENCE';
+    }
   } else if (!input.lineupName) {
     fields.lineupName = 'REQUIRED';
   }
@@ -80,14 +87,13 @@ export async function prepareEventCreate(db: Tx, rawBody: unknown): Promise<Prep
 export async function insertEvent(
   tx: Prisma.TransactionClient,
   event: PreparedEvent,
-  options: { partnerId: string; fees: EventFees; offerId?: string },
+  options: { partnerId: string; offerId?: string },
 ): Promise<string> {
   const { input, template } = event;
   const lines = defaultCostLines({
-    templateRoles: template?.roles ?? [],
+    lineupLines: template?.lines ?? null,
     sellerPersonId: event.sellerPersonId,
     producerPersonId: event.producerPersonId,
-    fees: options.fees,
   });
   const createdBase = Date.now();
   const created = await tx.event.create({

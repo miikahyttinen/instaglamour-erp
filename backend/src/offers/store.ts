@@ -5,7 +5,7 @@
 import { isoFromDate, todayIso } from '../domain/dates.js';
 import { OFFER_SETTING_KEYS } from '../domain/enums.js';
 import type { Offer, OfferDisposition, OfferEvent, OfferEventType, Prisma } from '../generated/prisma/client.js';
-import { insertEvent, type EventCreateInput, type EventFees, type PreparedEvent } from '../events/create.js';
+import { insertEvent, type EventCreateInput, type PreparedEvent } from '../events/create.js';
 import { isUuid, type Tx } from '../events/store.js';
 import { AppError, notFound } from '../http/errors.js';
 import { imageVersion, publicReferenceImageUrl, type PublicReferenceSource } from '../references/store.js';
@@ -272,7 +272,7 @@ export async function requireConvertibleOffer(tx: Tx, offerId: string, options: 
  */
 export async function convertOfferInTx(
   tx: Prisma.TransactionClient,
-  input: { offerId: string; partnerId: string; fees: EventFees; event?: PreparedEvent; historical?: boolean },
+  input: { offerId: string; partnerId: string; event?: PreparedEvent; historical?: boolean },
 ): Promise<{ eventId: string }> {
   const locked = await tx.$queryRaw<{ id: string }[]>`
     SELECT "id"::text FROM "offer" WHERE "id" = ${input.offerId}::uuid FOR UPDATE`;
@@ -285,7 +285,7 @@ export async function convertOfferInTx(
     const { draft, partnerPersonId } = await offerEventDraft(tx, offer, input.partnerId);
     event = { input: draft, template: null, sellerPersonId: partnerPersonId, producerPersonId: partnerPersonId };
   }
-  const eventId = await insertEvent(tx, event, { partnerId: input.partnerId, fees: input.fees, offerId: offer.id });
+  const eventId = await insertEvent(tx, event, { partnerId: input.partnerId, offerId: offer.id });
 
   if (offer.disposition !== 'WON') {
     await tx.offer.update({ where: { id: offer.id }, data: { disposition: 'WON' } });

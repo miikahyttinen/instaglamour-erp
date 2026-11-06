@@ -1,6 +1,5 @@
 /** Event endpoints (UC-002…UC-004, UC-007, UC-009, UC-010, UC-012, UC-013, UC-025). Synthetic data only. */
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { SETTING_KEYS } from '../src/domain/enums.js';
 import { closeTestDb, login, resetDb, testDb } from './helpers.js';
 import {
   call,
@@ -8,7 +7,6 @@ import {
   FEES,
   eventBody,
   history,
-  setSetting,
   startSession,
   UNKNOWN_ID,
   type Session,
@@ -95,8 +93,8 @@ describe('POST /api/events', () => {
     expect(again.costLines.map((l: { id: string }) => l.id)).toEqual(event.costLines.map((l: { id: string }) => l.id));
   });
 
-  it('uses current settings for the internal lines', async () => {
-    await setSetting(SETTING_KEYS.officeDefault, 20000);
+  it('uses the current lines of the lineup (amounts come from the lineup, not settings)', async () => {
+    await testDb().lineupLine.updateMany({ where: { templateId: s.world.templateA.id, type: 'OFFICE' }, data: { defaultCents: 20000 } });
     const event = await createEvent(s);
     expect(event.costLines.find((l: { type: string }) => l.type === 'OFFICE').budgetedCents).toBe(20000);
   });
@@ -281,9 +279,10 @@ describe('GET /api/events', () => {
       eventCount: 3,
       cancelledCount: 1,
       soldEventsSumCents: 100000 + 200000 + 100000 + 20000,
-      budgetedCostsCents: 3 * 80000 + 30000,
+      // Template A events cost 80000 each; the custom-lineup event's OFFICE/SALES/PRODUCTION lines are 0.
+      budgetedCostsCents: 3 * 80000,
       actualCostsCents: 0,
-      marginBudgetCents: 420000 - 270000,
+      marginBudgetCents: 420000 - 240000,
       marginActualCents: 420000,
     };
     for (const q of ['year=2026', 'year=2026&status=CANCELLED', 'year=2026&q=nothing', 'year=2026&deleted=true&status=ALL']) {

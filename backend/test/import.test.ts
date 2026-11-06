@@ -16,7 +16,7 @@ async function snapshot() {
     person: await db.person.count(),
     partner: await db.partner.count(),
     template: await db.lineupTemplate.count(),
-    templateRole: await db.templateRole.count(),
+    lineupLine: await db.lineupLine.count(),
     setting: await db.setting.count(),
     category: await db.budgetCategory.count(),
     client: await db.client.count(),
@@ -108,16 +108,20 @@ describe('POST /api/import', () => {
     expect(await snapshot()).toEqual({ ...first, importRun: 2 });
   });
 
-  it('counts updates per the re-run rules (person active, template roles, settings)', async () => {
+  it('counts updates per the re-run rules (person active, empty lineup lines, settings)', async () => {
     await post(example());
     const doc = example();
     (doc.people as { active?: boolean }[])[0]!.active = false;
-    (doc.lineupTemplates as { roles: { defaultFeeCents: number }[] }[])[0]!.roles[0]!.defaultFeeCents += 100;
-    (doc.settings as Record<string, number>)['fees.office_default'] = 12300;
+    // Lines of a lineup that already has lines are never changed by a re-run (the app owns them)…
+    (doc.lineupTemplates as { lines: { defaultCents: number }[] }[])[0]!.lines[0]!.defaultCents += 100;
+    // …but a lineup without lines gets them from the file.
+    const emptied = await testDb().lineupTemplate.findFirstOrThrow({ where: { name: (doc.lineupTemplates as { name: string }[])[1]!.name } });
+    await testDb().lineupLine.deleteMany({ where: { templateId: emptied.id } });
+    (doc.settings as Record<string, number>)['fees.load_in_deduction'] = 12300;
     const res = await post(doc, '?dryRun=true');
     expect(res.json().summary).toMatchObject({
       people: { created: 0, updated: 1 },
-      lineupTemplates: { created: 0, updated: 1 },
+      lineupTemplates: { created: 0, updated: 1, skipped: 2 },
       settings: { created: 0, updated: 1 },
     });
   });
@@ -193,19 +197,26 @@ describe('POST /api/import', () => {
   });
 
   it('accepts removed role codes and converts them (TASK-041)', async () => {
-    const doc = example() as Doc & { people: Record<string, unknown>[]; lineupTemplates: { name: string; roles: { role: string }[] }[] };
+    const doc = example() as Doc & { people: Record<string, unknown>[]; lineupTemplates: Record<string, unknown>[] };
     doc.people[2]!.roles = ['SAX', 'HORN_2', 'TECHNICIAN'];
-    doc.lineupTemplates[0]!.roles.push({ role: 'HORN_1' }, { role: 'HORN_2' });
-    for (const r of doc.lineupTemplates[0]!.roles.slice(-2)) Object.assign(r, { defaultFeeCents: 10000 });
+    // Legacy lineup format: roles (with removed codes) instead of lines.
+    doc.lineupTemplates[0] = {
+      name: doc.lineupTemplates[0]!.name,
+      roles: [
+        { role: 'VOC', defaultFeeCents: 10000 },
+        { role: 'HORN_1', defaultFeeCents: 10000 },
+        { role: 'HORN_2', defaultFeeCents: 10000 },
+      ],
+    };
     const res = await post(doc, '?filename=old.json');
     expect(res.statusCode).toBe(200);
     const db = testDb();
     expect((await db.person.findFirstOrThrow({ where: { name: doc.people[2]!.name as string } })).roles).toEqual(['MIX', 'SAX']);
     const template = await db.lineupTemplate.findFirstOrThrow({
-      where: { name: doc.lineupTemplates[0]!.name },
-      include: { roles: { orderBy: { position: 'asc' } } },
+      where: { name: doc.lineupTemplates[0].name as string },
+      include: { lines: { orderBy: { position: 'asc' } } },
     });
-    expect(template.roles.slice(-2).map((r) => r.role)).toEqual(['TRUMPET', 'TROMBONE']);
+    expect(template.lines.map((r) => r.type)).toEqual(['VOC', 'TRUMPET', 'TROMBONE', 'OFFICE', 'SALES', 'PRODUCTION']);
   });
 
   it('rejects a document with both `events` and `gigs` and imports nothing (TASK-032)', async () => {

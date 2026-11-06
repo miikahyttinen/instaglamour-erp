@@ -33,7 +33,6 @@ import { invoicing } from '../domain/invoicing.js';
 import { findActiveClient } from '../clients/store.js';
 import { assertCostLineNotOnPurchaseOrder, assertEventHasNoOpenPurchaseOrder } from '../purchaseOrders/lock.js';
 import { insertEvent, prepareEventCreate } from '../events/create.js';
-import { loadFeeSettings } from './reference.js';
 
 type IdParams = { Params: { id: string } };
 
@@ -150,8 +149,7 @@ export function eventRoutes(app: FastifyInstance, deps: AppDeps): void {
   app.post('/api/events', async (request, reply) => {
     const me = request.requirePartner();
     const event = await prepareEventCreate(db, request.body);
-    const fees = await loadFeeSettings(db);
-    const eventId = await inTransaction(db, (tx) => insertEvent(tx, event, { partnerId: me.id, fees }));
+    const eventId = await inTransaction(db, (tx) => insertEvent(tx, event, { partnerId: me.id }));
 
     return reply.status(201).send(await detail(eventId));
   });

@@ -213,6 +213,20 @@ lines that break the rule stay as they are and remain editable (amount, descript
 changes their person. Seed/import are unchanged (historic data loads as is), and the automatic
 seller/producer move (BR-027) only ever assigns partners.
 
+## Lineups (TASK-051, 2026-11-06)
+
+`GET/POST /api/lineup-templates`, `PATCH/DELETE /api/lineup-templates/{id}` (`src/routes/lineupTemplates.ts`,
+`src/lineups/store.ts`). A lineup is an ordered list of lines of any `CostType` with `defaultCents`
+(table `lineup_line`, formerly `template_role`) and an `active` flag; names are unique case-insensitively
+(checked under an advisory lock). `PATCH lines` replaces the whole list; `DELETE` is 409 `LINEUP_IN_USE`
+while any event (also deleted) links to it. `/api/reference` lists active lineups only.
+Event create / offer convert (`src/events/create.ts`, `defaultCostLines` in `src/domain/costLines.ts`):
+one cost line per lineup line, SALES/PRODUCTION get the seller/producer, missing SALES/PRODUCTION are
+added at 0, a custom lineup gets OFFICE/SALES/PRODUCTION at 0; inactive lineup → `UNKNOWN_REFERENCE`.
+The settings `fees.office_default` / `fees.sales_default` / `fees.production_default` are gone: migration
+`20261106120000_lineup_lines` appended OFFICE/SALES/PRODUCTION lines with their DB values to every lineup
+and deleted the rows. Seed/import: see `seed/README.md` (legacy `roles` still accepted and converted).
+
 ## Invoice rows (TASK-046, Invoicing v3 TASK-049)
 
 Replace the TASK-045 event invoice status and prepayment (and, before that, the TASK-044 ready flag).

@@ -16,7 +16,7 @@ async function snapshot() {
     person: await db.person.count(),
     partner: await db.partner.count(),
     template: await db.lineupTemplate.count(),
-    templateRole: await db.templateRole.count(),
+    lineupLine: await db.lineupLine.count(),
     setting: await db.setting.count(),
     category: await db.budgetCategory.count(),
     client: await db.client.count(),
@@ -56,6 +56,7 @@ describe('validateSeed', () => {
   it('reports every broken cross reference and rule', () => {
     const data = example();
     data.settings = { 'fees.office_default': 10000 };
+    (data.lineupTemplates as unknown[]).push({ name: 'template a', lines: [] }, { name: 'Template Y', lines: [{ type: 'OTHER', defaultCents: 0 }] });
     data.events.push({
       startDate: '2026-05-02',
       endDate: '2026-05-01',
@@ -74,7 +75,10 @@ describe('validateSeed', () => {
     const result = validateSeed(data);
     expect(result.ok).toBe(false);
     const errors = result.ok ? '' : result.errors.join('\n');
-    expect(errors).toMatch(/settings: missing fees\.sales_default/);
+    expect(errors).toMatch(/settings: missing fees\.load_in_deduction/);
+    expect(errors).not.toMatch(/fees\.sales_default/);
+    expect(errors).toMatch(/lineupTemplates: duplicate name "template a"/);
+    expect(errors).toMatch(/lineupTemplates\.\d+\.lines\.0\.description: required for OTHER/);
     expect(errors).toMatch(/endDate: before startDate/);
     expect(errors).toMatch(/unknown template "Template Z"/);
     expect(errors).toMatch(/seller: unknown partner/);

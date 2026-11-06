@@ -249,31 +249,38 @@ model Session {
 // Seeded reference data
 // ---------------------------------------------------------------------------
 
+/// A lineup ("Kokoonpano", api-contract "Lineups and settings page"): the cost template of a new
+/// event. Managed in the app; inactive lineups can't be picked for new events. Names are unique
+/// case-insensitively (checked by the app under an advisory lock).
 model LineupTemplate {
   id        String   @id @default(uuid()) @db.Uuid
   name      String   @unique
+  active    Boolean  @default(true)
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  roles  TemplateRole[]
+  lines  LineupLine[]
   events Event[]
 
   @@map("lineup_template")
 }
 
-model TemplateRole {
-  id              String   @id @default(uuid()) @db.Uuid
-  templateId      String   @map("template_id") @db.Uuid
-  position        Int
-  role            CostType
-  defaultFeeCents Int      @map("default_fee_cents")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+/// One default cost line of a lineup (any cost type), in display order (`position`).
+/// Was `template_role` (role + default_fee_cents) before migration 20261106120000_lineup_lines.
+model LineupLine {
+  id           String   @id @default(uuid()) @db.Uuid
+  templateId   String   @map("template_id") @db.Uuid
+  position     Int
+  type         CostType
+  description  String?
+  defaultCents Int      @map("default_cents")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
   template LineupTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
 
   @@unique([templateId, position])
-  @@map("template_role")
+  @@map("lineup_line")
 }
 
 /// Seeded key/value settings: fee settings are money amounts in cents (value_cents), offer
