@@ -337,8 +337,14 @@ export function offerRoutes(app: FastifyInstance, deps: AppDeps): void {
     const { draft } = await offerEventDraft(db, offer, me.id);
     // A deleted client cannot be linked to a new event (UNKNOWN_REFERENCE), so the draft leaves it
     // empty and the prefilled form submits cleanly (PM decision 2026-10-20). Convert without a
-    // body is unchanged.
-    return { ...draft, clientId: offer.client.deletedAt ? null : draft.clientId };
+    // body is unchanged. The lineup is not prefilled (owner 2026-11-07): the partner picks a lineup
+    // template or types a custom lineup name; convert without a body still uses the event name.
+    return {
+      ...draft,
+      lineupTemplateId: null,
+      lineupName: null,
+      clientId: offer.client.deletedAt ? null : draft.clientId,
+    };
   });
 
   app.post<IdParams>('/api/offers/:id/convert', async (request, reply) => {
