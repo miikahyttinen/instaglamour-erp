@@ -1,7 +1,7 @@
 # TASK-051: Lineups — CRUD, lines of any cost type, default fee settings removed
 
 - **owner:** backend
-- **status:** todo
+- **status:** done
 - **spec:** docs/api-contract.md "Lineups and settings page (owner decision 2026-11-06)"; BR-020, BR-021 (revised)
 - **depends on:** none
 

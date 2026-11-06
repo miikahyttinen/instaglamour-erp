@@ -1,7 +1,7 @@
 # TASK-186: Settings page with Lineups editor and Data import; lineup on gig create
 
 - **owner:** ui
-- **status:** todo
+- **status:** done
 - **spec:** docs/api-contract.md "Lineups and settings page (owner decision 2026-11-06)"
 - **depends on:** none (build against the contract; MSW mocks updated)
 
