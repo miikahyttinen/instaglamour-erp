@@ -1,7 +1,7 @@
 # TASK-190: Remove the "no invoicing details in notes" hint
 
 - **owner:** ui
-- **status:** todo
+- **status:** done
 - **spec:** owner request 2026-11-07
 - **depends on:** none
 
