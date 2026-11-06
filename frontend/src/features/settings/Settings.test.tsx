@@ -170,6 +170,16 @@ describe('settings: lineups', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Summa ei voi olla negatiivinen.');
   });
 
+  it('editor: a line can be "Laulu & koskettimet" (VOC_KEYS, TASK-188)', async () => {
+    const { user } = await openLineup('Template C');
+    const type = within(lineRow('DJ')).getByRole('combobox', { name: 'Tyyppi: DJ' });
+    expect(within(type).getByRole('option', { name: 'Laulu & koskettimet' })).toHaveValue('VOC_KEYS');
+    // user-event matches option innerHTML ("&amp;"), so select by value.
+    await user.selectOptions(type, 'VOC_KEYS');
+    await waitFor(() => expect(templateC().lines[0]!.type).toBe('VOC_KEYS'));
+    expect(await screen.findByRole('combobox', { name: 'Tyyppi: Laulu & koskettimet' })).toBeInTheDocument();
+  });
+
   it('rename inline (save on Enter; duplicate → error) and the active switch', async () => {
     const patches = recordPatches();
     const { user } = await openLineup('Template C');

@@ -144,6 +144,16 @@ describe('Keys / Piano (TASK-187)', () => {
   });
 });
 
+describe('Vocal & Keys (TASK-188)', () => {
+  it('VOC_KEYS is a musician and person role right after BACKING_VOC, with FI/EN labels', () => {
+    expect(MUSICIAN_ROLES.indexOf('VOC_KEYS')).toBe(MUSICIAN_ROLES.indexOf('BACKING_VOC') + 1);
+    expect(PERSON_ROLES).toContain('VOC_KEYS');
+    expect(COST_TYPES as readonly string[]).toContain('VOC_KEYS');
+    expect(locales.fi['costType.VOC_KEYS']).toBe('Laulu & koskettimet');
+    expect(locales.en['costType.VOC_KEYS']).toBe('Vocal & Keys');
+  });
+});
+
 describe('OTHER_ROLE label', () => {
   it('is labelled "Oma rooli" / "Custom role"; the OTHER expense label is unchanged', () => {
     expect(locales.fi['costType.OTHER_ROLE']).toBe('Oma rooli');

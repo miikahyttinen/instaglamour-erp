@@ -8,6 +8,7 @@ export type Language = (typeof LANGUAGES)[number];
 export const MUSICIAN_ROLES = [
   'VOC',
   'BACKING_VOC',
+  'VOC_KEYS',
   'BASS',
   'GUITAR',
   'DRUMS',

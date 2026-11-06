@@ -133,6 +133,7 @@ const en: Resources = {
   costType: {
     VOC: 'Vocals',
     BACKING_VOC: 'Backing vocals',
+    VOC_KEYS: 'Vocal & Keys',
     BASS: 'Bass',
     GUITAR: 'Guitar',
     DRUMS: 'Drums',
