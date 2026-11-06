@@ -44,7 +44,7 @@ at once can't create duplicates. Import files contain real data: keep them out o
 |---|---|---|
 | Partner | `email` (case-insensitive) | **Inserted only if missing** (created active, with its person, `language` and `phone`). An existing partner and its person are never changed — not `active`, email, name, phone or language — so a re-run never re-activates a partner removed in the app (UC-032). **One exception:** the person's `roles` are filled from the file when the person has no roles yet (counted as `updated`) |
 | Person | `name` | `active` updated; `roles` set from the file **only when the person has no roles yet** (never overwrites roles edited in the app or backfilled from cost lines) |
-| Lineup template | `name` | Roles replaced by the file's roles |
+| Lineup (`lineupTemplates`) | `name` (case-insensitive, trimmed) | Inserted (active) if missing. An existing lineup's `lines` are set from the file **only when it has no lines yet** — partners edit lineups in the app (Settings → Lineups), so a re-run never overwrites their lines, name or active flag |
 | Setting | key | Value updated |
 | Budget category (row) | `code` if given, else `name` (case-insensitive; removed rows count too) | Inserted only if missing — partners manage the rows in the app, so a re-run never renames, reorders or brings back a row they removed |
 | Client | `name` (case-insensitive, trimmed; non-deleted clients) | Inserted only if missing — partners manage clients in the app, so a re-run never changes notes or brings back a deleted client (a deleted client's name creates a new client) |
@@ -76,14 +76,24 @@ Partners, templates, people, clients and budget categories are referenced by ema
       "roles": ["GUITAR", "BACKING_VOC"] }  // optional; roles the person can play: musician-role codes
                                             // (VOC … OTHER_ROLE), no duplicates; filled only when empty
   ],
-  "lineupTemplates": [
-    { "name": "Template A", "roles": [ { "role": "VOC", "defaultFeeCents": 30000 } ] }  // roles in display order
+  "lineupTemplates": [                // lineups ("Kokoonpanot"): all default fees of a new event
+    { "name": "Template A",           // unique, case-insensitive
+      "lines": [                      // optional (default none), ≤ 100, in display order; any CostType, may repeat
+        { "type": "VOC", "defaultCents": 30000 },
+        { "type": "OTHER", "description": "Stage rental", "defaultCents": 10000 },  // description required for OTHER / OTHER_ROLE
+        { "type": "OFFICE", "defaultCents": 10000 },
+        { "type": "SALES", "defaultCents": 10000 },        // person = the event's seller
+        { "type": "PRODUCTION", "defaultCents": 10000 }    // person = the event's producer
+      ] }
+    // Legacy (before 2026-11-06), still accepted instead of lines (not both):
+    // { "name": "Template B", "roles": [ { "role": "VOC", "defaultFeeCents": 30000 } ] }
+    // → lines = the roles in order, then OFFICE, SALES, PRODUCTION with the file's
+    //   fees.office_default / fees.sales_default / fees.production_default (0 when missing)
   ],
-  "settings": {                       // the four fees.* keys are required (cents)
-    "fees.office_default": 10000,
-    "fees.sales_default": 10000,
-    "fees.production_default": 10000,
+  "settings": {                       // fees.load_in_deduction is required (cents)
     "fees.load_in_deduction": 1000,   // also the freelancer PO "no sound check" deduction
+    // "fees.office_default", "fees.sales_default", "fees.production_default": removed 2026-11-06 (lineups
+    // define all fees). Still accepted (cents) for converting legacy lineup roles; never stored.
     "fees.performer_vat_rates_bp": "1350,2550", // optional text: the VAT rates a freelancer can choose on a PO,
                                         // comma-separated basis points 1…10000, unique (1350 = 13.5 %);
                                         // "no VAT" is always offered too. Default "1350,2550" when missing
@@ -122,7 +132,9 @@ Partners, templates, people, clients and budget categories are referenced by ema
       // "Ennakkomaksu"; READY → NOT_SENT, INVOICED/PAID → SENT "Lasku" for total − prepayment.
       // Past SOLD events that are not fully covered by rows get an automatic "Loppulasku" row from the
       // final invoice job (TASK-049) once the app runs.
-      "costLines": [                                        // omit → generated per BR-020/BR-021 from template + settings
+      "costLines": [                                        // omit → generated per BR-020/BR-021 from the lineup's lines
+                                                            // (+ SALES/PRODUCTION at 0 if missing; a custom lineup gets
+                                                            // OFFICE/SALES/PRODUCTION at 0)
         {
           "type": "BASS",                                   // any CostType (docs/domain-model.md)
           "person": "Person 1",                             // optional; person or partner name
@@ -245,7 +257,7 @@ stored data:
 |---|---|
 | `HORN_1` | `TRUMPET` |
 | `TECHNICIAN` | `MIX` |
-| `HORN_2` | `SAX` if the person's `roles` **in the file** contain `SAX` but not `TROMBONE` (cost lines: the line's `person`; person roles: that person's own list), otherwise `TROMBONE` (also for template roles and lines without a person) |
+| `HORN_2` | `SAX` if the person's `roles` **in the file** contain `SAX` but not `TROMBONE` (cost lines: the line's `person`; person roles: that person's own list), otherwise `TROMBONE` (also for legacy lineup `roles` and lines without a person) |
 
 A person's converted roles are de-duplicated (`["HORN_1", "TRUMPET"]` → `["TRUMPET"]`); a list that
 already repeats a code is still an error. Updating your `seed.local.json` to the new codes is recommended

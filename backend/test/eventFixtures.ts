@@ -24,17 +24,18 @@ export async function seedEventWorld() {
   const p1 = await db.person.create({ data: { name: 'Person 1' } });
   const p2 = await db.person.create({ data: { name: 'Person 2' } });
   const p3 = await db.person.create({ data: { name: 'Person 3' } });
-  await setSetting(SETTING_KEYS.officeDefault, FEES.office);
-  await setSetting(SETTING_KEYS.salesDefault, FEES.sales);
-  await setSetting(SETTING_KEYS.productionDefault, FEES.production);
   await setSetting(SETTING_KEYS.loadInDeduction, FEES.loadInDeduction);
   const templateA = await db.lineupTemplate.create({
     data: {
       name: 'Template A',
-      roles: {
+      // Lineup lines (2026-11-06): musician roles, then the internal lines with their default fees.
+      lines: {
         create: [
-          { position: 0, role: 'VOC', defaultFeeCents: 30000 },
-          { position: 1, role: 'BASS', defaultFeeCents: 20000 },
+          { position: 0, type: 'VOC', defaultCents: 30000 },
+          { position: 1, type: 'BASS', defaultCents: 20000 },
+          { position: 2, type: 'OFFICE', defaultCents: FEES.office },
+          { position: 3, type: 'SALES', defaultCents: FEES.sales },
+          { position: 4, type: 'PRODUCTION', defaultCents: FEES.production },
         ],
       },
     },

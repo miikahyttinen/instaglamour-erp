@@ -46,19 +46,18 @@ describe('GET /api/reference', () => {
     expect(body.lineupTemplates[1]).toEqual({
       id: expect.any(String),
       name: 'Template B',
-      roles: [
-        { role: 'VOC', defaultFeeCents: 20000 },
-        { role: 'GUITAR', defaultFeeCents: 20000 },
-        { role: 'DJ', defaultFeeCents: 20000 },
+      lines: [
+        { type: 'VOC', description: null, defaultCents: 20000 },
+        { type: 'GUITAR', description: null, defaultCents: 20000 },
+        { type: 'DJ', description: null, defaultCents: 20000 },
+        { type: 'OFFICE', description: null, defaultCents: 10000 },
+        { type: 'SALES', description: null, defaultCents: 10000 },
+        { type: 'PRODUCTION', description: null, defaultCents: 10000 },
       ],
     });
 
-    expect(body.settings).toEqual({
-      officeDefaultCents: 10000,
-      salesDefaultCents: 10000,
-      productionDefaultCents: 10000,
-      loadInDeductionCents: 1000,
-    });
+    // The default fee settings are gone (lineups define all fees, 2026-11-06).
+    expect(body.settings).toEqual({ loadInDeductionCents: 1000 });
 
     expect(body.costTypes).toEqual({
       musicianRoles: [...MUSICIAN_ROLES],

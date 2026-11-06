@@ -34,7 +34,6 @@ import {
 import { computeOfferStats } from '../offers/stats.js';
 import { loadActiveReferences } from '../references/store.js';
 import { isUniqueViolation } from './budgetCategories.js';
-import { loadFeeSettings } from './reference.js';
 
 type IdParams = { Params: { id: string } };
 
@@ -350,10 +349,9 @@ export function offerRoutes(app: FastifyInstance, deps: AppDeps): void {
     const event =
       request.body === undefined || request.body === null ? undefined : await prepareEventCreate(db, request.body);
 
-    const fees = await loadFeeSettings(db);
     let eventId: string;
     try {
-      ({ eventId } = await inTransaction(db, (tx) => convertOfferInTx(tx, { offerId: offer.id, partnerId: me.id, fees, event })));
+      ({ eventId } = await inTransaction(db, (tx) => convertOfferInTx(tx, { offerId: offer.id, partnerId: me.id, event })));
     } catch (err) {
       // A concurrent conversion that slipped past the row lock still hits the unique event.offer_id.
       if (isUniqueViolation(err)) throw alreadyConverted();

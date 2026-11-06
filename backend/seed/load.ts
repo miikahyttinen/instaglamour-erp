@@ -3,7 +3,10 @@
  *
  * Idempotency rules (natural keys):
  * - Reference data is upserted — the seed file wins:
- *   person (name), lineup template (name; roles replaced), setting (key).
+ *   person (name), setting (key).
+ * - Lineups (name, case-insensitive) are created with the file's lines when missing; an existing
+ *   lineup's lines are set from the file only when it has no lines yet (lineups are edited in the
+ *   app, 2026-11-06). Legacy `roles` are converted to lines by validateSeed.
  * - Partners (email, case-insensitive) are insert-only: created active when missing; an existing
  *   partner and its person are never changed (partner status is managed in the app, UC-032) —
  *   except the person's `roles`, see below.
@@ -28,14 +31,15 @@ import { copyFile, mkdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 import type { Db } from '../src/db.js';
 import { dateFromIso } from '../src/domain/dates.js';
-import { defaultCostLines } from '../src/domain/costLines.js';
+import { defaultCostLines, type LineupLineInput } from '../src/domain/costLines.js';
+import { findLineupByName, lockLineupNames, replaceLineupLines } from '../src/lineups/store.js';
 import { legacyInvoiceRows } from '../src/domain/invoicing.js';
 import {
   isMusicianRole,
+  LEGACY_FEE_SETTING_KEYS,
   LEGACY_OFFER_SETTING_KEYS,
   normalizeRoles,
   OFFER_SETTING_KEYS,
-  SETTING_KEYS,
   type MusicianRole,
 } from '../src/domain/enums.js';
 import { newShareToken } from '../src/offers/shareToken.js';
@@ -43,7 +47,7 @@ import { convertOfferInTx } from '../src/offers/store.js';
 import type { Prisma } from '../src/generated/prisma/client.js';
 import { MAX_REFERENCE_IMAGE_BYTES } from '../src/references/store.js';
 import { detectImageType, readHead, UploadDir, type ImageContentType } from '../src/fileStore/uploadDir.js';
-import { clientNameKey, findSeedCategory, referenceKey, validateSeed, type SeedData } from './schema.js';
+import { clientNameKey, findSeedCategory, lineupNameKey, referenceKey, validateSeed, type SeedData } from './schema.js';
 
 type Tx = Prisma.TransactionClient;
 
@@ -60,7 +64,7 @@ export function resolveSeedFile(seedDir: string): string {
 export interface SeedCounts {
   /** New items inserted. */
   created: number;
-  /** Existing items changed per the re-run rules (person `active`, template roles, setting value). */
+  /** Existing items changed per the re-run rules (person `active`, empty lineup's lines, setting value). */
   updated: number;
   /** Items already in the database and left as they are. */
   skipped: number;
@@ -143,7 +147,7 @@ export async function emptyDatabase(tx: Tx): Promise<void> {
   await tx.budgetYear.deleteMany();
   await tx.budgetCategoryLegacy.deleteMany();
   await tx.budgetCategory.deleteMany();
-  await tx.templateRole.deleteMany();
+  await tx.lineupLine.deleteMany();
   await tx.lineupTemplate.deleteMany();
   await tx.setting.deleteMany();
   await tx.partner.deleteMany();
@@ -353,25 +357,28 @@ async function applySeed(
     personIdByName.set(p.name, await upsertPersonByName(tx, p.name, p.active, p.roles, summary.people));
   }
 
-  // Lineup templates (roles replaced when they differ from the file's)
-  const templateByName = new Map<string, { id: string; roles: SeedData['lineupTemplates'][number]['roles'] }>();
-  const rolesKey = (roles: { role: string; defaultFeeCents: number }[]) => JSON.stringify(roles.map((r) => [r.role, r.defaultFeeCents]));
+  // Lineups (created when missing; lines set only on a lineup without lines — the app owns them)
+  await lockLineupNames(tx);
+  const lineupByKey = new Map<string, { id: string; lines: LineupLineInput[] }>();
   for (const t of data.lineupTemplates) {
-    const existing = await tx.lineupTemplate.findUnique({
-      where: { name: t.name },
-      include: { roles: { orderBy: { position: 'asc' } } },
-    });
-    const template = existing ?? (await tx.lineupTemplate.create({ data: { name: t.name } }));
-    if (existing && rolesKey(existing.roles) === rolesKey(t.roles)) {
+    const found = await findLineupByName(tx, t.name);
+    const existing = found
+      ? await tx.lineupTemplate.findUniqueOrThrow({ where: { id: found.id }, include: { lines: { orderBy: { position: 'asc' } } } })
+      : null;
+    const lineup = existing ?? (await tx.lineupTemplate.create({ data: { name: t.name.trim() } }));
+    let lines: LineupLineInput[];
+    if (existing && existing.lines.length > 0) {
+      lines = existing.lines.map((l) => ({ type: l.type, description: l.description, defaultCents: l.defaultCents }));
+      summary.lineupTemplates.skipped++;
+    } else if (existing && t.lines.length === 0) {
+      lines = [];
       summary.lineupTemplates.skipped++;
     } else {
-      await tx.templateRole.deleteMany({ where: { templateId: template.id } });
-      await tx.templateRole.createMany({
-        data: t.roles.map((r, position) => ({ templateId: template.id, position, role: r.role, defaultFeeCents: r.defaultFeeCents })),
-      });
+      await replaceLineupLines(tx, lineup.id, t.lines);
+      lines = t.lines;
       summary.lineupTemplates[existing ? 'updated' : 'created']++;
     }
-    templateByName.set(t.name, { id: template.id, roles: t.roles });
+    lineupByKey.set(lineupNameKey(t.name), { id: lineup.id, lines });
   }
 
   // Settings
@@ -379,6 +386,8 @@ async function applySeed(
     // Former reference texts (replaced by `references`) and default Spotify link (now a constant):
     // accepted in older files, not stored.
     if ((LEGACY_OFFER_SETTING_KEYS as readonly string[]).includes(key)) continue;
+    // Former default fee settings (removed 2026-11-06): used only to convert legacy lineup roles.
+    if ((Object.values(LEGACY_FEE_SETTING_KEYS) as string[]).includes(key)) continue;
     const values = typeof value === 'number' ? { valueCents: value, valueText: null } : { valueCents: null, valueText: value };
     const existing = await tx.setting.findUnique({ where: { key } });
     if (!existing) {
@@ -391,15 +400,6 @@ async function applySeed(
       summary.settings.skipped++;
     }
   }
-  const centsSetting = (key: string) => {
-    const v = data.settings[key];
-    return typeof v === 'number' ? v : 0;
-  };
-  const fees = {
-    officeDefaultCents: centsSetting(SETTING_KEYS.officeDefault),
-    salesDefaultCents: centsSetting(SETTING_KEYS.salesDefault),
-    productionDefaultCents: centsSetting(SETTING_KEYS.productionDefault),
-  };
   // Offer defaults from the database (just upserted from the file if it has them).
   const textSetting = async (key: string) => {
     const text = (await tx.setting.findUnique({ where: { key } }))?.valueText;
@@ -443,7 +443,7 @@ async function applySeed(
 
   // Events (insert only)
   for (const g of data.events) {
-    const template = g.lineupTemplate ? templateByName.get(g.lineupTemplate) : undefined;
+    const template = g.lineupTemplate ? lineupByKey.get(lineupNameKey(g.lineupTemplate)) : undefined;
     const lineupName = g.lineupName ?? g.lineupTemplate!;
     const startDate = dateFromIso(g.startDate);
     const exists = await tx.event.findFirst({ where: { startDate, venue: g.venue, lineupName } });
@@ -464,10 +464,9 @@ async function applySeed(
         paidById: c.paidBy ? partnerId(c.paidBy) : null,
       })) ??
       defaultCostLines({
-        templateRoles: template?.roles ?? [],
+        lineupLines: template?.lines ?? null,
         sellerPersonId: partnerPersonId(g.seller),
         producerPersonId: partnerPersonId(g.producer),
-        fees,
       });
 
     const createdBase = Date.now();
@@ -544,7 +543,7 @@ async function applySeed(
     await tx.offerEvent.create({
       data: { offerId: offer.id, type: 'CREATED', partnerId: sellerId, details: {}, at: createdAt, createdAt, updatedAt: createdAt },
     });
-    if (o.converted) await convertOfferInTx(tx, { offerId: offer.id, partnerId: sellerId, fees, historical: true });
+    if (o.converted) await convertOfferInTx(tx, { offerId: offer.id, partnerId: sellerId, historical: true });
     summary.offers.created++;
   }
 

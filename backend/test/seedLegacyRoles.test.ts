@@ -80,7 +80,8 @@ describe('validateSeed with removed role codes', () => {
       ['MIX', 'TRUMPET', 'VOC'], // de-duplicated; stored in MUSICIAN_ROLES order on load
       ['TROMBONE'],
     ]);
-    expect(data.lineupTemplates[0]!.roles.map((r) => r.role)).toEqual(['VOC', 'TRUMPET', 'TROMBONE', 'MIX']);
+    // Legacy roles become lines, followed by OFFICE/SALES/PRODUCTION (2026-11-06).
+    expect(data.lineupTemplates[0]!.lines.map((r) => r.type)).toEqual(['VOC', 'TRUMPET', 'TROMBONE', 'MIX', 'OFFICE', 'SALES', 'PRODUCTION']);
     expect(data.events[0]!.costLines!.map((c) => c.type)).toEqual([
       'SAX',
       'TROMBONE',
@@ -128,8 +129,8 @@ describe('loading an old-style file', () => {
     expect(await roles('Partner A')).toEqual(['VOC', 'TRUMPET']);
     expect(await roles('Person 1')).toEqual(['SAX']);
     expect(await roles('Person 5')).toEqual(['VOC', 'MIX', 'TRUMPET']);
-    const template = await db.lineupTemplate.findFirstOrThrow({ include: { roles: { orderBy: { position: 'asc' } } } });
-    expect(template.roles.map((r) => r.role)).toEqual(['VOC', 'TRUMPET', 'TROMBONE', 'MIX']);
+    const template = await db.lineupTemplate.findFirstOrThrow({ include: { lines: { orderBy: { position: 'asc' } } } });
+    expect(template.lines.map((r) => r.type)).toEqual(['VOC', 'TRUMPET', 'TROMBONE', 'MIX', 'OFFICE', 'SALES', 'PRODUCTION']);
     const lines = await db.costLine.findMany({ orderBy: { createdAt: 'asc' }, include: { person: true } });
     expect(lines.map((l) => [l.type, l.person?.name ?? null])).toEqual([
       ['SAX', 'Person 1'],

@@ -117,13 +117,24 @@ export function isPayable(type: CostType): boolean {
 
 /** Seeded setting keys (docs/domain-model.md "Setting"). */
 export const SETTING_KEYS = {
-  officeDefault: 'fees.office_default',
-  salesDefault: 'fees.sales_default',
-  productionDefault: 'fees.production_default',
   loadInDeduction: 'fees.load_in_deduction',
 } as const;
 
 export const ALL_SETTING_KEYS = Object.values(SETTING_KEYS);
+
+/**
+ * Former default fee settings, removed 2026-11-06 (lineups define all fees; migration
+ * 20261106120000_lineup_lines moved their values into each lineup's OFFICE/SALES/PRODUCTION lines).
+ * Seed/import files may still contain them: they are used only to convert legacy lineup `roles`
+ * and are never stored.
+ */
+export const LEGACY_FEE_SETTING_KEYS = {
+  officeDefault: 'fees.office_default',
+  salesDefault: 'fees.sales_default',
+  productionDefault: 'fees.production_default',
+} as const;
+
+export const ALL_LEGACY_FEE_SETTING_KEYS = Object.values(LEGACY_FEE_SETTING_KEYS);
 
 /**
  * Optional numeric settings (integers ≥ 0): the code has a default when the row is missing.

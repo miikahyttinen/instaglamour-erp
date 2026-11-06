@@ -21,42 +21,48 @@
   "lineupTemplates": [
     {
       "name": "Template A",
-      "roles": [
-        { "role": "VOC", "defaultFeeCents": 30000 },
-        { "role": "GUITAR", "defaultFeeCents": 30000 },
-        { "role": "BASS", "defaultFeeCents": 30000 },
-        { "role": "DRUMS", "defaultFeeCents": 30000 },
-        { "role": "KEYS", "defaultFeeCents": 30000 },
-        { "role": "MIX", "defaultFeeCents": 20000 }
+      "lines": [
+        { "type": "VOC", "defaultCents": 30000 },
+        { "type": "GUITAR", "defaultCents": 30000 },
+        { "type": "BASS", "defaultCents": 30000 },
+        { "type": "DRUMS", "defaultCents": 30000 },
+        { "type": "KEYS", "defaultCents": 30000 },
+        { "type": "MIX", "defaultCents": 20000 },
+        { "type": "OFFICE", "defaultCents": 10000 },
+        { "type": "SALES", "defaultCents": 10000 },
+        { "type": "PRODUCTION", "defaultCents": 10000 }
       ]
     },
     {
       "name": "Template B",
-      "roles": [
-        { "role": "VOC", "defaultFeeCents": 20000 },
-        { "role": "GUITAR", "defaultFeeCents": 20000 },
-        { "role": "DJ", "defaultFeeCents": 20000 }
+      "lines": [
+        { "type": "VOC", "defaultCents": 20000 },
+        { "type": "GUITAR", "defaultCents": 20000 },
+        { "type": "DJ", "defaultCents": 20000 },
+        { "type": "OFFICE", "defaultCents": 10000 },
+        { "type": "SALES", "defaultCents": 10000 },
+        { "type": "PRODUCTION", "defaultCents": 10000 }
       ]
     },
     {
       "name": "Template C",
-      "roles": [
-        { "role": "VOC", "defaultFeeCents": 30000 },
-        { "role": "BACKING_VOC", "defaultFeeCents": 30000 },
-        { "role": "GUITAR", "defaultFeeCents": 30000 },
-        { "role": "BASS", "defaultFeeCents": 30000 },
-        { "role": "DRUMS", "defaultFeeCents": 30000 },
-        { "role": "KEYS", "defaultFeeCents": 30000 },
-        { "role": "TRUMPET", "defaultFeeCents": 30000 },
-        { "role": "TROMBONE", "defaultFeeCents": 30000 },
-        { "role": "MIX", "defaultFeeCents": 30000 }
+      "lines": [
+        { "type": "VOC", "defaultCents": 30000 },
+        { "type": "BACKING_VOC", "defaultCents": 30000 },
+        { "type": "GUITAR", "defaultCents": 30000 },
+        { "type": "BASS", "defaultCents": 30000 },
+        { "type": "DRUMS", "defaultCents": 30000 },
+        { "type": "KEYS", "defaultCents": 30000 },
+        { "type": "TRUMPET", "defaultCents": 30000 },
+        { "type": "TROMBONE", "defaultCents": 30000 },
+        { "type": "MIX", "defaultCents": 30000 },
+        { "type": "OFFICE", "defaultCents": 10000 },
+        { "type": "SALES", "defaultCents": 10000 },
+        { "type": "PRODUCTION", "defaultCents": 10000 }
       ]
     }
   ],
   "settings": {
-    "fees.office_default": 10000,
-    "fees.sales_default": 10000,
-    "fees.production_default": 10000,
     "fees.load_in_deduction": 1000,
     "offers.default_includes": "Placeholder: what is included in the offer.\nSecond placeholder line.",
     "offers.references_fi": "Esimerkkiteksti: referenssit.\nToinen rivi.",

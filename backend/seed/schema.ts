@@ -6,6 +6,7 @@
 import { z } from 'zod';
 import { isIsoDate } from '../src/domain/dates.js';
 import {
+  ALL_LEGACY_FEE_SETTING_KEYS,
   ALL_OFFER_SETTING_KEYS,
   ALL_OPTIONAL_NUMBER_SETTING_KEYS,
   ALL_SETTING_KEYS,
@@ -17,6 +18,7 @@ import {
   isLegacyRole,
   isMusicianRole,
   LANGUAGES,
+  LEGACY_FEE_SETTING_KEYS,
   LEGACY_OFFER_SETTING_KEYS,
   PERFORMER_VAT_RATES_SETTING_KEY,
   parsePerformerVatRates,
@@ -26,6 +28,8 @@ import {
   OFFER_SOURCES,
   TECHNICAL_SETUPS,
 } from '../src/domain/enums.js';
+import type { LineupLineInput } from '../src/domain/costLines.js';
+import { MAX_LINEUP_LINES } from '../src/lineups/store.js';
 import { convertInvoiceRowStatus, LEGACY_INVOICE_ROW_STATUSES, LEGACY_INVOICE_STATUSES } from '../src/domain/invoicing.js';
 
 const cents = z.number().int().nonnegative();
@@ -46,6 +50,19 @@ const personRoles = z
   .array(z.enum(MUSICIAN_ROLES))
   .refine((roles) => new Set(roles).size === roles.length, 'must not contain the same role twice')
   .optional();
+
+/** A lineup line (2026-11-06): any cost type with its default amount, in display order. */
+const lineupLine = z.strictObject({
+  type: z.enum(COST_TYPES),
+  description: z.string().trim().max(500).optional(),
+  defaultCents: cents,
+});
+
+/** The pre-2026-11-06 lineup format: musician roles only (converted to `lines`, see validateSeed). */
+const legacyTemplateRole = z.strictObject({ role: z.enum(COST_TYPES), defaultFeeCents: cents });
+
+/** Lineup names compare case-insensitively and trimmed (like the app's DUPLICATE rule). */
+export const lineupNameKey = (n: string) => n.trim().toLowerCase();
 
 const costLine = z.strictObject({
   type: z.enum(COST_TYPES),
@@ -188,7 +205,9 @@ export const seedSchema = z.strictObject({
     .array(
       z.strictObject({
         name,
-        roles: z.array(z.strictObject({ role: z.enum(COST_TYPES), defaultFeeCents: cents })).min(1),
+        lines: z.array(lineupLine).max(MAX_LINEUP_LINES).optional(),
+        // Legacy (before 2026-11-06): converted to `lines` like migration 20261106120000_lineup_lines.
+        roles: z.array(legacyTemplateRole).min(1).optional(),
       }),
     )
     .default([]),
@@ -238,7 +257,35 @@ export const seedSchema = z.strictObject({
     .default([]),
 });
 
-export type SeedData = z.output<typeof seedSchema>;
+type ParsedSeed = z.output<typeof seedSchema>;
+
+/** A lineup of the file with legacy `roles` already converted to `lines`. */
+export interface SeedLineup {
+  name: string;
+  lines: LineupLineInput[];
+}
+
+export type SeedData = Omit<ParsedSeed, 'lineupTemplates'> & { lineupTemplates: SeedLineup[] };
+
+/**
+ * Lineup lines of a file entry: `lines` as given, or the legacy `roles` converted like the migration
+ * 20261106120000_lineup_lines: the roles in order, then OFFICE, SALES and PRODUCTION with the file's
+ * old `fees.*_default` settings (0 when the file doesn't have them).
+ */
+function lineupLinesOf(t: ParsedSeed['lineupTemplates'][number], settings: ParsedSeed['settings']): LineupLineInput[] {
+  if (t.lines) return t.lines.map((l) => ({ type: l.type, description: l.description || null, defaultCents: l.defaultCents }));
+  if (!t.roles) return [];
+  const fee = (key: string) => {
+    const v = settings[key];
+    return typeof v === 'number' ? v : 0;
+  };
+  return [
+    ...t.roles.map((r) => ({ type: r.role, description: null, defaultCents: r.defaultFeeCents })),
+    { type: 'OFFICE', description: null, defaultCents: fee(LEGACY_FEE_SETTING_KEYS.officeDefault) },
+    { type: 'SALES', description: null, defaultCents: fee(LEGACY_FEE_SETTING_KEYS.salesDefault) },
+    { type: 'PRODUCTION', description: null, defaultCents: fee(LEGACY_FEE_SETTING_KEYS.productionDefault) },
+  ];
+}
 
 export type ValidationResult = { ok: true; data: SeedData } | { ok: false; errors: string[] };
 
@@ -326,17 +373,30 @@ export function validateSeed(rawInput: unknown): ValidationResult {
       errors: parsed.error.issues.map((i) => `${i.path.map(String).join('.') || '(root)'}: ${i.message}`),
     };
   }
-  const data = parsed.data;
+  const parsedData = parsed.data;
   const errors: string[] = [];
+
+  parsedData.lineupTemplates.forEach((t, i) => {
+    if (t.lines && t.roles) errors.push(`lineupTemplates.${i}: use either lines or the legacy roles, not both`);
+    t.lines?.forEach((l, j) => {
+      if (DESCRIPTION_REQUIRED_TYPES.has(l.type) && !l.description)
+        errors.push(`lineupTemplates.${i}.lines.${j}.description: required for ${l.type}`);
+    });
+  });
+  const data: SeedData = {
+    ...parsedData,
+    lineupTemplates: parsedData.lineupTemplates.map((t) => ({ name: t.name, lines: lineupLinesOf(t, parsedData.settings) })),
+  };
 
   const partnerEmails = new Set(data.partners.map((p) => p.email));
   const personNames = new Set([...data.partners.map((p) => p.name), ...data.people.map((p) => p.name)]);
-  const templates = new Map(data.lineupTemplates.map((t) => [t.name, t]));
+  const templates = new Set(data.lineupTemplates.map((t) => lineupNameKey(t.name)));
 
   for (const d of duplicates(data.partners.map((p) => p.email))) errors.push(`partners: duplicate email ${d}`);
   for (const d of duplicates([...data.partners.map((p) => p.name), ...data.people.map((p) => p.name)]))
     errors.push(`people: duplicate name "${d}" (partners are people too; don't list them again in people)`);
-  for (const d of duplicates(data.lineupTemplates.map((t) => t.name))) errors.push(`lineupTemplates: duplicate name "${d}"`);
+  for (const d of duplicates(data.lineupTemplates.map((t) => lineupNameKey(t.name))))
+    errors.push(`lineupTemplates: duplicate name "${d}" (names are compared case-insensitively)`);
   for (const d of duplicates(data.budgetCategories.flatMap((c) => (c.code ? [c.code] : []))))
     errors.push(`budgetCategories: duplicate code ${d}`);
   for (const d of duplicates(data.budgetCategories.map((c) => categoryNameKey(c.name))))
@@ -349,6 +409,9 @@ export function validateSeed(rawInput: unknown): ValidationResult {
   for (const key of ALL_SETTING_KEYS) if (!(key in data.settings)) errors.push(`settings: missing ${key}`);
   for (const [key, value] of Object.entries(data.settings)) {
     if (ALL_SETTING_KEYS.includes(key as (typeof ALL_SETTING_KEYS)[number])) {
+      if (typeof value !== 'number') errors.push(`settings.${key}: must be an amount in cents`);
+    } else if (ALL_LEGACY_FEE_SETTING_KEYS.includes(key as (typeof ALL_LEGACY_FEE_SETTING_KEYS)[number])) {
+      // Removed 2026-11-06 (lineups define all fees): only used to convert legacy lineup roles; not stored.
       if (typeof value !== 'number') errors.push(`settings.${key}: must be an amount in cents`);
     } else if (ALL_OPTIONAL_NUMBER_SETTING_KEYS.includes(key as (typeof ALL_OPTIONAL_NUMBER_SETTING_KEYS)[number])) {
       if (typeof value !== 'number') errors.push(`settings.${key}: must be a whole number`);
@@ -369,7 +432,7 @@ export function validateSeed(rawInput: unknown): ValidationResult {
     if (g.endDate && g.endDate < g.startDate) errors.push(`${at}.endDate: before startDate`);
     if (!partnerEmails.has(g.seller)) errors.push(`${at}.seller: unknown partner ${g.seller}`);
     if (!partnerEmails.has(g.producer)) errors.push(`${at}.producer: unknown partner ${g.producer}`);
-    if (g.lineupTemplate && !templates.has(g.lineupTemplate))
+    if (g.lineupTemplate && !templates.has(lineupNameKey(g.lineupTemplate)))
       errors.push(`${at}.lineupTemplate: unknown template "${g.lineupTemplate}"`);
     if (!g.lineupTemplate && !g.lineupName) errors.push(`${at}: lineupTemplate or lineupName is required`);
     if (g.client && !clientKeys.has(clientNameKey(g.client)))

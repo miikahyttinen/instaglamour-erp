@@ -12,7 +12,7 @@
 Partner (user) ──┬── sells / produces ──┐
                  ├── HourEntry           │
                  └── Task                ▼
-                                        Gig ◄── created from ── LineupTemplate ── TemplateRole
+                                        Gig ◄── created from ── LineupTemplate ── LineupLine
                                         ├── CostLine ── Person (optional)
                                         ├── Attachment
                                         └── GigEvent (full history)
@@ -47,20 +47,31 @@ Concurrent edits: last save wins.
 | name | string | required |
 | active | bool | inactive = hidden from pickers, kept on old gigs |
 
-## LineupTemplate (seed only, no edit screen)
+## LineupTemplate ("Kokoonpano / Lineup"; edited in Settings → Lineups, also seedable)
 | Field | Type | Notes |
 |---|---|---|
 | id | uuid | |
-| name | string | |
-| roles | TemplateRole[] | ordered: `role`, `default_fee` |
+| name | string | unique (case-insensitive), ≤ 500 chars |
+| active | bool | default true; inactive lineups can't be picked for a new gig |
+| lines | LineupLine[] | ordered (≤ 100); define **all** default fees of a new gig (BR-020, BR-021) |
+
+### LineupLine
+| Field | Type | Notes |
+|---|---|---|
+| type | CostType | any cost type (musician roles, `OFFICE`/`SALES`/`PRODUCTION`, expenses); may repeat |
+| description | string? | required for `OTHER` / `OTHER_ROLE`, ≤ 500 chars; copied to the gig's cost line |
+| default_cents | int ≥ 0 | the cost line's budgeted amount on a new gig |
+| position | int | display order |
+
+Edits never change existing gigs. A lineup used by gigs (incl. deleted ones) can't be deleted, only deactivated.
 
 ## Setting (seed only, no edit screen)
 | Key | Meaning |
 |---|---|
-| `fees.office_default` | Office fee on a new gig |
-| `fees.sales_default` | Sales fee on a new gig |
-| `fees.production_default` | Production fee on a new gig |
 | `fees.load_in_deduction` | Amount the load-in switch deducts (BR-026) |
+
+The former `fees.office_default`, `fees.sales_default` and `fees.production_default` were removed on
+2026-11-06: their values moved into each lineup's `OFFICE`/`SALES`/`PRODUCTION` lines.
 
 ---
 

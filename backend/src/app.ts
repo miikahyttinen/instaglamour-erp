@@ -13,6 +13,7 @@ import { budgetCategoryRoutes } from './routes/budgetCategories.js';
 import { clientRoutes } from './routes/clients.js';
 import { costLineRoutes } from './routes/costLines.js';
 import { invoiceRowRoutes } from './routes/invoiceRows.js';
+import { lineupTemplateRoutes } from './routes/lineupTemplates.js';
 import { eventRoutes } from './routes/events.js';
 import { HEALTH_ROUTE, healthRoutes } from './routes/health.js';
 import { hourRoutes } from './routes/hours.js';
@@ -99,6 +100,7 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
   authRoutes(app, deps);
   meRoutes(app, deps);
   referenceRoutes(app, deps);
+  lineupTemplateRoutes(app, deps);
   eventRoutes(app, deps);
   costLineRoutes(app, deps);
   invoiceRowRoutes(app, deps);
