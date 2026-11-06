@@ -9,6 +9,7 @@ import { freelancerHandlers } from './freelancerHandlers';
 import { costLineHandlers, eventHandlers, invoiceRowHandlers } from './eventHandlers';
 import { hoursHandlers } from './hoursHandlers';
 import { importHandlers } from './importHandlers';
+import { lineupHandlers } from './lineupHandlers';
 import { offerHandlers } from './offerHandlers';
 import { peopleHandlers } from './peopleHandlers';
 import { publicOfferHandlers } from './publicOfferHandlers';
@@ -67,7 +68,14 @@ export const authHandlers = [
 export const referenceHandlers = [
   http.get('/api/reference', () => {
     if (!currentPartner()) return unauthenticated();
-    const body: ReferenceData = { partners: db.partners, ...db.reference };
+    const body: ReferenceData = {
+      partners: db.partners,
+      ...db.reference,
+      // Active lineups only, without the store-only fields.
+      lineupTemplates: db.reference.lineupTemplates
+        .filter((l) => l.active)
+        .map(({ id, name, lines }) => ({ id, name, lines: lines.map((line) => ({ ...line })) })),
+    };
     return HttpResponse.json(body);
   }),
 ];
@@ -90,5 +98,6 @@ export const handlers = [
   ...hoursHandlers,
   ...budgetHandlers,
   ...budgetCategoryHandlers,
+  ...lineupHandlers,
   ...importHandlers,
 ];

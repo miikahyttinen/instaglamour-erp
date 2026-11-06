@@ -133,7 +133,6 @@ const blankToNull = (v: string | null | undefined): string | null =>
 
 const ctx = () => ({
   templates: db.reference.lineupTemplates,
-  settings: db.reference.settings,
   partners: db.partners,
 });
 
@@ -196,7 +195,8 @@ export function parseEventCreate(
     }
   }
   if (body.lineupTemplateId) {
-    if (!db.reference.lineupTemplates.some((t) => t.id === body.lineupTemplateId)) {
+    // Only an active lineup can be chosen (inactive / unknown → UNKNOWN_REFERENCE).
+    if (!db.reference.lineupTemplates.some((t) => t.id === body.lineupTemplateId && t.active)) {
       fields.lineupTemplateId = 'UNKNOWN_REFERENCE';
     }
     checkString(fields, 'lineupName', body.lineupName, false);

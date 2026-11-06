@@ -3,6 +3,7 @@
 // Event texts are below; the other features keep theirs in features/<feature>/i18n.ts and are
 // registered at the end in navigation order.
 import { fi as dataImportFi } from '../features/dataImport/i18n';
+import { fi as settingsFi } from '../features/settings/i18n';
 import { fi as budgetFi } from '../features/budget/i18n';
 import { fi as clientsFi } from '../features/clients/i18n';
 import { fi as freelancerFi } from '../features/freelancer/i18n';
@@ -33,7 +34,7 @@ const fi = {
     tasks: 'Tehtävät',
     hours: 'Tunnit',
     budget: 'Budjetti',
-    dataImport: 'Tietojen tuonti',
+    settings: 'Asetukset',
     collapse: 'Pienennä valikko',
     expand: 'Laajenna valikko',
     close: 'Sulje valikko',
@@ -85,6 +86,7 @@ const fi = {
     hours: 'Tunnit {{year}}',
     budget: 'Budjetti {{year}}',
     dataImport: 'Tietojen tuonti',
+    settings: 'Asetukset',
     notFound: 'Sivua ei löytynyt.',
     backHome: 'Etusivulle',
   },
@@ -98,6 +100,7 @@ const fi = {
     COST_NOT_PAYABLE: 'Polttoainetta ei merkitä maksetuksi (vain arvio).',
     BUDGET_NOT_EMPTY: 'Vuodelle on jo budjettilukuja.',
     CLIENT_IN_USE: 'Asiakas on käytössä: siihen on liitetty keikkoja tai tarjouksia.',
+    LINEUP_IN_USE: 'Kokoonpano on käytössä: siihen on liitetty keikkoja.',
     ALREADY_CONVERTED: 'Tarjouksesta on jo tehty keikka.',
     OFFER_NOT_CONVERTIBLE: 'Vain hyväksytyn tarjouksen, jonka päivä ei ole mennyt, voi muuttaa keikaksi.',
     CANNOT_REMOVE_SELF: 'Et voi poistaa omaa osakkuuttasi.',
@@ -329,7 +332,7 @@ const fi = {
     lineup: 'Kokoonpano',
     chooseLineup: 'Valitse kokoonpano',
     customLineup: 'Oma kokoonpano',
-    templateRoles: 'Roolit: {{roles}}',
+    lineupPreview: '{{count}} riviä, oletussummat yhteensä {{total}}',
     lineupName: 'Kokoonpanon nimi',
     venue: 'Paikka',
     technicalSetup: 'Tekniikka',
@@ -521,6 +524,7 @@ const fi = {
   ...hoursFi,
   budget: budgetFi,
   ...dataImportFi,
+  ...settingsFi,
 };
 
 export default fi;

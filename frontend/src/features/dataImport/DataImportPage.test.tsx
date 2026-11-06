@@ -52,8 +52,9 @@ function zeroSummary(): ImportSummary {
 }
 
 async function openPage() {
-  const rendered = renderApp('/import');
-  expect(await screen.findByRole('heading', { name: 'Tietojen tuonti', level: 1 })).toBeInTheDocument();
+  const rendered = renderApp('/settings/import');
+  expect(await screen.findByRole('heading', { name: 'Asetukset', level: 1 })).toBeInTheDocument();
+  expect(await screen.findByRole('heading', { name: 'Tietojen tuonti', level: 2 })).toBeInTheDocument();
   return rendered;
 }
 
@@ -62,17 +63,27 @@ describe('data import (UC-035)', () => {
     signInMock();
   });
 
-  it('is the last item in the menu (Upload icon) and opens /import', async () => {
+  it('is the "Tietojen tuonti" tab of Settings (the last menu item, cog icon)', async () => {
     installMatchMedia({ [DESKTOP_QUERY]: true });
     const { user } = renderApp('/');
     const nav = await screen.findByRole('navigation', { name: 'Päävalikko' });
     const links = within(nav).getAllByRole('link');
     const last = links[links.length - 1]!;
-    expect(last).toHaveTextContent('Tietojen tuonti');
-    expect(last).toHaveAttribute('href', '/import');
-    expect(last.querySelector('svg.lucide-upload')).not.toBeNull();
+    expect(last).toHaveTextContent('Asetukset');
+    expect(last).toHaveAttribute('href', '/settings');
+    expect(last.querySelector('svg.lucide-settings')).not.toBeNull();
+    expect(within(nav).queryByRole('link', { name: 'Tietojen tuonti' })).toBeNull();
     await user.click(last);
-    expect(await screen.findByRole('heading', { name: 'Tietojen tuonti', level: 1 })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Asetukset', level: 1 })).toBeInTheDocument();
+    const tabs = screen.getByRole('navigation', { name: 'Asetusten osiot' });
+    await user.click(within(tabs).getByRole('link', { name: 'Tietojen tuonti' }));
+    expect(await screen.findByText('Ei tuonteja.')).toBeInTheDocument();
+    expect(within(tabs).getByRole('link', { name: 'Tietojen tuonti' })).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('the old /import URL redirects to /settings/import', async () => {
+    renderApp('/import');
+    expect(await screen.findByRole('heading', { name: 'Tietojen tuonti', level: 2 })).toBeInTheDocument();
     expect(await screen.findByText('Ei tuonteja.')).toBeInTheDocument();
   });
 
@@ -260,8 +271,9 @@ describe('data import (UC-035)', () => {
   it('is translated to English', async () => {
     setLanguage('en');
     signInMock().language = 'en';
-    const { user } = renderApp('/import');
-    expect(await screen.findByRole('heading', { name: 'Data import', level: 1 })).toBeInTheDocument();
+    const { user } = renderApp('/settings/import');
+    expect(await screen.findByRole('heading', { name: 'Settings', level: 1 })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Data import', level: 2 })).toBeInTheDocument();
     await user.upload(screen.getByLabelText('Choose file'), jsonFile(DOC));
     await screen.findByText(/^import\.json · /);
     await user.click(screen.getByRole('button', { name: 'Check' }));

@@ -6,7 +6,7 @@ import {
   MUSICIAN_ROLES,
   TECHNICAL_SETUPS,
 } from '../api/enums';
-import type { Partner, ReferenceData } from '../api/types';
+import type { LineupTemplate, Partner, ReferenceData } from '../api/types';
 import { seedBudget, type BudgetState } from './budgetStore';
 import { seedFreelancer, type FreelancerState } from './freelancerStore';
 import { seedEventState } from './eventSeed';
@@ -23,7 +23,8 @@ export interface MockDb {
   partners: Partner[];
   /** Partner id of the signed-in mock user, or null. */
   sessionPartnerId: string | null;
-  reference: Omit<ReferenceData, 'partners'>;
+  /** Reference data; `lineupTemplates` holds every lineup (the reference endpoint lists the active ones). */
+  reference: Omit<ReferenceData, 'partners' | 'lineupTemplates'> & { lineupTemplates: MockLineup[] };
   /** Events, cost lines, invoice rows, history and people. */
   events: EventState;
   /** Offers, their history and the `offers.*` settings (UC-028…UC-031). */
@@ -36,6 +37,9 @@ export interface MockDb {
   /** Freelancer link tokens and purchase orders (UC-033, UC-034). */
   freelancer: FreelancerState;
 }
+
+/** A lineup in the mock store; `eventCount` is derived from the events. */
+export type MockLineup = Omit<LineupTemplate, 'eventCount'>;
 
 const SESSION_KEY = 'mock-session-partner-id';
 
@@ -74,30 +78,42 @@ function initialPartners(): Partner[] {
 
 function initialReference(): MockDb['reference'] {
   return {
+    // Lines as after the lineup migration: roles, then OFFICE / SALES / PRODUCTION.
     lineupTemplates: [
       {
         id: '00000000-0000-4000-8000-000000000101',
         name: 'Template A',
-        roles: [
-          { role: 'VOC', defaultFeeCents: 10000 },
-          { role: 'GUITAR', defaultFeeCents: 10000 },
-          { role: 'BASS', defaultFeeCents: 10000 },
-          { role: 'DRUMS', defaultFeeCents: 10000 },
+        active: true,
+        lines: [
+          { type: 'VOC', description: null, defaultCents: 10000 },
+          { type: 'GUITAR', description: null, defaultCents: 10000 },
+          { type: 'BASS', description: null, defaultCents: 10000 },
+          { type: 'DRUMS', description: null, defaultCents: 10000 },
+          { type: 'OFFICE', description: null, defaultCents: 1000 },
+          { type: 'SALES', description: null, defaultCents: 1000 },
+          { type: 'PRODUCTION', description: null, defaultCents: 1000 },
         ],
       },
       {
         id: '00000000-0000-4000-8000-000000000102',
         name: 'Template B',
-        roles: [
-          { role: 'VOC', defaultFeeCents: 10000 },
-          { role: 'KEYS', defaultFeeCents: 10000 },
+        active: true,
+        lines: [
+          { type: 'VOC', description: null, defaultCents: 10000 },
+          { type: 'KEYS', description: null, defaultCents: 10000 },
+          { type: 'OFFICE', description: null, defaultCents: 1000 },
+          { type: 'SALES', description: null, defaultCents: 1000 },
+          { type: 'PRODUCTION', description: null, defaultCents: 1000 },
         ],
+      },
+      {
+        id: '00000000-0000-4000-8000-000000000103',
+        name: 'Template C',
+        active: false,
+        lines: [{ type: 'DJ', description: null, defaultCents: 10000 }],
       },
     ],
     settings: {
-      officeDefaultCents: 1000,
-      salesDefaultCents: 1000,
-      productionDefaultCents: 1000,
       loadInDeductionCents: 1000,
     },
     costTypes: {

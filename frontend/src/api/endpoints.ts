@@ -2,6 +2,9 @@
 import { apiRequest, buildUrl } from './client';
 import type { MusicianRole } from './enums';
 import type {
+  LineupTemplate,
+  LineupTemplateCreate,
+  LineupTemplateUpdate,
   BudgetCategory,
   BudgetCategoryInput,
   BudgetResponse,
@@ -211,6 +214,19 @@ export const clientsApi = {
   update: (id: Id, body: ClientUpdate) =>
     apiRequest<Client>(`/clients/${id}`, { method: 'PATCH', body }),
   remove: (id: Id) => apiRequest<void>(`/clients/${id}`, { method: 'DELETE' }),
+};
+
+// ---------- Lineups (settings page) ----------
+
+export const lineupsApi = {
+  /** All lineups, active first, then by name. */
+  list: () => apiRequest<LineupTemplate[]>('/lineup-templates'),
+  create: (body: LineupTemplateCreate) =>
+    apiRequest<LineupTemplate>('/lineup-templates', { method: 'POST', body }),
+  update: (id: Id, body: LineupTemplateUpdate) =>
+    apiRequest<LineupTemplate>(`/lineup-templates/${id}`, { method: 'PATCH', body }),
+  /** 409 `LINEUP_IN_USE` when gigs link to it. */
+  remove: (id: Id) => apiRequest<void>(`/lineup-templates/${id}`, { method: 'DELETE' }),
 };
 
 // ---------- Offers (UC-028, UC-029, UC-031) ----------

@@ -24,10 +24,9 @@ import type {
   Id,
   InvoiceRow,
   IsoDate,
-  LineupTemplate,
+  LineupLine,
   Person,
   PersonDoubleBookedWarning,
-  Settings,
   YearEventTotals,
 } from '../api/types';
 import { todayIso } from '../lib/format';
@@ -333,12 +332,24 @@ function newLine(eventId: Id, type: CostType, personId: Id | null, budgetedCents
   };
 }
 
-/** Creates a SOLD event with BR-020 / BR-021 cost lines and logs CREATED. */
+/** A lineup as event creation needs it (the store's lineups or the reference shape). */
+export interface LineupForCreate {
+  id: Id;
+  name: string;
+  lines: LineupLine[];
+}
+
+/**
+ * Creates a SOLD event with the BR-020 / BR-021 (revised 2026-11-06) cost lines and logs CREATED:
+ * one line per lineup line (amount, description; musician roles join the load-in; SALES = seller,
+ * PRODUCTION = producer), plus SALES / PRODUCTION at 0 € when the lineup lacks them. Without a
+ * lineup: OFFICE, SALES, PRODUCTION at 0 €.
+ */
 export function createEvent(
   state: EventState,
   input: NewEventInput,
   actorId: Id,
-  ctx: { templates: LineupTemplate[]; settings: Settings; partners: { id: Id; personId: Id }[] },
+  ctx: { templates: LineupForCreate[]; partners: { id: Id; personId: Id }[] },
 ): MockEvent {
   const template = ctx.templates.find((t) => t.id === input.lineupTemplateId) ?? null;
   const ts = nowTs();
@@ -366,21 +377,19 @@ export function createEvent(
     updatedAt: ts,
   };
   state.events.push(event);
-  for (const role of template?.roles ?? []) {
-    state.costLines.push(newLine(event.id, role.role, null, role.defaultFeeCents));
+  const seller = partnerPersonId(ctx.partners, event.sellerId);
+  const producer = partnerPersonId(ctx.partners, event.producerId);
+  const personFor = (type: CostType) => (type === 'SALES' ? seller : type === 'PRODUCTION' ? producer : null);
+  const lines = template?.lines ?? [{ type: 'OFFICE' as const, description: null, defaultCents: 0 }];
+  for (const line of lines) {
+    state.costLines.push({
+      ...newLine(event.id, line.type, personFor(line.type), line.defaultCents),
+      description: line.description,
+    });
   }
-  state.costLines.push(newLine(event.id, 'OFFICE', null, ctx.settings.officeDefaultCents));
-  state.costLines.push(
-    newLine(event.id, 'SALES', partnerPersonId(ctx.partners, event.sellerId), ctx.settings.salesDefaultCents),
-  );
-  state.costLines.push(
-    newLine(
-      event.id,
-      'PRODUCTION',
-      partnerPersonId(ctx.partners, event.producerId),
-      ctx.settings.productionDefaultCents,
-    ),
-  );
+  for (const type of ['SALES', 'PRODUCTION'] as const) {
+    if (!lines.some((l) => l.type === type)) state.costLines.push(newLine(event.id, type, personFor(type), 0));
+  }
   logEvent(state, event.id, 'CREATED', actorId);
   return event;
 }

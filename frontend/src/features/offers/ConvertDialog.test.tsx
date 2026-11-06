@@ -45,7 +45,9 @@ describe('convert offer to event in a modal (UC-031, BR-105)', () => {
     expect(review).toHaveTextContent('Tarkista, että tiedot ovat oikein.');
     expect(review.querySelector('.tag-warn')).not.toBeNull();
     expect(d.getByLabelText('Alkupäivä')).toHaveValue(offer.eventDate);
-    expect(d.getByRole('textbox', { name: 'Kokoonpano' })).toHaveValue('Event 1');
+    // No lineup on the draft: "Custom lineup" with the offer's name.
+    expect(d.getByRole('combobox', { name: 'Kokoonpano' })).toHaveDisplayValue('Oma kokoonpano');
+    expect(d.getByRole('textbox', { name: 'Kokoonpanon nimi' })).toHaveValue('Event 1');
     expect(d.getByRole('textbox', { name: 'Paikka' })).toHaveValue('Venue X, City Y');
     expect(d.getByRole('combobox', { name: 'Asiakas' })).toHaveValue(clientId);
     expect(d.getByRole('textbox', { name: 'Hinta (alv 0 %)' })).toHaveValue('1234,56');
@@ -71,7 +73,7 @@ describe('convert offer to event in a modal (UC-031, BR-105)', () => {
     const venue = d.getByRole('textbox', { name: 'Paikka' });
     await user.clear(venue);
     await user.type(venue, 'Venue Q');
-    const lineup = d.getByRole('textbox', { name: 'Kokoonpano' });
+    const lineup = d.getByRole('textbox', { name: 'Kokoonpanon nimi' });
     await user.clear(lineup);
     await user.type(lineup, 'Lineup Q');
     await user.selectOptions(d.getByRole('combobox', { name: 'Tuottaja' }), partnerB().id);
@@ -98,6 +100,39 @@ describe('convert offer to event in a modal (UC-031, BR-105)', () => {
     expect(offer).toMatchObject({ eventId: events[0]!.id, disposition: 'WON' });
     await waitFor(() => expect(requests).toHaveLength(1));
     expect(requests[0]).toMatchObject({ startDate: offer.eventDate, venue: 'Venue Q', priceCents: 200000 });
+  });
+
+  it('lineup select: active lineups + custom, a preview, and the gig gets the lineup (no custom name)', async () => {
+    const offer = addMockOffer({ clientId, eventName: 'Event 1', priceCents: 100000 });
+    const requests: EventCreate[] = [];
+    server.events.on('request:start', ({ request }) => {
+      if (request.method === 'POST' && request.url.endsWith(`/api/offers/${offer.id}/convert`)) {
+        void request
+          .clone()
+          .json()
+          .then((b) => requests.push(b as EventCreate));
+      }
+    });
+    const { user } = await openConvert(offer.id);
+    const d = within(dialog());
+    const select = d.getByRole('combobox', { name: 'Kokoonpano' });
+    expect(within(select).getAllByRole('option').map((o) => o.textContent)).toEqual([
+      'Valitse kokoonpano',
+      'Template A',
+      'Template B',
+      'Oma kokoonpano',
+    ]);
+    await user.selectOptions(select, 'Template B');
+    expect(d.queryByRole('textbox', { name: 'Kokoonpanon nimi' })).not.toBeInTheDocument();
+    expect(select).toHaveAccessibleDescription(/^5 riviä, oletussummat yhteensä 230,00\s€$/);
+    await user.click(d.getByRole('button', { name: 'Muuta keikaksi' }));
+
+    expect(await screen.findByText(/Keikka luotu\./)).toBeInTheDocument();
+    server.events.removeAllListeners();
+    const event = db.events.events.find((g) => g.offerId === offer.id)!;
+    expect(event).toMatchObject({ lineupTemplateId: db.reference.lineupTemplates[1]!.id, lineupName: 'Template B' });
+    await waitFor(() => expect(requests).toHaveLength(1));
+    expect(requests[0]).toMatchObject({ lineupTemplateId: db.reference.lineupTemplates[1]!.id, lineupName: null });
   });
 
   it('Cancel and Esc close the modal and create nothing (A1)', async () => {
@@ -133,10 +168,10 @@ describe('convert offer to event in a modal (UC-031, BR-105)', () => {
     const { user } = await openConvert(offer.id);
     const d = within(dialog());
     await user.clear(d.getByRole('textbox', { name: 'Paikka' }));
-    await user.clear(d.getByRole('textbox', { name: 'Kokoonpano' }));
+    await user.clear(d.getByRole('textbox', { name: 'Kokoonpanon nimi' }));
     await user.click(d.getByRole('button', { name: 'Muuta keikaksi' }));
     expect(d.getByRole('textbox', { name: 'Paikka' })).toHaveAccessibleDescription('Pakollinen tieto.');
-    expect(d.getByRole('textbox', { name: 'Kokoonpano' })).toHaveAccessibleDescription('Pakollinen tieto.');
+    expect(d.getByRole('textbox', { name: 'Kokoonpanon nimi' })).toHaveAccessibleDescription('Pakollinen tieto.');
     expect(offer.eventId).toBeNull();
 
     server.use(
@@ -148,7 +183,7 @@ describe('convert offer to event in a modal (UC-031, BR-105)', () => {
       ),
     );
     await user.type(d.getByRole('textbox', { name: 'Paikka' }), 'Venue X');
-    await user.type(d.getByRole('textbox', { name: 'Kokoonpano' }), 'Event 1');
+    await user.type(d.getByRole('textbox', { name: 'Kokoonpanon nimi' }), 'Event 1');
     await user.click(d.getByRole('button', { name: 'Muuta keikaksi' }));
     await waitFor(() =>
       expect(d.getByRole('textbox', { name: 'Hinta (alv 0 %)' })).toHaveAttribute('aria-invalid', 'true'),

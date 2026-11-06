@@ -22,6 +22,8 @@ export const rootKeys = {
   hours: ['hours'],
   /** Budget: ['budget', year]. */
   budget: ['budget'],
+  /** Lineup list on the settings page (gig counts): ['lineup-templates']. */
+  lineups: ['lineup-templates'],
 } as const satisfies Record<string, QueryKey>;
 
 /** What a mutation changed; decides which lists are refetched besides the year page. */
@@ -29,8 +31,8 @@ export type YearDataChange = 'events' | 'hours' | 'budget';
 
 const affectedLists: Record<YearDataChange, readonly QueryKey[]> = {
   // Event and cost line changes: event lists, person cost lines, clients (their event lists) and
-  // offers (a deleted converted event still links from its offer).
-  events: [rootKeys.eventLists, rootKeys.personCostLines, rootKeys.clients, rootKeys.offers],
+  // offers (a deleted converted event still links from its offer) and lineups (gig counts).
+  events: [rootKeys.eventLists, rootKeys.personCostLines, rootKeys.clients, rootKeys.offers, rootKeys.lineups],
   hours: [rootKeys.hours],
   budget: [rootKeys.budget],
 };

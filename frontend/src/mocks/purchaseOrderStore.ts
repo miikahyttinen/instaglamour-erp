@@ -2,10 +2,10 @@
 // `db.freelancer` (freelancerStore.ts: purchaseOrders, events, nextSeq; creation is there). The
 // cost lines live in `db.events`; `CostLine.purchaseOrder` is kept in sync (pay / unpay keep it,
 // cancel clears it). Synthetic data only (BR-090). Does not import mocks/data.ts.
-import type { Id, LineupTemplate, Partner, PoEligibleLine, PurchaseOrder, Settings } from '../api/types';
+import type { Id, Partner, PoEligibleLine, PurchaseOrder } from '../api/types';
 import type { CreateResult, FeeLine, FreelancerState } from './freelancerStore';
 import { activePurchaseOrderOf, feeLines, logPurchaseOrderEvent, newPurchaseOrder } from './freelancerStore';
-import type { EventState, MockPerson } from './eventStore';
+import type { EventState, LineupForCreate, MockPerson } from './eventStore';
 import { createEvent, linesOf, logEvent, nowTs } from './eventStore';
 
 /** A copy as the API returns it. */
@@ -185,13 +185,13 @@ export function seedPartnerPurchaseOrders(
   state: FreelancerState,
   events: EventState,
   partners: Partner[],
-  reference: { lineupTemplates: LineupTemplate[]; settings: Settings },
+  reference: { lineupTemplates: LineupForCreate[] },
   year = new Date().getFullYear(),
 ): void {
   const [a, b] = partners;
   const templateB = reference.lineupTemplates[1];
   if (!a || !b || !templateB) return;
-  const ctx = { templates: reference.lineupTemplates, settings: reference.settings, partners };
+  const ctx = { templates: reference.lineupTemplates, partners };
   const person = (name: string) => events.people.find((p) => p.name === name)?.id ?? null;
   const staffed = (startDate: string, venue: string, names: string[]) => {
     const event = createEvent(

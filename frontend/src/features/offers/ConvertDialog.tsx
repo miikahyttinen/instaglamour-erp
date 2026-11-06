@@ -18,6 +18,8 @@ import { parseMoneyField } from '../../lib/moneyField';
 import { partnerOptions } from '../../reference/partners';
 import { useReference } from '../../reference/useReference';
 import { ClientSelect } from '../clients/ClientSelect';
+import { CUSTOM_LINEUP, lineupPreview } from '../events/lineupChoice';
+import { LineupOptions } from '../events/LineupOptions';
 import { offerKeys, useApplyConvert, useOffer } from './queries';
 
 interface Props {
@@ -29,6 +31,8 @@ interface Props {
 
 interface FormState {
   startDate: string;
+  /** Active lineup id or CUSTOM_LINEUP (typed name). */
+  lineup: string;
   lineupName: string;
   venue: string;
   clientId: Id | null;
@@ -45,7 +49,7 @@ type Errors = Partial<Record<keyof FormState, string>>;
 const FIELD_TO_CONTROL: Record<string, keyof FormState> = {
   startDate: 'startDate',
   lineupName: 'lineupName',
-  lineupTemplateId: 'lineupName',
+  lineupTemplateId: 'lineup',
   venue: 'venue',
   clientId: 'clientId',
   priceCents: 'price',
@@ -54,10 +58,12 @@ const FIELD_TO_CONTROL: Record<string, keyof FormState> = {
 };
 
 function formFromDraft(draft: EventCreate, lang: Language, reference: ReferenceData | undefined): FormState {
-  const templateName = reference?.lineupTemplates.find((tpl) => tpl.id === draft.lineupTemplateId)?.name;
+  // Only active lineups can be chosen; any other draft lineup falls back to a custom name.
+  const template = reference?.lineupTemplates.find((tpl) => tpl.id === draft.lineupTemplateId);
   return {
     startDate: draft.startDate,
-    lineupName: draft.lineupName ?? templateName ?? '',
+    lineup: template ? template.id : CUSTOM_LINEUP,
+    lineupName: draft.lineupName ?? '',
     venue: draft.venue,
     clientId: draft.clientId ?? null,
     price: centsToInput(draft.priceCents, lang),
@@ -166,6 +172,7 @@ function ConvertForm({
   const producerOptions = partnerOptions(reference?.partners, draft.producerId);
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
+  const template = reference?.lineupTemplates.find((tpl) => tpl.id === form.lineup);
   // The dialog focused Cancel while the draft loaded; move focus to the first field.
   const firstField = useRef<HTMLInputElement>(null);
   useEffect(() => firstField.current?.focus(), []);
@@ -202,7 +209,9 @@ function ConvertForm({
     const lineupName = form.lineupName.trim();
     const codes: Partial<Record<keyof FormState, FieldCode>> = {};
     if (!form.startDate) codes.startDate = 'REQUIRED';
-    if (!lineupName && !draft.lineupTemplateId) codes.lineupName = 'REQUIRED';
+    const custom = form.lineup === CUSTOM_LINEUP;
+    if (!form.lineup) codes.lineup = 'REQUIRED';
+    if (custom && !lineupName) codes.lineupName = 'REQUIRED';
     if (!form.venue.trim()) codes.venue = 'REQUIRED';
     if (!form.sellerId) codes.sellerId = 'REQUIRED';
     if (!form.producerId) codes.producerId = 'REQUIRED';
@@ -215,7 +224,8 @@ function ConvertForm({
     convert.mutate({
       ...draft,
       startDate: form.startDate,
-      lineupName: lineupName || null,
+      lineupTemplateId: custom ? null : form.lineup,
+      lineupName: custom ? lineupName : null,
       venue: form.venue.trim(),
       clientId: form.clientId,
       priceCents: price.cents ?? 0,
@@ -243,11 +253,20 @@ function ConvertForm({
           {(p) => <MoneyInput {...p} value={form.price} onChange={(v) => set('price', v)} />}
         </Field>
       </div>
-      <Field label={t('eventForm.lineup')} error={errors.lineupName}>
+      <Field label={t('eventForm.lineup')} error={errors.lineup} hint={lineupPreview(t, lang, template)}>
         {(p) => (
-          <input {...p} type="text" value={form.lineupName} onChange={(e) => set('lineupName', e.target.value)} />
+          <select {...p} value={form.lineup} onChange={(e) => set('lineup', e.target.value)}>
+            <LineupOptions lineups={reference?.lineupTemplates} />
+          </select>
         )}
       </Field>
+      {form.lineup === CUSTOM_LINEUP && (
+        <Field label={t('eventForm.lineupName')} error={errors.lineupName}>
+          {(p) => (
+            <input {...p} type="text" value={form.lineupName} onChange={(e) => set('lineupName', e.target.value)} />
+          )}
+        </Field>
+      )}
       <Field label={t('eventForm.venue')} error={errors.venue}>
         {(p) => <input {...p} type="text" value={form.venue} onChange={(e) => set('venue', e.target.value)} />}
       </Field>
