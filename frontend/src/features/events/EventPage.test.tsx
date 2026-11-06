@@ -252,7 +252,9 @@ describe('event page (UC-004, UC-007)', () => {
       expect(stateGroup().querySelectorAll('.tag')).toHaveLength(1);
       expect(state().getByText(label)).toHaveClass('tag', toneClass);
     };
-    expectState('Osittain laskutettu', 'tag-info');
+    // No rows yet: a dash, no tag (owner decision 2026-11-07).
+    expect(stateGroup().querySelectorAll('.tag')).toHaveLength(0);
+    expect(stateGroup()).toHaveTextContent('–');
 
     // Add: required fields checked client-side; status defaults to "Lähettämättä".
     await user.click(card.getByRole('button', { name: '+ Lisää laskurivi' }));
