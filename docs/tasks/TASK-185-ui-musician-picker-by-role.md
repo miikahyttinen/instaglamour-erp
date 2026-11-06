@@ -1,7 +1,7 @@
 # TASK-185: Person picker on musician lines shows only people with that role
 
 - **owner:** ui
-- **status:** todo
+- **status:** done
 - **spec:** owner request 2026-11-06
 - **depends on:** none
 
