@@ -663,7 +663,13 @@ Fixes `invoiceState` for a played gig without invoice rows (shown wrongly as "Os
 - Labels: FI **"Laulu & koskettimet"**, EN **"Vocal & Keys"**.
 - Behaves like every other musician role (load-in switch, double booking, gig count, person roles, role filter, lineups, seed/import). Migration only adds the enum value; no data changes.
 
+## Convert to gig: no lineup prefill (owner request 2026-11-07)
+- `GET /api/offers/{id}/event-draft` returns `lineupTemplateId: null` and `lineupName: null` (the offer's event name is **not** used as the lineup name any more). All other prefilled fields unchanged.
+- UI convert dialog: the "Kokoonpano" select starts with no choice ("Valitse kokoonpano"); the partner must pick an active lineup or "Oma kokoonpano" and then type the custom name (empty by default). Submitting with no choice → inline `REQUIRED` on the select; "Oma kokoonpano" with an empty name → `REQUIRED` on the name.
+- `POST /api/offers/{id}/convert` **without a body** keeps the old BR-105 defaults (unchanged; not used by the UI).
+
 ## Change log
+- 2026-11-07 – event-draft: no lineup prefill; convert dialog requires choosing a lineup (PM)
 - 2026-11-07 – New musician role VOC_KEYS "Vocal & Keys" (PM)
 - 2026-11-07 – invoiceState: PARTLY_INVOICED only with ≥ 1 invoice row; played without rows → NONE (PM)
 - 2026-11-07 – PIANO merged into KEYS; OTHER_ROLE not a person role; reference.costTypes.personRoles (PM)
