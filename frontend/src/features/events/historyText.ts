@@ -137,7 +137,7 @@ export function describeEntry(
 ): { title: string; lines: string[] } {
   const title = eventHistoryTypeLabel(t, entry.type);
   const lines: string[] = [];
-  // Old entries may hold a removed role code (HORN_1, HORN_2, TECHNICIAN): labelled from legacyCostType.
+  // Old entries may hold a removed role code (HORN_1, HORN_2, TECHNICIAN, PIANO): labelled from legacyCostType.
   const type = (code: HistoryCostType) =>
     isLegacyCostType(code) ? t(`legacyCostType.${code}`) : costTypeLabel(t, code);
   switch (entry.type) {

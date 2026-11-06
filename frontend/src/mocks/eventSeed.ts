@@ -26,7 +26,7 @@ const PERSON_ROLES: MusicianRole[][] = [
   ['BASS'],
   ['GUITAR', 'BACKING_VOC'],
   ['DRUMS'],
-  ['KEYS', 'PIANO'],
+  ['KEYS'],
   ['MIX'],
   ['SAX', 'TRUMPET'],
   ['DJ'],

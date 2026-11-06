@@ -2,7 +2,7 @@
 // live in the event mock store (db.events.people) so the event pickers and the people register share
 // one list; `person.partner` is derived from db.partners (linked by personId).
 import { http, HttpResponse } from 'msw';
-import { isMusicianRole, MUSICIAN_ROLES, type FieldCode, type MusicianRole } from '../api/enums';
+import { isMusicianRole, PERSON_ROLES, type FieldCode, type MusicianRole } from '../api/enums';
 import type {
   Person,
   PersonCostLine,
@@ -73,16 +73,16 @@ function eventCountOf(personId: string): number {
   return eventIds.size;
 }
 
-/** `roles` of PATCH: unique musician-role codes, returned in MUSICIAN_ROLES order. */
+/** `roles` of PATCH: unique person-role codes (no OTHER_ROLE), returned in MUSICIAN_ROLES order. */
 function checkRoles(value: unknown): { roles?: MusicianRole[]; error?: FieldCode } {
   if (value === undefined) return {};
   if (!Array.isArray(value)) return { error: 'INVALID_VALUE' };
   const codes = value as unknown[];
   const valid = codes.every(
-    (c) => typeof c === 'string' && (MUSICIAN_ROLES as readonly string[]).includes(c),
+    (c) => typeof c === 'string' && (PERSON_ROLES as readonly string[]).includes(c),
   );
   if (!valid || new Set(codes).size !== codes.length) return { error: 'INVALID_VALUE' };
-  return { roles: MUSICIAN_ROLES.filter((r) => codes.includes(r)) };
+  return { roles: PERSON_ROLES.filter((r) => codes.includes(r)) };
 }
 
 /** API shape: the stored person + its partner status and event count. */
@@ -127,7 +127,7 @@ export const peopleHandlers = [
       return validationError({ partner: 'INVALID_VALUE' });
     }
     const role = params.get('role');
-    if (role !== null && !(MUSICIAN_ROLES as readonly string[]).includes(role)) {
+    if (role !== null && !(PERSON_ROLES as readonly string[]).includes(role)) {
       return validationError({ role: 'INVALID_VALUE' });
     }
     const people: Person[] = db.events.people

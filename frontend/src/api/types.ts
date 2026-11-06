@@ -408,6 +408,8 @@ export interface ReferenceData {
   settings: Settings;
   costTypes: {
     musicianRoles: MusicianRole[];
+    /** Roles a person can have: `musicianRoles` without OTHER_ROLE (people page choices/filter). */
+    personRoles: MusicianRole[];
     internalRoles: InternalRole[];
     expenseCategories: ExpenseCategory[];
   };

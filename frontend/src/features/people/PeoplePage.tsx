@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useSearchParams } from 'react-router-dom';
-import { MUSICIAN_ROLES, type MusicianRole } from '../../api/enums';
+import type { MusicianRole } from '../../api/enums';
 import type { PeopleActiveFilter, Person } from '../../api/types';
 import { Button } from '../../components/Button';
 import { DataTable, type DataTableColumn } from '../../components/DataTable';
@@ -13,6 +13,7 @@ import { StatusTag } from '../../components/StatusTag';
 import { costTypeLabel, warningMessage } from '../../i18n/labels';
 import { useLang } from '../../i18n/useLang';
 import { TABLET_QUERY, useMediaQuery } from '../../lib/useMediaQuery';
+import { usePersonRoles } from '../../reference/usePersonRoles';
 import { NameForm } from './NameForm';
 import { NoticeBox, type Notice } from './Notices';
 import { isPartner } from './partnerRules';
@@ -42,9 +43,9 @@ function parseOnlyPartners(value: string | null): boolean {
   return value === 'true';
 }
 
-/** `?role=<MusicianRole>`; unknown codes are ignored (no role filter). */
-function parseRole(value: string | null): MusicianRole | undefined {
-  return (MUSICIAN_ROLES as readonly string[]).includes(value ?? '') ? (value as MusicianRole) : undefined;
+/** `?role=<person role>`; unknown codes (and OTHER_ROLE, not a person role) are ignored. */
+function parseRole(roles: readonly MusicianRole[], value: string | null): MusicianRole | undefined {
+  return (roles as readonly string[]).includes(value ?? '') ? (value as MusicianRole) : undefined;
 }
 
 /**
@@ -78,7 +79,8 @@ export function PeoplePage() {
   const [params, setParams] = useSearchParams();
   const filter = parseFilter(params.get('active'));
   const onlyPartners = parseOnlyPartners(params.get('partner'));
-  const role = parseRole(params.get('role'));
+  const personRoles = usePersonRoles();
+  const role = parseRole(personRoles, params.get('role'));
   const sort = parsePeopleSort(readTableParams(params).sort);
   const wide = useMediaQuery(TABLET_QUERY);
   const list = usePeopleList(filter, onlyPartners ? 'true' : undefined, role);
@@ -98,7 +100,7 @@ export function PeoplePage() {
   };
   const setFilter = (value: PeopleActiveFilter) => setParam('active', value === 'true' ? undefined : value);
   const setOnlyPartners = (checked: boolean) => setParam('partner', checked ? 'true' : undefined);
-  const setRole = (value: string) => setParam('role', parseRole(value));
+  const setRole = (value: string) => setParam('role', parseRole(personRoles, value));
   const setSort = (next: PeopleSort) =>
     setParams(
       (prev) => {
@@ -230,7 +232,7 @@ export function PeoplePage() {
           <span className="visually-hidden">{t('people.roleFilter')}</span>
           <select value={role ?? ''} onChange={(e) => setRole(e.target.value)}>
             <option value="">{t('people.allRoles')}</option>
-            {MUSICIAN_ROLES.map((r) => (
+            {personRoles.map((r) => (
               <option key={r} value={r}>
                 {costTypeLabel(t, r)}
               </option>

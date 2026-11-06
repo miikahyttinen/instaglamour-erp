@@ -4,6 +4,7 @@ import {
   INTERNAL_ROLES,
   LOGISTICS,
   MUSICIAN_ROLES,
+  PERSON_ROLES,
   TECHNICAL_SETUPS,
 } from '../api/enums';
 import type { LineupTemplate, Partner, ReferenceData } from '../api/types';
@@ -118,6 +119,7 @@ function initialReference(): MockDb['reference'] {
     },
     costTypes: {
       musicianRoles: [...MUSICIAN_ROLES],
+      personRoles: [...PERSON_ROLES],
       internalRoles: [...INTERNAL_ROLES],
       expenseCategories: [...EXPENSE_CATEGORIES],
     },

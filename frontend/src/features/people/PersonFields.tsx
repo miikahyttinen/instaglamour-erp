@@ -1,9 +1,10 @@
 import { useTranslation } from 'react-i18next';
-import { MUSICIAN_ROLES, type MusicianRole } from '../../api/enums';
+import type { MusicianRole } from '../../api/enums';
 import type { Person } from '../../api/types';
 import { InlineCheckboxGroup, InlineSwitch, InlineText } from '../../components/inline';
 import { costTypeLabel, warningMessage } from '../../i18n/labels';
 import { useLang } from '../../i18n/useLang';
+import { usePersonRoles } from '../../reference/usePersonRoles';
 import type { Notice } from './Notices';
 import { useUpdatePerson } from './queries';
 
@@ -69,13 +70,14 @@ export function PersonActiveSwitch({ person, label, hideLabel, className, onNoti
 }
 
 /**
- * Roles the person can play (musician roles): a checkbox list; every change saves the whole list
+ * Roles the person can play (`reference.costTypes.personRoles`, no "Oma rooli"): a checkbox list; every change saves the whole list
  * with one PATCH `{ roles }` (NFR-8), Esc after a failed save restores the saved roles.
  */
 export function PersonRolesField({ person, label, hideLabel, className, hint }: Omit<FieldProps, 'onNotice'> & { hint?: string }) {
   const { t } = useTranslation();
   const update = useUpdatePerson();
-  const options = MUSICIAN_ROLES.map((role) => ({ value: role, label: costTypeLabel(t, role) }));
+  const personRoles = usePersonRoles();
+  const options = personRoles.map((role) => ({ value: role, label: costTypeLabel(t, role) }));
   return (
     <InlineCheckboxGroup<MusicianRole>
       label={label}

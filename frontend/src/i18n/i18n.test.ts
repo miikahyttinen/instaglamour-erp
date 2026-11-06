@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   COST_TYPES,
+  MUSICIAN_ROLES,
+  PERSON_ROLES,
   LEGACY_COST_TYPES,
   ERROR_CODES,
   FIELD_CODES,
@@ -126,6 +128,19 @@ describe('label helpers', () => {
     expect(eventDisplayStatus({ status: 'SOLD', played: true })).toBe('PLAYED');
     expect(eventDisplayStatus({ status: 'SOLD', played: false })).toBe('SOLD');
     expect(eventDisplayStatus({ status: 'CANCELLED', played: false })).toBe('CANCELLED');
+  });
+});
+
+describe('Keys / Piano (TASK-187)', () => {
+  it('PIANO is no longer a cost type; KEYS keeps its label; PIANO is a legacy (history) label', () => {
+    expect(COST_TYPES as readonly string[]).not.toContain('PIANO');
+    expect(PERSON_ROLES).not.toContain('OTHER_ROLE');
+    expect(PERSON_ROLES).toEqual(MUSICIAN_ROLES.filter((r) => r !== 'OTHER_ROLE'));
+    expect(locales.fi['costType.KEYS']).toBe('Koskettimet');
+    expect(locales.en['costType.KEYS']).toBe('Keys');
+    expect(locales.fi['costType.PIANO']).toBeUndefined();
+    expect(locales.fi['legacyCostType.PIANO']).toBe('Piano');
+    expect(locales.en['legacyCostType.PIANO']).toBe('Piano');
   });
 });
 

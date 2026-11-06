@@ -137,7 +137,6 @@ const en: Resources = {
     GUITAR: 'Guitar',
     DRUMS: 'Drums',
     KEYS: 'Keys',
-    PIANO: 'Piano',
     MIX: 'Mixing',
     SAX: 'Saxophone',
     TRUMPET: 'Trumpet',
@@ -475,10 +474,11 @@ const en: Resources = {
     no: 'no',
   },
   /** History only: technicalSetup codes from before 2026-10-05 (multi-choice). */
-  // Removed roles (2026-10-30): only old history entries show these.
+  // Removed roles (2026-10-30; PIANO 2026-11-07): only old history entries show these.
   legacyCostType: {
     HORN_1: 'Horn 1',
     HORN_2: 'Horn 2',
+    PIANO: 'Piano',
     TECHNICIAN: 'Technician',
   },
   legacyTechnicalSetup: {
