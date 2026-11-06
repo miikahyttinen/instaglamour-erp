@@ -9,4 +9,4 @@
 - [ ] `backend/src/domain/invoicing.ts`: PARTLY_INVOICED only when the gig has ≥ 1 invoice row; played with no rows → NONE. Update the doc comment.
 - [ ] Same rule in the `?invoiceState=` filter (SQL/where-clause, if derived separately) so list filter and label agree.
 - [ ] Tests: played no rows → NONE (and filter); played with one SENT row < total → PARTLY_INVOICED; existing cases unchanged. All backend tests + lint pass.
-- [ ] Check whether the frontend MSW mock derives invoiceState; if so, note it in the report (UI task will update it).
+- [ ] This task may also edit the frontend mock: apply the same rule in `frontend/src/mocks/eventStore.ts` (and its tests `invoiceFigures.test.ts`, `eventHandlers.test.ts`); frontend unit tests + lint must pass.
