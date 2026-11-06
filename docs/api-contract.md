@@ -642,7 +642,18 @@ A **lineup** (`LineupTemplate`, UI "Kokoonpano") is the cost template of a gig: 
 - UI: the menu item "Tietojen tuonti / Data import" is replaced by **"Asetukset / Settings"** (`/settings`), a page with two sections/tabs:
   **"Kokoonpanot / Lineups"** (`/settings/lineups`, default) and **"Tietojen tuonti / Data import"** (`/settings/import`, the existing import page). The old import URL redirects there.
 
+## Piano merged into Keys; custom role is not a person role (owner decision 2026-11-07)
+- Musician role **`PIANO` is removed** from `CostType` / `MUSICIAN_ROLES` and `/api/reference.costTypes`; it is merged into **`KEYS`**, labelled FI **"Koskettimet / piano"**, EN **"Keys / piano"**.
+  Migration converts `PIANO` → `KEYS` in cost lines, lineup lines and person `roles` (person roles de-duplicated, kept in `MUSICIAN_ROLES` order).
+  Stored history details keep the old code; the UI still labels `PIANO` ("Piano") in history only. Seed/import accept `PIANO` and convert it to `KEYS`.
+- **`OTHER_ROLE` ("Oma rooli / Custom role") is a cost line type only, never a person role.** It stays in `MUSICIAN_ROLES` for cost lines (load-in switch, double booking, gig count), but:
+  - `Person.roles` never contains it: `PATCH /api/people/{id}` with `roles` including `OTHER_ROLE` → 400 `roles: INVALID_VALUE`; `GET /api/people?role=OTHER_ROLE` → 400 `INVALID_VALUE`.
+  - Migration removes `OTHER_ROLE` from every person's `roles`; seed/import silently drop it from `roles`.
+  - `/api/reference.costTypes` gains `personRoles: MusicianRole[]` = `musicianRoles` without `OTHER_ROLE` (the list the people page offers).
+  - UI: people page role choices/filter use `personRoles`; a custom-role cost line lists all active people (unchanged, TASK-185).
+
 ## Change log
+- 2026-11-07 – PIANO merged into KEYS; OTHER_ROLE not a person role; reference.costTypes.personRoles (PM)
 - 2026-11-06 – Lineups (CRUD, lines of any cost type with default amounts, active flag), default fee settings removed, Settings page (PM)
 - 2026-11-04 – SALES/PRODUCTION cost lines: person must be an active partner (400 NOT_PARTNER) (PM)
 - 2026-11-04 – Freelancer PO: no double sound-check deduction; gig-level load-in setting shown/locked in the modal (PM)
