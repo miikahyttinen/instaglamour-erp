@@ -658,7 +658,13 @@ Fixes `invoiceState` for a played gig without invoice rows (shown wrongly as "Os
 - A played gig with **no invoice rows** → `NONE` ("–") — e.g. during the 48 h before the automatic Loppulasku is created.
 - Order of rules otherwise unchanged (OPEN_INVOICES → FULLY_INVOICED → NONE → PARTLY_INVOICED). The `?invoiceState=` filter follows the same derivation.
 
+## New musician role "Vocal & Keys" (owner request 2026-11-07)
+- New `CostType` / musician role **`VOC_KEYS`**, placed right after `BACKING_VOC` in `MUSICIAN_ROLES` and `PERSON_ROLES` (so it appears in `/api/reference.costTypes.musicianRoles` and `personRoles`).
+- Labels: FI **"Laulu & koskettimet"**, EN **"Vocal & Keys"**.
+- Behaves like every other musician role (load-in switch, double booking, gig count, person roles, role filter, lineups, seed/import). Migration only adds the enum value; no data changes.
+
 ## Change log
+- 2026-11-07 – New musician role VOC_KEYS "Vocal & Keys" (PM)
 - 2026-11-07 – invoiceState: PARTLY_INVOICED only with ≥ 1 invoice row; played without rows → NONE (PM)
 - 2026-11-07 – PIANO merged into KEYS; OTHER_ROLE not a person role; reference.costTypes.personRoles (PM)
 - 2026-11-06 – Lineups (CRUD, lines of any cost type with default amounts, active flag), default fee settings removed, Settings page (PM)
