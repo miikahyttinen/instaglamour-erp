@@ -1,7 +1,7 @@
 # TASK-055: event-draft — no lineup prefill
 
 - **owner:** backend
-- **status:** todo
+- **status:** done
 - **spec:** docs/api-contract.md "Convert to gig: no lineup prefill (owner request 2026-11-07)"
 - **depends on:** none
 
