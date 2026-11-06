@@ -432,6 +432,7 @@ const fi = {
     newPerson: '+ Uusi henkilö…',
     newPersonName: 'Uuden henkilön nimi',
     createPerson: 'Lisää henkilö',
+    newPersonRoleFailed: 'Henkilö lisättiin, mutta roolin tallennus epäonnistui: {{error}}',
     description: 'Kuvaus',
     budgeted: 'Budjetti',
     loadIn: 'Roudaus ja soundcheck',

@@ -17,6 +17,18 @@ export async function personByName(page: Page, name: string): Promise<{ id: stri
   return person;
 }
 
+/**
+ * Adds a musician role to a seed person (TASK-185: a musician line's picker lists only people
+ * with that role). Keeps their other roles; safe to call again (second project, rerun).
+ */
+export async function givePersonRole(page: Page, name: string, role: string): Promise<void> {
+  const people = (await api(page).get('/people?active=all')) as { id: string; name: string; roles: string[] }[];
+  const person = people.find((p) => p.name === name);
+  if (!person) throw new Error(`No person ${name}`);
+  if (person.roles.includes(role)) return;
+  await api(page).patch(`/people/${person.id}`, { roles: [...person.roles, role] });
+}
+
 export type TechnicalSetup = 'HOUSE_TECH' | 'SET_A' | 'SET_B' | 'SET_C';
 export type Logistics = 'OWN_VAN' | 'RENTAL_VAN' | 'TAXI' | 'OTHER';
 

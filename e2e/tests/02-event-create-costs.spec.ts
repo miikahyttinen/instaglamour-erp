@@ -21,6 +21,7 @@ import {
   costLines,
   createEventViaApi,
   econTile,
+  givePersonRole,
   suffix,
   totalPriceLine,
 } from './events';
@@ -37,6 +38,8 @@ test('create an event from a template, staff it, switch load-in, mark paid', asy
   const fee = SEED.templateB.roleFeeCents;
   const internal = SEED.internalFeeCents;
   const budgeted = 3 * fee + 3 * internal;
+  // The vocals picker lists only singers (TASK-185); the example seed gives Person 8 no roles.
+  await givePersonRole(page, 'Person 8', 'VOC');
 
   await page.goto('/');
   await goNav(page, 'Keikat');
@@ -157,8 +160,13 @@ test('double booking shows a warning naming the other event', async ({ page }, t
   // The example seed has Person 1 on vocals at Venue X on 2026-10-17 (Template A).
   const event = await createEventViaApi(page, { startDate: '2026-10-17', venue });
 
+  // The guitar picker lists only guitarists (TASK-185); the example seed has Person 1 as a singer.
+  await givePersonRole(page, 'Person 1', 'GUITAR');
+
   await page.goto(`/gigs/${event.id}`);
   const guitar = costLine(page, 'Kitara');
+  // Someone without the role is not offered (the example seed gives Person 3 no roles).
+  await expect(guitar.getByLabel('Henkilö: Kitara').getByRole('option', { name: 'Person 3', exact: true })).toHaveCount(0);
   await guitar.getByLabel('Henkilö: Kitara').selectOption({ label: 'Person 1' });
   const warning = page.getByRole('alert').filter({ hasText: 'Päällekkäinen keikka' });
   await expect(warning).toContainText('Person 1 on samaan aikaan myös keikalla (17.10.2026):');
