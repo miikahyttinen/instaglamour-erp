@@ -75,20 +75,6 @@ export function costLine(page: Page, label: string): Locator {
   return page.getByRole('table', { name: 'Kulut ja miehitys' }).getByRole('rowgroup', { name: label, exact: true });
 }
 
-/**
- * Phones (TASK-183): each cost line is one row; its type + description, person, load-in switch and
- * remove button / PO hint sit in a detail area behind the chevron "Näytä lisätiedot: <line>".
- * Opens it when the chevron is shown (phones) and the line is collapsed; no-op on wider screens.
- */
-export async function expandCostLine(page: Page, label: string): Promise<void> {
-  const line = costLine(page, label);
-  await line.waitFor();
-  const toggle = line.getByRole('button', { name: `Näytä lisätiedot: ${label}`, exact: true });
-  if (!(await toggle.isVisible())) return;
-  if ((await toggle.getAttribute('aria-expanded')) !== 'true') await toggle.click();
-  await line.locator('td.cost-person').waitFor();
-}
-
 /** All cost lines on the event page (the header rowgroup has column headers, no cells). */
 export function costLines(page: Page): Locator {
   return page

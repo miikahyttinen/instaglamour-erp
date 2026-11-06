@@ -1,5 +1,5 @@
 import { useMutation } from '@tanstack/react-query';
-import { ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState, type RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -171,9 +171,6 @@ function CostLineItem({ line, people, readOnly, columnCount, onResult }: LinePro
   const { t } = useTranslation();
   const lang = useLang();
   const [mode, setMode] = useState<'view' | 'remove'>('view');
-  // Phone (TASK-183): the row is one line; type, person, description, load-in and remove open in a
-  // detail area under it. The CSS shows the summary / chevron cells on phones only.
-  const [expanded, setExpanded] = useState(false);
   const typeLabel = costTypeLabel(t, line.type);
   const label = line.description ? `${typeLabel} (${line.description})` : typeLabel;
   const paid = line.paidAt !== null;
@@ -211,24 +208,18 @@ function CostLineItem({ line, people, readOnly, columnCount, onResult }: LinePro
 
   return (
     <tbody
-      className={['cost-group', musician && 'is-musician', paid && 'is-paid', expanded && 'is-expanded']
+      className={['cost-group', musician && 'is-musician', paid && 'is-paid', po && 'has-po']
         .filter(Boolean)
         .join(' ')}
       aria-label={label}
     >
       <tr>
         <td className="cell-primary cost-type">
-          <span className="cost-type-name">{typeLabel}</span>
-          {po && (
-            <Link
-              to={`/purchase-orders/${po.id}`}
-              className="tag tag-info cost-po-tag"
-              title={lockedHint}
-              aria-label={t('purchaseOrders.tagLabel', { number: po.number })}
-            >
-              {t('purchaseOrders.tag', { number: po.number })}
-            </Link>
-          )}
+          <span className="cost-type-name" title={typeLabel}>
+            {typeLabel}
+          </span>
+          {/* Read-only: no actions column, so the PO tag stays next to the type. */}
+          {po && readOnly && <PurchaseOrderTag po={po} />}
           {readOnly ? (
             line.description && <span className="cost-type-description"> · {line.description}</span>
           ) : (
@@ -248,11 +239,9 @@ function CostLineItem({ line, people, readOnly, columnCount, onResult }: LinePro
           )}
         </td>
 
-        <CostSummaryCell typeLabel={typeLabel} personName={personName(people, line.personId)} />
-
         <td className="cost-person" data-label={t('costs.person')} title={lockedHint}>
           {readOnly ? (
-            <span>{personName(people, line.personId) ?? t('costs.noPersonShort')}</span>
+            <span className="cost-person-name">{personName(people, line.personId) ?? t('costs.noPersonShort')}</span>
           ) : (
             <InlinePersonSelect
               label={`${t('costs.person')}: ${label}`}
@@ -340,19 +329,10 @@ function CostLineItem({ line, people, readOnly, columnCount, onResult }: LinePro
           )}
         </td>
 
-        <td className="cost-toggle cost-phone-only">
-          <IconButton
-            icon={expanded ? ChevronUp : ChevronDown}
-            label={t('costs.showDetails', { line: label })}
-            className="cost-toggle-button"
-            aria-expanded={expanded}
-            onClick={() => setExpanded((open) => !open)}
-          />
-        </td>
-
         {!readOnly && (
           <td className="cost-actions">
-            {po && <span className="cost-hint cost-po-hint">{lockedHint}</span>}
+            {/* BR-118: on a purchase order the PO tag (title = lock hint) replaces the remove button. */}
+            {po && <PurchaseOrderTag po={po} />}
             {!po && (
               <div className="cost-actions-inner">
                 <IconButton
@@ -516,8 +496,7 @@ function DraftCostRow({ event, people, columnCount, typeRef, onSaved, onDiscard 
   return (
     <tbody
       ref={rowRef}
-      // Phone (TASK-183): the draft's fields are always shown in the detail area.
-      className="cost-group cost-draft is-expanded"
+      className="cost-group cost-draft"
       aria-label={label}
       aria-busy={add.isPending || undefined}
       onBlur={(e) => {
@@ -590,11 +569,6 @@ function DraftCostRow({ event, people, columnCount, typeRef, onSaved, onDiscard 
           </InlineFieldFrame>
         </td>
 
-        <CostSummaryCell
-          typeLabel={type ? costTypeLabel(t, type) : label}
-          personName={personName(people, personId)}
-        />
-
         <td className="cost-person" data-label={t('costs.person')}>
           <PersonSelect
             label={`${t('costs.person')}: ${label}`}
@@ -641,8 +615,6 @@ function DraftCostRow({ event, people, columnCount, typeRef, onSaved, onDiscard 
 
         <td className="cost-paid cost-draft-paid" />
 
-        <td className="cost-toggle cost-phone-only" />
-
         <td className="cost-actions">
           <div className="cost-actions-inner">
             <IconButton
@@ -675,12 +647,17 @@ function DraftCostRow({ event, people, columnCount, typeRef, onSaved, onDiscard 
   );
 }
 
-/** Phone row (TASK-183): "Type · Person" on one line, truncated (person omitted when none). */
-function CostSummaryCell({ typeLabel, personName }: { typeLabel: string; personName: string | null }) {
-  const text = personName ? `${typeLabel} · ${personName}` : typeLabel;
+/** BR-118: "PO <number>" tag linking to the purchase order; its title explains the lock. */
+function PurchaseOrderTag({ po }: { po: NonNullable<CostLine['purchaseOrder']> }) {
+  const { t } = useTranslation();
   return (
-    <td className="cell-primary cost-summary cost-phone-only" title={text}>
-      <span className="cost-summary-text">{text}</span>
-    </td>
+    <Link
+      to={`/purchase-orders/${po.id}`}
+      className="tag tag-info cost-po-tag"
+      title={t('purchaseOrders.lockedHint', { number: po.number })}
+      aria-label={t('purchaseOrders.tagLabel', { number: po.number })}
+    >
+      {t('purchaseOrders.tag', { number: po.number })}
+    </Link>
   );
 }
