@@ -652,7 +652,14 @@ A **lineup** (`LineupTemplate`, UI "Kokoonpano") is the cost template of a gig: 
   - `/api/reference.costTypes` gains `personRoles: MusicianRole[]` = `musicianRoles` without `OTHER_ROLE` (the list the people page offers).
   - UI: people page role choices/filter use `personRoles`; a custom-role cost line lists all active people (unchanged, TASK-185).
 
+## Invoicing: no label before the first invoice (owner decision 2026-11-07)
+Fixes `invoiceState` for a played gig without invoice rows (shown wrongly as "Osittain laskutettu").
+- `PARTLY_INVOICED` now requires **at least one invoice row** (any status) on the gig: played (or cancelled with rows) and `sentCents < total` **and rowCount > 0**.
+- A played gig with **no invoice rows** → `NONE` ("–") — e.g. during the 48 h before the automatic Loppulasku is created.
+- Order of rules otherwise unchanged (OPEN_INVOICES → FULLY_INVOICED → NONE → PARTLY_INVOICED). The `?invoiceState=` filter follows the same derivation.
+
 ## Change log
+- 2026-11-07 – invoiceState: PARTLY_INVOICED only with ≥ 1 invoice row; played without rows → NONE (PM)
 - 2026-11-07 – PIANO merged into KEYS; OTHER_ROLE not a person role; reference.costTypes.personRoles (PM)
 - 2026-11-06 – Lineups (CRUD, lines of any cost type with default amounts, active flag), default fee settings removed, Settings page (PM)
 - 2026-11-04 – SALES/PRODUCTION cost lines: person must be an active partner (400 NOT_PARTNER) (PM)
