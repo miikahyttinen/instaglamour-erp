@@ -1,7 +1,7 @@
 # TASK-193: Paging for list tables
 
 - **owner:** ui
-- **status:** todo
+- **status:** done
 - **spec:** owner request 2026-11-07
 - **depends on:** none
 
