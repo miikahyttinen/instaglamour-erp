@@ -1,7 +1,7 @@
 import { expect, goNav, signIn, test } from './helpers';
 
-// TASK-191: the gig list (Keikat) keeps its oldest-first order but opens at the top (no scroll to
-// the first upcoming gig), and no page carries the previous page's scroll position over.
+// TASK-191: the gig list (Keikat) opens at the top (no scroll to the first upcoming gig; since
+// TASK-192 the default order is newest first), and no page carries the previous page's scroll position over.
 test.describe('pages open at the top', () => {
   test.beforeEach(async ({ page }) => {
     await signIn(page);

@@ -105,8 +105,9 @@ describe('event client', () => {
 
   it('event list shows the client (table and phone rows) and searches by client name', async () => {
     const x = addMockClient('Client X');
-    addMockEvent({ startDate: `${TEST_YEAR}-03-01`, venue: 'Venue X', clientId: x.id });
-    addMockEvent({ startDate: `${TEST_YEAR}-04-01`, venue: 'Venue Y' });
+    // Newest first by default (TASK-192): Venue X is the first row.
+    addMockEvent({ startDate: `${TEST_YEAR}-04-01`, venue: 'Venue X', clientId: x.id });
+    addMockEvent({ startDate: `${TEST_YEAR}-03-01`, venue: 'Venue Y' });
 
     // Phone rows (< 600 px): the client is a labelled item on the second line.
     const first = renderApp('/gigs');

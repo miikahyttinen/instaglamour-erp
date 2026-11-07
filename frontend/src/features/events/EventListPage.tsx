@@ -34,8 +34,8 @@ import './eventList.css';
 const EVENT_DISPLAY_STATUSES: EventDisplayStatus[] = ['SOLD', 'PLAYED', 'CANCELLED'];
 /** UC-003 AC-1: the list opens with the SOLD events (sold + played); cancelled via the Tila filter. */
 const DEFAULT_STATUS_FILTER: EventDisplayStatus[] = ['SOLD', 'PLAYED'];
-/** Default order (UC-003 step 1): by date. */
-const DEFAULT_SORT = { key: 'date', dir: 'asc' } as const;
+/** Default order (UC-003 step 1, TASK-192): by date, newest / future first. */
+const DEFAULT_SORT = { key: 'date', dir: 'desc' } as const;
 
 /** Filter values in the order of a code list (unknown values last). */
 const byCodeOrder =
@@ -309,8 +309,8 @@ function TableDateRange({ start, end, lang }: { start: string; end: string | nul
  * and look as the offer list: every column sortable, filter icons on the coded / text columns. From
  * 600 px it fills the width without scrolling sideways; columns with priority 2 / 3 are hidden on
  * narrower tables (TASK-147: 1 lineup, date, venue, status, total, margin · 2 client, invoicing,
- * seller, staffing · 3 producer, balance, budgeted, actual costs). Phones (< 600 px): one compact
- * row per event (line 1: lineup, status tag … invoicing tag, total at the right edge; line 2: date, venue, client, staffing, margin values without a label) + the "Suodattimet" sheet. Scrolls the first upcoming visible event into view.
+ * seller, staffing · 3 producer, budgeted, actual costs; TASK-192: no balance column, it is on the gig page). Phones (< 600 px): one compact
+ * row per event (line 1: lineup, status tag … invoicing tag, total at the right edge; line 2: date, venue, client, staffing, margin values without a label) + the "Suodattimet" sheet.
  */
 function EventTable({ events, partners, lang, tableState }: EventTableProps) {
   const { t } = useTranslation();
@@ -437,20 +437,6 @@ function EventTable({ events, partners, lang, tableState }: EventTableProps) {
       cell: (g) => formatMoney(g.totalPriceCents, lang),
     },
     {
-      key: 'balance',
-      hideOnPhone: true,
-      label: t('events.columns.balance'),
-      priority: 3,
-      numeric: true,
-      className: 'event-col-balance excel-col-fit',
-      sortValue: (g) => g.balanceCents,
-      cell: (g) => (
-        <span className={g.balanceCents < 0 ? 'event-balance-negative' : undefined}>
-          {formatMoney(g.balanceCents, lang)}
-        </span>
-      ),
-    },
-    {
       key: 'budgeted',
       hideOnPhone: true,
       label: t('events.budgetedCosts'),
@@ -490,11 +476,14 @@ function EventTable({ events, partners, lang, tableState }: EventTableProps) {
     },
   ];
 
-  // Oldest first, and the page opens at the top (TASK-191: no scroll to the first upcoming).
+  // Newest first by default (TASK-192); the page opens at the top (TASK-191: no scroll to the first
+  // upcoming). A sort on an unknown / removed column (e.g. an old `?sort=balance`) uses the default.
+  const sortable = columns.some((c) => c.sortValue && c.key === tableState.sort?.key);
+  const state = sortable ? tableState : { ...tableState, sort: DEFAULT_SORT };
   return (
     <div className="event-rows-wrap">
       <ExcelTable
-        {...tableState}
+        {...state}
         className="event-table"
         caption={t('events.listLabel')}
         columns={columns}

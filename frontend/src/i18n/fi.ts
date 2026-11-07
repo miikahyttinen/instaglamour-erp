@@ -310,7 +310,6 @@ const fi = {
       venue: 'Paikka',
       status: 'Tila',
       invoiceState: 'Laskutus',
-      balance: 'Laskuttamatta',
     },
     staffingFilter: {
       yes: 'Kyllä',
