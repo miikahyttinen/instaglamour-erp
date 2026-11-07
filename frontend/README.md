@@ -327,6 +327,8 @@ Shell parts in `src/layout/`: `Sidebar` (rail / drawer), `NavDrawer` (modal draw
 
 The shared Excel-style list (Tarjoukset, Keikat). Keikat opens with a default Tila filter (Myyty + Soitettu) that is not written to the URL until the filters are changed (`useDefaultStatusFilter` in `EventListPage`). See it on `/styleguide` → "Excel table".
 
+**Paging (TASK-193):** `ExcelTable` and `DataTable` take an optional `paging` (`{ page, pageSize, onPageChange }`) and then show one page of the filtered + sorted rows with the shared `Pager` under the table (footer totals still get every filtered row). Pages use `useUrlPaging(PAGE_SIZE, resetKey?)` from `components/pagination.ts`: `?page=N` (omitted for 1), back to page 1 when any other URL parameter (or `resetKey`) changes. Page sizes are the constants in `pagination.ts`.
+
 - **Header:** title = sort button (`aria-sort`, same icons as `DataTable`) + a **filter icon** on
   filterable columns. The icon is an accent, filled funnel while the column is filtered.
 - **Filter popover** (≥ 600 px, `ColumnFilterPopover`): a non-modal `dialog` under the icon

@@ -9,7 +9,7 @@ import { server } from '../../mocks/server';
 import { addMockEvent, partnerB, person, staffMockEvent, TEST_YEAR } from '../../test/eventFixtures';
 import { installMatchMedia } from '../../test/matchMedia';
 import { addMockPurchaseOrder, clearPurchaseOrders, localTs } from '../../test/purchaseOrderFixtures';
-import { renderApp, signInMock } from '../../test/renderApp';
+import { currentSearch, renderApp, signInMock } from '../../test/renderApp';
 
 const text = (el: HTMLElement) => (el.textContent ?? '').replace(/\s/g, ' ');
 const fiMoney = (cents: number) => formatMoney(cents, 'fi').replace(/\s/g, ' ');
@@ -188,5 +188,35 @@ describe('purchase order list (UC-034)', () => {
     expect(within(rowOf(cancelled.number, en)).getByText('Cancelled')).toHaveClass('tag-muted');
     expect(within(rowOf(open.number, en)).getByRole('button', { name: `Mark paid: ${open.number}` })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Log' })).toBeInTheDocument();
+  });
+});
+
+describe('purchase order list paging (TASK-193)', () => {
+  beforeEach(() => {
+    signInMock().selectedYear = TEST_YEAR;
+    clearPurchaseOrders();
+  });
+
+  const pager = () => screen.queryByRole('navigation', { name: 'Sivutus' });
+
+  it('shows 50 POs a page (newest first) with the page in the URL; a sort change goes back to page 1', async () => {
+    const pos = Array.from({ length: 51 }, (_, i) =>
+      addMockPurchaseOrder({ venue: `Venue ${i + 1}`, createdAt: localTs(TEST_YEAR, 1, 1 + i, 9, 0) }).po,
+    );
+    installMatchMedia({ [TABLET_QUERY]: true });
+    const { user } = renderApp('/purchase-orders');
+    await waitFor(() => expect(bodyRows()).toHaveLength(50));
+    expect(within(pager()!).getByText('1–50 / 51')).toBeInTheDocument();
+    expect(bodyRows()[0]!.textContent).toContain(pos[50]!.number);
+
+    await user.click(within(pager()!).getByRole('button', { name: 'Seuraava' }));
+    expect(currentSearch().get('page')).toBe('2');
+    expect(bodyRows()).toHaveLength(1);
+    expect(bodyRows()[0]!.textContent).toContain(pos[0]!.number);
+
+    const numberHeader = within(table()).getAllByRole('columnheader')[0]!;
+    await user.click(within(numberHeader).getByRole('button'));
+    expect(currentSearch().has('page')).toBe(false);
+    await waitFor(() => expect(bodyRows()).toHaveLength(50));
   });
 });

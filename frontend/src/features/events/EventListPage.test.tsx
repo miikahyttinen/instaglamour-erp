@@ -11,7 +11,7 @@ import { addInvoiceRow, logEvent } from '../../mocks/eventStore';
 import type { InvoiceRowStatus } from '../../api/enums';
 import { addMockClient, addMockEvent, partnerA, partnerB, staffMockEvent, TEST_YEAR } from '../../test/eventFixtures';
 import { installMatchMedia } from '../../test/matchMedia';
-import { renderApp, signInMock } from '../../test/renderApp';
+import { currentSearch, renderApp, signInMock } from '../../test/renderApp';
 
 const fi = (cents: number) => formatMoney(cents, 'fi').replace(/\s/g, ' ');
 const table = () => screen.getByRole('table', { name: 'Keikkalista' });
@@ -504,5 +504,56 @@ describe('event list (UC-003)', () => {
     const eventTable = screen.getByRole('table', { name: 'Gig list' });
     expect(within(eventTable).getByRole('button', { name: 'Filter: Status' })).toHaveClass('is-active');
     expect(within(eventTable).getByRole('button', { name: 'Filter: Not fully staffed' })).toBeInTheDocument();
+  });
+});
+
+describe('event list paging (TASK-193)', () => {
+  beforeEach(() => {
+    signInMock().selectedYear = TEST_YEAR;
+  });
+
+  const pager = () => screen.queryByRole('navigation', { name: 'Sivutus' });
+  /** 101 SOLD events, Venue 001 on Jan 1 … Venue 101 on Apr 11 (one a day). */
+  function add101Events() {
+    for (let i = 1; i <= 101; i++) {
+      const date = new Date(Date.UTC(TEST_YEAR, 0, i)).toISOString().slice(0, 10);
+      addMockEvent({ startDate: date, venue: `Venue ${String(i).padStart(3, '0')}` });
+    }
+  }
+
+  it('shows 100 events a page after the sort and filters; a sort change goes back to page 1', async () => {
+    add101Events();
+    installMatchMedia({ [TABLET_QUERY]: true });
+    const { user } = renderApp('/gigs');
+    await waitFor(() => expect(rows()).toHaveLength(100));
+    // Newest first: page 1 = Venue 101 … Venue 002.
+    expect(venues()[0]).toBe('Venue 101');
+    expect(venues()[99]).toBe('Venue 002');
+    expect(within(pager()!).getByText('1–100 / 101')).toBeInTheDocument();
+
+    await user.click(within(pager()!).getByRole('button', { name: 'Seuraava' }));
+    expect(currentSearch().get('page')).toBe('2');
+    expect(venues()).toEqual(['Venue 001']);
+    expect(within(pager()!).getByText('101–101 / 101')).toBeInTheDocument();
+
+    // Date ascending: back to page 1, oldest first.
+    await user.click(within(table()).getByRole('button', { name: /^Päivä/ }));
+    expect(currentSearch().has('page')).toBe(false);
+    expect(currentSearch().get('dir')).toBe('asc');
+    await waitFor(() => expect(venues()[0]).toBe('Venue 001'));
+  });
+
+  it('keeps the page from the URL (reload) and a search goes back to page 1', async () => {
+    add101Events();
+    installMatchMedia({ [TABLET_QUERY]: true });
+    const { user } = renderApp('/gigs?page=2');
+    await waitFor(() => expect(venues()).toEqual(['Venue 001']));
+
+    await user.type(screen.getByRole('searchbox', { name: 'Haku' }), 'Venue 0');
+    await waitFor(() => expect(currentSearch().get('q')).toBe('Venue 0'));
+    expect(currentSearch().has('page')).toBe(false);
+    // Venue 001 … Venue 099 fit on one page.
+    await waitFor(() => expect(rows()).toHaveLength(99));
+    expect(pager()).not.toBeInTheDocument();
   });
 });

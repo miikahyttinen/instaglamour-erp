@@ -7,7 +7,7 @@ import { server } from '../../mocks/server';
 import { addMockClient, partnerB, TEST_YEAR } from '../../test/eventFixtures';
 import { installMatchMedia } from '../../test/matchMedia';
 import { addMockOffer } from '../../test/offerFixtures';
-import { renderApp, signInMock } from '../../test/renderApp';
+import { currentSearch, renderApp, signInMock } from '../../test/renderApp';
 
 const fiMoney = (cents: number) => formatMoneyWhole(cents, 'fi').replace(/\s/g, ' ');
 const table = () => screen.getByRole('table', { name: 'Tarjoukset' });
@@ -350,5 +350,34 @@ describe('offer list (UC-028)', () => {
     await user.click(screen.getByRole('button', { name: 'Palauta: Event 1' }));
     expect(await screen.findByText('Tarjous palautettu:')).toBeInTheDocument();
     expect(offer.deletedAt).toBeNull();
+  });
+});
+
+describe('offer list paging (TASK-193)', () => {
+  beforeEach(() => {
+    signInMock();
+  });
+
+  const pager = () => screen.queryByRole('navigation', { name: 'Sivutus' });
+
+  it('shows 100 offers a page with the page in the URL; a search goes back to page 1', async () => {
+    const client = addMockClient('Client X');
+    for (let i = 1; i <= 101; i++) addMockOffer({ clientId: client.id, eventName: `Paged Offer ${String(i).padStart(3, '0')}` });
+    const total = db.offers.offers.filter((o) => !o.deletedAt).length;
+    installMatchMedia({ [TABLET_QUERY]: true });
+    const { user } = renderApp('/offers');
+    await waitFor(() => expect(bodyRows()).toHaveLength(100));
+    expect(within(pager()!).getByText(`1–100 / ${total}`)).toBeInTheDocument();
+    const page1 = eventNames();
+
+    await user.click(within(pager()!).getByRole('button', { name: 'Seuraava' }));
+    expect(currentSearch().get('page')).toBe('2');
+    expect(bodyRows()).toHaveLength(total - 100);
+    expect(eventNames().filter((n) => page1.includes(n!))).toEqual([]);
+
+    await user.type(screen.getByRole('searchbox', { name: 'Haku' }), 'Paged Offer');
+    await waitFor(() => expect(currentSearch().get('q')).toBe('Paged Offer'));
+    expect(currentSearch().has('page')).toBe(false);
+    await waitFor(() => expect(within(pager()!).getByText('1–100 / 101')).toBeInTheDocument());
   });
 });

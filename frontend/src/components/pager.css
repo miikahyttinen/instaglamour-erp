@@ -1,0 +1,22 @@
+/* Pager under a list table (components/Pager.tsx, TASK-193). Wraps on phones: no sideways scroll. */
+.pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  margin: var(--space-3) 0 0;
+}
+.pager-page {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.pager-range {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+/* A paged table scrolls to its top on a page change: keep it clear of the sticky top bar. */
+.is-paged {
+  scroll-margin-top: calc(var(--topbar-h) + var(--space-3));
+}

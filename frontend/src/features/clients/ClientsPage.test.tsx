@@ -5,7 +5,7 @@ import { DESKTOP_QUERY } from '../../lib/useMediaQuery';
 import { db } from '../../mocks/data';
 import { addMockClient, addMockEvent, TEST_YEAR } from '../../test/eventFixtures';
 import { installMatchMedia } from '../../test/matchMedia';
-import { renderApp, signInMock } from '../../test/renderApp';
+import { currentSearch, renderApp, signInMock } from '../../test/renderApp';
 import { addMockOffer } from '../../test/offerFixtures';
 
 const table = () => screen.getByRole('table', { name: 'Asiakkaat' });
@@ -105,5 +105,58 @@ describe('client list (UC-027)', () => {
     const t = await screen.findByRole('table', { name: 'Clients' });
     expect(within(t).getAllByRole('columnheader').map((h) => h.textContent)).toEqual(['Name', 'Gigs', 'Offers']);
     expect(screen.getByRole('button', { name: 'Add' })).toBeInTheDocument();
+  });
+});
+
+describe('client list paging (TASK-193)', () => {
+  beforeEach(() => {
+    signInMock().selectedYear = TEST_YEAR;
+  });
+
+  const pager = () => screen.queryByRole('navigation', { name: 'Sivutus' });
+
+  it('shows 100 clients a page with the page in the URL; a search goes back to page 1', async () => {
+    // Seed: Client A, B, C + 98 = 101, by name.
+    for (let i = 1; i <= 98; i++) addMockClient(`Paged Client ${String(i).padStart(3, '0')}`);
+    const { user } = renderApp('/clients');
+    await screen.findByRole('table', { name: 'Asiakkaat' });
+    expect(bodyRows()).toHaveLength(100);
+    expect(within(pager()!).getByText('Sivu 1 / 2')).toBeInTheDocument();
+    expect(within(pager()!).getByText('1–100 / 101')).toBeInTheDocument();
+    expect(currentSearch().has('page')).toBe(false);
+
+    await user.click(within(pager()!).getByRole('button', { name: 'Seuraava' }));
+    expect(currentSearch().get('page')).toBe('2');
+    expect(rowTexts().map((r) => r[0])).toEqual(['Paged Client 098']);
+
+    await user.type(screen.getByRole('searchbox', { name: 'Haku' }), 'paged');
+    await waitFor(() => expect(currentSearch().has('page')).toBe(false));
+    await waitFor(() => expect(bodyRows()).toHaveLength(98));
+    expect(rowTexts()[0]![0]).toBe('Paged Client 001');
+    expect(pager()).not.toBeInTheDocument();
+  });
+
+  it('opens on the page in the URL and clamps an out-of-range page to the last one', async () => {
+    for (let i = 1; i <= 98; i++) addMockClient(`Paged Client ${String(i).padStart(3, '0')}`);
+    renderApp('/clients?page=7');
+    await screen.findByRole('table', { name: 'Asiakkaat' });
+    expect(rowTexts().map((r) => r[0])).toEqual(['Paged Client 098']);
+    expect(within(pager()!).getByText('Sivu 2 / 2')).toBeInTheDocument();
+  });
+
+  it('keeps the search in the URL with the page (reload / back)', async () => {
+    for (let i = 1; i <= 120; i++) addMockClient(`Paged Client ${String(i).padStart(3, '0')}`);
+    renderApp('/clients?q=paged&page=2');
+    await screen.findByRole('table', { name: 'Asiakkaat' });
+    expect(screen.getByRole('searchbox', { name: 'Haku' })).toHaveValue('paged');
+    await waitFor(() => expect(bodyRows()).toHaveLength(20));
+    expect(rowTexts()[0]![0]).toBe('Paged Client 101');
+    expect(currentSearch().get('page')).toBe('2');
+  });
+
+  it('has no pager when every client fits on one page', async () => {
+    renderApp('/clients');
+    await screen.findByRole('table', { name: 'Asiakkaat' });
+    expect(pager()).not.toBeInTheDocument();
   });
 });

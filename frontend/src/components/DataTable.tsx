@@ -1,5 +1,7 @@
 import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { useRef, type ReactNode } from 'react';
+import { Pager } from './Pager';
+import { pageSlice, scrollToTable, type Paging } from './pagination';
 
 export type SortDirection = 'asc' | 'desc';
 export type CardsBreakpoint = 'sm' | 'lg';
@@ -57,6 +59,9 @@ export interface DataTableProps<T> {
   rowClassName?: (row: T) => string | undefined;
   /** Optional <tr> elements for a totals footer. Give each <td> a `data-label` for phones. */
   footer?: ReactNode;
+  /** Client-side paging (TASK-193) of the given (already filtered + sorted) rows; a pager is shown
+   *  under the table when the rows don't fit on one page. The footer is not paged. */
+  paging?: Paging;
   className?: string;
 }
 
@@ -78,9 +83,18 @@ export function DataTable<T>({
   cardsBelow = 'sm',
   rowClassName,
   footer,
+  paging,
   className,
 }: DataTableProps<T>) {
+  const wrapRef = useRef<HTMLDivElement>(null);
   if (rows.length === 0 && empty !== undefined) return <div className="table-empty">{empty}</div>;
+
+  const slice = paging ? pageSlice(rows, paging.page, paging.pageSize) : null;
+  const pageRows = slice ? slice.rows : rows;
+  const changePage = (page: number) => {
+    paging?.onPageChange(page);
+    scrollToTable(wrapRef.current);
+  };
 
   const cellClass = (col: DataTableColumn<T>) =>
     [
@@ -97,53 +111,56 @@ export function DataTable<T>({
       .join(' ') || undefined;
 
   return (
-    <div className="table-wrap">
-      <table
-        className={[
-          'data-table',
-          cardsOnPhone && 'data-table-cards',
-          cardsOnPhone && cardsBelow === 'lg' && 'data-table-cards-lg',
-          className,
-        ]
-          .filter(Boolean)
-          .join(' ')}
-      >
-        <caption className={showCaption ? 'table-caption' : 'visually-hidden'}>{caption}</caption>
-        <thead>
-          <tr>
-            {columns.map((col) => (
-              <th
-                key={col.key}
-                scope="col"
-                className={cellClass(col)}
-                aria-sort={col.onSort ? (col.sort ? ARIA_SORT[col.sort] : 'none') : undefined}
-              >
-                {col.onSort ? (
-                  <button type="button" className="th-sort" onClick={col.onSort}>
-                    {col.header ?? col.label}
-                    <SortIcon sort={col.sort} />
-                  </button>
-                ) : (
-                  (col.header ?? col.label)
-                )}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr key={rowKey(row)} className={rowClassName?.(row)}>
+    <>
+      <div ref={wrapRef} className={paging ? 'table-wrap is-paged' : 'table-wrap'}>
+        <table
+          className={[
+            'data-table',
+            cardsOnPhone && 'data-table-cards',
+            cardsOnPhone && cardsBelow === 'lg' && 'data-table-cards-lg',
+            className,
+          ]
+            .filter(Boolean)
+            .join(' ')}
+        >
+          <caption className={showCaption ? 'table-caption' : 'visually-hidden'}>{caption}</caption>
+          <thead>
+            <tr>
               {columns.map((col) => (
-                <td key={col.key} className={cellClass(col)} data-label={col.label}>
-                  {col.cell(row)}
-                </td>
+                <th
+                  key={col.key}
+                  scope="col"
+                  className={cellClass(col)}
+                  aria-sort={col.onSort ? (col.sort ? ARIA_SORT[col.sort] : 'none') : undefined}
+                >
+                  {col.onSort ? (
+                    <button type="button" className="th-sort" onClick={col.onSort}>
+                      {col.header ?? col.label}
+                      <SortIcon sort={col.sort} />
+                    </button>
+                  ) : (
+                    (col.header ?? col.label)
+                  )}
+                </th>
               ))}
             </tr>
-          ))}
-        </tbody>
-        {footer && <tfoot>{footer}</tfoot>}
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            {pageRows.map((row) => (
+              <tr key={rowKey(row)} className={rowClassName?.(row)}>
+                {columns.map((col) => (
+                  <td key={col.key} className={cellClass(col)} data-label={col.label}>
+                    {col.cell(row)}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+          {footer && <tfoot>{footer}</tfoot>}
+        </table>
+      </div>
+      {slice && <Pager slice={slice} onPageChange={changePage} />}
+    </>
   );
 }
 
