@@ -10,7 +10,7 @@ import { db } from '../../mocks/data';
 import { server } from '../../mocks/server';
 import { createQueryClient } from '../../queryClient';
 import { installMatchMedia } from '../../test/matchMedia';
-import { renderApp, signInMock } from '../../test/renderApp';
+import { currentSearch, renderApp, signInMock } from '../../test/renderApp';
 
 const list = () => screen.getByRole('table', { name: 'Henkilöt' });
 /** Body rows of the people table (one per person). */
@@ -418,5 +418,44 @@ describe('people register (UC-014)', () => {
     await user.click(screen.getByRole('button', { name: 'Add' }));
     expect(await screen.findByText('A person with the same name already exists.')).toBeInTheDocument();
     expect(screen.getByText('Person added: Person 1.')).toBeInTheDocument();
+  });
+});
+
+describe('people list paging (TASK-193)', () => {
+  beforeEach(() => {
+    signInMock();
+  });
+
+  const pager = () => screen.queryByRole('navigation', { name: 'Sivutus' });
+
+  it('shows 100 people a page (after the sort); the page is in the URL; a filter or sort goes back to page 1', async () => {
+    for (let i = 1; i <= 100; i++) {
+      db.events.people.push({ id: `paged-${i}`, name: `Paged Person ${String(i).padStart(3, '0')}`, active: true, roles: [] });
+    }
+    installMatchMedia({ [TABLET_QUERY]: true });
+    const { user } = await openPeople();
+    const total = db.events.people.filter((p) => p.active).length;
+    expect(rows()).toHaveLength(100);
+    expect(within(pager()!).getByText(`1–100 / ${total}`)).toBeInTheDocument();
+    const page1 = names();
+
+    await user.click(within(pager()!).getByRole('button', { name: 'Seuraava' }));
+    expect(currentSearch().get('page')).toBe('2');
+    const page2 = names();
+    expect(page2).toHaveLength(total - 100);
+    expect(new Set([...page1, ...page2]).size).toBe(total);
+
+    // Sort by name descending: back to page 1, which now starts with the last name of the old page 2.
+    await user.click(within(list()).getByRole('button', { name: /^Nimi/ }));
+    await waitFor(() => expect(currentSearch().has('page')).toBe(false));
+    expect(rows()).toHaveLength(100);
+    expect(names()[0]).toBe(page2[page2.length - 1]);
+
+    await user.click(within(pager()!).getByRole('button', { name: 'Seuraava' }));
+    expect(currentSearch().get('page')).toBe('2');
+    await user.click(screen.getByRole('checkbox', { name: 'Näytä vain osakkaat' }));
+    await waitFor(() => expect(currentSearch().has('page')).toBe(false));
+    await waitFor(() => expect(names()).not.toContain('Paged Person 050'));
+    expect(pager()).not.toBeInTheDocument();
   });
 });

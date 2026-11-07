@@ -272,6 +272,11 @@ const fi = {
     asc: 'Nouseva',
     desc: 'Laskeva',
     done: 'Valmis',
+    pagination: 'Sivutus',
+    previous: 'Edellinen',
+    next: 'Seuraava',
+    page: 'Sivu {{page}} / {{pages}}',
+    range: '{{from}}–{{to}} / {{total}}',
   },
   /** Inline fields (components/inline): state texts, also announced to screen readers. */
   inline: {

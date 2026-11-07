@@ -5,6 +5,8 @@ import { TABLET_QUERY, useMediaQuery } from '../lib/useMediaQuery';
 import { Button } from './Button';
 import { ColumnFilterPanel, ColumnFilterPopover } from './ColumnFilter';
 import { Dialog } from './Dialog';
+import { Pager } from './Pager';
+import { pageSlice, scrollToTable, type Paging } from './pagination';
 import {
   activeFilterCount,
   applyTableState,
@@ -33,6 +35,9 @@ export interface ExcelTableProps<T> extends ExcelTableState {
   empty?: ReactNode;
   /** Shown (with "Clear filters") when filters hide every row. Default: `table.emptyFiltered`. */
   emptyFiltered?: ReactNode;
+  /** Client-side paging (TASK-193) after filtering and sorting; the footer still gets every
+   *  filtered row. A pager is shown under the table when the rows don't fit on one page. */
+  paging?: Paging;
   className?: string;
 }
 
@@ -66,17 +71,24 @@ function cellClass<T>(col: ExcelColumn<T>): string | undefined {
  * `useLocalTableState()`). See frontend/README.md → "ExcelTable".
  */
 export function ExcelTable<T>(props: ExcelTableProps<T>) {
-  const { columns, rows, rowKey, caption, tieBreak, rowClassName, footer, empty, emptyFiltered, className } = props;
+  const { columns, rows, rowKey, caption, tieBreak, rowClassName, footer, empty, emptyFiltered, paging, className } = props;
   const { sort, onSortChange, filters, onFiltersChange } = props;
   const { t } = useTranslation();
   const wide = useMediaQuery(TABLET_QUERY);
   const [openFilter, setOpenFilter] = useState<{ key: string; anchor: HTMLElement } | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
 
   const visible = useMemo(
     () => applyTableState(rows, columns, { sort, filters }, tieBreak),
     [rows, columns, sort, filters, tieBreak],
   );
+  const slice = paging ? pageSlice(visible, paging.page, paging.pageSize) : null;
+  const pageRows = slice ? slice.rows : visible;
+  const changePage = (page: number) => {
+    paging?.onPageChange(page);
+    scrollToTable(rootRef.current);
+  };
   const activeCount = activeFilterCount(columns, filters);
   const blankLabel = t('table.blank');
 
@@ -114,7 +126,7 @@ export function ExcelTable<T>(props: ExcelTableProps<T>) {
   const showBar = rowCount || clearButton || (!wide && hasFilters);
 
   return (
-    <div className={['excel-table', className].filter(Boolean).join(' ')}>
+    <div ref={rootRef} className={['excel-table', paging && 'is-paged', className].filter(Boolean).join(' ')}>
       {showBar && (
         <div className="excel-table-bar">
           {rowCount}
@@ -176,7 +188,7 @@ export function ExcelTable<T>(props: ExcelTableProps<T>) {
               </tr>
             </thead>
             <tbody>
-              {visible.map((row) => (
+              {pageRows.map((row) => (
                 <tr key={rowKey(row)} className={rowClassName?.(row)}>
                   {shown.map((col) => (
                     <td key={col.key} className={cellClass(col)} data-label={col.label} data-priority={col.priority ?? 1}>
@@ -198,6 +210,8 @@ export function ExcelTable<T>(props: ExcelTableProps<T>) {
           )}
         </div>
       )}
+
+      {slice && visible.length > 0 && <Pager slice={slice} onPageChange={changePage} />}
 
       {popoverColumn && openFilter && (
         <ColumnFilterPopover

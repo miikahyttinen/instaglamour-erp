@@ -7,6 +7,7 @@ import type { PurchaseOrder, PurchaseOrderListQuery } from '../../api/types';
 import { Button } from '../../components/Button';
 import { ExcelTable } from '../../components/ExcelTable';
 import { useUrlTableState, type ExcelColumn } from '../../components/excelTableState';
+import { PURCHASE_ORDER_PAGE_SIZE, useUrlPaging, type Paging } from '../../components/pagination';
 import { Notice } from '../../components/Notice';
 import { PageHead } from '../../components/PageHead';
 import { SectionLabel } from '../../components/SectionLabel';
@@ -38,6 +39,7 @@ export function PurchaseOrderListPage() {
   const { t } = useTranslation();
   const [params, setParams] = useSearchParams();
   const tableState = useUrlTableState({ defaultSort: DEFAULT_SORT });
+  const paging = useUrlPaging(PURCHASE_ORDER_PAGE_SIZE);
   const [search, setSearch] = useState(params.get('q') ?? '');
   const q = useDeferredValue(search.trim());
 
@@ -97,7 +99,7 @@ export function PurchaseOrderListPage() {
             <p>{q ? t('purchaseOrders.emptySearch') : t('purchaseOrders.empty')}</p>
           </div>
         ) : (
-          <PurchaseOrderTable orders={list.data.purchaseOrders} tableState={tableState} />
+          <PurchaseOrderTable orders={list.data.purchaseOrders} tableState={tableState} paging={paging} />
         ))}
 
       <section className="po-log" aria-labelledby="po-log-title">
@@ -116,9 +118,11 @@ export function PurchaseOrderListPage() {
 function PurchaseOrderTable({
   orders,
   tableState,
+  paging,
 }: {
   orders: PurchaseOrder[];
   tableState: ReturnType<typeof useUrlTableState>;
+  paging: Paging;
 }) {
   const { t } = useTranslation();
   const lang = useLang();
@@ -195,6 +199,7 @@ function PurchaseOrderTable({
       rows={orders}
       rowKey={(po) => po.id}
       tieBreak={byNumber}
+      paging={paging}
       rowClassName={(po) => `po-row-${po.status.toLowerCase()}`}
     />
   );

@@ -5,6 +5,7 @@ import type { MusicianRole } from '../../api/enums';
 import type { PeopleActiveFilter, Person } from '../../api/types';
 import { Button } from '../../components/Button';
 import { DataTable, type DataTableColumn } from '../../components/DataTable';
+import { PEOPLE_PAGE_SIZE, useUrlPaging } from '../../components/pagination';
 import { nextSort, readTableParams, type SortDir } from '../../components/excelTableState';
 import { Notice as NoticeMessage } from '../../components/Notice';
 import { PageHead } from '../../components/PageHead';
@@ -82,6 +83,7 @@ export function PeoplePage() {
   const personRoles = usePersonRoles();
   const role = parseRole(personRoles, params.get('role'));
   const sort = parsePeopleSort(readTableParams(params).sort);
+  const paging = useUrlPaging(PEOPLE_PAGE_SIZE);
   const wide = useMediaQuery(TABLET_QUERY);
   const list = usePeopleList(filter, onlyPartners ? 'true' : undefined, role);
   const create = useCreatePerson();
@@ -287,6 +289,7 @@ export function PeoplePage() {
           columns={columns}
           rows={people}
           rowKey={(person) => person.id}
+          paging={paging}
           rowClassName={(person) => (person.active ? undefined : 'is-inactive')}
           empty={<p className="empty">{t('people.empty')}</p>}
         />

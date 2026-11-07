@@ -21,6 +21,7 @@ import { PageHead } from '../../components/PageHead';
 import { PageYearSelector } from '../../components/PageYearSelector';
 import { SectionLabel } from '../../components/SectionLabel';
 import { StatGrid, StatTile } from '../../components/StatTile';
+import { EVENT_PAGE_SIZE, useUrlPaging, type Paging } from '../../components/pagination';
 import { StatusTag } from '../../components/StatusTag';
 import { apiErrorMessage, eventDisplayStatus, invoiceStateLabel } from '../../i18n/labels';
 import { useLang } from '../../i18n/useLang';
@@ -68,6 +69,8 @@ export function EventListPage() {
   const deletedView = params.get('view') === 'deleted';
   const urlTableState = useUrlTableState({ defaultSort: DEFAULT_SORT });
   const tableState = useDefaultStatusFilter(urlTableState);
+  // The year is not in the URL: a year change also goes back to page 1.
+  const paging = useUrlPaging(EVENT_PAGE_SIZE, String(year));
   const [search, setSearch] = useState(params.get('q') ?? '');
   const q = useDeferredValue(search.trim());
 
@@ -198,7 +201,7 @@ export function EventListPage() {
         ) : deletedView ? (
           <DeletedList events={list.data.events} onRestore={(id) => restore.mutate(id)} pending={restore.isPending} />
         ) : (
-          <EventTable events={list.data.events} partners={reference?.partners} lang={lang} tableState={tableState} />
+          <EventTable events={list.data.events} partners={reference?.partners} lang={lang} tableState={tableState} paging={paging} />
         ))}
     </section>
   );
@@ -287,6 +290,7 @@ interface EventTableProps {
   partners: Partner[] | undefined;
   lang: 'fi' | 'en';
   tableState: ExcelTableState;
+  paging: Paging;
 }
 
 /**
@@ -312,7 +316,7 @@ function TableDateRange({ start, end, lang }: { start: string; end: string | nul
  * seller, staffing · 3 producer, budgeted, actual costs; TASK-192: no balance column, it is on the gig page). Phones (< 600 px): one compact
  * row per event (line 1: lineup, status tag … invoicing tag, total at the right edge; line 2: date, venue, client, staffing, margin values without a label) + the "Suodattimet" sheet.
  */
-function EventTable({ events, partners, lang, tableState }: EventTableProps) {
+function EventTable({ events, partners, lang, tableState, paging }: EventTableProps) {
   const { t } = useTranslation();
   const clientNames = useMemo(
     () => new Map(events.filter((g) => g.clientId).map((g) => [g.clientId!, g.clientName ?? '–'])),
@@ -490,6 +494,7 @@ function EventTable({ events, partners, lang, tableState }: EventTableProps) {
         rows={events}
         rowKey={(g) => g.id}
         tieBreak={eventTieBreak}
+        paging={paging}
         emptyFiltered={t('events.emptyColumnFiltered')}
         rowClassName={(g) => `status-${eventDisplayStatus(g).toLowerCase()}`}
       />

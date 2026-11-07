@@ -12,6 +12,7 @@ import { buttonClass } from '../../components/buttonClass';
 import { DataTable, type DataTableColumn } from '../../components/DataTable';
 import { ExcelTable } from '../../components/ExcelTable';
 import { useUrlTableState, type ExcelColumn, type ExcelTableState } from '../../components/excelTableState';
+import { OFFER_PAGE_SIZE, useUrlPaging, type Paging } from '../../components/pagination';
 import { InlineSelect } from '../../components/inline';
 import { Notice } from '../../components/Notice';
 import { PageHead } from '../../components/PageHead';
@@ -73,6 +74,7 @@ export function OfferListPage() {
 
   const deletedView = params.get('view') === 'deleted';
   const tableState = useUrlTableState({ defaultSort: DEFAULT_SORT });
+  const paging = useUrlPaging(OFFER_PAGE_SIZE);
   const [search, setSearch] = useState(params.get('q') ?? '');
   const q = useDeferredValue(search.trim());
 
@@ -218,6 +220,7 @@ export function OfferListPage() {
             partners={partners}
             lang={lang}
             tableState={tableState}
+            paging={paging}
             onPatch={patch}
             onConvert={(offer) => setDialog({ kind: 'convert', offer })}
             onCopy={(offer) => void copyLink(offer)}
@@ -301,6 +304,7 @@ interface OfferTableProps {
   partners: Partner[] | undefined;
   lang: 'fi' | 'en';
   tableState: ExcelTableState;
+  paging: Paging;
   onPatch: (offer: OfferSummary, body: OfferUpdate) => Promise<void>;
   onConvert: (offer: OfferSummary) => void;
   onCopy: (offer: OfferSummary) => void;
@@ -513,6 +517,7 @@ function OfferTable(props: OfferTableProps) {
       rows={offers}
       rowKey={(o) => o.id}
       tieBreak={offerTieBreak}
+      paging={props.paging}
       rowClassName={(o) => `offer-row-${o.status.toLowerCase()}${o.expired ? ' offer-row-expired' : ''}`}
     />
   );

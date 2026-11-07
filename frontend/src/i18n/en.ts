@@ -270,6 +270,11 @@ const en: Resources = {
     asc: 'Ascending',
     desc: 'Descending',
     done: 'Done',
+    pagination: 'Pagination',
+    previous: 'Previous',
+    next: 'Next',
+    page: 'Page {{page}} / {{pages}}',
+    range: '{{from}}–{{to}} / {{total}}',
   },
   inline: {
     saving: 'Saving…',

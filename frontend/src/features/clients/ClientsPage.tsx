@@ -1,26 +1,45 @@
 import { Search } from 'lucide-react';
-import { useDeferredValue, useState } from 'react';
+import { useDeferredValue, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import type { ClientListItem } from '../../api/types';
 import { Button } from '../../components/Button';
 import { DataTable, type DataTableColumn } from '../../components/DataTable';
 import { Notice } from '../../components/Notice';
 import { PageHead } from '../../components/PageHead';
+import { CLIENT_PAGE_SIZE, useUrlPaging } from '../../components/pagination';
 import { SectionLabel } from '../../components/SectionLabel';
 import { apiErrorMessage } from '../../i18n/labels';
 import { ClientForm } from './ClientForm';
 import { useClientList } from './queries';
 import './clients.css';
 
-/** Client register (UC-027): searchable list (name · events · offers) and the add form. */
+/**
+ * Client register (UC-027): searchable list (name · events · offers) and the add form. The search
+ * (`?q=`) and the page (`?page=`, TASK-193) are in the URL, so back / refresh keep them.
+ */
 export function ClientsPage() {
   const { t } = useTranslation();
   const location = useLocation();
   const deletedName = (location.state as { deletedClient?: string } | null)?.deletedClient;
-  const [search, setSearch] = useState('');
+  const [params, setParams] = useSearchParams();
+  const [search, setSearch] = useState(params.get('q') ?? '');
   const q = useDeferredValue(search.trim());
   const list = useClientList(q);
+  const paging = useUrlPaging(CLIENT_PAGE_SIZE);
+
+  useEffect(() => {
+    if ((params.get('q') ?? '') === q) return;
+    setParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (q) next.set('q', q);
+        else next.delete('q');
+        return next;
+      },
+      { replace: true },
+    );
+  }, [q, params, setParams]);
   const [added, setAdded] = useState<{ id: string; name: string } | null>(null);
 
   const columns: DataTableColumn<ClientListItem>[] = [
@@ -109,6 +128,7 @@ export function ClientsPage() {
           columns={columns}
           rows={list.data}
           rowKey={(client) => client.id}
+          paging={paging}
           empty={<p className="empty">{q ? t('clients.emptyFiltered') : t('clients.empty')}</p>}
         />
       )}
