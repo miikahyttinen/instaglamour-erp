@@ -1,7 +1,7 @@
 # TASK-191: Gigs page opens at the top (no auto-scroll)
 
 - **owner:** ui
-- **status:** todo
+- **status:** done
 - **spec:** owner request 2026-11-07 (replaces UC-003 step 1 "scroll to first upcoming")
 - **depends on:** none
 
