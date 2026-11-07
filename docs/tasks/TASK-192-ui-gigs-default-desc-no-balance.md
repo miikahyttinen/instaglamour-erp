@@ -1,7 +1,7 @@
 # TASK-192: Gig list — newest/future first by default; drop "Laskuttamatta" column
 
 - **owner:** ui
-- **status:** todo
+- **status:** done
 - **spec:** owner request 2026-11-07
 - **depends on:** none
 
