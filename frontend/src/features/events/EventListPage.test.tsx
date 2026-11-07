@@ -45,7 +45,7 @@ describe('event list (UC-003)', () => {
     signInMock().selectedYear = TEST_YEAR;
   });
 
-  it('lists the SOLD events of the year by date (Tila filter on by default); the year summary is unfiltered', async () => {
+  it('lists the SOLD events of the year by date, newest first (Tila filter on by default); the year summary is unfiltered', async () => {
     addMockEvent({ startDate: `${TEST_YEAR}-09-01`, venue: 'Venue Y', priceCents: 200000 });
     const full = addMockEvent({ startDate: `${TEST_YEAR}-03-01`, venue: 'Venue X', additionalSalesCents: 10000 });
     staffMockEvent(full, FULL);
@@ -54,9 +54,11 @@ describe('event list (UC-003)', () => {
     addMockEvent({ startDate: `${TEST_YEAR + 1}-01-10`, venue: 'Venue Next' });
 
     installMatchMedia({ [TABLET_QUERY]: true, [DESKTOP_QUERY]: true, [WIDE_QUERY]: true });
-    renderApp('/gigs');
+    const { url } = renderAppWithUrl('/gigs');
     await screen.findByRole('heading', { name: `Keikat ${TEST_YEAR}` });
-    await waitFor(() => expect(venues()).toEqual(['Venue X', 'Venue Y']));
+    // TASK-192: newest / future first by default; the URL stays clean.
+    await waitFor(() => expect(venues()).toEqual(['Venue Y', 'Venue X']));
+    expect(url()).toBe('/gigs');
     // Header titles (the sort buttons; the filter buttons are icons).
     expect(within(table()).getAllByRole('columnheader').map((h) => within(h).getAllByRole('button')[0]!.textContent)).toEqual([
       'Kokoonpano',
@@ -69,23 +71,25 @@ describe('event list (UC-003)', () => {
       'Myyjä',
       'Tuottaja',
       'Kokonaishinta',
-      'Laskuttamatta',
       'Kulut, budjetti',
       'Kulut, toteuma',
       'Kate-%',
     ]);
     // Column priorities (TASK-147): 2 hidden below 1100 px, 3 below 1400 px of table width.
     expect(within(table()).getAllByRole('columnheader').map((h) => h.getAttribute('data-priority'))).toEqual([
-      '1', '1', '1', '2', '1', '2', '2', '2', '3', '1', '3', '3', '3', '1',
+      '1', '1', '1', '2', '1', '2', '2', '2', '3', '1', '3', '3', '1',
     ]);
     expect(within(rows()[0]!).getAllByRole('cell').map((c) => c.getAttribute('data-priority'))).toEqual([
-      '1', '1', '1', '2', '1', '2', '2', '2', '3', '1', '3', '3', '3', '1',
+      '1', '1', '1', '2', '1', '2', '2', '2', '3', '1', '3', '3', '1',
     ]);
-    expect(within(table()).getByRole('columnheader', { name: /Päivä/ })).toHaveAttribute('aria-sort', 'ascending');
-    expect(rows()[0]).toHaveTextContent(fi(110000));
-    expect(rows()[0]).not.toHaveTextContent('Miehitys kesken');
-    expect(rows()[1]).toHaveTextContent('Miehitys kesken');
-    expect(within(rows()[0]!).getByRole('link', { name: 'Template A · Venue X' })).toHaveAttribute(
+    expect(within(table()).getByRole('columnheader', { name: /Päivä/ })).toHaveAttribute('aria-sort', 'descending');
+    // TASK-192: no "Laskuttamatta" column in the list (it stays on the gig page).
+    expect(within(table()).queryByRole('columnheader', { name: /Laskuttamatta/ })).not.toBeInTheDocument();
+    expect(table().querySelector('.event-col-balance')).toBeNull();
+    expect(rows()[1]).toHaveTextContent(fi(110000));
+    expect(rows()[1]).not.toHaveTextContent('Miehitys kesken');
+    expect(rows()[0]).toHaveTextContent('Miehitys kesken');
+    expect(within(rows()[1]!).getByRole('link', { name: 'Template A · Venue X' })).toHaveAttribute(
       'href',
       `/gigs/${full.id}`,
     );
@@ -129,8 +133,8 @@ describe('event list (UC-003)', () => {
     expect(within(popover).getByRole('checkbox', { name: 'Peruttu' })).not.toBeChecked();
     await user.click(within(popover).getByRole('checkbox', { name: 'Peruttu' }));
     await user.click(within(popover).getByRole('button', { name: 'OK' }));
-    expect(venues()).toEqual(['Venue Old', 'Venue Gone']);
-    expect(within(rows()[1]!).getByText('Peruttu')).toHaveClass('tag-danger');
+    expect(venues()).toEqual(['Venue Gone', 'Venue Old']);
+    expect(within(rows()[0]!).getByText('Peruttu')).toHaveClass('tag-danger');
     // Every value selected = no filter.
     expect(within(table()).getByRole('button', { name: 'Suodata: Tila' })).not.toHaveClass('is-active');
   });
@@ -149,7 +153,7 @@ describe('event list (UC-003)', () => {
     const popover = screen.getByRole('dialog', { name: 'Suodata: Tila' });
     await first.user.click(within(popover).getByRole('checkbox', { name: 'Peruttu' }));
     await first.user.click(within(popover).getByRole('button', { name: 'OK' }));
-    expect(venues()).toEqual(['Venue Old', 'Venue Gone']);
+    expect(venues()).toEqual(['Venue Gone', 'Venue Old']);
     expect(first.url()).toBe('/gigs?f.allStatuses=1');
     expect(screen.queryByRole('button', { name: 'Tyhjennä suodattimet' })).not.toBeInTheDocument();
     const reloadUrl = first.url();
@@ -157,7 +161,7 @@ describe('event list (UC-003)', () => {
 
     // "Reload": the same rows; the Tila filter is not active and no "Clear filters" is offered.
     const second = renderAppWithUrl(reloadUrl);
-    await waitFor(() => expect(venues()).toEqual(['Venue Old', 'Venue Gone']));
+    await waitFor(() => expect(venues()).toEqual(['Venue Gone', 'Venue Old']));
     expect(within(table()).getByRole('button', { name: 'Suodata: Tila' })).not.toHaveClass('is-active');
     expect(screen.queryByRole('button', { name: 'Tyhjennä suodattimet' })).not.toBeInTheDocument();
     second.unmount();
@@ -166,12 +170,12 @@ describe('event list (UC-003)', () => {
     const third = renderAppWithUrl('/gigs?f.status=CANCELLED');
     await waitFor(() => expect(venues()).toEqual(['Venue Gone']));
     await third.user.click(screen.getByRole('button', { name: 'Tyhjennä suodattimet' }));
-    expect(venues()).toEqual(['Venue Old', 'Venue Gone']);
+    expect(venues()).toEqual(['Venue Gone', 'Venue Old']);
     const clearedUrl = third.url();
     expect(clearedUrl).toBe('/gigs?f.allStatuses=1');
     third.unmount();
     renderAppWithUrl(clearedUrl);
-    await waitFor(() => expect(venues()).toEqual(['Venue Old', 'Venue Gone']));
+    await waitFor(() => expect(venues()).toEqual(['Venue Gone', 'Venue Old']));
   });
 
   it('a plain /events link still opens with the default Tila filter (F-008)', async () => {
@@ -214,7 +218,7 @@ describe('event list (UC-003)', () => {
     expect(rows()).toHaveLength(3);
 
     await pick('Miehitys kesken', 'Kyllä');
-    expect(venues()).toEqual(['Venue Y', 'Venue Z']);
+    expect(venues()).toEqual(['Venue Z', 'Venue Y']);
     await pick('Asiakas', 'Client X');
     expect(venues()).toEqual(['Venue Z']);
     await user.click(screen.getByRole('button', { name: 'Tyhjennä suodattimet' }));
@@ -228,7 +232,7 @@ describe('event list (UC-003)', () => {
     await user.click(screen.getByRole('button', { name: 'Tyhjennä suodattimet' }));
     await pick('Paikka', 'Venue X', 'Venue Y');
     await pick('Kokoonpano', 'Template A');
-    expect(venues()).toEqual(['Venue X', 'Venue Y']);
+    expect(venues()).toEqual(['Venue Y', 'Venue X']);
 
     // The search narrows the rows from the API; the column filters still apply.
     await user.type(screen.getByRole('searchbox', { name: 'Haku' }), 'outdoor');
@@ -313,10 +317,8 @@ describe('event list (UC-003)', () => {
     expect(tag('Venue Open')).toBe('tag-yellow Avoimia laskuja');
     expect(tag('Venue Partly')).toBe('tag-info Osittain laskutettu');
     expect(tag('Venue Full')).toBe('tag-ok-strong Laskutettu');
-    // Laskuttamatta = total − sent rows; negative in warn colour.
-    expect(cell('Venue New', 'Laskuttamatta')).toHaveTextContent(/1\s000,00\s€/);
-    expect(cell('Venue Open', 'Laskuttamatta')).toHaveTextContent(/600,00\s€/);
-    expect(cell('Venue Full', 'Laskuttamatta').querySelector('.event-balance-negative')).toHaveTextContent(/[-−]200,00\s€/);
+    // TASK-192: no Laskuttamatta cell in the list (the balance is on the gig page only).
+    expect(cell('Venue New', 'Laskuttamatta')).toBeUndefined();
 
     await user.click(within(table()).getByRole('button', { name: /^Laskutus/ }));
     expect(venues()).toEqual(['Venue Zero', 'Venue New', 'Venue Open', 'Venue Partly', 'Venue Full']);
@@ -375,22 +377,42 @@ describe('event list (UC-003)', () => {
     // The client name is shown bare (no "Asiakas" label) and stays visible on phones.
     expect(cellOf('Asiakas')).toHaveClass('cell-bare');
     expect(cellOf('Asiakas')).not.toHaveClass('hide-phone');
-    for (const hidden of ['Myyjä', 'Tuottaja', 'Laskuttamatta', 'Kulut, budjetti', 'Kulut, toteuma']) {
+    for (const hidden of ['Myyjä', 'Tuottaja', 'Kulut, budjetti', 'Kulut, toteuma']) {
       expect(cellOf(hidden), hidden).toHaveClass('hide-phone');
     }
+    expect(cellOf('Laskuttamatta')).toBeUndefined();
   });
 
   it('sorts by any column header', async () => {
     addMockEvent({ venue: 'Venue B', startDate: `${TEST_YEAR}-03-01`, priceCents: 300000 });
     addMockEvent({ venue: 'Venue A', startDate: `${TEST_YEAR}-04-01`, priceCents: 100000 });
     installMatchMedia({ [TABLET_QUERY]: true });
-    const { user } = renderApp('/gigs');
-    await waitFor(() => expect(venues()).toEqual(['Venue B', 'Venue A']));
+    const { user, url } = renderAppWithUrl('/gigs');
+    // Default: date descending (TASK-192); the date header toggles to ascending and back.
+    await waitFor(() => expect(venues()).toEqual(['Venue A', 'Venue B']));
+    await user.click(within(table()).getByRole('button', { name: /^Päivä/ }));
+    expect(venues()).toEqual(['Venue B', 'Venue A']);
+    expect(url()).toBe('/gigs?sort=date&dir=asc');
+    await user.click(within(table()).getByRole('button', { name: /^Päivä/ }));
+    expect(venues()).toEqual(['Venue A', 'Venue B']);
+    expect(url()).toBe('/gigs?sort=date&dir=desc');
     await user.click(within(table()).getByRole('button', { name: /^Paikka/ }));
     expect(venues()).toEqual(['Venue A', 'Venue B']);
     await user.click(within(table()).getByRole('button', { name: /^Kokonaishinta/ }));
     expect(venues()).toEqual(['Venue A', 'Venue B']);
     await user.click(within(table()).getByRole('button', { name: /^Kokonaishinta/ }));
+    expect(venues()).toEqual(['Venue B', 'Venue A']);
+  });
+
+  it('falls back to the default date-descending sort for an old ?sort=balance URL (TASK-192)', async () => {
+    addMockEvent({ venue: 'Venue B', startDate: `${TEST_YEAR}-03-01`, priceCents: 300000 });
+    addMockEvent({ venue: 'Venue A', startDate: `${TEST_YEAR}-04-01`, priceCents: 100000 });
+    installMatchMedia({ [TABLET_QUERY]: true, [DESKTOP_QUERY]: true, [WIDE_QUERY]: true });
+    const { user } = renderApp('/gigs?sort=balance&dir=asc');
+    await waitFor(() => expect(venues()).toEqual(['Venue A', 'Venue B']));
+    expect(within(table()).getByRole('columnheader', { name: /Päivä/ })).toHaveAttribute('aria-sort', 'descending');
+    // The date header still flips from the effective default.
+    await user.click(within(table()).getByRole('button', { name: /^Päivä/ }));
     expect(venues()).toEqual(['Venue B', 'Venue A']);
   });
 
@@ -401,8 +423,9 @@ describe('event list (UC-003)', () => {
     expect(rows()[0]).toHaveTextContent('Template A · Venue X');
     // Every column is a labelled line of the card (economics included).
     expect(within(rows()[0]!).getAllByRole('cell').map((c) => c.getAttribute('data-label'))).toEqual(
-      expect.arrayContaining(['Kate-%', 'Laskutus', 'Laskuttamatta']),
+      expect.arrayContaining(['Kate-%', 'Laskutus']),
     );
+    expect(within(rows()[0]!).getAllByRole('cell').map((c) => c.getAttribute('data-label'))).not.toContain('Laskuttamatta');
     // Kate-%: budget and actual ("tot. x %") are separate lines (block elements, eventList.css).
     const margin = within(rows()[0]!).getAllByRole('cell').find((c) => c.getAttribute('data-label') === 'Kate-%')!;
     expect(margin.querySelector('.event-margin-budget')).toHaveTextContent(/^\S+\s%$/);
@@ -415,7 +438,7 @@ describe('event list (UC-003)', () => {
     expect(within(sheet).queryByRole('button', { name: 'Maksut' })).not.toBeInTheDocument();
   });
 
-  it('opens at the top: oldest first, no scroll to the first upcoming event (TASK-191)', async () => {
+  it('opens at the top: newest first (TASK-192), no scroll to the first upcoming event (TASK-191)', async () => {
     const year = new Date().getFullYear();
     signInMock().selectedYear = year;
     db.events.events.length = 0; // only this test's events in the current year
@@ -433,8 +456,8 @@ describe('event list (UC-003)', () => {
       expect(await screen.findByText('Venue Upcoming')).toBeInTheDocument();
       const rowsText = [...container.querySelectorAll('tbody tr')].map((r) => r.textContent ?? '');
       const past = rowsText.findIndex((r) => r.includes('Venue Past'));
-      expect(past).toBeGreaterThanOrEqual(0);
-      expect(past).toBeLessThan(rowsText.findIndex((r) => r.includes('Venue Upcoming')));
+      expect(rowsText.findIndex((r) => r.includes('Venue Upcoming'))).toBeGreaterThanOrEqual(0);
+      expect(past).toBeGreaterThan(rowsText.findIndex((r) => r.includes('Venue Upcoming')));
       expect(scrolled).toHaveLength(0);
       expect(container.querySelector('.is-first-upcoming')).toBeNull();
       expect(scrollTo).toHaveBeenCalledWith(0, 0);

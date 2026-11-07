@@ -139,9 +139,6 @@
     padding-right: var(--space-1);
   }
 }
-.event-list-page .event-balance-negative {
-  color: var(--warn-fg);
-}
 .event-list-page .event-table tr.status-cancelled td {
   color: var(--text-muted);
 }

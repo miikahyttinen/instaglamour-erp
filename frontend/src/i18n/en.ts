@@ -307,7 +307,6 @@ const en: Resources = {
       venue: 'Venue',
       status: 'Status',
       invoiceState: 'Invoicing',
-      balance: 'Not invoiced yet',
     },
     staffingFilter: {
       yes: 'Yes',

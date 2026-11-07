@@ -48,7 +48,7 @@ async function setup(page: Page, testInfo: TestInfo): Promise<Setup> {
   return { year, north, south, club };
 }
 
-/** Venues of the visible rows, in order (the default sort is by date). */
+/** Venues of the visible rows, in order (the default sort is by date, newest first; TASK-192). */
 async function rowVenues(page: Page, venues: string[]): Promise<string[]> {
   const texts = await eventListRows(page).allTextContents();
   return texts.map((t) => venues.find((v) => t.includes(v)) ?? `? ${t}`);
@@ -69,7 +69,7 @@ test('event list: cancelled hidden by default, Tila filter shows them, Paikka fi
   // Default view: sold events only; the default Tila filter is not written to the URL.
   await openList(page, year);
   await expect(page.getByRole('table', { name: 'Keikkalista', exact: true })).toBeVisible();
-  await expect.poll(venuesOf).toEqual([north, south, club]);
+  await expect.poll(venuesOf).toEqual([club, south, north]);
   await expect(rows.filter({ hasText: 'Peruttu' })).toHaveCount(0);
   expect(urlFilter(page, 'status')).toEqual([]);
   await expect(page.getByLabel('Näytä myös perutut')).toHaveCount(0);
@@ -109,17 +109,17 @@ test('event list: cancelled hidden by default, Tila filter shows them, Paikka fi
   await expect(filterValue(form, 'Peruttu')).toBeChecked();
   await cancelColumnFilter(page, form);
   if (hasHeaderFilters(page)) await expect(filterButton(page, 'Tila')).toBeFocused();
-  await expect.poll(venuesOf).toEqual([north, south, club]);
+  await expect.poll(venuesOf).toEqual([club, south, north]);
 
   // Tila: tick "Peruttu" → the cancelled event appears.
   await tickColumnValues(page, 'Tila', ['Peruttu']);
-  await expect.poll(venuesOf).toEqual([north, south, north, club]);
+  await expect.poll(venuesOf).toEqual([club, north, south, north]);
   await expect(rows.filter({ hasText: 'Peruttu' })).toHaveCount(1);
 
   // Search (API q) AND the Paikka filter (client-side).
   await page.getByLabel('Haku').fill('North');
   await expect(page).toHaveURL(/[?&]q=North/);
-  await expect.poll(venuesOf).toEqual([north, north, club]);
+  await expect.poll(venuesOf).toEqual([club, north, north]);
   await filterColumn(page, 'Paikka', [north]);
   expect(urlFilter(page, 'venue')).toEqual([north]);
   await expect.poll(venuesOf).toEqual([north, north]);
@@ -153,7 +153,7 @@ test('event list: cancelled hidden by default, Tila filter shows them, Paikka fi
   await expect.poll(() => urlFilter(page, 'status')).toEqual([]);
   expect(urlFilter(page, 'venue')).toEqual([]);
   await expect(page).toHaveURL(/[?&]q=North/);
-  await expect.poll(venuesOf).toEqual([north, north, club]);
+  await expect.poll(venuesOf).toEqual([club, north, north]);
   await expect(clearFiltersButton(page)).toHaveCount(0);
   if (hasHeaderFilters(page)) await expect(filterButton(page, 'Paikka')).not.toHaveAccessibleDescription('Suodatin käytössä');
 });
@@ -164,15 +164,15 @@ test('event list: a Tila filter that shows every status (cancelled included) sur
   const { year, north, south, club } = await setup(page, testInfo);
   const venuesOf = () => rowVenues(page, [north, south, club]);
   await openList(page, year, `?q=${encodeURIComponent(north.split(' ')[1]!)}`);
-  await expect.poll(venuesOf).toEqual([north, south, club]);
+  await expect.poll(venuesOf).toEqual([club, south, north]);
   // The user ticks "Peruttu" (all values checked) and sees the cancelled event ...
   const form = await openColumnFilter(page, 'Tila');
   await filterValue(form, 'Peruttu').check();
   await applyColumnFilter(page, form);
-  await expect.poll(venuesOf).toEqual([north, south, north, club]);
+  await expect.poll(venuesOf).toEqual([club, north, south, north]);
   // ... and after a reload (or a shared link) expects the same rows.
   await page.reload();
-  await expect.poll(venuesOf).toEqual([north, south, north, club]);
+  await expect.poll(venuesOf).toEqual([club, north, south, north]);
 });
 
 // UI back to "Gigs" (API and code still say `event`): old /events… links (bookmarks, e-mails)
