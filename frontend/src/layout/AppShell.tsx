@@ -15,6 +15,7 @@ import { NavDrawer } from './NavDrawer';
 import { activeNavItem } from './navItems';
 import { Sidebar } from './Sidebar';
 import { useSidebarCollapsed } from './sidebarState';
+import { useScrollTopOnNavigate } from './useScrollTopOnNavigate';
 import { TopbarControls } from './TopbarControls';
 
 /**
@@ -31,6 +32,7 @@ export function AppShell() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { pathname } = useLocation();
+  useScrollTopOnNavigate(pathname);
   const isDesktop = useMediaQuery(DESKTOP_QUERY);
   const [collapsed, toggleCollapsed] = useSidebarCollapsed();
   const sidebarId = useId();

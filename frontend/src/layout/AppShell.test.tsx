@@ -71,6 +71,22 @@ describe('app shell', () => {
     await waitFor(() => expect(db.partners[0]!.selectedYear).toBe(2031));
   });
 
+  it('every page opens at the top: navigating to another page scrolls the window up (TASK-191)', async () => {
+    desktop();
+    signInMock().selectedYear = 2030;
+    const scrollTo = vi.spyOn(window, 'scrollTo');
+    try {
+      const { user } = renderApp('/budget');
+      await screen.findByRole('heading', { name: 'Budjetti 2030' });
+      scrollTo.mockClear();
+      await user.click(within(mainNav()).getByRole('link', { name: 'Keikat' }));
+      expect(await screen.findByRole('heading', { name: 'Keikat 2030' })).toBeInTheDocument();
+      expect(scrollTo).toHaveBeenCalledWith(0, 0);
+    } finally {
+      scrollTo.mockRestore();
+    }
+  });
+
   it('next / previous / pick change selectedYear via PATCH /api/me', async () => {
     const partner = signInMock();
     partner.selectedYear = 2030;
