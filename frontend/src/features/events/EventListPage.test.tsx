@@ -1,7 +1,7 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, useLocation } from 'react-router-dom';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../../App';
 import { createQueryClient } from '../../queryClient';
 import { formatMoney } from '../../lib/format';
@@ -415,7 +415,7 @@ describe('event list (UC-003)', () => {
     expect(within(sheet).queryByRole('button', { name: 'Maksut' })).not.toBeInTheDocument();
   });
 
-  it('scrolls the first upcoming event into view once (UC-003 step 1)', async () => {
+  it('opens at the top: oldest first, no scroll to the first upcoming event (TASK-191)', async () => {
     const year = new Date().getFullYear();
     signInMock().selectedYear = year;
     db.events.events.length = 0; // only this test's events in the current year
@@ -426,14 +426,21 @@ describe('event list (UC-003)', () => {
     Element.prototype.scrollIntoView = function (this: Element) {
       scrolled.push(this);
     };
+    const scrollTo = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
     try {
       installMatchMedia({ [TABLET_QUERY]: true });
-      renderApp('/gigs');
-      await waitFor(() => expect(scrolled).toHaveLength(1));
-      expect(scrolled[0]).toHaveTextContent('Venue Upcoming');
-      expect(scrolled[0]).toHaveClass('is-first-upcoming');
+      const { container } = renderApp('/gigs');
+      expect(await screen.findByText('Venue Upcoming')).toBeInTheDocument();
+      const rowsText = [...container.querySelectorAll('tbody tr')].map((r) => r.textContent ?? '');
+      const past = rowsText.findIndex((r) => r.includes('Venue Past'));
+      expect(past).toBeGreaterThanOrEqual(0);
+      expect(past).toBeLessThan(rowsText.findIndex((r) => r.includes('Venue Upcoming')));
+      expect(scrolled).toHaveLength(0);
+      expect(container.querySelector('.is-first-upcoming')).toBeNull();
+      expect(scrollTo).toHaveBeenCalledWith(0, 0);
     } finally {
       Element.prototype.scrollIntoView = original;
+      scrollTo.mockRestore();
     }
   });
 

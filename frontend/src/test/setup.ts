@@ -14,6 +14,10 @@ import { removeMatchMedia } from './matchMedia';
 const NodeFormData = (await new Response(new URLSearchParams()).formData()).constructor;
 Object.assign(globalThis, { FormData: NodeFormData, File: NodeFile });
 
+// jsdom does not implement window.scrollTo (it logs "Not implemented"); the app shell calls it
+// on every navigation (scroll to top). Tests spy on it where it matters.
+window.scrollTo = (() => {}) as typeof window.scrollTo;
+
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
 
 beforeEach(() => {

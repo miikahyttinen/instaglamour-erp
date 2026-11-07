@@ -1,5 +1,5 @@
 import { useMutation } from '@tanstack/react-query';
-import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Plus, RotateCcw, Search } from 'lucide-react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
@@ -11,7 +11,6 @@ import { Button } from '../../components/Button';
 import { buttonClass } from '../../components/buttonClass';
 import { ExcelTable } from '../../components/ExcelTable';
 import {
-  applyTableState,
   useUrlTableState,
   type ExcelColumn,
   type ExcelTableState,
@@ -25,7 +24,7 @@ import { StatGrid, StatTile } from '../../components/StatTile';
 import { StatusTag } from '../../components/StatusTag';
 import { apiErrorMessage, eventDisplayStatus, invoiceStateLabel } from '../../i18n/labels';
 import { useLang } from '../../i18n/useLang';
-import { formatDate, formatDateRange, formatMoney, formatPercent, todayIso } from '../../lib/format';
+import { formatDate, formatDateRange, formatMoney, formatPercent } from '../../lib/format';
 import { useReference } from '../../reference/useReference';
 import { EventStatusTag, InvoiceStateTag } from './EventStatusTag';
 import { useApplyEvent, useEventList } from './queries';
@@ -274,23 +273,6 @@ function YearSummary({ totals }: { totals: YearEventTotals }) {
   );
 }
 
-const FIRST_UPCOMING = 'is-first-upcoming';
-
-/** Scrolls the first upcoming event into view once (UC-003 step 1). */
-function useScrollToFirstUpcoming(firstUpcomingId: string | undefined) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const scrolled = useRef(false);
-  useEffect(() => {
-    const target = containerRef.current?.querySelector(`.${FIRST_UPCOMING}`);
-    if (scrolled.current || !target) return;
-    scrolled.current = true;
-    if (typeof target.scrollIntoView === 'function') {
-      target.scrollIntoView({ block: 'center' });
-    }
-  }, [firstUpcomingId]);
-  return containerRef;
-}
-
 /** Ties in the event table (and the order without a sort): start date, then lineup, then venue. */
 function eventTieBreak(a: EventSummary, b: EventSummary): number {
   return (
@@ -508,19 +490,9 @@ function EventTable({ events, partners, lang, tableState }: EventTableProps) {
     },
   ];
 
-  // UC-003 step 1: scroll to the first upcoming event among the rows shown.
-  const today = todayIso();
-  const visible = useMemo(
-    () => applyTableState(events, columns, tableState, eventTieBreak),
-    // `columns` is rebuilt each render; the rows only depend on the data and the state.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [events, tableState.sort, tableState.filters],
-  );
-  const firstUpcomingId = visible.find((g) => g.startDate >= today)?.id;
-  const containerRef = useScrollToFirstUpcoming(firstUpcomingId);
-
+  // Oldest first, and the page opens at the top (TASK-191: no scroll to the first upcoming).
   return (
-    <div ref={containerRef} className="event-rows-wrap">
+    <div className="event-rows-wrap">
       <ExcelTable
         {...tableState}
         className="event-table"
@@ -530,11 +502,7 @@ function EventTable({ events, partners, lang, tableState }: EventTableProps) {
         rowKey={(g) => g.id}
         tieBreak={eventTieBreak}
         emptyFiltered={t('events.emptyColumnFiltered')}
-        rowClassName={(g) =>
-          [`status-${eventDisplayStatus(g).toLowerCase()}`, g.id === firstUpcomingId && FIRST_UPCOMING]
-            .filter(Boolean)
-            .join(' ')
-        }
+        rowClassName={(g) => `status-${eventDisplayStatus(g).toLowerCase()}`}
       />
     </div>
   );
