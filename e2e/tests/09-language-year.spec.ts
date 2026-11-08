@@ -1,7 +1,6 @@
 import {
   api,
   CURRENT_YEAR,
-  enMoney,
   expect,
   expectNoHorizontalScroll,
   expectSignedInShown,
@@ -22,12 +21,12 @@ test('switch language to English and change the year', async ({ page }) => {
   await signIn(page, PARTNER_C, { language: 'fi', selectedYear: CURRENT_YEAR });
 
   await page.goto('/');
-  await expect(page.getByRole('heading', { level: 1, name: `Vuosi ${CURRENT_YEAR}` })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Omat keikat' })).toBeVisible();
 
   await expectSignedInShown(page, 'Kirjautuneena: Partner C');
   await (await languageButton(page, 'Vaihda kieleksi English')).click();
 
-  await expect(page.getByRole('heading', { level: 1, name: `Year ${CURRENT_YEAR}` })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'My gigs' })).toBeVisible();
   // One toggle: it now offers the other language (phones: the drawer stays open on the same page).
   await expect(await languageButton(page, 'Change language to Suomi')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Vaihda kieleksi English' })).toHaveCount(0);
@@ -35,18 +34,15 @@ test('switch language to English and change the year', async ({ page }) => {
     await page.keyboard.press('Escape');
     await expect(navDrawer(page)).toBeHidden();
   }
-  const year = await api(page).get(`/years/${CURRENT_YEAR}`);
-  await expect(
-    page.getByRole('region', { name: 'Gigs' }).getByRole('link', { name: `Sold gigs sum ${enMoney(year.events.soldEventsSumCents)}` }),
-  ).toBeVisible();
-  await expectNoHorizontalScroll(page, 'year page (EN)');
+  await expectNoHorizontalScroll(page, 'My gigs (EN)');
 
-  // Year switch with the page-level buttons and picker (year page, then Gigs; BR-081 revised).
-  await page.getByRole('button', { name: 'Next year' }).click();
-  await expect(page.getByRole('heading', { level: 1, name: `Year ${CURRENT_YEAR + 1}` })).toBeVisible();
-  await expect(page.getByRole('combobox', { name: 'Selected year' })).toHaveValue(String(CURRENT_YEAR + 1));
+  // Year switch with the page-level buttons and picker on Gigs (BR-081 revised; My gigs has no year).
+  await expect(page.getByRole('combobox', { name: 'Selected year' })).toHaveCount(0);
   await goNav(page, 'Gigs');
+  await expect(page.getByRole('heading', { level: 1, name: `Gigs ${CURRENT_YEAR}` })).toBeVisible();
+  await page.getByRole('button', { name: 'Next year' }).click();
   await expect(page.getByRole('heading', { level: 1, name: `Gigs ${CURRENT_YEAR + 1}` })).toBeVisible();
+  await expect(page.getByRole('combobox', { name: 'Selected year' })).toHaveValue(String(CURRENT_YEAR + 1));
   await page.getByRole('combobox', { name: 'Selected year' }).selectOption(String(CURRENT_YEAR));
   await expect(page.getByRole('heading', { level: 1, name: `Gigs ${CURRENT_YEAR}` })).toBeVisible();
   await page.getByRole('button', { name: 'Previous year' }).click();

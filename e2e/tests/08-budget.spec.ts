@@ -9,7 +9,6 @@ import {
   fiInput,
   fiMoney,
   goNav,
-  pageHead,
   signIn,
   tagOf,
   test,
@@ -28,9 +27,10 @@ function budgetRow(page: Page, nameLabel: string, name: string): Locator {
   return page.getByRole('row').filter({ has: page.getByRole('textbox', { name: `${nameLabel}, ${name}`, exact: true }) });
 }
 
-// Flow 8: budget — edit a row; year page budget / year result updated; copy to next year (UC-020, UC-022).
+// Flow 8: budget — edit a row; totals updated; copy to next year (UC-020). (The Year page with its
+// budget figures was replaced by My gigs on 2026-11-08.)
 // Each viewport uses its own empty years so the copy target is always empty (409 otherwise).
-test('edit a budget row, see it on the year page, copy it to the next year', async ({ page }, testInfo) => {
+test('edit a budget row, copy it to the next year', async ({ page }, testInfo) => {
   const year = tagOf(testInfo) === 'M' ? 2030 : 2032;
   await signIn(page, undefined, { selectedYear: year });
   const rentExpense = 120000;
@@ -39,7 +39,7 @@ test('edit a budget row, see it on the year page, copy it to the next year', asy
   const before = await api(page).get(`/years/${year}`);
 
   await page.goto('/');
-  await expect(page.getByRole('heading', { level: 1, name: `Vuosi ${year}` })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Omat keikat' })).toBeVisible();
   await goNav(page, 'Budjetti');
   await expect(page.getByRole('heading', { level: 1, name: `Budjetti ${year}` })).toBeVisible();
   await expectNoHorizontalScroll(page, 'budget');
@@ -97,21 +97,14 @@ test('edit a budget row, see it on the year page, copy it to the next year', asy
   await expect(rentRow.locator('.budget-variance').first()).toHaveText(fiMoney(rentExpense - rentActual));
   await expect(totals.locator('td').nth(2)).toHaveText(fiMoney(before.budget.actualExpenseCents + rentActual));
 
-  // Year page: budget table and year result (BR-063).
-  await goNav(page, 'Vuosi');
-  const budget = page.getByRole('region', { name: 'Budjetti' });
-  const expenseRow = budget.getByRole('row', { name: /^Kulut/ });
-  await expect(expenseRow.getByRole('cell').nth(0)).toHaveText(fiMoney(before.budget.budgetExpenseCents + rentExpense));
-  await expect(expenseRow.getByRole('cell').nth(1)).toHaveText(fiMoney(before.budget.actualExpenseCents + rentActual));
-  // The year result is emphasised in the page head (TASK-113) and links to the budget.
-  await expect(
-    pageHead(page).getByRole('link', { name: `Vuoden tulos ${fiMoney(before.yearResultCents - rentActual)}` }),
-  ).toBeVisible();
+  // The year figures (GET /api/years, still used by the backend) follow: year result (BR-063).
+  const after = await api(page).get(`/years/${year}`);
+  expect(after.budget.budgetExpenseCents).toBe(before.budget.budgetExpenseCents + rentExpense);
+  expect(after.budget.actualExpenseCents).toBe(before.budget.actualExpenseCents + rentActual);
+  expect(after.yearResultCents).toBe(before.yearResultCents - rentActual);
 
   // Next year, copy from the previous one: budget fields copied, actuals untouched.
   await page.getByRole('button', { name: 'Seuraava vuosi' }).click();
-  await expect(page.getByRole('heading', { level: 1, name: `Vuosi ${year + 1}` })).toBeVisible();
-  await goNav(page, 'Budjetti');
   await expect(page.getByRole('heading', { level: 1, name: `Budjetti ${year + 1}` })).toBeVisible();
   await expect(page.getByLabel(`Budjetti, kulut, ${ROW}`, { exact: true })).toHaveValue(fiInput(0));
   await page.getByRole('button', { name: 'Kopioi budjetti edellisestä vuodesta' }).click();
@@ -130,7 +123,7 @@ test('edit a budget row, see it on the year page, copy it to the next year', asy
 
 // UC-020 A2–A4, E2: partners add, rename and remove budget rows. Each viewport uses its own empty
 // years (M: 2044/2045, D: 2046/2047) and its own row names, so the runs never collide.
-test('add, rename and remove a budget row; it follows in every year, totals and the year page', async ({
+test('add, rename and remove a budget row; it follows in every year, the totals and the year figures', async ({
   page,
 }, testInfo) => {
   const year = tagOf(testInfo) === 'M' ? 2044 : 2046;
@@ -294,16 +287,6 @@ test('add, rename and remove a budget row; it follows in every year, totals and 
   await expect(nameField(final)).toHaveCount(0);
   await page.getByRole('button', { name: 'Edellinen vuosi' }).click();
   await expect(page.getByRole('heading', { level: 1, name: `Budjetti ${year}` })).toBeVisible();
-
-  // Year page: the removed row's values are not in the budget table or the year result.
-  await goNav(page, 'Vuosi');
-  await expect(page.getByRole('heading', { level: 1, name: `Vuosi ${year}` })).toBeVisible();
-  const expenseRow = page.getByRole('region', { name: 'Budjetti' }).getByRole('row', { name: /^Kulut/ });
-  await expect(expenseRow.getByRole('cell').nth(0)).toHaveText(fiMoney(beforeYear.budget.budgetExpenseCents));
-  await expect(expenseRow.getByRole('cell').nth(1)).toHaveText(fiMoney(beforeYear.budget.actualExpenseCents));
-  await expect(
-    pageHead(page).getByRole('link', { name: `Vuoden tulos ${fiMoney(beforeYear.yearResultCents)}` }),
-  ).toBeVisible();
 
   // API: excluded from reference, budget and year; its PUT / PATCH answer 404 NOT_FOUND.
   const ref = await api(page).get('/reference');

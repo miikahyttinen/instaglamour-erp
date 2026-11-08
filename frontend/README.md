@@ -73,8 +73,8 @@ VITE_API_PROXY_TARGET=http://localhost:3100 VITE_PORT=5273 npm run dev
 | `src/reference/partners.ts` | Partner pickers (UC-032): `activePartners(partners)` for new choices, `partnerOptions(partners, currentId)` = active partners + the record's current (possibly removed) partner by name. `reference.partners` itself keeps everyone, so names on old records still resolve. |
 | `src/i18n/` | `fi.ts` / `en.ts` texts (glossary terms), label helpers for codes and errors |
 | `src/lib/format.ts` | Money (cents), date, hours and percent formatting per language |
-| `src/mocks/` | MSW handlers and synthetic data (browser worker + Node server for tests). All state is in `db` (`data.ts`); `resetMockDb()` resets every store. Event rules live in `eventStore.ts`, demo events in `eventSeed.ts`; tasks, hours and budget in `tasksStore.ts`, `hoursStore.ts`, `budgetStore.ts`; offers (with history, `offers.*` settings and partner phones) in `offerStore.ts` / `offerSeed.ts` (`db.offers`, seeded offers have fixed ids `…000601`–`…000608`). Budget rows (`/api/budget-categories`, `budgetCategoryHandlers` in `budgetHandlers.ts`) live in `db.reference.budgetCategories` (active rows only; removing drops the row there and keeps its amounts in `db.budget`). The year mock is computed from these stores |
-| `src/features/<feature>/` | One folder per feature: `year`, `events`, `clients`, `people`, `tasks`, `hours`, `budget`; pages, query hooks and the feature texts in `i18n.ts` (event texts are still in `src/i18n/fi.ts` / `en.ts`) |
+| `src/mocks/` | MSW handlers and synthetic data (browser worker + Node server for tests). All state is in `db` (`data.ts`); `resetMockDb()` resets every store. Event rules live in `eventStore.ts`, demo events in `eventSeed.ts`; tasks, hours and budget in `tasksStore.ts`, `hoursStore.ts`, `budgetStore.ts`; offers (with history, `offers.*` settings and partner phones) in `offerStore.ts` / `offerSeed.ts` (`db.offers`, seeded offers have fixed ids `…000601`–`…000608`). Budget rows (`/api/budget-categories`, `budgetCategoryHandlers` in `budgetHandlers.ts`) live in `db.reference.budgetCategories` (active rows only; removing drops the row there and keeps its amounts in `db.budget`). My gigs (`myEventsHandlers.ts`, GET /api/me/events) is derived from the event store |
+| `src/features/<feature>/` | One folder per feature: `myEvents`, `events`, `clients`, `people`, `tasks`, `hours`, `budget`; pages, query hooks and the feature texts in `i18n.ts` (event texts are still in `src/i18n/fi.ts` / `en.ts`) |
 | `src/features/offers/` | Offers (UC-028, UC-029, UC-031, see "Offers"): list `/offers`, new offer `/offers/new`, offer page `/offers/:id`, convert dialog; plus `OfferPreview` (shared customer view) and the public page `/o/:token` (see "Offer preview") |
 | `src/features/events/` | Event list, new event, event page (costs, attachments, history, move/cancel/delete dialogs). Routes `/gigs`, `/gigs/new`, `/gigs/:id` (UI says "Keikat / Gigs"; API and code stay `event`); old `/events…` URLs redirect there with the query string and hash (`LegacyEventsRedirect`) |
 | `src/features/people/` | People register (UC-014) + partner status (UC-032): list with "Osakas" tag column and "Osakkuus" filter (`?partner=true\|false`, combines with `?active=`); person page with the Osakas switch (`PartnerStatus.tsx`: on = email dialog → `PUT …/partner`, off = confirmation → `DELETE …/partner`, own switch disabled), inline email, tag in the header. Partner changes invalidate `['people']`, `['reference']` (and `['me']` for oneself). Mock: `mocks/peopleHandlers.ts` (`person.partner` derived from `db.partners`) |
@@ -457,9 +457,19 @@ any other token is not found. The mocks return the synthetic placeholder `MOCK_S
 fields with `toPublicOffer` (`src/mocks/publicOfferHandlers.ts`), so a regenerated or deleted
 offer's link is not found there either.
 
+### My gigs (`src/features/myEvents/`, start page)
+
+- **Omat keikat / My gigs** (`/my-gigs`, first menu item) replaced the Year page on 2026-11-08;
+  `/` and `/year` redirect there and sign-in lands there. No year selector.
+- `GET /api/me/events` (`myEventsApi.list`, `useMyEvents`, key `['my-events']`, invalidated by every
+  event / cost line change via `invalidateYearData('events')`). One `DataTable`: date (weekday,
+  end date for multi-day gigs), gig link, venue · client, role chips (`myRoleLabel`: Tuottaja, cost
+  type label, custom role = its description), "Miehitys kesken" tag. Phone rows: gig + tag, then
+  date · venue · roles.
+
 ### Offers (`src/features/offers/`, UC-028 / UC-029 / UC-031)
 
-- **Menu:** Tarjoukset / Offers is the first item (`/offers`); `/` stays the year page.
+- **Menu:** Tarjoukset / Offers is the second item (`/offers`), after Omat keikat / My gigs.
 - **KPI cards** (`OfferKpis.tsx`, `offerKpis.css`, BR-122, TASK-157): "Tarjoustilastot / Offer
   statistics" above the table, from `GET /api/offers/stats?year=` (`offersApi.stats`,
   `useOfferStats`; all years, ignore the table filters; invalidated with every offer change).

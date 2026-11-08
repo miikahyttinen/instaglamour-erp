@@ -11,7 +11,7 @@ import { en as referencesEn } from '../features/offers/referencesI18n';
 import { en as purchaseOrdersEn } from '../features/purchaseOrders/i18n';
 import { en as peopleEn } from '../features/people/i18n';
 import { en as tasksEn } from '../features/tasks/i18n';
-import { en as yearEn } from '../features/year/i18n';
+import { en as myEventsEn } from '../features/myEvents/i18n';
 import type { Resources } from './fi';
 
 const en: Resources = {
@@ -24,7 +24,7 @@ const en: Resources = {
   nav: {
     label: 'Main menu',
     offers: 'Offers',
-    year: 'Year',
+    myEvents: 'My gigs',
     events: 'Gigs',
     purchaseOrders: 'Purchase orders',
     clients: 'Clients',
@@ -75,7 +75,7 @@ const en: Resources = {
   },
   pages: {
     offers: 'Offers',
-    year: 'Year {{year}}',
+    myEvents: 'My gigs',
     events: 'Gigs {{year}}',
     purchaseOrders: 'Purchase orders',
     clients: 'Clients',
@@ -516,7 +516,7 @@ const en: Resources = {
   ...offerPreviewEn,
   ...offersEn,
   ...referencesEn,
-  year: yearEn,
+  myEvents: myEventsEn,
   ...purchaseOrdersEn,
   ...clientsEn,
   ...peopleEn,

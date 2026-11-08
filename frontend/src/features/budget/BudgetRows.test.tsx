@@ -254,26 +254,26 @@ describe('budget rows: empty state and caches', () => {
     expect(await screen.findByText('Budjetissa ei ole vielä rivejä. Lisää ensimmäinen rivi.')).toBeInTheDocument();
   });
 
-  it('refreshes the reference cache and year data after add, rename and remove', async () => {
+  it('refreshes the reference cache and the budget data of every year after add, rename and remove', async () => {
     const { user, queryClient } = open();
     await findNameField('Category A');
-    // Year page data cached from earlier navigation.
-    queryClient.setQueryData(['years', YEAR], { stale: true });
+    // Another year's budget cached from earlier navigation.
+    queryClient.setQueryData(['budget', YEAR + 1], { stale: true });
     const names = () => queryClient.getQueryData<ReferenceData>(referenceKey)?.budgetCategories.map((c) => c.name);
-    const yearInvalidated = () => queryClient.getQueryState(['years', YEAR])?.isInvalidated;
+    const yearInvalidated = () => queryClient.getQueryState(['budget', YEAR + 1])?.isInvalidated;
 
     await user.type(screen.getByRole('textbox', { name: 'Rivin nimi' }), 'Category D{Enter}');
     await waitFor(() => expect(names()).toEqual(['Category A', 'Category B', 'Category C', 'Category D']));
     expect(yearInvalidated()).toBe(true);
 
-    queryClient.setQueryData(['years', YEAR], { stale: true });
+    queryClient.setQueryData(['budget', YEAR + 1], { stale: true });
     const field = nameField('Category D');
     await user.clear(field);
     await user.type(field, 'Category E{Enter}');
     await waitFor(() => expect(names()).toEqual(['Category A', 'Category B', 'Category C', 'Category E']));
     expect(yearInvalidated()).toBe(true);
 
-    queryClient.setQueryData(['years', YEAR], { stale: true });
+    queryClient.setQueryData(['budget', YEAR + 1], { stale: true });
     await user.click(screen.getByRole('button', { name: 'Poista rivi Category E' }));
     await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Poista' }));
     await waitFor(() => expect(names()).toEqual(['Category A', 'Category B', 'Category C']));

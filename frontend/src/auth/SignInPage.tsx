@@ -20,7 +20,7 @@ import { meKey, useMe } from './useMe';
 
 function targetFromState(state: unknown): string {
   const from = (state as { from?: unknown } | null)?.from;
-  return typeof from === 'string' && from.startsWith('/') && !from.startsWith('/login') ? from : '/';
+  return typeof from === 'string' && from.startsWith('/') && !from.startsWith('/login') ? from : '/my-gigs';
 }
 
 export function SignInPage() {

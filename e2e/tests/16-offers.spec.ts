@@ -134,7 +134,7 @@ test('new offer: required fields refused, "what\'s included" default applied, no
   const client = await createClientViaApi(page, `Client ${tag}-${suffix()}-offer`);
   const eventName = `Juhla ${tag}-${suffix()}`;
 
-  // Offers is the second menu item (after Vuosi, TASK-142); all years, no year selector (BR-081
+  // Offers is the second menu item (after Omat keikat, TASK-142); all years, no year selector (BR-081
   // revised); with no offers at all → empty state (E1).
   await page.goto('/');
   await goNav(page, 'Tarjoukset');

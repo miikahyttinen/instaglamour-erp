@@ -125,7 +125,7 @@ export const budgetCategoryHandlers = [
   http.delete('/api/budget-categories/:id', ({ params }) => {
     if (!currentPartner()) return unauthenticated();
     if (!db.reference.budgetCategories.some((c) => c.id === params.id)) return categoryNotFound();
-    // Soft delete: the row leaves the active list (reference, GET /api/budget, totals, year page);
+    // Soft delete: the row leaves the active list (reference, GET /api/budget, totals);
     // its stored amounts in db.budget are kept.
     db.reference.budgetCategories = db.reference.budgetCategories.filter((c) => c.id !== params.id);
     return new HttpResponse(null, { status: 204 });

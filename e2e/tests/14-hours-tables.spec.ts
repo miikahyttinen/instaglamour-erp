@@ -8,7 +8,6 @@ import {
   expectNoHorizontalScroll,
   fiDate,
   fiHours,
-  goNav,
   PARTNER_B,
   signIn,
   tagOf,
@@ -36,9 +35,9 @@ import {
 const keyOf = (r: { date: string; partner: string | null; comment: string; hours: number }) =>
   `${r.date}|${r.partner ?? ''}|${r.comment}|${r.hours}`;
 
-// UC-019 AC-1, AC-2: every entry of the year once; total row = Σ shown rows = year page hours;
+// UC-019 AC-1, AC-2: every entry of the year once; total row = Σ shown rows = the year's grandTotal;
 // partner filter → that partner's year hours (0 h partners: their empty message); `?partner=` survives reload.
-test('totals: every entry once, total = year page, partner filter kept in the URL', async ({ page }) => {
+test('totals: every entry once, total = grand total, partner filter kept in the URL', async ({ page }) => {
   await signIn(page);
   const list = await partners(page);
   const entries = await allEntries(page, list);
@@ -98,12 +97,6 @@ test('totals: every entry once, total = year page, partner filter kept in the UR
   await partnerFilter(page).selectOption({ label: 'Kaikki' });
   await expect(page).not.toHaveURL(/[?&]partner=/);
   await expect(tableTotal(totalsTable(page))).toHaveText(shownTotal!);
-
-  // Year page shows the same hours total.
-  await goNav(page, 'Vuosi');
-  await expect(
-    page.getByRole('region', { name: 'Tunnit' }).getByRole('link', { name: `Yhteensä ${shownTotal}` }),
-  ).toBeVisible();
 });
 
 // UC-019 AC-2: a partner with no hours in the year shows their empty message, not a table.
@@ -197,7 +190,7 @@ test('totals: own rows editable inline, others read-only; edit updates totals', 
   expect(await editInline(page, of('Päivämäärä', date, renamed), moved)).toEqual({ date: moved });
   await expect(of('Tunnit', moved, renamed)).toHaveValue('3');
 
-  // Reload: everything persisted; the total row and the year page agree.
+  // Reload: everything persisted; the total row and the API grand total agree.
   await page.reload();
   await expect(of('Päivämäärä', moved, renamed)).toHaveValue(moved);
   await expect(of('Kommentti', moved, renamed)).toHaveValue(renamed);
@@ -205,10 +198,7 @@ test('totals: own rows editable inline, others read-only; edit updates totals', 
   await expect(tableTotal(totalsTable(page))).toHaveText(fiHours(grand + 2));
   const saved = ((await api(page).get(`/hours?year=${CURRENT_YEAR}`)) as HourEntry[]).find((e) => e.id === entry.id);
   expect(saved).toMatchObject({ date: moved, comment: renamed, hours: 3 });
-  await goNav(page, 'Vuosi');
-  await expect(
-    page.getByRole('region', { name: 'Tunnit' }).getByRole('link', { name: `Yhteensä ${fiHours(grand + 2)}` }),
-  ).toBeVisible();
+  expect(((await api(page).get(`/hours/totals?year=${CURRENT_YEAR}`)) as HoursTotals).grandTotal).toBe(grand + 2);
 });
 
 // UC-018 AC-2 (API side): another partner's entry can't be changed or deleted.

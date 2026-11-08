@@ -66,8 +66,8 @@ import type {
   TaskCreate,
   TaskListQuery,
   TaskUpdate,
+  MyEvent,
   UpdateMeRequest,
-  YearPage,
 } from './types';
 import type {
   FreelancerLink,
@@ -117,14 +117,15 @@ export const publicFreelancersApi = {
     }),
 };
 
-// ---------- Reference & year ----------
+// ---------- Reference & my gigs ----------
 
 export const referenceApi = {
   get: () => apiRequest<ReferenceData>('/reference'),
 };
 
-export const yearsApi = {
-  get: (year: number) => apiRequest<YearPage>(`/years/${year}`),
+/** The signed-in partner's upcoming gigs (My gigs page). */
+export const myEventsApi = {
+  list: () => apiRequest<MyEvent[]>('/me/events'),
 };
 
 // ---------- Events ----------

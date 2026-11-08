@@ -35,7 +35,7 @@ export function mainPages(ids: BusyIds): [string, string][] {
     ['offers, deleted view', '/offers?view=deleted'],
     ['new offer', '/offers/new'],
     ['offer page', `/offers/${ids.offerId}`],
-    ['year page', '/'],
+    ['my gigs', '/my-gigs'],
     ['event list', '/gigs'],
     ['event list, deleted view', '/gigs?view=deleted'],
     ['new event', '/gigs/new'],

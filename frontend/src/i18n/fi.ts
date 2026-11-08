@@ -14,7 +14,7 @@ import { fi as referencesFi } from '../features/offers/referencesI18n';
 import { fi as purchaseOrdersFi } from '../features/purchaseOrders/i18n';
 import { fi as peopleFi } from '../features/people/i18n';
 import { fi as tasksFi } from '../features/tasks/i18n';
-import { fi as yearFi } from '../features/year/i18n';
+import { fi as myEventsFi } from '../features/myEvents/i18n';
 
 const fi = {
   app: {
@@ -26,7 +26,7 @@ const fi = {
   nav: {
     label: 'Päävalikko',
     offers: 'Tarjoukset',
-    year: 'Vuosi',
+    myEvents: 'Omat keikat',
     events: 'Keikat',
     purchaseOrders: 'Ostotilaukset',
     clients: 'Asiakkaat',
@@ -77,7 +77,7 @@ const fi = {
   },
   pages: {
     offers: 'Tarjoukset',
-    year: 'Vuosi {{year}}',
+    myEvents: 'Omat keikat',
     events: 'Keikat {{year}}',
     purchaseOrders: 'Ostotilaukset',
     clients: 'Asiakkaat',
@@ -519,7 +519,7 @@ const fi = {
   ...offerPreviewFi,
   ...offersFi,
   ...referencesFi,
-  year: yearFi,
+  myEvents: myEventsFi,
   ...purchaseOrdersFi,
   ...clientsFi,
   ...peopleFi,

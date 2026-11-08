@@ -14,14 +14,14 @@ import {
 
 export interface NavItem {
   to: string;
-  labelKey: `nav.${'offers' | 'year' | 'events' | 'purchaseOrders' | 'clients' | 'people' | 'tasks' | 'hours' | 'budget' | 'settings'}`;
+  labelKey: `nav.${'offers' | 'myEvents' | 'events' | 'purchaseOrders' | 'clients' | 'people' | 'tasks' | 'hours' | 'budget' | 'settings'}`;
   icon: LucideIcon;
   end?: boolean;
 }
 
-/** Year first, then Offers (owner decision TASK-142). */
+/** My gigs first (replaced Year, 2026-11-08), then Offers (owner decision TASK-142). */
 export const NAV_ITEMS: NavItem[] = [
-  { to: '/', labelKey: 'nav.year', icon: CalendarDays, end: true },
+  { to: '/my-gigs', labelKey: 'nav.myEvents', icon: CalendarDays },
   { to: '/offers', labelKey: 'nav.offers', icon: FileText },
   { to: '/gigs', labelKey: 'nav.events', icon: Music },
   { to: '/purchase-orders', labelKey: 'nav.purchaseOrders', icon: Receipt },

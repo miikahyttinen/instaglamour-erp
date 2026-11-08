@@ -25,7 +25,6 @@ import {
   suffix,
   totalPriceLine,
 } from './events';
-import { yearFigure } from './year';
 
 // Flow 2: create event from a template → cost lines → assign a person → load-in switch → mark paid →
 // economics update (UC-002, UC-005).
@@ -132,8 +131,7 @@ test('create an event from a template, staff it, switch load-in, mark paid', asy
   await expect(history.getByText('Keikka luotu')).toBeVisible();
   await expectNoHorizontalScroll(page, 'event page after edits');
 
-  // Without a reload, the event list summary and the year page (both loaded earlier in this session)
-  // show the new figures.
+  // Without a reload, the event list summary (loaded earlier in this session) shows the new figures.
   const year = await api(page).get('/years/2026');
   expect(year.events.soldEventsSumCents).toBeGreaterThanOrEqual(priceCents);
   await page.getByRole('main').getByRole('link', { name: 'Keikat', exact: true }).click(); // back link
@@ -141,16 +139,6 @@ test('create an event from a template, staff it, switch load-in, mark paid', asy
   await expect(summary).toContainText(`Myytyjen keikkojen summa${fiMoney(year.events.soldEventsSumCents)}`);
   await expect(summary).toContainText(`Kulut, toteuma${fiMoney(year.events.actualCostsCents)}`);
   await expect(page.getByRole('link', { name: `${SEED.templateB.name} · ${venue}` })).toBeVisible();
-  await goNav(page, 'Vuosi');
-  const eventsRegion = page.getByRole('region', { name: 'Keikat' });
-  await expect(eventsRegion.getByRole('link', { name: `Keikkoja ${year.events.eventCount}` })).toBeVisible();
-  await expect(
-    eventsRegion.getByRole('link', { name: `Myytyjen keikkojen summa ${fiMoney(year.events.soldEventsSumCents)}` }),
-  ).toBeVisible();
-  // Actual costs are the "Toteuma" figure of the single costs tile (a link to the list).
-  await expect(
-    yearFigure(eventsRegion.getByRole('link', { name: /^Kulut Budjetti / }), 'Toteuma'),
-  ).toHaveText(fiMoney(year.events.actualCostsCents));
 });
 
 // Double booking (BR-022): assigning someone who already plays a seed event that day warns but saves.

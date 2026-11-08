@@ -50,7 +50,7 @@ export function usePartnersHourEntries(year: number, partnerIds: readonly Id[]):
   });
 }
 
-/** After a change: refetch every hours list and total, and the year page (hours sum). */
+/** After a change: refetch every hours list and total. */
 function useInvalidateHours() {
   const invalidate = useInvalidateYearData();
   return () => invalidate('hours');

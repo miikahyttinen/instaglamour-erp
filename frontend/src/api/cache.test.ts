@@ -3,13 +3,15 @@ import { describe, expect, it } from 'vitest';
 import { budgetKey } from '../features/budget/queries';
 import { eventKeys } from '../features/events/queries';
 import { hoursKey } from '../features/hours/queries';
+import { myEventsKey } from '../features/myEvents/queries';
 import { peopleKeys } from '../features/people/queries';
-import { yearPageKey } from '../features/year/queries';
+import { meKey } from '../auth/useMe';
 import { invalidateYearData, type YearDataChange } from './cache';
 
 const YEAR = 2030;
 const keys = {
-  year: yearPageKey(YEAR),
+  me: meKey,
+  myEvents: myEventsKey,
   eventList: eventKeys.list({ year: YEAR }),
   eventDetail: eventKeys.detail('g1'),
   costLines: peopleKeys.costLines('p1'),
@@ -31,15 +33,23 @@ function invalidatedAfter(change: YearDataChange): Name[] {
 }
 
 describe('invalidateYearData', () => {
-  it('event and cost line changes refresh the year page, event lists, person cost lines, clients and offers', () => {
-    expect(invalidatedAfter('events')).toEqual(['year', 'eventList', 'costLines', 'clientPage', 'offerList']);
+  it('event and cost line changes refresh My gigs, event lists, person cost lines, clients and offers', () => {
+    expect(invalidatedAfter('events')).toEqual(['myEvents', 'eventList', 'costLines', 'clientPage', 'offerList']);
   });
 
-  it('hours changes refresh the year page and every hours query', () => {
-    expect(invalidatedAfter('hours')).toEqual(['year', 'hourEntries', 'hourTotals']);
+  it('hours changes refresh every hours query', () => {
+    expect(invalidatedAfter('hours')).toEqual(['hourEntries', 'hourTotals']);
   });
 
-  it('budget changes refresh the year page and the budget', () => {
-    expect(invalidatedAfter('budget')).toEqual(['year', 'budget']);
+  it('budget changes refresh the budget', () => {
+    expect(invalidatedAfter('budget')).toEqual(['budget']);
+  });
+
+  it('invalidating the `me` query does not touch My gigs', () => {
+    const client = new QueryClient();
+    client.setQueryData(meKey, {});
+    client.setQueryData(myEventsKey, []);
+    void client.invalidateQueries({ queryKey: meKey });
+    expect(client.getQueryState(myEventsKey)?.isInvalidated).toBe(false);
   });
 });

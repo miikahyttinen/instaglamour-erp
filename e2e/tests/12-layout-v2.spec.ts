@@ -21,10 +21,10 @@ import { busyIds, MAIN_PAGE_NAMES, mainPages, openLoaded, type BusyIds } from '.
 // on phones, the event list as one Excel-style table (TASK-144), compact cost rows by container width.
 // Read-only flows: nothing here changes the shared database.
 
-// Ten items: Asiakkaat after Keikat (TASK-015…139); Vuosi first, then Tarjoukset (TASK-142);
+// Ten items: Asiakkaat after Keikat (TASK-015…139); Omat keikat first (replaced Vuosi, 2026-11-08), then Tarjoukset (TASK-142);
 // Ostotilaukset after Keikat (TASK-152); Asetukset last (TASK-154, TASK-186).
 const NAV: { label: string; path: string }[] = [
-  { label: 'Vuosi', path: '/' },
+  { label: 'Omat keikat', path: '/my-gigs' },
   { label: 'Tarjoukset', path: '/offers' },
   { label: 'Keikat', path: '/gigs' },
   { label: 'Ostotilaukset', path: '/purchase-orders' },
@@ -77,7 +77,7 @@ test.describe('desktop sidebar', () => {
 
   test('collapse and expand; the state persists across reload and in a new tab', async ({ page, context }) => {
     await page.goto('/');
-    await expect(page.getByRole('heading', { level: 1, name: `Vuosi ${CURRENT_YEAR}` })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: 'Omat keikat' })).toBeVisible();
     // Default: expanded, labels visible; no phone controls.
     await expectExpanded(page);
     await expect(sidebarNav(page).getByText('Keikat', { exact: true })).toBeVisible();
@@ -89,7 +89,7 @@ test.describe('desktop sidebar', () => {
     expect(await storedMode(page)).toBe('collapsed');
 
     await page.reload();
-    await expect(page.getByRole('heading', { level: 1, name: `Vuosi ${CURRENT_YEAR}` })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: 'Omat keikat' })).toBeVisible();
     await expectCollapsed(page);
 
     // Same browser, another tab: also collapsed.
@@ -150,7 +150,7 @@ test.describe('desktop sidebar', () => {
 
   test.fixme('collapsed: the hover / focus tooltip shows the label and keeps the accessible name (F-005)', async ({ page }) => {
     // F-005: the tooltip is CSS `::after { content: attr(data-tooltip) }`; Chromium adds generated
-    // content to the accessible name while it is visible ("Vuosi Vuosi").
+    // content to the accessible name while it is visible ("Omat keikat Omat keikat").
     await page.goto('/');
     await collapseButton(page).click();
     await expectCollapsed(page);
@@ -326,7 +326,7 @@ test.describe('desktop sidebar', () => {
         };
       });
     const pages: [string, string][] = [
-      ['year page', '/'],
+      ['my gigs', '/my-gigs'],
       ['clients', '/clients'],
       ['client page', `/clients/${clientId}`],
       ['people', '/people'],
@@ -388,7 +388,7 @@ test.describe('phone drawer', () => {
 
   test('☰ opens the drawer; focus is trapped; Esc, backdrop, close and navigation close it', async ({ page }) => {
     await page.goto('/');
-    await expect(page.getByRole('heading', { level: 1, name: `Vuosi ${CURRENT_YEAR}` })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: 'Omat keikat' })).toBeVisible();
     // No bottom nav, no header nav, no rail: the only navigation is behind ☰.
     await expect(sidebarNav(page)).toHaveCount(0);
     await expect(rail(page)).toHaveCount(0);
@@ -406,7 +406,7 @@ test.describe('phone drawer', () => {
     await expect(links).toHaveCount(NAV.length);
     await expect(links).toHaveText(NAV.map(({ label }) => label)); // menu order
     for (const { label } of NAV) await expect(drawer.getByRole('link', { name: label, exact: true })).toBeVisible();
-    await expect(drawer.getByRole('link', { name: 'Vuosi', exact: true })).toHaveAttribute('aria-current', 'page');
+    await expect(drawer.getByRole('link', { name: 'Omat keikat', exact: true })).toHaveAttribute('aria-current', 'page');
     await expect(drawer.getByRole('button', { name: 'Vaihda kieleksi English' })).toBeVisible();
     await expect(drawer.getByRole('button', { name: /^Vaihda (tummaan|vaaleaan) teemaan$/ })).toBeVisible();
     await expect(drawer.getByRole('button', { name: 'Kirjaudu ulos', exact: true })).toBeVisible();
@@ -435,7 +435,7 @@ test.describe('phone drawer', () => {
     const vw = page.viewportSize()!.width;
     await page.getByTestId('drawer-backdrop').click({ position: { x: vw - 10, y: 400 } });
     await expect(drawer).toBeHidden();
-    await expect(page).toHaveURL((url) => url.pathname === '/');
+    await expect(page).toHaveURL((url) => url.pathname === '/my-gigs');
 
     // The close button closes.
     await openDrawer(page);
@@ -457,7 +457,7 @@ test.describe('phone drawer', () => {
     // Browser back closes it too (the drawer belongs to the page it was opened on).
     await openDrawer(page);
     await page.goBack();
-    await expect(page).toHaveURL((url) => url.pathname === '/');
+    await expect(page).toHaveURL((url) => url.pathname === '/my-gigs');
     await expect(drawer).toBeHidden();
   });
 
@@ -481,7 +481,7 @@ test.describe('phone drawer', () => {
 test('one theme toggle switches the theme and the choice survives a reload', async ({ page }) => {
   await signIn(page);
   await page.goto('/');
-  await expect(page.getByRole('heading', { level: 1, name: `Vuosi ${CURRENT_YEAR}` })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Omat keikat' })).toBeVisible();
   const theme = () => page.evaluate(() => document.documentElement.getAttribute('data-theme'));
   const before = await theme();
   expect(before === 'dark' || before === 'light', `data-theme is set (${before})`).toBe(true);
@@ -494,7 +494,7 @@ test('one theme toggle switches the theme and the choice survives a reload', asy
   await expect.poll(theme).toBe(after);
 
   await page.reload();
-  await expect(page.getByRole('heading', { level: 1, name: `Vuosi ${CURRENT_YEAR}` })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Omat keikat' })).toBeVisible();
   await expect.poll(theme).toBe(after);
   await expect(await themeButton(page)).toHaveAccessibleName(
     before === 'dark' ? 'Vaihda tummaan teemaan' : 'Vaihda vaaleaan teemaan',

@@ -71,12 +71,6 @@ test('log own hours and see them in totals and on the year page', async ({ page 
   await partnerFilter(page).selectOption({ label: me.name });
   await expect(tableTotal(table)).toHaveText(fiHours(mineBefore + added));
   await expectNoHorizontalScroll(page, 'hours totals');
-
-  // Year page.
-  await goNav(page, 'Vuosi');
-  const hours = page.getByRole('region', { name: 'Tunnit' });
-  await expect(hours.getByRole('link', { name: `${me.name} ${fiHours(mineBefore + added)}` })).toBeVisible();
-  await expect(hours.getByRole('link', { name: `Yhteensä ${fiHours(before.grandTotal + added)}` })).toBeVisible();
 });
 
 // Own hour entries are edited in place (NFR-8): hours and comment save on blur / Enter, the year

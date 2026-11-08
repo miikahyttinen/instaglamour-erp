@@ -6,8 +6,9 @@ import { useCallback } from 'react';
  * so invalidating a root refreshes every query of that kind.
  */
 export const rootKeys = {
-  /** Year page: ['years', year] (UC-022). */
-  years: ['years'],
+  /** My gigs page: ['my-events'] (GET /api/me/events). Not under ['me'], so the `me` query's
+   *  cancel / invalidate never touches it. */
+  myEvents: ['my-events'],
   /** Event lists: ['events', 'list', query]. */
   eventLists: ['events', 'list'],
   /** Cost lines on the person page (all years): ['people', 'cost-lines', id]. */
@@ -26,21 +27,28 @@ export const rootKeys = {
   lineups: ['lineup-templates'],
 } as const satisfies Record<string, QueryKey>;
 
-/** What a mutation changed; decides which lists are refetched besides the year page. */
+/** What a mutation changed; decides which lists are refetched. */
 export type YearDataChange = 'events' | 'hours' | 'budget';
 
 const affectedLists: Record<YearDataChange, readonly QueryKey[]> = {
-  // Event and cost line changes: event lists, person cost lines, clients (their event lists) and
-  // offers (a deleted converted event still links from its offer) and lineups (gig counts).
-  events: [rootKeys.eventLists, rootKeys.personCostLines, rootKeys.clients, rootKeys.offers, rootKeys.lineups],
+  // Event and cost line changes: event lists, My gigs, person cost lines, clients (their event
+  // lists) and offers (a deleted converted event still links from its offer) and lineups (gig counts).
+  events: [
+    rootKeys.eventLists,
+    rootKeys.myEvents,
+    rootKeys.personCostLines,
+    rootKeys.clients,
+    rootKeys.offers,
+    rootKeys.lineups,
+  ],
   hours: [rootKeys.hours],
   budget: [rootKeys.budget],
 };
 
-/** Refetches the year page and the lists affected by `change`. */
+/** Refetches the lists affected by `change`. */
 export function invalidateYearData(queryClient: QueryClient, change: YearDataChange): Promise<void> {
   return Promise.all(
-    [rootKeys.years, ...affectedLists[change]].map((queryKey) => queryClient.invalidateQueries({ queryKey })),
+    affectedLists[change].map((queryKey) => queryClient.invalidateQueries({ queryKey })),
   ).then(() => undefined);
 }
 
