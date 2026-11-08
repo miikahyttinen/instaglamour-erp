@@ -668,7 +668,16 @@ Fixes `invoiceState` for a played gig without invoice rows (shown wrongly as "Os
 - UI convert dialog: the "Kokoonpano" select starts with no choice ("Valitse kokoonpano"); the partner must pick an active lineup or "Oma kokoonpano" and then type the custom name (empty by default). Submitting with no choice → inline `REQUIRED` on the select; "Oma kokoonpano" with an empty name → `REQUIRED` on the name.
 - `POST /api/offers/{id}/convert` **without a body** keeps the old BR-105 defaults (unchanged; not used by the UI).
 
+## My gigs page replaces the Year page (owner request 2026-11-08)
+- **`GET /api/me/events`** → 200 `[MyEvent]`: the signed-in partner's **upcoming** gigs — non-deleted, status `SOLD`, start date ≥ today (Europe/Helsinki) — where the partner is the **producer** (`event.producerId` = me) **or** the partner's linked person has at least one **musician-role** cost line (`MUSICIAN_ROLES`, incl. `OTHER_ROLE`) on the gig. Sorted by start date ascending, then lineup name. No year parameter.
+- `MyEvent = { eventId, startDate, endDate|null, lineupName, venue, clientName|null, roles: [MyRole], notFullyStaffed: boolean }`
+  - `MyRole = { kind: "PRODUCER" } | { kind: "MUSICIAN", type: CostType, description: string|null }` — `PRODUCER` first if the partner is the producer, then one entry per own musician-role line in cost-line order (`description` set for `OTHER_ROLE` lines). A producer who also plays gets both.
+  - `notFullyStaffed` = same rule as `EventSummary.notFullyStaffed` (BR-023).
+- A partner with no linked person only gets producer gigs.
+- UI: the menu item **"Vuosi / Year" is replaced by "Omat keikat / My gigs"** (`/my-gigs`), which is also the start page after sign-in. The Year page and its route are removed from the UI (`/year` redirects to `/my-gigs`); `GET /api/years/{year}` stays for other pages that use it.
+
 ## Change log
+- 2026-11-08 – GET /api/me/events (My gigs); Year page replaced in the UI (PM)
 - 2026-11-07 – event-draft: no lineup prefill; convert dialog requires choosing a lineup (PM)
 - 2026-11-07 – New musician role VOC_KEYS "Vocal & Keys" (PM)
 - 2026-11-07 – invoiceState: PARTLY_INVOICED only with ≥ 1 invoice row; played without rows → NONE (PM)
