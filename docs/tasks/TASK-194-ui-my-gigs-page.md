@@ -1,7 +1,7 @@
 # TASK-194: "Omat keikat / My gigs" page replaces the Year page
 
 - **owner:** ui
-- **status:** todo
+- **status:** done
 - **spec:** docs/api-contract.md "My gigs page replaces the Year page (owner request 2026-11-08)"
 - **depends on:** none (build against the contract with MSW mocks)
 

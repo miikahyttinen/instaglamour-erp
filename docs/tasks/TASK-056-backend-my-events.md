@@ -1,7 +1,7 @@
 # TASK-056: GET /api/me/events (My gigs)
 
 - **owner:** backend
-- **status:** todo
+- **status:** done
 - **spec:** docs/api-contract.md "My gigs page replaces the Year page (owner request 2026-11-08)"
 - **depends on:** none
 
