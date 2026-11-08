@@ -77,7 +77,7 @@ export function LayoutShowcase({ theme }: { theme: Theme }) {
         &apos;ig-sidebar&apos;); its bottom has only the collapse toggle. Desktop top bar: language ·
         theme · sign out (Layout v2.1). Phone: top bar ☰ · logo; ☰ opens the drawer, which has
         language, theme and sign out at the bottom. The year selector is page-level (BR-081): at the
-        top of the page head on Vuosi, Budjetti, Tunnit and Keikat.
+        top of the page head on Budjetti, Tunnit and Keikat.
       </p>
       <div className="sg-shell-row">
         {([false, true] as const).map((isCollapsed) => (

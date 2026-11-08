@@ -418,7 +418,7 @@ export interface ReferenceData {
   budgetCategories: BudgetCategory[];
 }
 
-// ---------- Year page ----------
+// ---------- Year totals (gig list summary) ----------
 
 export interface YearEventTotals {
   eventCount: number;
@@ -430,13 +430,20 @@ export interface YearEventTotals {
   marginActualCents: Cents;
 }
 
-export interface YearPage {
-  year: number;
-  events: YearEventTotals;
-  hours: { partners: { partnerId: Id; total: number }[]; grandTotal: number };
-  budget: BudgetAmounts;
-  yearResultCents: Cents;
-  upcomingEvents: EventSummary[];
+/** My gigs page (GET /api/me/events): one of the signed-in partner's own roles on a gig. */
+export type MyRole = { kind: 'PRODUCER' } | { kind: 'MUSICIAN'; type: CostType; description: string | null };
+
+/** One upcoming gig of the signed-in partner (producer or own musician-role line). */
+export interface MyEvent {
+  eventId: Id;
+  startDate: IsoDate;
+  endDate: IsoDate | null;
+  lineupName: string;
+  venue: string;
+  clientName: string | null;
+  /** PRODUCER first, then one entry per own musician-role line in cost-line order. */
+  roles: MyRole[];
+  notFullyStaffed: boolean;
 }
 
 // ---------- Events ----------

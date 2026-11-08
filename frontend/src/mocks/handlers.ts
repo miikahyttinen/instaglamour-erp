@@ -10,6 +10,7 @@ import { costLineHandlers, eventHandlers, invoiceRowHandlers } from './eventHand
 import { hoursHandlers } from './hoursHandlers';
 import { importHandlers } from './importHandlers';
 import { lineupHandlers } from './lineupHandlers';
+import { myEventsHandlers } from './myEventsHandlers';
 import { offerHandlers } from './offerHandlers';
 import { peopleHandlers } from './peopleHandlers';
 import { publicOfferHandlers } from './publicOfferHandlers';
@@ -17,7 +18,6 @@ import { purchaseOrderHandlers } from './purchaseOrderHandlers';
 import { referencesHandlers } from './referencesHandlers';
 import { tasksHandlers } from './tasksHandlers';
 import { currentPartner, errorResponse, unauthenticated } from './util';
-import { yearHandlers } from './yearHandlers';
 
 // Mock handlers per contract section. Each section has a handler array included in
 // `handlers`: auth and reference here, the features in <feature>Handlers.ts (eventHandlers.ts
@@ -87,7 +87,7 @@ export const handlers = [
   ...referenceHandlers,
   ...offerHandlers,
   ...referencesHandlers,
-  ...yearHandlers,
+  ...myEventsHandlers,
   ...eventHandlers,
   ...costLineHandlers,
   ...invoiceRowHandlers,

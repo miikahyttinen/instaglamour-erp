@@ -40,19 +40,18 @@ describe('sign-in page', () => {
     expect(screen.queryByLabelText('Sähköposti')).not.toBeInTheDocument();
   });
 
-  it('dev login signs in and opens the shell with year and navigation', async () => {
+  it('dev login signs in and opens My gigs (start page, no year selector) and the navigation', async () => {
     vi.stubEnv('VITE_DEV_LOGIN', 'true');
     const { user } = renderApp('/login');
     await user.type(await screen.findByLabelText('Sähköposti'), PARTNER_A_EMAIL);
     await user.click(screen.getByRole('button', { name: 'Kirjaudu' }));
 
-    expect(await screen.findByRole('heading', { name: /^Vuosi \d{4}$/ })).toBeInTheDocument();
-    const year = String(new Date().getFullYear());
-    expect(screen.getAllByRole('combobox', { name: 'Valittu vuosi' })[0]).toHaveValue(year);
+    expect(await screen.findByRole('heading', { name: 'Omat keikat' })).toBeInTheDocument();
+    expect(screen.queryByRole('combobox', { name: 'Valittu vuosi' })).toBeNull();
     // Phone: the navigation is in the ☰ drawer.
     await user.click(screen.getByRole('button', { name: 'Valikko' }));
     const nav = screen.getByRole('navigation', { name: 'Päävalikko' });
-    for (const label of ['Vuosi', 'Keikat', 'Henkilöt', 'Tehtävät', 'Tunnit', 'Budjetti']) {
+    for (const label of ['Omat keikat', 'Keikat', 'Henkilöt', 'Tehtävät', 'Tunnit', 'Budjetti']) {
       expect(within(nav).getByRole('link', { name: label })).toBeInTheDocument();
     }
   });

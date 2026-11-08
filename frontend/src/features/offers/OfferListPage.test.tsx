@@ -24,7 +24,7 @@ describe('offer list (UC-028)', () => {
     clientId = addMockClient('Client X').id;
   });
 
-  it('is the second menu item (after Vuosi) and shows the KPI cards, all columns and the default sort', async () => {
+  it('is the second menu item (after Omat keikat) and shows the KPI cards, all columns and the default sort', async () => {
     addMockOffer({ clientId, eventName: 'Event B', eventDate: `${TEST_YEAR}-09-01`, priceCents: 200000 });
     addMockOffer({ clientId, eventName: 'Event A', eventDate: `${TEST_YEAR}-03-01`, city: 'City Y' });
     addMockOffer({ clientId, eventName: 'Event W', eventDate: `${TEST_YEAR}-04-01`, disposition: 'WON' });
@@ -42,7 +42,7 @@ describe('offer list (UC-028)', () => {
     const { user } = renderApp('/');
     const nav = await screen.findByRole('navigation', { name: 'Päävalikko' });
     const links = within(nav).getAllByRole('link');
-    expect(links[0]).toHaveTextContent('Vuosi');
+    expect(links[0]).toHaveTextContent('Omat keikat');
     const offers = links[1]!;
     expect(offers).toHaveTextContent('Tarjoukset');
     await user.click(offers);

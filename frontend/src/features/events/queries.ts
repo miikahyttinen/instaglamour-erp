@@ -42,7 +42,7 @@ export function personName(people: Person[] | undefined, id: Id | null): string 
 
 /**
  * After any event mutation: put the returned event in the cache (or refetch it when the response
- * has no event) and refresh its history, the event lists, person cost lines and the year page.
+ * has no event) and refresh its history, the event lists, person cost lines and My gigs.
  */
 export function useApplyEvent() {
   const queryClient = useQueryClient();

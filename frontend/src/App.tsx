@@ -17,7 +17,7 @@ import { PeopleRoutes } from './features/people/PeopleRoutes';
 import { PurchaseOrdersRoutes } from './features/purchaseOrders/PurchaseOrdersRoutes';
 import { SettingsRoutes } from './features/settings/SettingsRoutes';
 import { TasksPage } from './features/tasks/TasksPage';
-import { YearPage } from './features/year/YearPage';
+import { MyEventsPage } from './features/myEvents/MyEventsPage';
 import { AppShell } from './layout/AppShell';
 import { NotFoundPage } from './pages/NotFoundPage';
 
@@ -48,9 +48,13 @@ export function AppRoutes() {
           </RequireAuth>
         }
       >
+        {/* Start page: My gigs. The Year page was replaced by it (2026-11-08); old `/year` links
+            land there too. */}
+        <Route index element={<Navigate to="/my-gigs" replace />} />
+        <Route path="year/*" element={<Navigate to="/my-gigs" replace />} />
         {/* Same order as the navigation (layout/navItems.ts). */}
+        <Route path="my-gigs" element={<MyEventsPage />} />
         <Route path="offers/*" element={<OffersRoutes />} />
-        <Route index element={<YearPage />} />
         <Route path="gigs/*" element={<EventsRoutes />} />
         <Route path="events/*" element={<LegacyEventsRedirect />} />
         <Route path="purchase-orders/*" element={<PurchaseOrdersRoutes />} />

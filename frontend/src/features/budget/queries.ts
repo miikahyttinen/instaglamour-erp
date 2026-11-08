@@ -47,7 +47,7 @@ export function useSaveBudgetRow(year: number, categoryId: Id) {
     mutationFn: (body: BudgetRowUpdate) => budgetApi.putRow(year, categoryId, body),
     onSuccess: (row) => {
       queryClient.setQueryData<BudgetResponse>(budgetKey(year), (old) => (old ? withRow(old, row) : old));
-      // The year page shows budget totals and uses actuals in the year result (BR-063).
+      // Refresh the other budget queries (totals, other years).
       void invalidateYearData(queryClient, 'budget');
     },
   });

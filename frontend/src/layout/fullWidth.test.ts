@@ -93,12 +93,4 @@ describe('responsive data tables (≥ 600 px)', () => {
     expect(rulesFor(wide, '.data-table td').join()).toMatch(/overflow-wrap:\s*break-word/);
     expect(wide).toMatch(/\.data-table :is\(\.num, \.tag\) \{[^}]*white-space:\s*nowrap/);
   });
-
-  it('year page: hours | budget only side by side when the layout is wide enough (container query)', () => {
-    const css = read('features/year/YearPage.css');
-    expect(rulesFor(css, '.year-layout').join()).toMatch(/container:\s*year-layout \/ inline-size/);
-    const sideBySide = atRuleBlock(css, '@container year-layout (min-width: 880px)', '.year-budget');
-    expect(rulesFor(sideBySide, '.year-budget').join()).toMatch(/grid-column:\s*span 6/);
-    expect(css).not.toMatch(/@media \(min-width: 600px\)\s*\{\s*\.year-hours/);
-  });
 });

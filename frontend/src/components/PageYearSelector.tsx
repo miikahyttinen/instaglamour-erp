@@ -6,8 +6,8 @@ import { apiErrorMessage } from '../i18n/labels';
 import { YearSelector } from './YearSelector';
 
 /**
- * Page-level year selector (BR-081 revised 2026-10-30) for the year pages: Vuosi, Budjetti,
- * Tunnit, Keikat. Reads and writes `Me.selectedYear` (PATCH /api/me, optimistic), so the four
+ * Page-level year selector (BR-081 revised 2026-10-30) for the year pages: Budjetti,
+ * Tunnit, Keikat. Reads and writes `Me.selectedYear` (PATCH /api/me, optimistic), so the three
  * pages share the year. Render it in the page head (`<PageHead>` children, above the title).
  */
 export function PageYearSelector() {
