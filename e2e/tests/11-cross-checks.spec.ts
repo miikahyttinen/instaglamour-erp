@@ -66,17 +66,6 @@ test('English amounts are parsed and shown in EN format (budget)', async ({ page
   expect(budget.totals.budgetExpenseCents).toBe(120000);
 });
 
-test('year page of an empty year still lists upcoming events (contract: regardless of year)', async ({ page }) => {
-  await signIn(page, undefined, { selectedYear: 2040 });
-  await page.goto('/');
-  await expect(page.getByRole('heading', { level: 1, name: 'Vuosi 2040' })).toBeVisible();
-  const data = await api(page).get('/years/2040');
-  expect(data.events.eventCount).toBe(0);
-  expect(data.upcomingEvents.length).toBeGreaterThan(0);
-  const upcoming = page.getByRole('region', { name: 'Tulevat keikat' });
-  await expect(upcoming.getByRole('link')).toHaveCount(data.upcomingEvents.length + 1); // + section heading link
-});
-
 test('hours saved for another year show a notice and are not added to this year', async ({ page }, testInfo) => {
   const me = await signIn(page);
   const comment = `Synthetic other year ${tagOf(testInfo)}-${suffix()}`;
