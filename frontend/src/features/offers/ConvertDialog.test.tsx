@@ -324,4 +324,39 @@ describe('convert offer to event in a modal (UC-031, BR-105)', () => {
     expect(optionNames('Myyjä')).toEqual(['Partner C', 'Partner A', 'Partner B']);
     expect(optionNames('Tuottaja')).toEqual(['Partner A', 'Partner B']);
   });
+
+  it('"Sopimus tehty" is unchecked by default and sent as contractDone', async () => {
+    const offer = addMockOffer({ clientId, eventName: 'Event 1' });
+    const requests: EventCreate[] = [];
+    server.events.on('request:start', ({ request }) => {
+      if (request.method === 'POST' && request.url.endsWith(`/api/offers/${offer.id}/convert`)) {
+        void request
+          .clone()
+          .json()
+          .then((b) => requests.push(b as EventCreate));
+      }
+    });
+    const { user } = await openConvert(offer.id);
+    const d = within(dialog());
+    const box = d.getByRole('checkbox', { name: 'Sopimus tehty' });
+    expect(box).not.toBeChecked();
+    await user.click(box);
+    await user.selectOptions(d.getByRole('combobox', { name: 'Kokoonpano' }), 'Template A');
+    await user.click(d.getByRole('button', { name: 'Muuta keikaksi' }));
+    expect(await screen.findByText(/Keikka luotu\./)).toBeInTheDocument();
+    server.events.removeAllListeners();
+    await waitFor(() => expect(requests).toHaveLength(1));
+    expect(requests[0]).toMatchObject({ contractDone: true });
+    expect(db.events.events.find((g) => g.offerId === offer.id)).toMatchObject({ contractDone: true });
+  });
+
+  it('converting without ticking it sends contractDone: false', async () => {
+    const offer = addMockOffer({ clientId, eventName: 'Event 1' });
+    const { user } = await openConvert(offer.id);
+    const d = within(dialog());
+    await user.selectOptions(d.getByRole('combobox', { name: 'Kokoonpano' }), 'Template A');
+    await user.click(d.getByRole('button', { name: 'Muuta keikaksi' }));
+    expect(await screen.findByText(/Keikka luotu\./)).toBeInTheDocument();
+    expect(db.events.events.find((g) => g.offerId === offer.id)).toMatchObject({ contractDone: false });
+  });
 });

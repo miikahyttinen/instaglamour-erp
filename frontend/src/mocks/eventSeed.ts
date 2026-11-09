@@ -2,6 +2,7 @@
 // Dates are in the current year so the default event list shows something.
 import type { MusicianRole } from '../api/enums';
 import type { Partner } from '../api/types';
+import { todayIso } from '../lib/format';
 import type { EventState, LineupForCreate, MockClient, MockPerson, NewEventInput } from './eventStore';
 import {
   addAutoFinalInvoice,
@@ -182,4 +183,7 @@ export function seedEventState(
     b.id,
     ctx,
   );
+  // Like the migration (contract 2026-11-09): gigs that started before today have their contract done.
+  const today = todayIso();
+  for (const event of state.events) event.contractDone = event.startDate < today;
 }

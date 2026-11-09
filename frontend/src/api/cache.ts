@@ -9,6 +9,9 @@ export const rootKeys = {
   /** My gigs page: ['my-events'] (GET /api/me/events). Not under ['me'], so the `me` query's
    *  cancel / invalidate never touches it. */
   myEvents: ['my-events'],
+  /** My gigs page, offers section: ['my-offers'] (GET /api/me/offers). Refetched after event and
+   *  offer changes (contract done, follow-up done, convert, disposition…). */
+  myOffers: ['my-offers'],
   /** Event lists: ['events', 'list', query]. */
   eventLists: ['events', 'list'],
   /** Cost lines on the person page (all years): ['people', 'cost-lines', id]. */
@@ -33,11 +36,12 @@ export const rootKeys = {
 export type YearDataChange = 'events' | 'hours' | 'budget';
 
 const affectedLists: Record<YearDataChange, readonly QueryKey[]> = {
-  // Event and cost line changes: event lists, My gigs, person cost lines, clients (their event
+  // Event and cost line changes: event lists, My gigs (gigs and offers: contract done), person cost lines, clients (their event
   // lists) and offers (a deleted converted event still links from its offer) and lineups (gig counts).
   events: [
     rootKeys.eventLists,
     rootKeys.myEvents,
+    rootKeys.myOffers,
     rootKeys.personCostLines,
     rootKeys.clients,
     rootKeys.offers,

@@ -38,6 +38,7 @@ interface FormState {
   technicalSetup: TechnicalSetup | '';
   logistics: Logistics | '';
   houseTechnician: boolean;
+  contractDone: boolean;
   sellerId: string;
   producerId: string;
   price: string;
@@ -57,6 +58,7 @@ const FIELD_TO_CONTROL: Record<string, keyof FormState> = {
   technicalSetup: 'technicalSetup',
   logistics: 'logistics',
   houseTechnician: 'houseTechnician',
+  contractDone: 'contractDone',
   sellerId: 'sellerId',
   producerId: 'producerId',
   priceCents: 'price',
@@ -86,6 +88,7 @@ export function NewEventPage() {
     technicalSetup: '',
     logistics: '',
     houseTechnician: false,
+    contractDone: false,
     sellerId: me.id,
     producerId: me.id,
     price: '',
@@ -160,6 +163,7 @@ export function NewEventPage() {
       technicalSetup: form.technicalSetup || null,
       logistics: form.logistics || null,
       houseTechnician: form.houseTechnician,
+      contractDone: form.contractDone,
       sellerId: form.sellerId,
       producerId: form.producerId,
       priceCents: priceParsed.cents ?? 0,
@@ -291,6 +295,25 @@ export function NewEventPage() {
             {errors.houseTechnician && (
               <p id="new-event-house-tech-error" className="field-error">
                 {errors.houseTechnician}
+              </p>
+            )}
+          </div>
+
+          <div className="field new-event-switch">
+            {/* "Sopimus tehty" (owner request 2026-11-09): unchecked by default. */}
+            <label className="check">
+              <input
+                type="checkbox"
+                checked={form.contractDone}
+                aria-invalid={errors.contractDone ? true : undefined}
+                aria-describedby={errors.contractDone ? 'new-event-contract-error' : undefined}
+                onChange={(e) => set('contractDone', e.target.checked)}
+              />
+              <span>{t('eventForm.contractDone')}</span>
+            </label>
+            {errors.contractDone && (
+              <p id="new-event-contract-error" className="field-error">
+                {errors.contractDone}
               </p>
             )}
           </div>

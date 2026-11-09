@@ -17,6 +17,7 @@ const base: OfferSummary = {
   disposition: 'PENDING',
   status: 'OPEN',
   expired: false,
+  followUpDone: false,
   eventId: null,
   createdAt: '2030-01-01T10:00:00.000Z',
   updatedAt: '2030-01-01T10:00:00.000Z',

@@ -3,6 +3,7 @@ import type { Logistics, TechnicalSetup } from '../../api/enums';
 import { eventsApi } from '../../api/endpoints';
 import type { EventDetail, EventUpdate, EventUpdateResponse } from '../../api/types';
 import {
+  InlineCheckbox,
   InlineMoney,
   InlineSelect,
   InlineSwitch,
@@ -119,6 +120,14 @@ export function EventBasicFields({
           field="houseTechnician"
           disabled={readOnly}
           onSave={(houseTechnician) => patch({ houseTechnician })}
+        />
+        {/* Saved immediately; refreshes My gigs (offers section) via the event invalidation. */}
+        <InlineCheckbox
+          label={t('eventForm.contractDone')}
+          value={event.contractDone}
+          field="contractDone"
+          disabled={readOnly}
+          onSave={(contractDone) => patch({ contractDone })}
         />
         <FieldPair>
           <InlineSelect

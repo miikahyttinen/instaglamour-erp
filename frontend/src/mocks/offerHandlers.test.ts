@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { ApiError } from '../api/client';
-import { eventsApi, offersApi, publicOffersApi } from '../api/endpoints';
+import { eventsApi, myOffersApi, offersApi, publicOffersApi } from '../api/endpoints';
 import { addMockClient, TEST_YEAR } from '../test/eventFixtures';
 import { addMockOffer } from '../test/offerFixtures';
 import { signInMock } from '../test/renderApp';
@@ -262,5 +262,24 @@ describe('offers mock (contract → Offers, BR-102…BR-106)', () => {
 
   it('serves the seeded demo link', async () => {
     expect((await publicOffersApi.get(DEMO_OFFER_TOKEN)).eventName).toBe('Summer Party X');
+  });
+
+  it('followUpDone: default false, PATCHed and logged as UPDATED; must be a boolean (contract 2026-11-09)', async () => {
+    const offer = addMockOffer({ clientId });
+    expect((await offersApi.get(offer.id)).followUpDone).toBe(false);
+    const updated = await offersApi.update(offer.id, { followUpDone: true });
+    expect(updated.followUpDone).toBe(true);
+    const history = await offersApi.history(offer.id);
+    expect(history[0]!.details.changes).toEqual([{ field: 'followUpDone', from: false, to: true }]);
+    await expectApiError(offersApi.update(offer.id, { followUpDone: 1 as never }), 400, 'VALIDATION_ERROR');
+  });
+
+  it('GET /api/me/offers returns contractMissing and followUp for the signed-in seller', async () => {
+    db.offers.offers.length = 0;
+    addMockOffer({ clientId, eventName: 'Won', disposition: 'WON' });
+    addMockOffer({ clientId, eventName: 'Open' });
+    const body = await myOffersApi.list();
+    expect(body.contractMissing.map((o) => o.eventName)).toEqual(['Won']);
+    expect(body.followUp.map((o) => o.eventName)).toEqual(['Open']);
   });
 });

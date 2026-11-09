@@ -1,6 +1,9 @@
 import { screen, waitFor, within } from '@testing-library/react';
+import { http } from 'msw';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from '../../mocks/data';
+import { server } from '../../mocks/server';
+import { errorResponse } from '../../mocks/util';
 import { addAutoFinalInvoice, addCostLine, addInvoiceRow, payCostLine } from '../../mocks/eventStore';
 import { addMockEvent, partnerA, partnerB, staffMockEvent, TEST_YEAR } from '../../test/eventFixtures';
 import { renderApp, signInMock } from '../../test/renderApp';
@@ -482,5 +485,20 @@ describe('event page (UC-004, UC-007)', () => {
   it('shows not found for an unknown event', async () => {
     renderApp('/gigs/00000000-0000-4000-8000-999999999999');
     expect(await screen.findByRole('alert')).toHaveTextContent('Tietoa ei löytynyt.');
+  });
+
+  it('"Sopimus tehty" is saved immediately and logged; a failed save shows an inline error', async () => {
+    const event = addMockEvent();
+    const { user } = renderApp(`/gigs/${event.id}`);
+    const box = await within(await waitFor(() => section('Perustiedot'))).findByRole('checkbox', { name: 'Sopimus tehty' });
+    expect(box).not.toBeChecked();
+    await user.click(box);
+    await waitFor(() => expect(event.contractDone).toBe(true));
+    await waitFor(() => expect(historyItems()[0]).toHaveTextContent('Sopimus tehty: ei → kyllä'));
+
+    server.use(http.patch('/api/events/:id', () => errorResponse(500, 'VALIDATION_ERROR', 'boom')));
+    await user.click(screen.getByRole('checkbox', { name: 'Sopimus tehty' }));
+    expect(await screen.findByText(/./, { selector: '.inline-check .field-error' })).toBeInTheDocument();
+    expect(event.contractDone).toBe(true);
   });
 });

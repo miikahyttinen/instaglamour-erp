@@ -26,3 +26,7 @@
     display: none;
   }
 }
+/* Offers section (owner request 2026-11-09): same table look, separated from the gigs. */
+.my-offers {
+  margin-top: var(--space-6);
+}

@@ -29,7 +29,11 @@ describe('new event (UC-002)', () => {
     ).toEqual(['Valitse kokoonpano', 'Template A', 'Template B', 'Oma kokoonpano']);
     expect(screen.getByText(/^7 riviä, oletussummat yhteensä 430,00\s€$/)).toBeInTheDocument();
     await user.type(screen.getByRole('textbox', { name: 'Paikka' }), 'Venue X');
-    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+    // The only checkbox: "Sopimus tehty", unchecked by default (owner request 2026-11-09).
+    const contract = screen.getByRole('checkbox');
+    expect(contract).toHaveAccessibleName('Sopimus tehty');
+    expect(contract).not.toBeChecked();
+    await user.click(contract);
     const setup = screen.getByRole('combobox', { name: 'Tekniikka' });
     expect(setup).toHaveDisplayValue('–');
     expect(within(setup).getAllByRole('option').map((o) => o.textContent)).toEqual([
@@ -61,6 +65,7 @@ describe('new event (UC-002)', () => {
       technicalSetup: 'SET_C',
       logistics: 'OWN_VAN',
       houseTechnician: true,
+      contractDone: true,
     });
     // Sales person = seller, Production person = producer (AC-2).
     expect(await within(lines()[5]!).findByDisplayValue('Partner A')).toBeInTheDocument();
@@ -88,7 +93,12 @@ describe('new event (UC-002)', () => {
     const created = db.events.events.at(-1)!;
     expect(db.events.costLines.filter((l) => l.eventId === created.id).map((l) => l.budgetedCents)).toEqual([0, 0, 0]);
     // Nothing chosen: technical setup and logistics are sent as null, house technician as false.
-    expect(db.events.events.at(-1)).toMatchObject({ technicalSetup: null, logistics: null, houseTechnician: false });
+    expect(db.events.events.at(-1)).toMatchObject({
+      technicalSetup: null,
+      logistics: null,
+      houseTechnician: false,
+      contractDone: false,
+    });
   });
 
   it('shows localized field errors, keeps the input and saves nothing', async () => {
