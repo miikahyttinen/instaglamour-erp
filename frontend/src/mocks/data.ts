@@ -15,6 +15,7 @@ import { emptyEventState, type EventState } from './eventStore';
 import { seedHours, type HoursState } from './hoursStore';
 import { resetImportStore } from './importStore';
 import { seedOffers } from './offerSeed';
+import { resetParameterStore } from './parameterStore';
 import type { OfferState } from './offerStore';
 import { seedPartnerPurchaseOrders } from './purchaseOrderStore';
 import { seedReferences, type ReferencesState } from './referencesStore';
@@ -200,5 +201,6 @@ export function resetMockDb(): void {
   db.budget = seedBudget(db.reference.budgetCategories);
   db.freelancer = seedFreelancerAndPurchaseOrders(db.events, db.partners, db.reference);
   resetImportStore();
+  resetParameterStore();
   setMockSession(null);
 }
