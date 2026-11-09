@@ -435,12 +435,33 @@ describe('loadSeed', () => {
     await db.event.updateMany({ where: { venue: 'Venue V' }, data: { priceCents: 10000 } });
 
     const changed = example();
-    changed.settings = { ...(changed.settings as object), 'fees.load_in_deduction': 2000 };
+    changed.settings = { ...(changed.settings as object), 'offers.default_includes': 'Changed placeholder' };
     await loadSeed(db, changed);
 
     expect((await db.partner.findUniqueOrThrow({ where: { email: 'partner.a@example.com' } })).language).toBe('en');
     expect((await db.event.findFirstOrThrow({ where: { venue: 'Venue V' } })).priceCents).toBe(10000);
-    expect((await db.setting.findUniqueOrThrow({ where: { key: 'fees.load_in_deduction' } })).valueCents).toBe(2000);
+    expect((await db.setting.findUniqueOrThrow({ where: { key: 'offers.default_includes' } })).valueText).toBe('Changed placeholder');
+  });
+
+  it('parameters (Settings → Parameters) are insert-only: a re-run never overwrites the app value (TASK-057)', async () => {
+    const db = testDb();
+    const key = 'fees.load_in_deduction';
+    // The file must contain the key: load once, then remove the row to get "missing".
+    await loadSeed(db, example());
+    await db.setting.delete({ where: { key } });
+
+    // Missing row → created from the file.
+    const created = await loadSeed(db, example());
+    expect(created.settings).toMatchObject({ created: 1, updated: 0 });
+    expect((await db.setting.findUniqueOrThrow({ where: { key } })).valueCents).toBe(1000);
+
+    // Changed in the app → a re-run with another value keeps the app value.
+    await db.setting.update({ where: { key }, data: { valueCents: 3000 } });
+    const changed = example();
+    changed.settings = { ...(changed.settings as object), [key]: 2000 };
+    const rerun = await loadSeed(db, changed);
+    expect(rerun.settings).toMatchObject({ created: 0, updated: 0 });
+    expect((await db.setting.findUniqueOrThrow({ where: { key } })).valueCents).toBe(3000);
   });
 
   it('partners are insert-only: created active; a re-run never re-activates or changes one (UC-032)', async () => {

@@ -46,6 +46,7 @@ import { newShareToken } from '../src/offers/shareToken.js';
 import { convertOfferInTx } from '../src/offers/store.js';
 import type { Prisma } from '../src/generated/prisma/client.js';
 import { MAX_REFERENCE_IMAGE_BYTES } from '../src/references/store.js';
+import { PARAMETER_KEYS } from '../src/settings/parameters.js';
 import { detectImageType, readHead, UploadDir, type ImageContentType } from '../src/fileStore/uploadDir.js';
 import { clientNameKey, findSeedCategory, lineupNameKey, referenceKey, validateSeed, type SeedData } from './schema.js';
 
@@ -393,6 +394,9 @@ async function applySeed(
     if (!existing) {
       await tx.setting.create({ data: { key, ...values } });
       summary.settings.created++;
+    } else if (PARAMETER_KEYS.has(key)) {
+      // Parameters are edited in the app (Settings → Parameters, TASK-057): never overwritten.
+      summary.settings.skipped++;
     } else if (existing.valueCents !== values.valueCents || existing.valueText !== values.valueText) {
       await tx.setting.update({ where: { key }, data: values });
       summary.settings.updated++;

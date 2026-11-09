@@ -27,6 +27,7 @@ import { PUBLIC_OFFER_ROUTES, publicOfferRoutes } from './routes/publicOffers.js
 import { purchaseOrderRoutes } from './routes/purchaseOrders.js';
 import { referenceRoutes } from './routes/reference.js';
 import { referencesRoutes } from './routes/references.js';
+import { settingsParameterRoutes } from './routes/settingsParameters.js';
 import { taskRoutes } from './routes/tasks.js';
 import { yearRoutes } from './routes/years.js';
 
@@ -115,6 +116,7 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
   referencesRoutes(app, deps);
   purchaseOrderRoutes(app, deps);
   importRoutes(app, deps);
+  settingsParameterRoutes(app, deps);
   // One per-IP budget for the public offer page and the freelancer endpoints (contract).
   const publicPageLimiter = newPublicRateLimiter();
   publicOfferRoutes(app, deps, publicPageLimiter);

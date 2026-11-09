@@ -226,6 +226,7 @@ model Partner {
   cancelledPurchaseOrders PurchaseOrder[]      @relation("PurchaseOrderCancelledBy")
   purchaseOrderEvents     PurchaseOrderEvent[]
   importRuns              ImportRun[]
+  updatedSettings         Setting[]            @relation("SettingUpdatedBy")
 
   @@map("partner")
 }
@@ -286,12 +287,16 @@ model LineupLine {
 /// Seeded key/value settings: fee settings are money amounts in cents (value_cents), offer
 /// settings are texts (value_text).
 model Setting {
-  id         String   @id @default(uuid()) @db.Uuid
-  key        String   @unique
-  valueCents Int?     @map("value_cents")
-  valueText  String?  @map("value_text")
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
+  id          String   @id @default(uuid()) @db.Uuid
+  key         String   @unique
+  valueCents  Int?     @map("value_cents")
+  valueText   String?  @map("value_text")
+  /// TASK-057: the partner who last changed the value in the app (Settings → Parameters); null = seed/import/migration.
+  updatedById String?  @map("updated_by") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  updatedBy Partner? @relation("SettingUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
 
   @@map("setting")
 }
