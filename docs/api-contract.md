@@ -676,7 +676,17 @@ Fixes `invoiceState` for a played gig without invoice rows (shown wrongly as "Os
 - A partner with no linked person only gets producer gigs.
 - UI: the menu item **"Vuosi / Year" is replaced by "Omat keikat / My gigs"** (`/my-gigs`), which is also the start page after sign-in. The Year page and its route are removed from the UI (`/year` redirects to `/my-gigs`); `GET /api/years/{year}` stays for other pages that use it.
 
+## Settings: Parameters tab (owner request 2026-11-09)
+Parameters are **defined in backend code** (a registry: key, type, min/max); only their **values** are stored (`setting` table) and editable in the app. Adding a parameter later = add it to the registry (+ UI label), no new endpoints.
+- `Parameter = { key: string, type: "MONEY", value: int|null, updatedAt: datetime|null, updatedBy: partnerId|null }` (`MONEY` = cents, ≥ 0, ≤ 100 000 000). Only `MONEY` exists now; other types (e.g. `PERCENT`, `TEXT`) may be added later.
+- Registry now: **`fees.load_in_deduction`** (MONEY) — "Soundcheck-vähennys / Sound check deduction": subtracted from a musician line when "Roudaus ja soundcheck" is switched off (BR-026) and in the freelancer PO sound-check question.
+- `GET /api/settings/parameters` → 200 `[Parameter]` in registry order (value `null` if no row yet).
+- `PATCH /api/settings/parameters/{key}` `{ value }` → 200 `Parameter`. Unknown key → 404 `NOT_FOUND`; invalid value → 400 `VALIDATION_ERROR` `value: NEGATIVE_AMOUNT | INVALID_VALUE`. Upserts the setting row; records `updatedBy` = me (new nullable column `updated_by` → partner). Any signed-in partner.
+- `/api/reference.settings.loadInDeductionCents` reflects the new value immediately. **Existing cost lines are not changed** (BR-026: the stored deducted amount is used when switching back on); only later switches use the new value.
+- UI: Asetukset gets a third tab **"Parametrit / Parameters"** (`/settings/parameters`) listing the parameters with label, short help text and an inline value field (money: Enter/blur saves, Esc reverts), plus "muutettu <time> · <partner>".
+
 ## Change log
+- 2026-11-09 – Settings parameters (registry in code, editable values); fees.load_in_deduction editable (PM)
 - 2026-11-08 – GET /api/me/events (My gigs); Year page replaced in the UI (PM)
 - 2026-11-07 – event-draft: no lineup prefill; convert dialog requires choosing a lineup (PM)
 - 2026-11-07 – New musician role VOC_KEYS "Vocal & Keys" (PM)
