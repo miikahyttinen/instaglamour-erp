@@ -39,8 +39,10 @@ test('create an event with Set A, own van and house technician; edit each in pla
   const newTech = main.getByRole('combobox', { name: 'Tekniikka', exact: true });
   const newLogistics = main.getByRole('combobox', { name: 'Logistiikka', exact: true });
   const newHouseTech = main.getByRole('switch', { name: 'Talon teknikko', exact: true });
-  // The old "Tekniikka" checkbox group is gone.
-  await expect(main.getByRole('checkbox')).toHaveCount(0);
+  // The old "Tekniikka" checkbox group is gone: the only checkbox left is "Sopimus tehty"
+  // (TASK-196).
+  await expect(main.getByRole('checkbox')).toHaveCount(1);
+  await expect(main.getByRole('checkbox', { name: 'Sopimus tehty', exact: true })).toHaveCount(1);
   await expect(newTech.locator('option')).toHaveText(TECH_OPTIONS);
   await expect(newLogistics.locator('option')).toHaveText(LOGISTICS_OPTIONS);
   // Defaults: none, none, off.
