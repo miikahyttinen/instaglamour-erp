@@ -200,7 +200,11 @@ describe('My gigs page', () => {
 
       expect(within(third!).getByRole('link', { name: 'Open O' })).toHaveAttribute('href', `/offers/${open.id}`);
       expect(third).toHaveTextContent('Venue Z');
-      expect(within(third!).getByText('Seuranta?')).toHaveClass('tag', 'tag-info');
+      expect(within(third!).getByText('Follow-up?')).toHaveClass('tag', 'tag-info');
+      // Only follow-up rows have the "Follow-up tehty" checkbox.
+      expect(within(third!).getByRole('checkbox', { name: 'Follow-up tehty' })).not.toBeChecked();
+      expect(within(first!).queryByRole('checkbox')).not.toBeInTheDocument();
+      expect(within(second!).queryByRole('checkbox')).not.toBeInTheDocument();
     });
 
     it('phone rows: event name + tag on line 1; date, client and venue bare on line 2', async () => {
@@ -212,7 +216,47 @@ describe('My gigs page', () => {
       const cellOf = (label: string) => row.querySelector<HTMLElement>(`td[data-label="${label}"]`)!;
       expect(cellOf('Tapahtuma')).toHaveClass('cell-primary');
       expect(cellOf('Toimenpide')).toHaveClass('cell-end');
-      for (const label of ['Päivä', 'Asiakas', 'Paikka']) expect(cellOf(label), label).toHaveClass('cell-bare');
+      for (const label of ['Päivä', 'Asiakas', 'Paikka', 'Follow-up tehty']) {
+        expect(cellOf(label), label).toHaveClass('cell-bare');
+      }
+      expect(within(cellOf('Follow-up tehty')).getByRole('checkbox', { name: 'Follow-up tehty' })).toBeInTheDocument();
+    });
+
+    it('ticking "Follow-up tehty" PATCHes followUpDone: true (logged) and the row disappears', async () => {
+      const client = addMockClient('Client A Oy');
+      const open = addMockOffer({ clientId: client.id, eventName: 'Open O' });
+      addMockOffer({ clientId: client.id, eventName: 'Open P', eventDate: '2030-09-01' });
+      const patches: unknown[] = [];
+      const onRequest = ({ request }: { request: Request }) => {
+        if (request.method === 'PATCH') void request.clone().json().then((b) => patches.push(b));
+      };
+      server.events.on('request:start', onRequest);
+      const { user } = renderApp('/my-gigs');
+      await screen.findByRole('table', { name: 'Tarjoukset' });
+      expect(offerRows()).toHaveLength(2);
+      const row = offerRows().find((r) => within(r).queryByRole('link', { name: 'Open O' }))!;
+      await user.click(within(row).getByRole('checkbox', { name: 'Follow-up tehty' }));
+      await waitFor(() => expect(open.followUpDone).toBe(true));
+      await waitFor(() => expect(within(offersTable()).queryByRole('link', { name: 'Open O' })).not.toBeInTheDocument());
+      expect(offerRows()).toHaveLength(1);
+      // Clicking the checkbox did not follow the row link.
+      expect(screen.getByRole('heading', { level: 1, name: 'Omat keikat' })).toBeInTheDocument();
+      expect(patches).toEqual([{ followUpDone: true }]);
+      const updated = db.offers.events.filter((e) => e.offerId === open.id && e.type === 'UPDATED');
+      expect(updated.at(-1)?.details.changes).toEqual([{ field: 'followUpDone', from: false, to: true }]);
+      server.events.removeListener('request:start', onRequest);
+    });
+
+    it('shows an inline error when saving "Follow-up tehty" fails; the row stays', async () => {
+      const client = addMockClient('Client A Oy');
+      const open = addMockOffer({ clientId: client.id, eventName: 'Open O' });
+      server.use(http.patch('/api/offers/:id', () => errorResponse(500, 'VALIDATION_ERROR', 'boom')));
+      const { user } = renderApp('/my-gigs');
+      await screen.findByRole('table', { name: 'Tarjoukset' });
+      await user.click(within(offersTable()).getByRole('checkbox', { name: 'Follow-up tehty' }));
+      expect(await within(offersTable()).findByText(/./, { selector: '.field-error' })).toBeInTheDocument();
+      expect(open.followUpDone).toBe(false);
+      expect(within(offersTable()).getByRole('link', { name: 'Open O' })).toBeInTheDocument();
     });
 
     it('a converted gig with its contract done, cancelled or deleted is not listed', async () => {
@@ -248,6 +292,7 @@ describe('My gigs page', () => {
       expect(await screen.findByRole('heading', { level: 2, name: 'Offers' })).toBeInTheDocument();
       expect(await screen.findByText('Contract not done')).toBeInTheDocument();
       expect(screen.getByText('Follow-up?')).toBeInTheDocument();
+      expect(screen.getByRole('checkbox', { name: 'Follow-up done' })).toBeInTheDocument();
     });
 
     it('English empty state', async () => {

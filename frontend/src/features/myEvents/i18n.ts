@@ -16,7 +16,8 @@ export const fi = {
     title: 'Tarjoukset',
     empty: 'Ei avoimia tarjouksia',
     contractMissing: 'Sopimus tekemättä',
-    followUp: 'Seuranta?',
+    followUp: 'Follow-up?',
+    followUpDone: 'Follow-up tehty',
     columns: {
       date: 'Päivä',
       event: 'Tapahtuma',
@@ -43,6 +44,7 @@ export const en: typeof fi = {
     empty: 'No open offers',
     contractMissing: 'Contract not done',
     followUp: 'Follow-up?',
+    followUpDone: 'Follow-up done',
     columns: {
       date: 'Date',
       event: 'Event',

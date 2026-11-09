@@ -1,12 +1,13 @@
 import type { Locator, Page } from '@playwright/test';
-import { api, expect, expectNoHorizontalScroll, goNav, isMobile, PARTNER_A, signIn, tagOf, test } from './helpers';
+import { api, expect, expectNoHorizontalScroll, goNav, PARTNER_A, signIn, tagOf, test } from './helpers';
 import { suffix } from './events';
 import { createClientViaApi, createOfferViaApi, setDisposition } from './offers';
 
 // Contract done, follow-up done and the offers section of My gigs (owner request 2026-11-09,
 // TASK-196 / TASK-058). An accepted offer without a contract shows "Sopimus tekemättä" (red)
-// until "Sopimus tehty" is ticked on its gig; an open offer shows "Seuranta?" (blue) until
-// "Seuranta tehty" is ticked. Own far-future years per project; synthetic data only.
+// until "Sopimus tehty" is ticked on its gig; an open offer shows "Follow-up?" (blue) until
+// "Follow-up tehty" is ticked on its My gigs row (revised 2026-11-09: the only place with that
+// checkbox, TASK-197). Own far-future years per project; synthetic data only.
 
 interface MyOffer {
   offerId: string;
@@ -37,7 +38,7 @@ async function partnerId(page: Page, name: string): Promise<string> {
   return partner.id;
 }
 
-test('My gigs offers: contract not done until ticked on the gig; follow-up until ticked on the offer', async ({ page }, testInfo) => {
+test('My gigs offers: contract not done until ticked on the gig; follow-up until ticked on My gigs', async ({ page }, testInfo) => {
   await signIn(page, PARTNER_A);
   const year = tagOf(testInfo) === 'M' ? 2050 : 2051;
   const tag = `${tagOf(testInfo)}-${suffix()}`;
@@ -93,7 +94,8 @@ test('My gigs offers: contract not done until ticked on the gig; follow-up until
   await expect(wonRow).toContainText(client.name);
   await expect(wonRow.getByRole('link', { name: won.eventName })).toHaveAttribute('href', `/offers/${won.id}`);
   const openRow = myOfferRow(page, open.eventName);
-  await expect(openRow.getByText('Seuranta?')).toHaveClass(/tag-info/);
+  await expect(openRow.getByText('Follow-up?')).toHaveClass(/tag-info/);
+  await expect(wonRow.getByRole('checkbox')).toHaveCount(0);
   await expect(openRow.getByRole('link', { name: open.eventName })).toHaveAttribute('href', `/offers/${open.id}`);
   await expect(myOfferRow(page, others.eventName)).toHaveCount(0);
   await expectNoHorizontalScroll(page, 'my gigs with offers');
@@ -138,24 +140,34 @@ test('My gigs offers: contract not done until ticked on the gig; follow-up until
   await expect(myOfferRow(page, open.eventName)).toHaveCount(1);
   await expect(myOfferRow(page, won.eventName)).toHaveCount(0);
 
-  // The open offer shows "Seuranta?" until "Seuranta tehty" is ticked: in the list row on phones
-  // (end of line 2), on the offer page on desktop (the list column is priority 2).
-  await expect(myOfferRow(page, open.eventName).getByText('Seuranta?')).toBeVisible();
-  if (isMobile(testInfo)) {
-    await goNav(page, 'Tarjoukset');
-    const box = page.getByRole('checkbox', { name: `Seuranta tehty: ${open.eventName}` });
-    await expect(box).not.toBeChecked();
-    await box.check();
-  } else {
-    await page.goto(`/offers/${open.id}`);
-    const box = page.getByRole('checkbox', { name: 'Seuranta tehty' });
-    await expect(box).not.toBeChecked();
-    await box.check();
-  }
+  // No follow-up checkbox on the offer list or the offer page (revised 2026-11-09).
+  await goNav(page, 'Tarjoukset');
+  await expect(page.getByRole('link', { name: open.eventName, exact: true }).first()).toBeVisible();
+  await expect(page.getByRole('checkbox', { name: /Seuranta|Follow-up/ })).toHaveCount(0);
+  await page.goto(`/offers/${open.id}`);
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+  await expect(page.getByRole('checkbox', { name: /Seuranta|Follow-up/ })).toHaveCount(0);
+
+  // The open offer shows "Follow-up?" until "Follow-up tehty" is ticked on its My gigs row: saved
+  // at once (one PATCH), the click does not open the offer, and the row disappears.
+  await goNav(page, 'Omat keikat');
+  const followRow = myOfferRow(page, open.eventName);
+  await expect(followRow.getByText('Follow-up?')).toBeVisible();
+  const box = followRow.getByRole('checkbox', { name: 'Follow-up tehty' });
+  await expect(box).not.toBeChecked();
+  const followPatch = page.waitForResponse(
+    (res) => res.request().method() === 'PATCH' && res.url().endsWith(`/api/offers/${open.id}`),
+  );
+  await box.check();
+  const followRes = await followPatch;
+  expect(followRes.status()).toBe(200);
+  expect(followRes.request().postDataJSON()).toEqual({ followUpDone: true });
+  await expect(page).toHaveURL(/\/my-gigs$/);
   await expect
     .poll(async () => ((await api(page).get(`/offers/${open.id}`)) as { followUpDone: boolean }).followUpDone)
     .toBe(true);
-  await goNav(page, 'Omat keikat');
+  await expect(myOfferRow(page, open.eventName)).toHaveCount(0);
+  await page.reload();
   await expect(page.getByRole('heading', { level: 2, name: 'Tarjoukset' })).toBeVisible();
   await expect(myOfferRow(page, open.eventName)).toHaveCount(0);
 

@@ -350,13 +350,4 @@
     white-space: nowrap;
     text-overflow: ellipsis;
   }
-  /* Follow-up done (2026-11-09): last on line 2 ("SEURANTA TEHTY ☐"), never wraps. */
-  .offers-page .offer-table td.offer-col-follow-up {
-    order: 6;
-    flex: none;
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-1);
-    white-space: nowrap;
-  }
 }

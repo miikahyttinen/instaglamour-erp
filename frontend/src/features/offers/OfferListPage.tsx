@@ -13,7 +13,7 @@ import { DataTable, type DataTableColumn } from '../../components/DataTable';
 import { ExcelTable } from '../../components/ExcelTable';
 import { useUrlTableState, type ExcelColumn, type ExcelTableState } from '../../components/excelTableState';
 import { OFFER_PAGE_SIZE, useUrlPaging, type Paging } from '../../components/pagination';
-import { InlineCheckbox, InlineSelect } from '../../components/inline';
+import { InlineSelect } from '../../components/inline';
 import { Notice } from '../../components/Notice';
 import { PageHead } from '../../components/PageHead';
 import {
@@ -318,8 +318,8 @@ interface OfferTableProps {
  * client, price, status, actions · 2 place, seller, disposition, event · 3 source, event type).
  * Phones (< 600 px): compact rows (design.md "Compact density"): line 1 = event name (truncates
  * first) + status tag, flexible gap, price at the right edge; line 2 = event date, client, created
- * (no labels) + the follow-up checkbox. Place, seller, source, event type, disposition, linked gig
- * and the row actions are left out (they are on the offer page); filters and sort in the "Suodattimet" sheet.
+ * (no labels). Place, seller, source, event type, disposition, linked gig and the row actions are
+ * left out (they are on the offer page); filters and sort in the "Suodattimet" sheet.
  */
 function OfferTable(props: OfferTableProps) {
   const { offers, partners, lang, tableState, onPatch } = props;
@@ -486,27 +486,6 @@ function OfferTable(props: OfferTableProps) {
       filterLabel: (v) => t(v === 'yes' ? 'offers.eventFilter.yes' : 'offers.eventFilter.no'),
       filterCompare: byCodeOrder(['yes', 'no']),
       cell: (o) => <EventCell offer={o} onConvert={() => props.onConvert(o)} />,
-    },
-    {
-      // Owner request 2026-11-09: saved immediately (PATCH followUpDone). Phone rows: end of
-      // line 2 with its short label ("SEURANTA TEHTY ☐"), the client truncates first.
-      key: 'followUpDone',
-      label: t('offers.columns.followUpDone'),
-      className: 'offer-col-follow-up excel-col-fit',
-      priority: 2,
-      sortValue: (o) => (o.followUpDone ? 1 : 0),
-      filterValue: (o) => (o.followUpDone ? 'yes' : 'no'),
-      filterLabel: (v) => t(v === 'yes' ? 'offers.followUpFilter.yes' : 'offers.followUpFilter.no'),
-      filterCompare: byCodeOrder(['yes', 'no']),
-      cell: (o) => (
-        <InlineCheckbox
-          label={t('offers.followUpLabel', { event: o.eventName })}
-          hideLabel
-          value={o.followUpDone}
-          field="followUpDone"
-          onSave={(followUpDone) => onPatch(o, { followUpDone })}
-        />
-      ),
     },
     {
       key: 'actions',

@@ -36,7 +36,7 @@ export interface MockOffer {
   source: OfferSource | null;
   eventType: OfferEventType | null;
   disposition: OfferDisposition;
-  /** "Seuranta tehty / Follow-up done" (contract 2026-11-09). */
+  /** "Follow-up tehty / Follow-up done" (contract 2026-11-09; ticked on My gigs only). */
   followUpDone: boolean;
   eventId: Id | null;
   shareToken: string;

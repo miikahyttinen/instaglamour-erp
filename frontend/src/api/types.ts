@@ -719,7 +719,7 @@ export interface OfferSummary {
   status: OfferStatus;
   /** OPEN and the event date is before today (display only, BR-102). */
   expired: boolean;
-  /** "Seuranta tehty / Follow-up done" (owner request 2026-11-09). */
+  /** "Follow-up tehty / Follow-up done" (owner request 2026-11-09; ticked on My gigs only, revised 2026-11-09). */
   followUpDone: boolean;
   eventId: Id | null;
   createdAt: IsoTimestamp;
