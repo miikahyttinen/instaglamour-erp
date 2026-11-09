@@ -101,6 +101,8 @@ const event = z.strictObject({
   technicalSetup: z.enum(TECHNICAL_SETUPS, { error: singleChoice('technicalSetup', TECHNICAL_SETUPS) }).optional(),
   logistics: z.enum(LOGISTICS, { error: singleChoice('logistics', LOGISTICS) }).optional(),
   houseTechnician: z.boolean().default(false),
+  // TASK-058: default false — also for past gigs (the migration rule for existing gigs does not apply to seed/import).
+  contractDone: z.boolean().default(false),
   seller: email,
   producer: email,
   priceCents: cents,
@@ -143,6 +145,8 @@ const offer = z.strictObject({
   eventType: z.enum(EVENT_TYPES).optional(),
   disposition: z.enum(OFFER_DISPOSITIONS).optional(),
   converted: z.boolean().default(false),
+  // TASK-058: default false.
+  followUpDone: z.boolean().default(false),
   /** When the offer was made (TASK-028); used only when the offer is inserted. Default: now. */
   createdAt: pastDateTime.optional(),
 });

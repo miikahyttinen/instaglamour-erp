@@ -1,10 +1,11 @@
-/** GET/PATCH /api/me (UC-001 A1, BR-081) and GET /api/me/events (My gigs). */
+/** GET/PATCH /api/me (UC-001 A1, BR-081), GET /api/me/events (My gigs) and GET /api/me/offers (My offers). */
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { todayIso } from '../domain/dates.js';
 import { LANGUAGES } from '../domain/enums.js';
 import { loadMyEvents } from '../events/myEvents.js';
 import { parseInput } from '../http/errors.js';
+import { loadMyOffers } from '../offers/myOffers.js';
 import { toPartnerDto } from '../serializers.js';
 import type { AppDeps } from '../app.js';
 
@@ -44,5 +45,11 @@ export function meRoutes(app: FastifyInstance, deps: AppDeps): void {
   app.get('/api/me/events', async (request) => {
     const me = request.requirePartner();
     return loadMyEvents(db, { partnerId: me.id, personId: me.personId ?? null }, todayIso());
+  });
+
+  // My offers: my accepted offers without a done contract, and my open offers awaiting follow-up.
+  app.get('/api/me/offers', async (request) => {
+    const me = request.requirePartner();
+    return loadMyOffers(db, me.id, todayIso());
   });
 }

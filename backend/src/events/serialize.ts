@@ -117,6 +117,7 @@ export function toEventSummaryDto(event: EventWithLines, today: string) {
     technicalSetup: event.technicalSetup,
     logistics: event.logistics,
     houseTechnician: event.houseTechnician,
+    contractDone: event.contractDone,
     sellerId: event.sellerId,
     producerId: event.producerId,
     priceCents: event.priceCents,

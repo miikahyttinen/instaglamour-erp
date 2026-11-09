@@ -100,6 +100,7 @@ const updateBody = z.object({
   source: source.optional(),
   eventType: eventType.optional(),
   disposition: disposition.optional(),
+  followUpDone: flag.optional(),
 });
 
 /** Editable fields other than disposition, in the order they are logged in UPDATED. */
@@ -116,6 +117,7 @@ const UPDATE_FIELDS = [
   'sellerId',
   'source',
   'eventType',
+  'followUpDone',
 ] as const;
 
 const OFFER_STATUS_FILTERS = ['OPEN', 'ACCEPTED', 'REJECTED', 'EXPIRED'] as const;
@@ -280,6 +282,7 @@ export function offerRoutes(app: FastifyInstance, deps: AppDeps): void {
       sellerId: offer.sellerId,
       source: offer.source,
       eventType: offer.eventType,
+      followUpDone: offer.followUpDone,
     };
     const changes: { field: string; from: unknown; to: unknown }[] = [];
     const data: Prisma.OfferUncheckedUpdateInput = {};

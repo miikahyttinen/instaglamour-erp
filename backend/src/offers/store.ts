@@ -55,6 +55,7 @@ export function toOfferSummaryDto(offer: OfferWithRefs, today: string) {
     disposition: offer.disposition,
     status: offerStatus(offer.disposition),
     expired: isExpired(offer, today),
+    followUpDone: offer.followUpDone,
     eventId: offer.event?.id ?? null,
     createdAt: offer.createdAt.toISOString(),
     updatedAt: offer.updatedAt.toISOString(),

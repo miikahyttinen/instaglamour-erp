@@ -143,6 +143,7 @@ describe('POST /api/offers', () => {
       disposition: 'PENDING',
       status: 'OPEN',
       expired: false,
+      followUpDone: false,
       eventId: null,
       createdAt: expect.any(String),
       updatedAt: expect.any(String),
@@ -390,7 +391,7 @@ describe('GET /api/offers', () => {
     expect(Object.keys(item).sort()).toEqual(
       [
         'id', 'clientId', 'clientName', 'eventName', 'eventDate', 'venue', 'city', 'priceCents', 'sellerId', 'source',
-        'eventType', 'disposition', 'status', 'expired', 'eventId', 'createdAt', 'updatedAt', 'deletedAt',
+        'eventType', 'disposition', 'status', 'expired', 'followUpDone', 'eventId', 'createdAt', 'updatedAt', 'deletedAt',
       ].sort(),
     );
   });
