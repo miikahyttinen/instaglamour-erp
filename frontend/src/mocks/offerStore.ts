@@ -36,6 +36,8 @@ export interface MockOffer {
   source: OfferSource | null;
   eventType: OfferEventType | null;
   disposition: OfferDisposition;
+  /** "Seuranta tehty / Follow-up done" (contract 2026-11-09). */
+  followUpDone: boolean;
   eventId: Id | null;
   shareToken: string;
   /** Internal note: not in the contract objects; only here to prove the public whitelist. */
@@ -100,6 +102,7 @@ export function toOfferSummary(offer: MockOffer, ctx: OfferContext, today = toda
     disposition: offer.disposition,
     status: statusOf(offer.disposition),
     expired: isExpired(offer, today),
+    followUpDone: offer.followUpDone,
     eventId: offer.eventId,
     createdAt: offer.createdAt,
     updatedAt: offer.updatedAt,
@@ -312,6 +315,7 @@ export interface NewOfferInput {
   source: OfferSource | null;
   eventType: OfferEventType | null;
   disposition?: OfferDisposition;
+  followUpDone?: boolean;
   shareToken?: string;
   internalNote?: string | null;
   /** Fixed id (seed only, so demo links survive a reload). */
@@ -335,6 +339,7 @@ export function createOffer(state: OfferState, input: NewOfferInput, actorId: Id
     source: input.source,
     eventType: input.eventType,
     disposition: input.disposition ?? 'PENDING',
+    followUpDone: input.followUpDone ?? false,
     eventId: null,
     shareToken: input.shareToken ?? newShareToken(),
     internalNote: input.internalNote ?? null,
@@ -360,6 +365,7 @@ export const OFFER_PATCH_FIELDS = [
   'sellerId',
   'source',
   'eventType',
+  'followUpDone',
 ] as const;
 export type OfferPatchField = (typeof OFFER_PATCH_FIELDS)[number];
 export type OfferPatch = Partial<Pick<MockOffer, OfferPatchField | 'disposition'>>;

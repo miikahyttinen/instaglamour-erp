@@ -493,4 +493,20 @@ describe('event mocks', () => {
     const result = await costLinesApi.update(sales.id, { personId: person1.id, description: 'Note' });
     expect(line(result.event, 'SALES')).toMatchObject({ personId: person1.id, description: 'Note' });
   });
+
+  it('contractDone: default false, set on create, PATCHed and logged; must be a boolean (contract 2026-11-09)', async () => {
+    const plain = await eventsApi.create(eventInput());
+    expect(plain.contractDone).toBe(false);
+    const done = await eventsApi.create(eventInput({ contractDone: true }));
+    expect(done.contractDone).toBe(true);
+    const { event: updated } = await eventsApi.update(plain.id, { contractDone: true });
+    expect(updated.contractDone).toBe(true);
+    const history = await eventsApi.history(plain.id);
+    expect(history[0]).toMatchObject({ type: 'UPDATED' });
+    expect(history[0]!.type === 'UPDATED' && history[0]!.details.changes).toEqual([
+      { field: 'contractDone', from: false, to: true },
+    ]);
+    const bad = await expectError(eventsApi.update(plain.id, { contractDone: 'yes' as never }));
+    expect(bad.fields).toEqual({ contractDone: 'INVALID_VALUE' });
+  });
 });

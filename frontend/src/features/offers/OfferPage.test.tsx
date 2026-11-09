@@ -190,4 +190,22 @@ describe('offer page (UC-029, UC-031)', () => {
     await screen.findByRole('heading', { level: 1 });
     expect(screen.queryByText(/Tarjouksesta/)).not.toBeInTheDocument();
   });
+
+  it('"Seuranta tehty" on the offer page is saved immediately and logged', async () => {
+    const offer = addMockOffer({ clientId, eventName: 'Event 1' });
+    const { user } = renderApp(`/offers/${offer.id}`);
+    const box = await screen.findByRole('checkbox', { name: 'Seuranta tehty' });
+    expect(box).not.toBeChecked();
+    await user.click(box);
+    await waitFor(() => expect(offer.followUpDone).toBe(true));
+    const history = await screen.findByRole('list', { name: 'Muutoshistoria' });
+    await waitFor(() => expect(history).toHaveTextContent('Seuranta tehty: ei → kyllä'));
+  });
+
+  it('"Seuranta tehty" is disabled on a deleted offer', async () => {
+    const offer = addMockOffer({ clientId, eventName: 'Event 1' });
+    offer.deletedAt = '2030-01-01T00:00:00Z';
+    renderApp(`/offers/${offer.id}`);
+    expect(await screen.findByRole('checkbox', { name: 'Seuranta tehty' })).toBeDisabled();
+  });
 });

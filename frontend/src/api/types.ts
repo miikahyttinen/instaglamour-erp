@@ -106,6 +106,8 @@ export interface EventSummary {
   technicalSetup: TechnicalSetup | null;
   logistics: Logistics | null;
   houseTechnician: boolean;
+  /** "Sopimus tehty / Contract done" (owner request 2026-11-09). */
+  contractDone: boolean;
   sellerId: Id;
   producerId: Id;
   priceCents: Cents;
@@ -465,6 +467,24 @@ export interface MyEvent {
   notFullyStaffed: boolean;
 }
 
+/** My gigs page, offers section (GET /api/me/offers): one of the signed-in partner's offers. */
+export interface MyOffer {
+  offerId: Id;
+  eventName: string;
+  eventDate: IsoDate;
+  clientName: string;
+  venue: string;
+  city: string | null;
+  priceCents: Cents | null;
+  eventId: Id | null;
+}
+
+/** `GET /api/me/offers`: accepted offers without a done contract, and open offers to follow up. */
+export interface MyOffersResponse {
+  contractMissing: MyOffer[];
+  followUp: MyOffer[];
+}
+
 // ---------- Events ----------
 
 export interface EventListQuery {
@@ -492,6 +512,8 @@ export interface EventCreate {
   technicalSetup?: TechnicalSetup | null;
   logistics?: Logistics | null;
   houseTechnician?: boolean;
+  /** Default false. */
+  contractDone?: boolean;
   sellerId: Id;
   producerId: Id;
   priceCents: Cents;
@@ -508,6 +530,7 @@ export interface EventUpdate {
   technicalSetup?: TechnicalSetup | null;
   logistics?: Logistics | null;
   houseTechnician?: boolean;
+  contractDone?: boolean;
   sellerId?: Id;
   producerId?: Id;
   priceCents?: Cents;
@@ -696,6 +719,8 @@ export interface OfferSummary {
   status: OfferStatus;
   /** OPEN and the event date is before today (display only, BR-102). */
   expired: boolean;
+  /** "Seuranta tehty / Follow-up done" (owner request 2026-11-09). */
+  followUpDone: boolean;
   eventId: Id | null;
   createdAt: IsoTimestamp;
   updatedAt: IsoTimestamp;
@@ -786,6 +811,7 @@ export interface OfferUpdate extends Partial<Omit<OfferCreate, 'clientId' | 'eve
   eventDate?: IsoDate;
   venue?: string;
   disposition?: OfferDisposition;
+  followUpDone?: boolean;
 }
 
 export interface OfferConvertResponse {

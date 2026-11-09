@@ -92,10 +92,10 @@ function checkPartner(fields: Fields, key: string, value: unknown, required: boo
   if (!db.partners.some((p) => p.id === value)) fields[key] = 'UNKNOWN_REFERENCE';
 }
 
-/** technicalSetup / logistics: one code of the list or null; houseTechnician: boolean. */
+/** technicalSetup / logistics: one code of the list or null; houseTechnician, contractDone: boolean. */
 function checkEventOptions(
   fields: Fields,
-  body: Pick<EventUpdate, 'technicalSetup' | 'logistics' | 'houseTechnician'>,
+  body: Pick<EventUpdate, 'technicalSetup' | 'logistics' | 'houseTechnician' | 'contractDone'>,
 ): void {
   const checkCode = (key: 'technicalSetup' | 'logistics', codes: readonly unknown[]) => {
     const value = body[key];
@@ -105,6 +105,9 @@ function checkEventOptions(
   checkCode('logistics', LOGISTICS);
   if (body.houseTechnician !== undefined && typeof body.houseTechnician !== 'boolean') {
     fields.houseTechnician = 'INVALID_VALUE';
+  }
+  if (body.contractDone !== undefined && typeof body.contractDone !== 'boolean') {
+    fields.contractDone = 'INVALID_VALUE';
   }
 }
 
@@ -224,6 +227,7 @@ export function parseEventCreate(
       technicalSetup: (body.technicalSetup ?? null) as TechnicalSetup | null,
       logistics: (body.logistics ?? null) as Logistics | null,
       houseTechnician: body.houseTechnician ?? false,
+      contractDone: body.contractDone ?? false,
       sellerId: body.sellerId!,
       producerId: body.producerId!,
       priceCents: body.priceCents!,

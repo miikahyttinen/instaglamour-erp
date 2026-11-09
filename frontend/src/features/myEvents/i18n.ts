@@ -12,6 +12,19 @@ export const fi = {
     roles: 'Roolit',
     staffing: 'Miehitys',
   },
+  offers: {
+    title: 'Tarjoukset',
+    empty: 'Ei avoimia tarjouksia',
+    contractMissing: 'Sopimus tekemättä',
+    followUp: 'Seuranta?',
+    columns: {
+      date: 'Päivä',
+      event: 'Tapahtuma',
+      client: 'Asiakas',
+      venue: 'Paikka',
+      tag: 'Toimenpide',
+    },
+  },
 };
 
 export const en: typeof fi = {
@@ -24,5 +37,18 @@ export const en: typeof fi = {
     venue: 'Venue',
     roles: 'Roles',
     staffing: 'Staffing',
+  },
+  offers: {
+    title: 'Offers',
+    empty: 'No open offers',
+    contractMissing: 'Contract not done',
+    followUp: 'Follow-up?',
+    columns: {
+      date: 'Date',
+      event: 'Event',
+      client: 'Client',
+      venue: 'Venue',
+      tag: 'To do',
+    },
   },
 };

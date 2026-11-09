@@ -39,7 +39,10 @@ export function useOfferHistory(id: Id) {
   return useQuery({ queryKey: offerKeys.history(id), queryFn: () => offersApi.history(id) });
 }
 
-/** After any offer mutation: lists (summary), KPI stats, the page, its history and the client pages. */
+/**
+ * After any offer mutation: lists (summary), KPI stats, the page, its history, the client pages
+ * and the offers section of My gigs (follow-up done, disposition, seller…).
+ */
 export function refreshAfterOfferChange(queryClient: QueryClient, offer: OfferDetail | null, id: Id) {
   if (offer) queryClient.setQueryData(offerKeys.detail(id), offer);
   else void queryClient.invalidateQueries({ queryKey: offerKeys.detail(id) });
@@ -48,6 +51,7 @@ export function refreshAfterOfferChange(queryClient: QueryClient, offer: OfferDe
     queryClient.invalidateQueries({ queryKey: offerKeys.allStats }),
     queryClient.invalidateQueries({ queryKey: offerKeys.history(id) }),
     queryClient.invalidateQueries({ queryKey: rootKeys.clients }),
+    queryClient.invalidateQueries({ queryKey: rootKeys.myOffers }),
   ]).then(() => undefined);
 }
 

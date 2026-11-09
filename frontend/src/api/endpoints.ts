@@ -69,6 +69,7 @@ import type {
   TaskListQuery,
   TaskUpdate,
   MyEvent,
+  MyOffersResponse,
   UpdateMeRequest,
 } from './types';
 import type {
@@ -128,6 +129,11 @@ export const referenceApi = {
 /** The signed-in partner's upcoming gigs (My gigs page). */
 export const myEventsApi = {
   list: () => apiRequest<MyEvent[]>('/me/events'),
+};
+
+/** The signed-in partner's offers needing attention (My gigs page, offers section). */
+export const myOffersApi = {
+  list: () => apiRequest<MyOffersResponse>('/me/offers'),
 };
 
 // ---------- Events ----------

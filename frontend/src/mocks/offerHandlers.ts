@@ -141,6 +141,11 @@ function parseOfferBody(body: Partial<OfferUpdate>, create: boolean): { patch: O
     if (body.eventType !== null && !oneOf(OFFER_EVENT_TYPES, body.eventType)) fields.eventType = 'INVALID_VALUE';
     else patch.eventType = body.eventType;
   }
+  // PATCH only (contract 2026-11-09); not part of OfferCreate, so ignored on create.
+  if (!create && body.followUpDone !== undefined) {
+    if (typeof body.followUpDone !== 'boolean') fields.followUpDone = 'INVALID_VALUE';
+    else patch.followUpDone = body.followUpDone;
+  }
   if (body.disposition !== undefined) {
     if (create || !oneOf(OFFER_DISPOSITIONS, body.disposition)) fields.disposition = 'INVALID_VALUE';
     else patch.disposition = body.disposition;

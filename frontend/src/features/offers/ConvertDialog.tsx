@@ -39,6 +39,8 @@ interface FormState {
   price: string;
   sellerId: Id;
   producerId: Id;
+  /** "Sopimus tehty" (owner request 2026-11-09): unchecked by default. */
+  contractDone: boolean;
 }
 
 const DRAFT = 'event-draft';
@@ -55,6 +57,7 @@ const FIELD_TO_CONTROL: Record<string, keyof FormState> = {
   priceCents: 'price',
   sellerId: 'sellerId',
   producerId: 'producerId',
+  contractDone: 'contractDone',
 };
 
 function formFromDraft(draft: EventCreate, lang: Language, reference: ReferenceData | undefined): FormState {
@@ -70,6 +73,7 @@ function formFromDraft(draft: EventCreate, lang: Language, reference: ReferenceD
     price: centsToInput(draft.priceCents, lang),
     sellerId: draft.sellerId,
     producerId: draft.producerId,
+    contractDone: false,
   };
 }
 
@@ -232,6 +236,7 @@ function ConvertForm({
       priceCents: price.cents ?? 0,
       sellerId: form.sellerId,
       producerId: form.producerId,
+      contractDone: form.contractDone,
     });
   };
 
@@ -297,6 +302,23 @@ function ConvertForm({
             </select>
           )}
         </Field>
+      </div>
+      <div className="field">
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={form.contractDone}
+            aria-invalid={errors.contractDone ? true : undefined}
+            aria-describedby={errors.contractDone ? 'convert-contract-error' : undefined}
+            onChange={(e) => set('contractDone', e.target.checked)}
+          />
+          <span>{t('eventForm.contractDone')}</span>
+        </label>
+        {errors.contractDone && (
+          <p id="convert-contract-error" className="field-error">
+            {errors.contractDone}
+          </p>
+        )}
       </div>
       {blocked && <ConvertBlocked offerId={offer.id} code={blocked} />}
       {unshownError && (

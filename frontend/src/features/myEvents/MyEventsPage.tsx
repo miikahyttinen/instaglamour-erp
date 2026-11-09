@@ -9,12 +9,14 @@ import { StatusTag } from '../../components/StatusTag';
 import { apiErrorMessage } from '../../i18n/labels';
 import { useLang } from '../../i18n/useLang';
 import { myEventDate, myRoleLabel } from './myEventText';
+import { MyOffersSection } from './MyOffersSection';
 import { useMyEvents } from './queries';
 import './myEvents.css';
 
 /**
  * My gigs (owner request 2026-11-08): the signed-in partner's upcoming gigs where they are the
- * producer or play, soonest first. Start page (`/my-gigs`); no year selector.
+ * producer or play, soonest first; below them their offers needing attention (MyOffersSection).
+ * Start page (`/my-gigs`); no year selector.
  */
 export function MyEventsPage() {
   const { t } = useTranslation();
@@ -52,7 +54,8 @@ export function MyEventsPage() {
       cell: (event) => (
         <span className="my-events-roles">
           {event.roles.map((role, i) => (
-            <StatusTag key={i} className="my-events-role">
+            // The producer chip is red (owner request 2026-11-09); musician chips stay neutral.
+            <StatusTag key={i} tone={role.kind === 'PRODUCER' ? 'danger' : 'muted'} className="my-events-role">
               {myRoleLabel(t, role)}
             </StatusTag>
           ))}
@@ -94,6 +97,7 @@ export function MyEventsPage() {
           className="my-events-table"
         />
       )}
+      <MyOffersSection />
     </section>
   );
 }

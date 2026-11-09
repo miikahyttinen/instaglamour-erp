@@ -1,9 +1,11 @@
 import { screen, waitFor, within } from '@testing-library/react';
+import { http } from 'msw';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { formatDate, formatMoneyWhole } from '../../lib/format';
 import { DESKTOP_QUERY, TABLET_QUERY } from '../../lib/useMediaQuery';
 import { db } from '../../mocks/data';
 import { server } from '../../mocks/server';
+import { errorResponse } from '../../mocks/util';
 import { addMockClient, partnerB, TEST_YEAR } from '../../test/eventFixtures';
 import { installMatchMedia } from '../../test/matchMedia';
 import { addMockOffer } from '../../test/offerFixtures';
@@ -69,11 +71,12 @@ describe('offer list (UC-028)', () => {
       'Tapahtumatyyppi',
       'Lopputulos',
       'Linkitetty keikka',
+      'Seuranta tehty',
       'Toiminnot',
     ]);
     // Column priorities (TASK-147): 2 hidden below 1100 px, 3 below 1400 px of table width.
     expect(within(table()).getAllByRole('columnheader').map((h) => h.getAttribute('data-priority'))).toEqual([
-      '1', '1', '2', '1', '1', '1', '1', '2', '3', '3', '2', '2', '1',
+      '1', '1', '2', '1', '1', '1', '1', '2', '3', '3', '2', '2', '2', '1',
     ]);
     // Default sort (UC-028 change 2026-10-22): newest created first.
     expect(eventNames()).toEqual(['Event L', 'Event W', 'Event A', 'Event B', 'Event Old']);
@@ -116,6 +119,37 @@ describe('offer list (UC-028)', () => {
       expect(cellOf(label), label).toHaveClass('hide-phone');
     }
     expect(within(cellOf('Linkitetty keikka')).getByRole('button', { name: 'Muuta keikaksi: Event 1' })).toBeInTheDocument();
+    // Follow-up done (2026-11-09): on line 2 with its label (not bare), the checkbox stays usable.
+    expect(cellOf('Seuranta tehty')).not.toHaveClass('hide-phone');
+    expect(cellOf('Seuranta tehty')).not.toHaveClass('cell-bare');
+    expect(within(cellOf('Seuranta tehty')).getByRole('checkbox', { name: 'Seuranta tehty: Event 1' })).toBeInTheDocument();
+  });
+
+  it('saves "Seuranta tehty" immediately (PATCH followUpDone), logged; refreshes My gigs offers', async () => {
+    const offer = addMockOffer({ clientId, eventName: 'Event 1' });
+    const { user, queryClient } = renderApp('/offers');
+    await screen.findByRole('table', { name: 'Tarjoukset' });
+    queryClient.setQueryData(['my-offers'], { contractMissing: [], followUp: [] });
+    const box = screen.getByRole('checkbox', { name: 'Seuranta tehty: Event 1' });
+    expect(box).not.toBeChecked();
+    await user.click(box);
+    await waitFor(() => expect(offer.followUpDone).toBe(true));
+    await waitFor(() => expect(queryClient.getQueryState(['my-offers'])?.isInvalidated).toBe(true));
+    expect(screen.getByRole('checkbox', { name: 'Seuranta tehty: Event 1' })).toBeChecked();
+    const updated = db.offers.events.filter((e) => e.offerId === offer.id && e.type === 'UPDATED');
+    expect(updated.at(-1)?.details.changes).toEqual([{ field: 'followUpDone', from: false, to: true }]);
+    await user.click(screen.getByRole('checkbox', { name: 'Seuranta tehty: Event 1' }));
+    await waitFor(() => expect(offer.followUpDone).toBe(false));
+  });
+
+  it('shows an inline error when saving "Seuranta tehty" fails and keeps the old value', async () => {
+    const offer = addMockOffer({ clientId, eventName: 'Event 1' });
+    server.use(http.patch('/api/offers/:id', () => errorResponse(500, 'VALIDATION_ERROR', 'boom')));
+    const { user } = renderApp('/offers');
+    await screen.findByRole('table', { name: 'Tarjoukset' });
+    await user.click(screen.getByRole('checkbox', { name: 'Seuranta tehty: Event 1' }));
+    expect(await screen.findByText(/./, { selector: '.field-error' })).toBeInTheDocument();
+    expect(offer.followUpDone).toBe(false);
   });
 
   it('a sort in the URL overrides the default (newest created first)', async () => {

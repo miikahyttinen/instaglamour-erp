@@ -42,6 +42,7 @@ export interface MockEvent {
   technicalSetup: TechnicalSetup | null;
   logistics: Logistics | null;
   houseTechnician: boolean;
+  contractDone: boolean;
   sellerId: Id;
   producerId: Id;
   priceCents: number;
@@ -184,6 +185,7 @@ export function toSummary(state: EventState, event: MockEvent, today = todayIso(
     technicalSetup: event.technicalSetup,
     logistics: event.logistics,
     houseTechnician: event.houseTechnician,
+    contractDone: event.contractDone,
     sellerId: event.sellerId,
     producerId: event.producerId,
     priceCents: event.priceCents,
@@ -303,6 +305,8 @@ export interface NewEventInput {
   technicalSetup: TechnicalSetup | null;
   logistics: Logistics | null;
   houseTechnician: boolean;
+  /** Default false. */
+  contractDone?: boolean;
   sellerId: Id;
   producerId: Id;
   priceCents: number;
@@ -365,6 +369,7 @@ export function createEvent(
     technicalSetup: input.technicalSetup,
     logistics: input.logistics,
     houseTechnician: input.houseTechnician,
+    contractDone: input.contractDone ?? false,
     sellerId: input.sellerId,
     producerId: input.producerId,
     priceCents: input.priceCents,
@@ -504,6 +509,7 @@ export type EventPatchField =
   | 'technicalSetup'
   | 'logistics'
   | 'houseTechnician'
+  | 'contractDone'
   | 'sellerId'
   | 'producerId'
   | 'priceCents'
@@ -518,6 +524,7 @@ export const EVENT_PATCH_FIELDS: EventPatchField[] = [
   'technicalSetup',
   'logistics',
   'houseTechnician',
+  'contractDone',
   'sellerId',
   'producerId',
   'priceCents',
