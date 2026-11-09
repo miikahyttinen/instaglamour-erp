@@ -117,13 +117,17 @@ describe('POST /api/import', () => {
     // …but a lineup without lines gets them from the file.
     const emptied = await testDb().lineupTemplate.findFirstOrThrow({ where: { name: (doc.lineupTemplates as { name: string }[])[1]!.name } });
     await testDb().lineupLine.deleteMany({ where: { templateId: emptied.id } });
-    (doc.settings as Record<string, number>)['fees.load_in_deduction'] = 12300;
+    // A non-parameter setting is updated; a parameter (edited in the app, TASK-057) is never overwritten.
+    (doc.settings as Record<string, unknown>)['offers.default_includes'] = 'Changed placeholder';
+    (doc.settings as Record<string, unknown>)['fees.load_in_deduction'] = 12300;
     const res = await post(doc, '?dryRun=true');
     expect(res.json().summary).toMatchObject({
       people: { created: 0, updated: 1 },
       lineupTemplates: { created: 0, updated: 1, skipped: 2 },
       settings: { created: 0, updated: 1 },
     });
+    await post(doc);
+    expect((await testDb().setting.findUniqueOrThrow({ where: { key: 'fees.load_in_deduction' } })).valueCents).toBe(1000);
   });
 
   it('serializes concurrent imports: the second one finds everything already there', async () => {
