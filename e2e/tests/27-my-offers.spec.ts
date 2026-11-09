@@ -4,10 +4,10 @@ import { suffix } from './events';
 import { createClientViaApi, createOfferViaApi, setDisposition } from './offers';
 
 // Contract done, follow-up done and the offers section of My gigs (owner request 2026-11-09,
-// TASK-196 / TASK-058). An accepted offer without a contract shows "Sopimus tekemättä" (red)
+// TASK-196 / TASK-058). An accepted offer without a contract shows "Sopimus tekemättä" (yellow)
 // until "Sopimus tehty" is ticked on its gig; an open offer shows "Follow-up?" (blue) until
 // "Follow-up tehty" is ticked on its My gigs row (revised 2026-11-09: the only place with that
-// checkbox, TASK-197). Own far-future years per project; synthetic data only.
+// checkbox, TASK-197). Each row also shows the offer status tag (TASK-198). Own far-future years per project; synthetic data only.
 
 interface MyOffer {
   offerId: string;
@@ -85,16 +85,18 @@ test('My gigs offers: contract not done until ticked on the gig; follow-up until
   expect(before.followUp.map((o) => o.offerId)).toContain(open.id);
   expect([...before.contractMissing, ...before.followUp].map((o) => o.offerId)).not.toContain(others.id);
 
-  // UI: the second section on My gigs, red and blue tags, links to the offers.
+  // UI: the second section on My gigs, yellow and blue tags + status tags, links to the offers.
   await page.goto('/my-gigs');
   await expect(page.getByRole('heading', { level: 2, name: 'Tarjoukset' })).toBeVisible();
   const wonRow = myOfferRow(page, won.eventName);
-  await expect(wonRow.getByText('Sopimus tekemättä')).toHaveClass(/tag-danger/);
+  await expect(wonRow.getByText('Sopimus tekemättä')).toHaveClass(/tag-warn/);
+  await expect(wonRow.getByText('Hyväksytty', { exact: true })).toHaveClass(/tag-ok/);
   await expect(wonRow).toContainText('Venue W, City W');
   await expect(wonRow).toContainText(client.name);
   await expect(wonRow.getByRole('link', { name: won.eventName })).toHaveAttribute('href', `/offers/${won.id}`);
   const openRow = myOfferRow(page, open.eventName);
   await expect(openRow.getByText('Follow-up?')).toHaveClass(/tag-info/);
+  await expect(openRow.getByText('Avoin', { exact: true })).toHaveClass(/tag-info/);
   await expect(wonRow.getByRole('checkbox')).toHaveCount(0);
   await expect(openRow.getByRole('link', { name: open.eventName })).toHaveAttribute('href', `/offers/${open.id}`);
   await expect(myOfferRow(page, others.eventName)).toHaveCount(0);

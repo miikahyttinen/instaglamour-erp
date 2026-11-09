@@ -10,17 +10,20 @@ import { apiErrorMessage } from '../../i18n/labels';
 import { useLang } from '../../i18n/useLang';
 import { formatDateWithWeekday } from '../../lib/format';
 import { offersApi } from '../../api/endpoints';
+import { OfferStatusTag } from '../offers/offerParts';
 import { useApplyOffer } from '../offers/queries';
 import { myOfferHref, myOfferRows, type MyOfferRow } from './myEventText';
 import { useMyOffers } from './queries';
 
 /**
  * My gigs, second section "Tarjoukset / Offers" (owner request 2026-11-09): the partner's own
- * offers needing attention. Red tag "Sopimus tekemättä" (contract not done), blue tag "Follow-up?"
- * (follow-up). Follow-up rows have a "Follow-up tehty / Follow-up done" checkbox (revised
+ * offers needing attention. Yellow (warn) tag "Sopimus tekemättä" (contract not done), blue tag
+ * "Follow-up?" (follow-up). Each row also shows the offer status tag of the Tarjoukset list
+ * (TASK-198), derived from the list the row comes from: contractMissing = Accepted, followUp = Open
+ * (the API only returns accepted resp. open, non-expired offers in these lists). Follow-up rows have a "Follow-up tehty / Follow-up done" checkbox (revised
  * 2026-11-09, the only place it is shown): ticking it PATCHes `followUpDone: true` at once and the
  * refetched list drops the row; a failed save shows an inline error. Phone rows like the gig
- * table: line 1 = event name + tag; line 2 = date · client · venue · checkbox (above the row link).
+ * table: line 1 = event name + tag; line 2 = date · client · venue · status · checkbox (above the row link).
  */
 export function MyOffersSection() {
   const { t } = useTranslation();
@@ -65,13 +68,20 @@ export function MyOffersSection() {
       cell: ({ offer }) => [offer.venue, offer.city].filter(Boolean).join(', '),
     },
     {
+      key: 'status',
+      phoneBare: true,
+      label: t('myEvents.offers.columns.status'),
+      className: 'my-events-staffing',
+      cell: (row) => <OfferStatusTag offer={rowOfferStatus(row)} />,
+    },
+    {
       key: 'tag',
       phoneEnd: true,
       label: t('myEvents.offers.columns.tag'),
       className: 'my-events-staffing',
       cell: (row) =>
         row.kind === 'contractMissing' ? (
-          <StatusTag tone="danger">{t('myEvents.offers.contractMissing')}</StatusTag>
+          <StatusTag tone="warn">{t('myEvents.offers.contractMissing')}</StatusTag>
         ) : (
           <StatusTag tone="info">{t('myEvents.offers.followUp')}</StatusTag>
         ),
@@ -122,4 +132,9 @@ export function MyOffersSection() {
       )}
     </section>
   );
+}
+
+/** Status of the row's offer, from the list it comes from (see the component comment). */
+function rowOfferStatus(row: MyOfferRow) {
+  return { status: row.kind === 'contractMissing' ? ('ACCEPTED' as const) : ('OPEN' as const), expired: false };
 }
