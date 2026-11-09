@@ -104,7 +104,9 @@
 .settings-page .lineup-lines-table tr.is-musician td {
   background: var(--surface-musician);
 }
-.settings-page .lineup-lines-table tr.is-musician:hover td,
+.settings-page .lineup-lines-table tr.is-musician:hover td {
+  background: var(--surface-musician-hover);
+}
 .settings-page .lineup-lines-table tr.lineup-draft td {
   background: var(--surface-2);
 }
