@@ -1,7 +1,7 @@
 # TASK-196: Contract done checkbox, follow-up checkbox, My gigs offers section, red producer chip
 
 - **owner:** ui
-- **status:** todo
+- **status:** done
 - **spec:** docs/api-contract.md "Contract done, follow-up done, My offers (owner request 2026-11-09)"
 - **depends on:** none (MSW mocks)
 

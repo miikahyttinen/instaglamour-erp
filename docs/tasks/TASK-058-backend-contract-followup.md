@@ -1,7 +1,7 @@
 # TASK-058: contractDone (gig), followUpDone (offer), GET /api/me/offers
 
 - **owner:** backend
-- **status:** todo
+- **status:** done
 - **spec:** docs/api-contract.md "Contract done, follow-up done, My offers (owner request 2026-11-09)"
 - **depends on:** none
 
