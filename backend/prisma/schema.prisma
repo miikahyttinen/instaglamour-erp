@@ -316,6 +316,8 @@ model Event {
   technicalSetup             TechnicalSetup? @map("technical_setup")
   logistics                  Logistics?
   houseTechnician            Boolean         @default(false) @map("house_technician")
+  /// "Sopimus tehty / Contract done" (TASK-058). The migration set it true for gigs that had already started.
+  contractDone               Boolean         @default(false) @map("contract_done")
   sellerId                   String          @map("seller_id") @db.Uuid
   producerId                 String          @map("producer_id") @db.Uuid
   priceCents                 Int             @map("price_cents")
@@ -425,6 +427,8 @@ model Offer {
   source         OfferSource?
   eventType      EventType?       @map("event_type")
   disposition    OfferDisposition @default(PENDING)
+  /// "Seuranta tehty / Follow-up done" (TASK-058).
+  followUpDone   Boolean          @default(false) @map("follow_up_done")
   /// Public link token (BR-104): 32 random bytes, base64url. Kept to build the share link.
   shareToken     String           @unique @map("share_token")
   /// SHA-256 (hex) of share_token; the public endpoint looks offers up by this hash.

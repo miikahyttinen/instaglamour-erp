@@ -48,7 +48,7 @@ at once can't create duplicates. Import files contain real data: keep them out o
 | Setting | key | Value updated — except **parameters** edited in the app (Settings → Parameters, e.g. `fees.load_in_deduction`): inserted only if missing, so a re-run never overwrites a value changed in the app |
 | Budget category (row) | `code` if given, else `name` (case-insensitive; removed rows count too) | Inserted only if missing — partners manage the rows in the app, so a re-run never renames, reorders or brings back a row they removed |
 | Client | `name` (case-insensitive, trimmed; non-deleted clients) | Inserted only if missing — partners manage clients in the app, so a re-run never changes notes or brings back a deleted client (a deleted client's name creates a new client) |
-| Event | `startDate` + `venue` + `lineupName` | Inserted only if missing (never overwrites app edits — so adding `client` to an already-loaded event does not link it; set the client in the app; the same goes for `invoiceRows`) |
+| Event | `startDate` + `venue` + `lineupName` | Inserted only if missing (never overwrites app edits — so adding `client` to an already-loaded event does not link it; set the client in the app; the same goes for `invoiceRows` and `contractDone`). `contractDone` defaults to `false` even for past gigs: the migration rule "started before today → done" (TASK-058) applied only to gigs that existed when it ran |
 | Offer | `client` + `eventName` + `eventDate` (deleted offers count too) | Inserted only if missing, with a new random share link. `converted: true` also creates the event per BR-105 (disposition WON). `createdAt` (TASK-028) sets the offer's created/updated time and the time of its "created" history event on insert; an existing offer is never changed, and the offer's year stays its `eventDate` |
 | Task | `title` + owner | Inserted only if missing |
 | Hour entry | partner + `date` + `comment` | Inserted only if missing |
@@ -120,6 +120,7 @@ Partners, templates, people, clients and budget categories are referenced by ema
       "technicalSetup": "HOUSE_TECH",                       // optional, one of HOUSE_TECH | SET_A | SET_B | SET_C
       "logistics": "OWN_VAN",                               // optional, one of OWN_VAN | RENTAL_VAN | TAXI | OTHER
       "houseTechnician": false,                             // optional, default false
+      "contractDone": true,                                 // optional, default false — also for past gigs (TASK-058)
       "seller": "partner.a@example.com", "producer": "partner.b@example.com",
       "priceCents": 100000, "additionalSalesCents": 0, "additionalSalesDescription": "…", "notes": "…",
       "client": "Client A Oy",                              // optional; a name from clients (case-insensitive)
@@ -160,6 +161,8 @@ Partners, templates, people, clients and budget categories are referenced by ema
       "eventType": "CORPORATE",                             // optional: PRIVATE | WEDDING | CORPORATE
       "disposition": "PENDING",                             // optional, default PENDING (see domain-model.md)
       "converted": false,                                   // optional; true = also create its event (BR-105), disposition WON
+                                                            // (that event gets contractDone false; set it in the app)
+      "followUpDone": false,                                // optional, default false (TASK-058)
       "createdAt": "2026-10-14T17:09:01.341414+00:00"      // optional: when the offer was made (ISO 8601 with offset or Z,
                                                             // any fraction of a second, not in the future); default: load time
     }
