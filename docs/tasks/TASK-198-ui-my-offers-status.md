@@ -1,7 +1,7 @@
 # TASK-198: Omat keikat offers — show offer status; "Sopimus tekemättä" yellow
 
 - **owner:** ui
-- **status:** todo
+- **status:** done
 - **spec:** owner request 2026-11-09
 - **depends on:** none
 
