@@ -1,7 +1,7 @@
 # TASK-197: Follow-up checkbox only on Omat keikat; FI wording "Follow-up"
 
 - **owner:** ui
-- **status:** todo
+- **status:** done
 - **spec:** docs/api-contract.md "Contract done, follow-up done, My offers" (revised 2026-11-09)
 - **depends on:** TASK-196 (merged on main)
 
