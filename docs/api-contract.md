@@ -692,7 +692,7 @@ Parameters are **defined in backend code** (a registry: key, type, min/max); onl
 **Offer: "Seuranta tehty / Follow-up done"**
 - `OfferSummary`/`OfferDetail` gain `followUpDone: boolean` (default false). `PATCH /api/offers/{id}` accepts `followUpDone`; logged like other offer changes. Migration: column `offer.follow_up_done` default false.
 **`GET /api/me/offers`** → 200 `{ contractMissing: [MyOffer], followUp: [MyOffer] }` — offers where **seller = me**, non-deleted:
-- `contractMissing`: status `ACCEPTED`, and either not converted yet (`eventId: null`) or the linked gig is non-deleted, not `CANCELLED` and `contractDone = false`. Sorted by event date ascending.
+- `contractMissing`: status `ACCEPTED`, event date **today or later** (Helsinki; past events are not listed), and either not converted yet (`eventId: null`) or the linked gig is non-deleted, not `CANCELLED` and `contractDone = false`. Sorted by event date ascending.
 - `followUp`: status `OPEN`, **not expired**, `followUpDone = false`. Sorted by event date ascending.
 - `MyOffer = { offerId, eventName, eventDate, clientName, venue, city|null, priceCents|null, eventId|null }`.
 **UI**
