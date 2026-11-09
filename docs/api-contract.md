@@ -685,7 +685,23 @@ Parameters are **defined in backend code** (a registry: key, type, min/max); onl
 - `/api/reference.settings.loadInDeductionCents` reflects the new value immediately. **Existing cost lines are not changed** (BR-026: the stored deducted amount is used when switching back on); only later switches use the new value.
 - UI: Asetukset gets a third tab **"Parametrit / Parameters"** (`/settings/parameters`) listing the parameters with label, short help text and an inline value field (money: Enter/blur saves, Esc reverts), plus "muutettu <time> · <partner>".
 
+## Contract done, follow-up done, My offers (owner request 2026-11-09)
+**Gig: "Sopimus tehty / Contract done"**
+- `EventSummary`/`EventDetail` gain `contractDone: boolean`. `EventCreate` (incl. offer convert body) and `EventUpdate` accept optional `contractDone` (default `false`). Changes are logged in `UPDATED` like other fields.
+- Migration: new column `event.contract_done` (default false); existing gigs with start date **before today** (Helsinki) are set to `true`, upcoming ones stay `false`.
+**Offer: "Seuranta tehty / Follow-up done"**
+- `OfferSummary`/`OfferDetail` gain `followUpDone: boolean` (default false). `PATCH /api/offers/{id}` accepts `followUpDone`; logged like other offer changes. Migration: column `offer.follow_up_done` default false.
+**`GET /api/me/offers`** → 200 `{ contractMissing: [MyOffer], followUp: [MyOffer] }` — offers where **seller = me**, non-deleted:
+- `contractMissing`: status `ACCEPTED`, and either not converted yet (`eventId: null`) or the linked gig is non-deleted, not `CANCELLED` and `contractDone = false`. Sorted by event date ascending.
+- `followUp`: status `OPEN`, **not expired**, `followUpDone = false`. Sorted by event date ascending.
+- `MyOffer = { offerId, eventName, eventDate, clientName, venue, city|null, priceCents|null, eventId|null }`.
+**UI**
+- Omat keikat: the **"Tuottaja / Producer"** role chip is **red** (danger tone); musician chips stay neutral. Below the gigs a second section **"Tarjoukset / Offers"** lists `contractMissing` rows with a **red** tag "Sopimus tekemättä / Contract not done" (link: the gig if `eventId`, else the offer) and `followUp` rows with a **blue** tag "Seuranta? / Follow-up?" (link: the offer). Empty → "Ei avoimia tarjouksia / No open offers".
+- New gig form and "Muuta keikaksi" dialog: checkbox **"Sopimus tehty / Contract done"** (unchecked by default). Gig page: the same checkbox, editable (saved immediately).
+- Tarjoukset list: a checkbox column **"Seuranta tehty / Follow-up done"** saved immediately (PATCH); also on the offer page.
+
 ## Change log
+- 2026-11-09 – contractDone on gigs, followUpDone on offers, GET /api/me/offers (PM)
 - 2026-11-09 – Settings parameters (registry in code, editable values); fees.load_in_deduction editable (PM)
 - 2026-11-08 – GET /api/me/events (My gigs); Year page replaced in the UI (PM)
 - 2026-11-07 – event-draft: no lineup prefill; convert dialog requires choosing a lineup (PM)
