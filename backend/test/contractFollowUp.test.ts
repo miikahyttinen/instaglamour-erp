@@ -237,8 +237,11 @@ describe('GET /api/me/offers', () => {
 
   it('contractMissing: accepted offers not converted or with an open contract; sorted by event date', async () => {
     await offer({ disposition: 'WON', eventName: 'Not converted', eventDate: '2026-08-01' });
-    // A past accepted, unconverted offer is still listed (no expiry rule for ACCEPTED).
-    await offer({ disposition: 'WON', eventName: 'Past not converted', eventDate: '2026-01-10' });
+    // Only event dates today or later (Helsinki, today = 2026-06-15): past accepted offers are not listed.
+    await offer({ disposition: 'WON', eventName: 'Past not converted', eventDate: '2026-06-14' });
+    const past = await offer({ disposition: 'WON', eventName: 'Past contract open', eventDate: '2026-01-10' });
+    await gigFor(past.id, { contractDone: false });
+    await offer({ disposition: 'WON', eventName: 'Today not converted', eventDate: '2026-06-15' });
     const open = await offer({ disposition: 'WON', eventName: 'Contract open', eventDate: '2026-07-01' });
     await gigFor(open.id, { contractDone: false });
     const done = await offer({ disposition: 'WON', eventName: 'Contract done', eventDate: '2026-07-02' });
@@ -253,7 +256,7 @@ describe('GET /api/me/offers', () => {
     await offer({ disposition: 'CANCELLED', eventName: 'Cancelled offer' });
 
     const result = await myOffers();
-    expect(names(result.contractMissing)).toEqual(['Past not converted', 'Contract open', 'Not converted']);
+    expect(names(result.contractMissing)).toEqual(['Today not converted', 'Contract open', 'Not converted']);
     expect(result.followUp).toEqual([]);
   });
 

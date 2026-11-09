@@ -1,7 +1,7 @@
 /**
  * My offers (docs/api-contract.md "Contract done, follow-up done, My offers"): the signed-in
  * partner's non-deleted offers (seller = me) that still need action.
- * - contractMissing: ACCEPTED, and not converted yet, or converted to a non-deleted, non-cancelled
+ * - contractMissing: ACCEPTED, event date today or later (Helsinki), and not converted yet, or converted to a non-deleted, non-cancelled
  *   gig whose contract is not done.
  * - followUp: OPEN, not expired (event date today or later, Helsinki), follow-up not done.
  * Both sorted by the offer's event date ascending (then event name, creation time, id).
@@ -66,6 +66,7 @@ export async function loadMyOffers(db: Tx, partnerId: string, today: string): Pr
     where: {
       ...mine,
       disposition: 'WON',
+      eventDate: { gte: dateFromIso(today) },
       OR: [
         { event: { is: null } },
         { event: { is: { deletedAt: null, status: { not: 'CANCELLED' }, contractDone: false } } },
