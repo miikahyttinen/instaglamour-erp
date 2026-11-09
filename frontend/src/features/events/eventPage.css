@@ -314,12 +314,12 @@
 }
 
 /* Musician-role lines are listed first (TASK-181) on a slightly different grey than the other
-   lines, so the two groups are easy to tell apart; hover still uses --surface-2. */
+   lines, so the two groups are easy to tell apart; hover uses --surface-musician-hover. */
 .event-page .cost-table tbody.is-musician tr:not(.cost-extra-row) td {
   background: var(--surface-musician);
 }
 .event-page .cost-table tbody.is-musician tr:not(.cost-extra-row):hover td {
-  background: var(--surface-2);
+  background: var(--surface-musician-hover);
 }
 
 /* The pay button's phone icon; shown by the phone rules below. */
