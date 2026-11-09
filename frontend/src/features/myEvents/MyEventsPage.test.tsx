@@ -170,7 +170,7 @@ describe('My gigs page', () => {
       return { offer, event };
     }
 
-    it('lists contract-missing rows (red) first, then follow-up rows (blue), with date, event, client and venue', async () => {
+    it('lists contract-missing rows (yellow, Accepted) first, then follow-up rows (blue, Open), with date, event, client and venue', async () => {
       const client = addMockClient('Client A Oy');
       const won = addMockOffer({ clientId: client.id, eventName: 'Won W', eventDate: '2030-08-01', city: 'City Y', disposition: 'WON' });
       const { offer: converted, event } = convertedOffer('Converted C', '2030-07-01');
@@ -188,7 +188,9 @@ describe('My gigs page', () => {
       const [first, second, third] = offerRows();
 
       expect(within(first!).getByRole('link', { name: 'Converted C' })).toHaveAttribute('href', `/gigs/${event.id}`);
-      expect(within(first!).getByText('Sopimus tekemättä')).toHaveClass('tag', 'tag-danger');
+      expect(within(first!).getByText('Sopimus tekemättä')).toHaveClass('tag', 'tag-warn');
+      // Offer status tag as on the Tarjoukset list (same label and tone).
+      expect(within(first!).getByText('Hyväksytty')).toHaveClass('tag', 'tag-ok');
       expect(converted.eventId).toBe(event.id);
 
       // Not converted yet: links to the offer. 2030-08-01 is a Thursday.
@@ -196,18 +198,21 @@ describe('My gigs page', () => {
       expect(second).toHaveTextContent('Torstai 1.8.2030');
       expect(second).toHaveTextContent('Client A Oy');
       expect(second).toHaveTextContent('Venue X, City Y');
-      expect(within(second!).getByText('Sopimus tekemättä')).toHaveClass('tag-danger');
+      expect(within(second!).getByText('Sopimus tekemättä')).toHaveClass('tag-warn');
+      expect(within(second!).getByText('Hyväksytty')).toHaveClass('tag-ok');
 
       expect(within(third!).getByRole('link', { name: 'Open O' })).toHaveAttribute('href', `/offers/${open.id}`);
       expect(third).toHaveTextContent('Venue Z');
       expect(within(third!).getByText('Follow-up?')).toHaveClass('tag', 'tag-info');
+      expect(within(third!).getByText('Avoin')).toHaveClass('tag', 'tag-info');
+      expect(within(third!).queryByText('Hyväksytty')).not.toBeInTheDocument();
       // Only follow-up rows have the "Follow-up tehty" checkbox.
       expect(within(third!).getByRole('checkbox', { name: 'Follow-up tehty' })).not.toBeChecked();
       expect(within(first!).queryByRole('checkbox')).not.toBeInTheDocument();
       expect(within(second!).queryByRole('checkbox')).not.toBeInTheDocument();
     });
 
-    it('phone rows: event name + tag on line 1; date, client and venue bare on line 2', async () => {
+    it('phone rows: event name + tag on line 1; date, client, venue and status bare on line 2', async () => {
       const client = addMockClient('Client A Oy');
       addMockOffer({ clientId: client.id, eventName: 'Open O' });
       renderApp('/my-gigs');
@@ -216,9 +221,10 @@ describe('My gigs page', () => {
       const cellOf = (label: string) => row.querySelector<HTMLElement>(`td[data-label="${label}"]`)!;
       expect(cellOf('Tapahtuma')).toHaveClass('cell-primary');
       expect(cellOf('Toimenpide')).toHaveClass('cell-end');
-      for (const label of ['Päivä', 'Asiakas', 'Paikka', 'Follow-up tehty']) {
+      for (const label of ['Päivä', 'Asiakas', 'Paikka', 'Tila', 'Follow-up tehty']) {
         expect(cellOf(label), label).toHaveClass('cell-bare');
       }
+      expect(within(cellOf('Tila')).getByText('Avoin')).toHaveClass('tag-info');
       expect(within(cellOf('Follow-up tehty')).getByRole('checkbox', { name: 'Follow-up tehty' })).toBeInTheDocument();
     });
 
@@ -292,6 +298,8 @@ describe('My gigs page', () => {
       expect(await screen.findByRole('heading', { level: 2, name: 'Offers' })).toBeInTheDocument();
       expect(await screen.findByText('Contract not done')).toBeInTheDocument();
       expect(screen.getByText('Follow-up?')).toBeInTheDocument();
+      expect(screen.getByText('Accepted')).toHaveClass('tag-ok');
+      expect(screen.getByText('Open')).toHaveClass('tag-info');
       expect(screen.getByRole('checkbox', { name: 'Follow-up done' })).toBeInTheDocument();
     });
 
