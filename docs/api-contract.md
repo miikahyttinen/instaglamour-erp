@@ -696,9 +696,9 @@ Parameters are **defined in backend code** (a registry: key, type, min/max); onl
 - `followUp`: status `OPEN`, **not expired**, `followUpDone = false`. Sorted by event date ascending.
 - `MyOffer = { offerId, eventName, eventDate, clientName, venue, city|null, priceCents|null, eventId|null }`.
 **UI**
-- Omat keikat: the **"Tuottaja / Producer"** role chip is **red** (danger tone); musician chips stay neutral. Below the gigs a second section **"Tarjoukset / Offers"** lists `contractMissing` rows with a **red** tag "Sopimus tekemättä / Contract not done" (link: the gig if `eventId`, else the offer) and `followUp` rows with a **blue** tag "Seuranta? / Follow-up?" (link: the offer). Empty → "Ei avoimia tarjouksia / No open offers".
+- Omat keikat: the **"Tuottaja / Producer"** role chip is **red** (danger tone); musician chips stay neutral. Below the gigs a second section **"Tarjoukset / Offers"** lists `contractMissing` rows with a **red** tag "Sopimus tekemättä / Contract not done" (link: the gig if `eventId`, else the offer) and `followUp` rows with a **blue** tag "Follow-up? / Follow-up?" (link: the offer). Empty → "Ei avoimia tarjouksia / No open offers".
 - New gig form and "Muuta keikaksi" dialog: checkbox **"Sopimus tehty / Contract done"** (unchecked by default). Gig page: the same checkbox, editable (saved immediately).
-- Tarjoukset list: a checkbox column **"Seuranta tehty / Follow-up done"** saved immediately (PATCH); also on the offer page.
+- **Revised 2026-11-09:** the follow-up checkbox **"Follow-up tehty / Follow-up done"** is shown **only on Omat keikat**, on each follow-up row (ticking it saves immediately and the row disappears). Not on the Tarjoukset list or the offer page. Tag text FI **"Follow-up?"**.
 
 ## Change log
 - 2026-11-09 – contractDone on gigs, followUpDone on offers, GET /api/me/offers (PM)
