@@ -2,26 +2,37 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { Button } from '../../components/Button';
 import { DataTable, type DataTableColumn } from '../../components/DataTable';
+import { InlineCheckbox } from '../../components/inline';
 import { Notice } from '../../components/Notice';
 import { SectionLabel } from '../../components/SectionLabel';
 import { StatusTag } from '../../components/StatusTag';
 import { apiErrorMessage } from '../../i18n/labels';
 import { useLang } from '../../i18n/useLang';
 import { formatDateWithWeekday } from '../../lib/format';
+import { offersApi } from '../../api/endpoints';
+import { useApplyOffer } from '../offers/queries';
 import { myOfferHref, myOfferRows, type MyOfferRow } from './myEventText';
 import { useMyOffers } from './queries';
 
 /**
  * My gigs, second section "Tarjoukset / Offers" (owner request 2026-11-09): the partner's own
- * offers needing attention. Red tag "Sopimus tekemättä" (contract not done), blue tag "Seuranta?"
- * (follow-up). Phone rows like the gig table: line 1 = event name + tag; line 2 = date · client ·
- * venue.
+ * offers needing attention. Red tag "Sopimus tekemättä" (contract not done), blue tag "Follow-up?"
+ * (follow-up). Follow-up rows have a "Follow-up tehty / Follow-up done" checkbox (revised
+ * 2026-11-09, the only place it is shown): ticking it PATCHes `followUpDone: true` at once and the
+ * refetched list drops the row; a failed save shows an inline error. Phone rows like the gig
+ * table: line 1 = event name + tag; line 2 = date · client · venue · checkbox (above the row link).
  */
 export function MyOffersSection() {
   const { t } = useTranslation();
   const lang = useLang();
   const query = useMyOffers();
+  const applyOffer = useApplyOffer();
   const title = t('myEvents.offers.title');
+
+  const saveFollowUp = async (offerId: string, followUpDone: boolean) => {
+    const updated = await offersApi.update(offerId, { followUpDone });
+    await applyOffer(updated, offerId);
+  };
 
   const columns: DataTableColumn<MyOfferRow>[] = [
     {
@@ -64,6 +75,22 @@ export function MyOffersSection() {
         ) : (
           <StatusTag tone="info">{t('myEvents.offers.followUp')}</StatusTag>
         ),
+    },
+    {
+      key: 'followUpDone',
+      phoneBare: true,
+      label: t('myEvents.offers.followUpDone'),
+      header: <span className="visually-hidden">{t('myEvents.offers.followUpDone')}</span>,
+      className: 'my-offers-follow-up',
+      cell: (row) =>
+        row.kind === 'followUp' ? (
+          <InlineCheckbox
+            label={t('myEvents.offers.followUpDone')}
+            value={false}
+            field="followUpDone"
+            onSave={(next) => saveFollowUp(row.offer.offerId, next)}
+          />
+        ) : null,
     },
   ];
 

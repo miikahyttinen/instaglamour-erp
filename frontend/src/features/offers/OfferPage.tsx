@@ -11,7 +11,6 @@ import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { FieldList } from '../../components/FieldList';
 import {
-  InlineCheckbox,
   InlineDate,
   InlineMoney,
   InlineSelect,
@@ -402,13 +401,6 @@ function OfferInternalFields({ offer, readOnly }: { offer: OfferDetail; readOnly
           options={options.disposition}
           disabled={readOnly}
           onSave={(disposition) => patch({ disposition })}
-        />
-        <InlineCheckbox
-          label={t('offer.fields.followUpDone')}
-          value={offer.followUpDone}
-          field="followUpDone"
-          disabled={readOnly}
-          onSave={(followUpDone) => patch({ followUpDone })}
         />
       </FieldList>
       <dl className="offer-facts">

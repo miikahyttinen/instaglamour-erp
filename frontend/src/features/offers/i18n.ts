@@ -34,8 +34,6 @@ export const fi = {
     search: 'Haku',
     searchPlaceholder: 'Tapahtuma, asiakas, paikka tai kaupunki',
     eventFilter: { yes: 'Keikka luotu', no: 'Ei keikkaa' },
-    followUpFilter: { yes: 'Seuranta tehty', no: 'Seuranta tekemättä' },
-    followUpLabel: 'Seuranta tehty: {{event}}',
     expired: 'Vanhentunut',
     statusFilter: {
       OPEN: 'Avoin',
@@ -56,7 +54,6 @@ export const fi = {
       eventType: 'Tapahtumatyyppi',
       disposition: 'Lopputulos',
       linkedEvent: 'Linkitetty keikka',
-      followUpDone: 'Seuranta tehty',
       actions: 'Toiminnot',
       deletedAt: 'Poistettu',
     },
@@ -96,7 +93,6 @@ export const fi = {
       source: 'Lähde',
       eventType: 'Tapahtumatyyppi',
       disposition: 'Lopputulos',
-      followUpDone: 'Seuranta tehty',
       status: 'Tila',
       created: 'Luotu',
       updated: 'Muokattu',
@@ -182,7 +178,7 @@ export const fi = {
     source: 'Lähde',
     eventType: 'Tapahtumatyyppi',
     disposition: 'Lopputulos',
-    followUpDone: 'Seuranta tehty',
+    followUpDone: 'Follow-up tehty',
   },
 };
 
@@ -218,8 +214,6 @@ export const en: typeof fi = {
     search: 'Search',
     searchPlaceholder: 'Event, client, venue or city',
     eventFilter: { yes: 'Gig created', no: 'No gig' },
-    followUpFilter: { yes: 'Follow-up done', no: 'Follow-up not done' },
-    followUpLabel: 'Follow-up done: {{event}}',
     expired: 'Expired',
     statusFilter: {
       OPEN: 'Open',
@@ -240,7 +234,6 @@ export const en: typeof fi = {
       eventType: 'Event type',
       disposition: 'Disposition',
       linkedEvent: 'Linked gig',
-      followUpDone: 'Follow-up done',
       actions: 'Actions',
       deletedAt: 'Deleted',
     },
@@ -280,7 +273,6 @@ export const en: typeof fi = {
       source: 'Source',
       eventType: 'Event type',
       disposition: 'Disposition',
-      followUpDone: 'Follow-up done',
       status: 'Status',
       created: 'Created',
       updated: 'Changed',

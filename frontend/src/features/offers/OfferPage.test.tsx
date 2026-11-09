@@ -1,5 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { offersApi } from '../../api/endpoints';
 import { db } from '../../mocks/data';
 import { MOCK_SPOTIFY_URL } from '../../mocks/offerStore';
 import { addMockClient, addMockEvent, TEST_YEAR } from '../../test/eventFixtures';
@@ -191,21 +192,13 @@ describe('offer page (UC-029, UC-031)', () => {
     expect(screen.queryByText(/Tarjouksesta/)).not.toBeInTheDocument();
   });
 
-  it('"Seuranta tehty" on the offer page is saved immediately and logged', async () => {
+  it('has no follow-up done checkbox (revised 2026-11-09: only on My gigs); history shows the FI label', async () => {
     const offer = addMockOffer({ clientId, eventName: 'Event 1' });
-    const { user } = renderApp(`/offers/${offer.id}`);
-    const box = await screen.findByRole('checkbox', { name: 'Seuranta tehty' });
-    expect(box).not.toBeChecked();
-    await user.click(box);
-    await waitFor(() => expect(offer.followUpDone).toBe(true));
-    const history = await screen.findByRole('list', { name: 'Muutoshistoria' });
-    await waitFor(() => expect(history).toHaveTextContent('Seuranta tehty: ei → kyllä'));
-  });
-
-  it('"Seuranta tehty" is disabled on a deleted offer', async () => {
-    const offer = addMockOffer({ clientId, eventName: 'Event 1' });
-    offer.deletedAt = '2030-01-01T00:00:00Z';
+    await offersApi.update(offer.id, { followUpDone: true });
     renderApp(`/offers/${offer.id}`);
-    expect(await screen.findByRole('checkbox', { name: 'Seuranta tehty' })).toBeDisabled();
+    await screen.findByRole('heading', { level: 1 });
+    expect(screen.queryByRole('checkbox', { name: /Seuranta|Follow-up/ })).not.toBeInTheDocument();
+    const history = await screen.findByRole('list', { name: 'Muutoshistoria' });
+    await waitFor(() => expect(history).toHaveTextContent('Follow-up tehty: ei → kyllä'));
   });
 });
