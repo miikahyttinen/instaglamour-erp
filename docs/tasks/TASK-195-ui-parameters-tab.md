@@ -1,7 +1,7 @@
 # TASK-195: Settings — Parameters tab
 
 - **owner:** ui
-- **status:** todo
+- **status:** done
 - **spec:** docs/api-contract.md "Settings: Parameters tab (owner request 2026-11-09)"
 - **depends on:** none (MSW mocks)
 
