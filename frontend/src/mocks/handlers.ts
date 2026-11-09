@@ -12,6 +12,7 @@ import { importHandlers } from './importHandlers';
 import { lineupHandlers } from './lineupHandlers';
 import { myEventsHandlers } from './myEventsHandlers';
 import { offerHandlers } from './offerHandlers';
+import { parameterHandlers } from './parameterHandlers';
 import { peopleHandlers } from './peopleHandlers';
 import { publicOfferHandlers } from './publicOfferHandlers';
 import { purchaseOrderHandlers } from './purchaseOrderHandlers';
@@ -99,5 +100,6 @@ export const handlers = [
   ...budgetHandlers,
   ...budgetCategoryHandlers,
   ...lineupHandlers,
+  ...parameterHandlers,
   ...importHandlers,
 ];

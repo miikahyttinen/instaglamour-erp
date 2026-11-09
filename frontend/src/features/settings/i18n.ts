@@ -1,12 +1,29 @@
-// Settings page texts (lineups + data import tab). Included in fi.ts / en.ts under the `settings`
-// key. EN must have exactly the same keys as FI.
+// Settings page texts (lineups, parameters + data import tab). Included in fi.ts / en.ts under the
+// `settings` key. EN must have exactly the same keys as FI.
 
 export const fi = {
   settings: {
     tabs: {
       label: 'Asetusten osiot',
       lineups: 'Kokoonpanot',
+      parameters: 'Parametrit',
       import: 'Tietojen tuonti',
+    },
+    parameters: {
+      intro: 'Laskennassa käytettävät arvot. Muutos koskee vain tämän jälkeen tehtäviä rivejä.',
+      caption: 'Parametrit',
+      empty: 'Ei parametreja.',
+      changed: 'Muutettu {{time}} · {{partner}}',
+      // Label + help per parameter key (backend registry; the key's dots nest). Unknown keys show
+      // the key itself.
+      items: {
+        fees: {
+          load_in_deduction: {
+            label: 'Soundcheck-vähennys',
+            help: 'Vähennetään muusikon palkkiosta, kun Roudaus ja soundcheck on pois päältä, ja freelancerin ostotilauksella. Ei muuta jo tehtyjä rivejä.',
+          },
+        },
+      },
     },
     lineups: {
       intro: 'Kokoonpano määrää uuden keikan kulurivit ja niiden oletussummat. Muutokset eivät koske jo luotuja keikkoja.',
@@ -57,7 +74,22 @@ export const en: typeof fi = {
     tabs: {
       label: 'Settings sections',
       lineups: 'Lineups',
+      parameters: 'Parameters',
       import: 'Data import',
+    },
+    parameters: {
+      intro: 'Values used in calculations. A change only affects lines made after it.',
+      caption: 'Parameters',
+      empty: 'No parameters.',
+      changed: 'Changed {{time}} · {{partner}}',
+      items: {
+        fees: {
+          load_in_deduction: {
+            label: 'Sound check deduction',
+            help: "Subtracted from a musician's fee when load-in & sound check is off, and on freelancer purchase orders. Doesn't change existing lines.",
+          },
+        },
+      },
     },
     lineups: {
       intro: "A lineup sets a new gig's cost lines and their default amounts. Changes don't affect existing gigs.",

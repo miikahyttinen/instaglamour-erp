@@ -36,6 +36,8 @@ import type {
   HoursTotals,
   Id,
   OfferConvertResponse,
+  Parameter,
+  ParameterUpdate,
   OfferCreate,
   OfferDetail,
   OfferEvent,
@@ -228,6 +230,16 @@ export const lineupsApi = {
     apiRequest<LineupTemplate>(`/lineup-templates/${id}`, { method: 'PATCH', body }),
   /** 409 `LINEUP_IN_USE` when gigs link to it. */
   remove: (id: Id) => apiRequest<void>(`/lineup-templates/${id}`, { method: 'DELETE' }),
+};
+
+// ---------- Settings: parameters ----------
+
+export const parametersApi = {
+  /** Parameters in registry order (value `null` when not set yet). */
+  list: () => apiRequest<Parameter[]>('/settings/parameters'),
+  /** 404 `NOT_FOUND` unknown key; 400 `VALIDATION_ERROR` `value: NEGATIVE_AMOUNT | INVALID_VALUE`. */
+  update: (key: string, body: ParameterUpdate) =>
+    apiRequest<Parameter>(`/settings/parameters/${encodeURIComponent(key)}`, { method: 'PATCH', body }),
 };
 
 // ---------- Offers (UC-028, UC-029, UC-031) ----------

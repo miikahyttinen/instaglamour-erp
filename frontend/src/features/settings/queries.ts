@@ -1,11 +1,15 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { rootKeys } from '../../api/cache';
-import { lineupsApi } from '../../api/endpoints';
-import type { Id, LineupTemplate, LineupTemplateCreate, LineupTemplateUpdate } from '../../api/types';
+import { lineupsApi, parametersApi } from '../../api/endpoints';
+import type { Id, LineupTemplate, LineupTemplateCreate, LineupTemplateUpdate, Parameter } from '../../api/types';
 import { referenceKey } from '../../reference/useReference';
 
 export const lineupKeys = {
   list: rootKeys.lineups,
+};
+
+export const parameterKeys = {
+  list: rootKeys.parameters,
 };
 
 /** Puts a changed lineup into the cached list and refetches the reference (active lineups). */
@@ -53,5 +57,27 @@ export function useDeleteLineup() {
     },
     // LINEUP_IN_USE: a gig was linked meanwhile; refresh the gig counts.
     onError: () => queryClient.invalidateQueries({ queryKey: lineupKeys.list }),
+  });
+}
+
+/** Settings → Parameters, in registry order. */
+export function useParameters() {
+  return useQuery({ queryKey: parameterKeys.list, queryFn: parametersApi.list });
+}
+
+/**
+ * Saves one parameter value. The reference data (`settings.*`) is refetched so the gig page and
+ * new cost lines use the new value right away.
+ */
+export function useUpdateParameter() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ key, value }: { key: string; value: number }) => parametersApi.update(key, { value }),
+    onSuccess: (parameter) => {
+      queryClient.setQueryData<Parameter[]>(parameterKeys.list, (prev) =>
+        prev?.map((p) => (p.key === parameter.key ? parameter : p)),
+      );
+      return queryClient.invalidateQueries({ queryKey: referenceKey });
+    },
   });
 }

@@ -390,6 +390,25 @@ export interface Settings {
   loadInDeductionCents: Cents;
 }
 
+/** Settings → Parameters: value types (only MONEY now; e.g. PERCENT / TEXT may come later). */
+export type ParameterType = 'MONEY';
+
+/**
+ * An editable parameter (`GET /api/settings/parameters`). Defined in backend code (registry);
+ * only the value is stored. MONEY = cents, 0…100 000 000; `null` = no value stored yet.
+ */
+export interface Parameter {
+  key: string;
+  type: ParameterType;
+  value: number | null;
+  updatedAt: IsoTimestamp | null;
+  updatedBy: Id | null;
+}
+
+export interface ParameterUpdate {
+  value: number;
+}
+
 /** A budget row (UC-020): partner-managed, one name shown in both languages. Active rows only. */
 export interface BudgetCategory {
   id: Id;

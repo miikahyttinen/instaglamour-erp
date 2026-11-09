@@ -25,6 +25,8 @@ export const rootKeys = {
   budget: ['budget'],
   /** Lineup list on the settings page (gig counts): ['lineup-templates']. */
   lineups: ['lineup-templates'],
+  /** Parameters tab on the settings page: ['settings', 'parameters']. */
+  parameters: ['settings', 'parameters'],
 } as const satisfies Record<string, QueryKey>;
 
 /** What a mutation changed; decides which lists are refetched. */
