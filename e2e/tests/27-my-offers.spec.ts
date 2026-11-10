@@ -1,5 +1,5 @@
 import type { Locator, Page } from '@playwright/test';
-import { api, expect, expectNoHorizontalScroll, goNav, PARTNER_A, signIn, tagOf, test } from './helpers';
+import { api, expect, expectNoHorizontalScroll, goNav, isMobile, PARTNER_A, signIn, tagOf, test } from './helpers';
 import { suffix } from './events';
 import { createClientViaApi, createOfferViaApi, setDisposition } from './offers';
 
@@ -30,6 +30,50 @@ const myOfferRow = (page: Page, eventName: string): Locator =>
   offersTable(page)
     .locator('tbody tr')
     .filter({ has: page.getByRole('link', { name: eventName, exact: true }) });
+
+/** Phone layout of one offer row (TASK-199); `withCheckbox` = the follow-up checkbox on line 2. */
+async function expectPhoneOfferRow(row: Locator, where: string, withCheckbox: boolean): Promise<void> {
+  await expect(row).toHaveCount(1);
+  const m = await row.evaluate((tr) => {
+    const rect = (el: Element | null) => {
+      if (!el) return null;
+      const b = el.getBoundingClientRect();
+      return { left: b.left, right: b.right, top: b.top, bottom: b.bottom, mid: (b.top + b.bottom) / 2 };
+    };
+    const trBox = tr.getBoundingClientRect();
+    const cs = getComputedStyle(tr);
+    const cell = (label: string) => tr.querySelector(`td[data-label="${label}"]`);
+    return {
+      title: rect(tr.querySelector('td.cell-primary'))!,
+      action: rect(tr.querySelector('td.cell-inline .tag'))!,
+      status: rect(tr.querySelector('td.cell-main .tag'))!,
+      statusCell: tr.querySelector('td.cell-main')?.getAttribute('data-label'),
+      date: rect(cell('Päivä'))!,
+      client: rect(cell('Asiakas'))!,
+      venue: rect(cell('Paikka'))!,
+      checkbox: rect(tr.querySelector('input[type="checkbox"]')),
+      rowTop: trBox.top + parseFloat(cs.paddingTop),
+      rowRight: trBox.right - parseFloat(cs.paddingRight),
+    };
+  });
+  expect(m.statusCell, `${where}: status is the main cell`).toBe('Tila');
+  expect(m.action.mid, `${where}: action tag on line 1`).toBeGreaterThan(m.title.top);
+  expect(m.action.mid, `${where}: action tag on line 1`).toBeLessThan(m.title.bottom);
+  expect(m.action.left, `${where}: action tag after the name`).toBeGreaterThanOrEqual(m.title.right - 1);
+  expect(m.action.left - m.title.right, `${where}: action tag hugs the name`).toBeLessThanOrEqual(9);
+  expect(Math.abs(m.status.right - m.rowRight), `${where}: status at the right edge`).toBeLessThanOrEqual(1);
+  expect(m.status.top - m.rowTop, `${where}: status at the top`).toBeLessThanOrEqual(4);
+  expect(m.status.left, `${where}: status right of the action tag`).toBeGreaterThanOrEqual(m.action.right - 1);
+  const line2 = Math.max(m.title.bottom, m.status.bottom) - 1;
+  for (const [name, b] of [['date', m.date], ['client', m.client], ['venue', m.venue]] as const) {
+    expect(b.top, `${where}: ${name} on line 2`).toBeGreaterThanOrEqual(line2);
+  }
+  const before = (a: typeof m.date, b: typeof m.date) => a.top < b.top - 1 || a.right <= b.left + 1;
+  expect(before(m.date, m.client), `${where}: date before client`).toBe(true);
+  expect(before(m.client, m.venue), `${where}: client before venue`).toBe(true);
+  if (withCheckbox) expect(m.checkbox!.top, `${where}: checkbox on line 2`).toBeGreaterThanOrEqual(line2);
+  else expect(m.checkbox, `${where}: no checkbox`).toBeNull();
+}
 
 async function partnerId(page: Page, name: string): Promise<string> {
   const ref = (await api(page).get('/reference')) as { partners: { id: string; name: string }[] };
@@ -101,6 +145,17 @@ test('My gigs offers: contract not done until ticked on the gig; follow-up until
   await expect(openRow.getByRole('link', { name: open.eventName })).toHaveAttribute('href', `/offers/${open.id}`);
   await expect(myOfferRow(page, others.eventName)).toHaveCount(0);
   await expectNoHorizontalScroll(page, 'my gigs with offers');
+  if (isMobile(testInfo)) {
+    // Phone rows (TASK-199): the action tag right after the event name, the status tag in the
+    // top-right corner, date · client · venue (and the checkbox) on line 2. 375 and 414 px.
+    for (const w of [375, 414]) {
+      await page.setViewportSize({ width: w, height: 812 });
+      await expectPhoneOfferRow(myOfferRow(page, won.eventName), `${w} px won`, false);
+      await expectPhoneOfferRow(myOfferRow(page, open.eventName), `${w} px open`, true);
+      await expectNoHorizontalScroll(page, `my gigs with offers at ${w} px`);
+    }
+    await page.setViewportSize({ width: 375, height: 812 });
+  }
 
   // Convert the accepted offer without ticking "Sopimus tehty" (unchecked by default).
   await wonRow.getByRole('link', { name: won.eventName }).click();

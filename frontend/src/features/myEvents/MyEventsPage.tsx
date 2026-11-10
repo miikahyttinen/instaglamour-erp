@@ -16,7 +16,8 @@ import './myEvents.css';
 /**
  * My gigs (owner request 2026-11-08): the signed-in partner's upcoming gigs where they are the
  * producer or play, soonest first; below them their offers needing attention (MyOffersSection).
- * Start page (`/my-gigs`); no year selector.
+ * Start page (`/my-gigs`); no year selector. Phone rows (TASK-199): line 1 = gig name + "Miehitys
+ * kesken" tag, role chips in the top-right corner; line 2 = date · client · venue.
  */
 export function MyEventsPage() {
   const { t } = useTranslation();
@@ -45,12 +46,24 @@ export function MyEventsPage() {
       key: 'venue',
       phoneBare: true,
       label: t('myEvents.columns.venue'),
-      cell: (event) => (event.clientName ? `${event.venue} · ${event.clientName}` : event.venue),
+      // Desktop "venue · client"; phone line 2 reorders it to "client · venue" (TASK-199, CSS only).
+      cell: (event) =>
+        event.clientName ? (
+          <span className="my-events-place">
+            <span className="my-events-venue">{event.venue}</span>
+            <span className="my-events-sep"> · </span>
+            <span className="my-events-client">{event.clientName}</span>
+          </span>
+        ) : (
+          event.venue
+        ),
     },
     {
       key: 'roles',
-      phoneBare: true,
+      // Phone: top-right corner of the row; several chips wrap there (TASK-199).
+      phoneMain: true,
       label: t('myEvents.columns.roles'),
+      className: 'my-events-roles-cell',
       cell: (event) => (
         <span className="my-events-roles">
           {event.roles.map((role, i) => (
@@ -64,7 +77,8 @@ export function MyEventsPage() {
     },
     {
       key: 'staffing',
-      phoneEnd: true,
+      // Phone: right after the title on line 1 (the title truncates first, TASK-199).
+      phoneInline: true,
       label: t('myEvents.columns.staffing'),
       className: 'my-events-staffing',
       cell: (event) => event.notFullyStaffed && <StatusTag tone="warn">{t('events.notFullyStaffed')}</StatusTag>,

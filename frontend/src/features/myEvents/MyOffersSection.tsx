@@ -23,7 +23,8 @@ import { useMyOffers } from './queries';
  * (the API only returns accepted resp. open, non-expired offers in these lists). Follow-up rows have a "Follow-up tehty / Follow-up done" checkbox (revised
  * 2026-11-09, the only place it is shown): ticking it PATCHes `followUpDone: true` at once and the
  * refetched list drops the row; a failed save shows an inline error. Phone rows like the gig
- * table: line 1 = event name + tag; line 2 = date · client · venue · status · checkbox (above the row link).
+ * table (TASK-199): line 1 = event name + tag, status tag in the top-right corner; line 2 = date ·
+ * client · venue · checkbox (above the row link).
  */
 export function MyOffersSection() {
   const { t } = useTranslation();
@@ -69,14 +70,14 @@ export function MyOffersSection() {
     },
     {
       key: 'status',
-      phoneBare: true,
+      phoneMain: true,
       label: t('myEvents.offers.columns.status'),
       className: 'my-events-staffing',
       cell: (row) => <OfferStatusTag offer={rowOfferStatus(row)} />,
     },
     {
       key: 'tag',
-      phoneEnd: true,
+      phoneInline: true,
       label: t('myEvents.offers.columns.tag'),
       className: 'my-events-staffing',
       cell: (row) =>

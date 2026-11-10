@@ -1,5 +1,6 @@
-/* My gigs page: one DataTable (compact two-line rows on phones: gig name + staffing tag, then
-   date · venue · roles). Tokens and shared classes only. */
+/* My gigs page: one DataTable (compact two-line rows on phones, TASK-199: gig name + staffing tag
+   on line 1 with the role chips in the top-right corner, then date · client · venue). Tokens and
+   shared classes only. */
 
 .my-events-link {
   color: inherit;
@@ -24,6 +25,47 @@
   /* Phone rows: no empty staffing item when the gig is fully staffed. */
   .my-events-table td:empty {
     display: none;
+  }
+  /* Role chips: the row's main cell (top-right corner). Unlike a single main figure they may
+     wrap, right-aligned, within at most half the row, so they never push into the title (which
+     truncates with an ellipsis instead). Line 1 stays aligned on the first chip row. */
+  .my-events-table.data-table-cards td.cell-main.my-events-roles-cell {
+    flex: 0 1 auto;
+    max-width: 45%;
+    justify-content: flex-end;
+    white-space: normal;
+  }
+  .my-events-table.data-table-cards td.my-events-roles-cell .my-events-roles {
+    justify-content: flex-end;
+    min-width: 0;
+    max-width: 100%;
+    row-gap: 2px;
+  }
+  /* A chip wider than the area (long custom role) truncates instead of overflowing; tighter
+     padding like the line-1 tags. */
+  .my-events-table.data-table-cards td.my-events-roles-cell .my-events-role {
+    display: block;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    padding-left: var(--space-1);
+    padding-right: var(--space-1);
+    letter-spacing: 0.06em;
+  }
+  /* Line 2 reads date · client · venue: swap the desktop "venue · client" visually. */
+  .my-events-table.data-table-cards .my-events-place {
+    display: inline-flex;
+    flex-wrap: wrap;
+    min-width: 0;
+  }
+  .my-events-table.data-table-cards .my-events-client {
+    order: -2;
+  }
+  .my-events-table.data-table-cards .my-events-sep {
+    order: -1;
+    padding: 0 0.3em;
   }
 }
 /* Offers section (owner request 2026-11-09): same table look, separated from the gigs. */
