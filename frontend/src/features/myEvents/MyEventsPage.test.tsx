@@ -92,6 +92,32 @@ describe('My gigs page', () => {
     expect(row).toHaveTextContent('Saturday 1 Jun 2030');
   });
 
+  it('phone rows (TASK-199): gig name + staffing tag on line 1, roles top right; date, venue bare on line 2', async () => {
+    const client = addMockClient('Client A Oy');
+    const event = bareEvent({ startDate: '2030-06-01', lineupName: 'Lineup A', venue: 'Venue X', clientId: client.id });
+    line(event, 'KEYS', partnerA().personId);
+    line(event, 'VOC', null);
+    renderApp('/my-gigs');
+    await screen.findByRole('table', { name: 'Omat keikat' });
+    const row = rows()[0]!;
+    const cellOf = (label: string) => row.querySelector<HTMLElement>(`td[data-label="${label}"]`)!;
+    expect(cellOf('Keikka')).toHaveClass('cell-primary');
+    expect(cellOf('Miehitys')).toHaveClass('cell-inline');
+    expect(within(cellOf('Miehitys')).getByText('Miehitys kesken')).toHaveClass('tag-warn');
+    expect(cellOf('Roolit')).toHaveClass('cell-main', 'my-events-roles-cell');
+    expect(within(cellOf('Roolit')).getAllByText(/./, { selector: '.my-events-role' }).map((el) => el.textContent)).toEqual([
+      'Tuottaja',
+      'Koskettimet',
+    ]);
+    for (const label of ['Päivä', 'Paikka']) {
+      expect(cellOf(label), label).toHaveClass('cell-bare');
+    }
+    // Client and venue are separate parts, so phones can show "client · venue" (CSS order).
+    expect(cellOf('Paikka').querySelector('.my-events-client')).toHaveTextContent('Client A Oy');
+    expect(cellOf('Paikka').querySelector('.my-events-venue')).toHaveTextContent('Venue X');
+    expect(cellOf('Paikka')).toHaveTextContent('Venue X · Client A Oy');
+  });
+
   it('opens the gig page from the row link', async () => {
     const event = bareEvent({ startDate: '2030-06-01', lineupName: 'Lineup A' });
     const { user } = renderApp('/my-gigs');
@@ -212,7 +238,7 @@ describe('My gigs page', () => {
       expect(within(second!).queryByRole('checkbox')).not.toBeInTheDocument();
     });
 
-    it('phone rows: event name + tag on line 1; date, client, venue and status bare on line 2', async () => {
+    it('phone rows (TASK-199): event name + tag on line 1, status top right; date, client, venue and checkbox bare on line 2', async () => {
       const client = addMockClient('Client A Oy');
       addMockOffer({ clientId: client.id, eventName: 'Open O' });
       renderApp('/my-gigs');
@@ -220,8 +246,10 @@ describe('My gigs page', () => {
       const row = offerRows()[0]!;
       const cellOf = (label: string) => row.querySelector<HTMLElement>(`td[data-label="${label}"]`)!;
       expect(cellOf('Tapahtuma')).toHaveClass('cell-primary');
-      expect(cellOf('Toimenpide')).toHaveClass('cell-end');
-      for (const label of ['Päivä', 'Asiakas', 'Paikka', 'Tila', 'Follow-up tehty']) {
+      expect(cellOf('Toimenpide')).toHaveClass('cell-inline');
+      expect(within(cellOf('Toimenpide')).getByText('Follow-up?')).toHaveClass('tag-info');
+      expect(cellOf('Tila')).toHaveClass('cell-main');
+      for (const label of ['Päivä', 'Asiakas', 'Paikka', 'Follow-up tehty']) {
         expect(cellOf(label), label).toHaveClass('cell-bare');
       }
       expect(within(cellOf('Tila')).getByText('Avoin')).toHaveClass('tag-info');

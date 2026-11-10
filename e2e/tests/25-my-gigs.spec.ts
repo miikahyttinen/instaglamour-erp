@@ -1,6 +1,7 @@
 import type { Locator, Page } from '@playwright/test';
-import { api, expect, expectNoHorizontalScroll, goNav, signIn, tagOf, test } from './helpers';
+import { api, expect, expectNoHorizontalScroll, goNav, isMobile, signIn, tagOf, test } from './helpers';
 import { createEventViaApi, suffix } from './events';
+import { createClientViaApi } from './offers';
 
 // My gigs (owner request 2026-11-08, TASK-194 / TASK-056): the start page lists the signed-in
 // partner's upcoming SOLD gigs where they are the producer or have a musician-role line, soonest
@@ -122,6 +123,84 @@ test('My gigs lists my upcoming gigs with roles and the staffing tag, soonest fi
   await expect(page.getByRole('heading', { level: 1, name: 'Omat keikat' })).toBeVisible();
   await expect(rowOf(page, `Venue M ${tag}`)).toHaveCount(0);
   await expect(rowOf(page, `Venue P ${tag}`)).toHaveCount(1);
+});
+
+// Phone rows (TASK-199, owner request 2026-11-10): line 1 = gig name + "Miehitys kesken" right
+// after it (the name truncates with … first), the role chips in the top-right corner (wrapping
+// there, never over the name); line 2 = date · client · venue. No sideways scroll at 375 / 414.
+test('phone rows: staffing tag after the gig name, roles top right, date · client · venue below', async ({ page }, testInfo) => {
+  test.skip(!isMobile(testInfo), 'phone layout only');
+  const me = await signIn(page);
+  const tag = `${tagOf(testInfo)}-${suffix()}`;
+  const client = await createClientViaApi(page, `Client ${tag}-ph`);
+  const gig = await createEventViaApi(page, { startDate: '2048-04-04', venue: `Venue PH ${tag}` });
+  const longName = `Lineup ${tag} with a very long synthetic name that cannot fit`;
+  await api(page).patch(`/events/${gig.id}`, { lineupName: longName, clientId: client.id });
+  await api(page).post(`/events/${gig.id}/cost-lines`, { type: 'KEYS', personId: me.personId, budgetedCents: 1000 });
+  await api(page).post(`/events/${gig.id}/cost-lines`, {
+    type: 'OTHER_ROLE',
+    personId: me.personId,
+    description: 'Role X',
+    budgetedCents: 1000,
+  });
+
+  for (const w of [375, 414]) {
+    await page.setViewportSize({ width: w, height: 812 });
+    await page.goto('/my-gigs');
+    const row = rowOf(page, `Venue PH ${tag}`);
+    await expect(row).toHaveCount(1);
+    await expect(row.locator('.my-events-role')).toHaveText(['Tuottaja', 'Koskettimet', 'Role X']);
+    await expect(row.getByText('Miehitys kesken')).toBeVisible();
+    await expect(row.getByRole('link', { name: longName })).toHaveAttribute('title', longName);
+
+    const m = await row.evaluate((tr) => {
+      const rect = (el: Element) => {
+        const b = el.getBoundingClientRect();
+        return { left: b.left, right: b.right, top: b.top, bottom: b.bottom, h: b.height, mid: (b.top + b.bottom) / 2 };
+      };
+      const title = tr.querySelector<HTMLElement>('td.cell-primary')!;
+      const trBox = tr.getBoundingClientRect();
+      const cs = getComputedStyle(tr);
+      return {
+        title: rect(title),
+        staffing: rect(tr.querySelector('td.cell-inline .tag')!),
+        roles: rect(tr.querySelector('td.my-events-roles-cell')!),
+        chips: [...tr.querySelectorAll('.my-events-role')].map(rect),
+        date: rect(tr.querySelector('td.my-events-date')!),
+        client: rect(tr.querySelector('.my-events-client')!),
+        venue: rect(tr.querySelector('.my-events-venue')!),
+        rowTop: trBox.top + parseFloat(cs.paddingTop),
+        rowRight: trBox.right - parseFloat(cs.paddingRight),
+        rowH: trBox.height,
+        lineH: parseFloat(getComputedStyle(title).lineHeight) || 24,
+        truncated: title.scrollWidth > title.clientWidth,
+      };
+    });
+    // Line 1: the staffing tag right after the (truncated) name.
+    expect(m.truncated, `${w} px: long name truncated`).toBe(true);
+    expect(m.staffing.mid, `${w} px: staffing tag on line 1`).toBeGreaterThan(m.title.top);
+    expect(m.staffing.mid, `${w} px: staffing tag on line 1`).toBeLessThan(m.title.bottom);
+    expect(m.staffing.left, `${w} px: staffing tag after the name`).toBeGreaterThanOrEqual(m.title.right - 1);
+    expect(m.staffing.left - m.title.right, `${w} px: staffing tag hugs the name`).toBeLessThanOrEqual(9);
+    // Roles: top-right corner, right of the tag, every chip inside that area.
+    expect(Math.abs(m.roles.right - m.rowRight), `${w} px: roles at the right edge`).toBeLessThanOrEqual(1);
+    expect(m.roles.top - m.rowTop, `${w} px: roles at the top`).toBeLessThanOrEqual(4);
+    expect(m.roles.left, `${w} px: roles right of the staffing tag`).toBeGreaterThanOrEqual(m.staffing.right - 1);
+    for (const chip of m.chips) {
+      expect(chip.left, `${w} px: chip inside the roles area`).toBeGreaterThanOrEqual(m.roles.left - 1);
+      expect(chip.right, `${w} px: chip inside the roles area`).toBeLessThanOrEqual(m.rowRight + 1);
+    }
+    // Line 2 below line 1: date · client · venue.
+    expect(m.date.top, `${w} px: date on line 2`).toBeGreaterThanOrEqual(Math.max(m.title.bottom, m.roles.bottom) - 1);
+    const clientFirst =
+      m.client.top < m.venue.top - 1 || (Math.abs(m.client.top - m.venue.top) <= 1 && m.client.right <= m.venue.left);
+    expect(clientFirst, `${w} px: client before venue`).toBe(true);
+    const afterDate = m.client.top > m.date.top + 1 || m.client.left >= m.date.right - 1;
+    expect(afterDate, `${w} px: client after the date`).toBe(true);
+    // Compact: at most two chip rows plus line 2.
+    expect(m.rowH, `${w} px: compact row`).toBeLessThan(m.lineH * 4 + 16);
+    await expectNoHorizontalScroll(page, `my gigs at ${w} px`);
+  }
 });
 
 /** Finnish weekday, capitalised, for a `YYYY-MM-DD` date (as the UI shows it). */
