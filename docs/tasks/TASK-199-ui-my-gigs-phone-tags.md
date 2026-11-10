@@ -1,7 +1,7 @@
 # TASK-199: Omat keikat on phone — action tags after the title, role/status top right
 
 - **owner:** ui
-- **status:** todo
+- **status:** done
 - **spec:** owner request 2026-11-10
 - **depends on:** none
 
