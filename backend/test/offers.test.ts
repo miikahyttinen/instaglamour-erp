@@ -730,6 +730,7 @@ describe('GET /api/offers/{id}/event-draft (BR-105)', () => {
       additionalSalesCents: 0,
       additionalSalesDescription: null,
       notes: null,
+      invoicingDetails: null, // TASK-059
       clientId: clientA.id,
     });
     // Reading the draft changes nothing.

@@ -27,6 +27,7 @@ export const eventCreateBody = z.object({
   additionalSalesCents: money.optional(),
   additionalSalesDescription: optionalText(),
   notes: optionalText(LONG_TEXT_MAX),
+  invoicingDetails: optionalText(LONG_TEXT_MAX),
   clientId: z.string().nullable().optional(),
 });
 
@@ -114,6 +115,7 @@ export async function insertEvent(
       additionalSalesCents: input.additionalSalesCents ?? 0,
       additionalSalesDescription: input.additionalSalesDescription ?? null,
       notes: input.notes ?? null,
+      invoicingDetails: input.invoicingDetails ?? null,
       clientId: input.clientId ?? null,
       offerId: options.offerId ?? null,
       // Explicit, increasing creation times keep the lines in creation order (contract).

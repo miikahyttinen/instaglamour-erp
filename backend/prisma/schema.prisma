@@ -318,6 +318,8 @@ model Event {
   houseTechnician            Boolean         @default(false) @map("house_technician")
   /// "Sopimus tehty / Contract done" (TASK-058). The migration set it true for gigs that had already started.
   contractDone               Boolean         @default(false) @map("contract_done")
+  /// "Laskutustiedot / Invoicing details" free text (TASK-059, BR-007 revised); up to 5000 chars.
+  invoicingDetails           String?         @map("invoicing_details")
   sellerId                   String          @map("seller_id") @db.Uuid
   producerId                 String          @map("producer_id") @db.Uuid
   priceCents                 Int             @map("price_cents")

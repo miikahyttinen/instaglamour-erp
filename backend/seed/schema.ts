@@ -109,6 +109,8 @@ const event = z.strictObject({
   additionalSalesCents: cents.default(0),
   additionalSalesDescription: z.string().max(500).optional(),
   notes: z.string().max(5000).optional(),
+  // TASK-059: optional free text; blank becomes null.
+  invoicingDetails: z.string().max(5000).optional(),
   client: name.optional(),
   // TASK-046: optional invoice rows.
   invoiceRows: z.array(invoiceRow).max(1000).optional(),

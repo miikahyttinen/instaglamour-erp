@@ -143,6 +143,8 @@ export type EventSummaryDto = ReturnType<typeof toEventSummaryDto>;
 export function toEventDetailDto(event: EventWithDetail, today: string) {
   return {
     ...toEventSummaryDto(event, today),
+    // TASK-059: EventDetail only (not on EventSummary).
+    invoicingDetails: event.invoicingDetails,
     costLines: [...event.costLines].sort(compareCostLines).map(toCostLineDto),
     invoiceRows: [...event.invoiceRows].sort(compareInvoiceRows).map(toInvoiceRowDto),
   };

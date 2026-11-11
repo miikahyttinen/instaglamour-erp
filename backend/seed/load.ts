@@ -492,6 +492,7 @@ async function applySeed(
         additionalSalesCents: g.additionalSalesCents,
         additionalSalesDescription: g.additionalSalesDescription ?? null,
         notes: g.notes ?? null,
+        invoicingDetails: g.invoicingDetails?.trim() || null,
         clientId: g.client ? clientIdByKey.get(clientNameKey(g.client))! : null,
         // From the file, not a change made in the app: created/status by stay null. Rows keep file order.
         invoiceRows: {
