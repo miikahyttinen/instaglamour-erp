@@ -700,7 +700,14 @@ Parameters are **defined in backend code** (a registry: key, type, min/max); onl
 - New gig form and "Muuta keikaksi" dialog: checkbox **"Sopimus tehty / Contract done"** (unchecked by default). Gig page: the same checkbox, editable (saved immediately).
 - **Revised 2026-11-09:** the follow-up checkbox **"Follow-up tehty / Follow-up done"** is shown **only on Omat keikat**, on each follow-up row (ticking it saves immediately and the row disappears). Not on the Tarjoukset list or the offer page. Tag text FI **"Follow-up?"**.
 
+## Invoicing details on the gig (owner request 2026-11-11)
+- `EventDetail` gains `invoicingDetails: string|null` (free text, ≤ 5000 chars → `TOO_LONG`; blank → null). Not on `EventSummary`.
+- `EventUpdate` accepts `invoicingDetails`; logged in `UPDATED` like `notes`. `EventCreate` / convert body may include it (optional, default null).
+- Migration: nullable text column `event.invoicing_details`.
+- UI: gig page "Laskutus / Invoicing" box gets a multi-line field **"Laskutustiedot / Invoicing details"** under the invoice rows (inline edit like Notes: saves on blur, Esc reverts). Read-only on deleted gigs.
+
 ## Change log
+- 2026-11-11 – Event invoicingDetails free text (PM)
 - 2026-11-09 – contractDone on gigs, followUpDone on offers, GET /api/me/offers (PM)
 - 2026-11-09 – Settings parameters (registry in code, editable values); fees.load_in_deduction editable (PM)
 - 2026-11-08 – GET /api/me/events (My gigs); Year page replaced in the UI (PM)

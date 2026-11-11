@@ -20,7 +20,7 @@ Rules only — concrete values are seeded settings (`domain-model.md`).
 | BR-003 | **Margin** = total price − costs (budget and actual). |
 | BR-004 | **Margin %** = margin / total price, 1 decimal; "–" when total price = 0. |
 | BR-006 | **Total price** = price + additional sales amount. |
-| BR-007 | Invoicing details are not stored; they are in the contract attachment. Invoicing is a separate system. Clients are stored with name and notes only (BR-100). |
+| BR-007 | **Revised 2026-11-11:** invoicing details are a free-text field on the gig ("Laskutustiedot"). Invoicing is a separate system. Clients are stored with name and notes only (BR-100). |
 | BR-008 | **Fuel** on a gig is an estimate only: a `FUEL` expense has a budgeted amount and never an actual amount. Actual fuel, if tracked, goes into a budget row of the partners' own choosing. |
 
 ## Gig lifecycle
