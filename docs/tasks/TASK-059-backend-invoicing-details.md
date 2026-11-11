@@ -1,7 +1,7 @@
 # TASK-059: Event invoicingDetails
 
 - **owner:** backend
-- **status:** todo
+- **status:** done
 - **spec:** docs/api-contract.md "Invoicing details on the gig (owner request 2026-11-11)"
 - **depends on:** none
 

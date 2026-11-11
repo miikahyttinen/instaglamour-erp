@@ -1,7 +1,7 @@
 # TASK-200: Gig page — "Laskutustiedot" free text under Laskutus
 
 - **owner:** ui
-- **status:** todo
+- **status:** done
 - **spec:** docs/api-contract.md "Invoicing details on the gig (owner request 2026-11-11)"
 - **depends on:** none (MSW mocks)
 
