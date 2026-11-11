@@ -230,6 +230,7 @@ export async function offerEventDraft(
       additionalSalesCents: 0,
       additionalSalesDescription: null,
       notes: null,
+      invoicingDetails: null,
       clientId: offer.clientId,
     },
     partnerPersonId: partner.personId,

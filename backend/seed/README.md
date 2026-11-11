@@ -123,6 +123,7 @@ Partners, templates, people, clients and budget categories are referenced by ema
       "contractDone": true,                                 // optional, default false — also for past gigs (TASK-058)
       "seller": "partner.a@example.com", "producer": "partner.b@example.com",
       "priceCents": 100000, "additionalSalesCents": 0, "additionalSalesDescription": "…", "notes": "…",
+      "invoicingDetails": "…",                              // optional free text up to 5000 chars, default null (TASK-059)
       "client": "Client A Oy",                              // optional; a name from clients (case-insensitive)
       "invoiceRows": [                                      // optional, kept in this order (TASK-046)
         { "description": "Ennakkomaksu", "amountCents": 20000, "status": "SENT" },  // amount > 0; status NOT_SENT (default) | SENT

@@ -69,6 +69,7 @@ const eventUpdateBody = z.object({
   additionalSalesCents: money.optional(),
   additionalSalesDescription: optionalText(),
   notes: optionalText(LONG_TEXT_MAX),
+  invoicingDetails: optionalText(LONG_TEXT_MAX),
   clientId: z.string().nullable().optional(),
 });
 
@@ -86,6 +87,7 @@ const UPDATE_FIELDS = [
   'additionalSalesCents',
   'additionalSalesDescription',
   'notes',
+  'invoicingDetails',
   'clientId',
 ] as const;
 
