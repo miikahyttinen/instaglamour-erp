@@ -194,6 +194,8 @@ export interface InvoiceRowUpdate {
 }
 
 export interface EventDetail extends EventSummary {
+  /** "Laskutustiedot / Invoicing details" free text, ≤ 5000 chars (owner request 2026-11-11). */
+  invoicingDetails: string | null;
   costLines: CostLine[];
   /** Creation order. */
   invoiceRows: InvoiceRow[];
@@ -520,6 +522,8 @@ export interface EventCreate {
   additionalSalesCents?: Cents;
   additionalSalesDescription?: string | null;
   notes?: string | null;
+  /** Optional, default null; ≤ 5000 chars. */
+  invoicingDetails?: string | null;
   /** Optional client; unknown id → UNKNOWN_REFERENCE. */
   clientId?: Id | null;
 }
@@ -537,6 +541,8 @@ export interface EventUpdate {
   additionalSalesCents?: Cents;
   additionalSalesDescription?: string | null;
   notes?: string | null;
+  /** Blank → null; > 5000 chars → TOO_LONG. */
+  invoicingDetails?: string | null;
   /** null clears the client. */
   clientId?: Id | null;
 }

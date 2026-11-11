@@ -1,14 +1,14 @@
 import { useMutation } from '@tanstack/react-query';
 import { Trash2 } from 'lucide-react';
-import { useState, type FormEvent } from 'react';
+import { useId, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { INVOICE_ROW_STATUSES, type InvoiceRowStatus } from '../../api/enums';
-import { invoiceRowsApi } from '../../api/endpoints';
+import { eventsApi, invoiceRowsApi } from '../../api/endpoints';
 import type { EventDetail, InvoiceRow, InvoiceRowUpdate } from '../../api/types';
 import { Button, IconButton } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { Field, MoneyInput } from '../../components/fields';
-import { InlineMoney, InlineSelect, InlineText } from '../../components/inline';
+import { InlineMoney, InlineSelect, InlineText, InlineTextarea } from '../../components/inline';
 import { Notice } from '../../components/Notice';
 import { StatusTag } from '../../components/StatusTag';
 import { apiErrorMessage, apiFieldErrors, invoiceRowStatusLabel } from '../../i18n/labels';
@@ -23,6 +23,8 @@ import { useApplyEvent } from './queries';
 
 /** Contract: description 1–500 chars. */
 const DESCRIPTION_MAX = 500;
+/** Contract: invoicingDetails ≤ 5000 chars. */
+const INVOICING_DETAILS_MAX = 5000;
 
 interface Props {
   event: EventDetail;
@@ -96,6 +98,8 @@ export function EventInvoicing({ event, readOnly }: Props) {
           </Button>
         ))}
 
+      <InvoicingDetails event={event} readOnly={readOnly} onDone={apply} />
+
       <dl className="invoice-totals">
         <div className="invoice-total-sent">
           <dt>{t('event.invoicing.sent')}</dt>
@@ -120,6 +124,50 @@ export function EventInvoicing({ event, readOnly }: Props) {
         )}
       </div>
     </Card>
+  );
+}
+
+/**
+ * "Laskutustiedot / Invoicing details" free text (owner request 2026-11-11): edited in place like
+ * the notes (blur or Ctrl/Cmd+Enter saves, Esc reverts); plain text on deleted gigs.
+ */
+function InvoicingDetails({
+  event,
+  readOnly,
+  onDone,
+}: {
+  event: EventDetail;
+  readOnly: boolean;
+  onDone: (event: EventDetail) => void;
+}) {
+  const { t } = useTranslation();
+  const labelId = useId();
+  const label = t('event.invoicing.details');
+  if (readOnly) {
+    return (
+      <div className="invoicing-details is-readonly" role="group" aria-labelledby={labelId}>
+        <span id={labelId} className="invoicing-details-label">
+          {label}
+        </span>
+        {event.invoicingDetails ? (
+          <p className="invoicing-details-text">{event.invoicingDetails}</p>
+        ) : (
+          <p className="invoicing-details-text muted">–</p>
+        )}
+      </div>
+    );
+  }
+  return (
+    <InlineTextarea
+      label={label}
+      className="invoicing-details"
+      value={event.invoicingDetails}
+      field="invoicingDetails"
+      maxLength={INVOICING_DETAILS_MAX}
+      rows={3}
+      placeholder="–"
+      onSave={async (invoicingDetails) => onDone((await eventsApi.update(event.id, { invoicingDetails })).event)}
+    />
   );
 }
 
