@@ -24,7 +24,9 @@ import { useMyOffers } from './queries';
  * 2026-11-09, the only place it is shown): ticking it PATCHes `followUpDone: true` at once and the
  * refetched list drops the row; a failed save shows an inline error. Phone rows like the gig
  * table (TASK-199): line 1 = event name + tag, status tag in the top-right corner; line 2 = date ·
- * client · venue · checkbox (above the row link).
+ * client · venue · checkbox (above the row link). Narrow tables (600 px+ viewports with a section
+ * under 760 px, e.g. 600–799 px or 900–1000 px next to the expanded sidebar) hide the Tila column
+ * (the Toimenpide tag already implies it) and let the date wrap, so the table never scrolls sideways.
  */
 export function MyOffersSection() {
   const { t } = useTranslation();
@@ -72,7 +74,7 @@ export function MyOffersSection() {
       key: 'status',
       phoneMain: true,
       label: t('myEvents.offers.columns.status'),
-      className: 'my-events-staffing',
+      className: 'my-events-staffing my-offers-status',
       cell: (row) => <OfferStatusTag offer={rowOfferStatus(row)} />,
     },
     {

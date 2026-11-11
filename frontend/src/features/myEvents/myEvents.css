@@ -72,3 +72,20 @@
 .my-offers {
   margin-top: var(--space-6);
 }
+.my-offers {
+  container: my-offers / inline-size;
+}
+/* Narrow table range (viewport ≥ 600 px, so the phone rows of TASK-199 are untouched, but a section
+   under 760 px: 600–799 px, and 900–1000 px next to the expanded sidebar). The seven columns don't
+   fit there: hide the Tila column (the Toimenpide tag already implies Hyväksytty / Avoin) and let
+   the weekday date wrap. Wider sections keep the full desktop table. */
+@media (min-width: 600px) {
+  @container my-offers (max-width: 759.98px) {
+    .my-offers-table .my-offers-status {
+      display: none;
+    }
+    .my-offers-table .my-events-date {
+      white-space: normal;
+    }
+  }
+}
