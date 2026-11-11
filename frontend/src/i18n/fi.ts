@@ -375,6 +375,7 @@ const fi = {
       negativeBalance: 'Laskutettu enemmän kuin kokonaishinta.',
       removeTitle: 'Poista laskurivi',
       removeConfirm: 'Poistetaanko laskurivi {{row}}?',
+      details: 'Laskutustiedot',
     },
     actions: {
       label: 'Toiminnot',
@@ -508,6 +509,7 @@ const fi = {
     additionalSalesCents: 'Lisämyynti',
     additionalSalesDescription: 'Lisämyynnin kuvaus',
     notes: 'Muistiinpanot',
+    invoicingDetails: 'Laskutustiedot',
     personId: 'Henkilö',
     description: 'Kuvaus',
     budgetedCents: 'Budjetti',

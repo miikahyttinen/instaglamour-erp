@@ -214,6 +214,7 @@ export function parseEventCreate(
   checkMoney(fields, 'additionalSalesCents', body.additionalSalesCents, false);
   checkString(fields, 'additionalSalesDescription', body.additionalSalesDescription, false);
   checkString(fields, 'notes', body.notes, false, MAX_TEXT);
+  checkString(fields, 'invoicingDetails', body.invoicingDetails, false, MAX_TEXT);
   checkClient(fields, body.clientId);
   if (Object.keys(fields).length > 0) return { fields, input: null };
   return {
@@ -234,6 +235,7 @@ export function parseEventCreate(
       additionalSalesCents: body.additionalSalesCents ?? 0,
       additionalSalesDescription: blankToNull(body.additionalSalesDescription),
       notes: blankToNull(body.notes),
+      invoicingDetails: blankToNull(body.invoicingDetails),
       clientId: body.clientId ?? null,
     },
   };
@@ -324,6 +326,7 @@ export const eventHandlers = [
     }
     checkString(fields, 'additionalSalesDescription', body.additionalSalesDescription, false);
     checkString(fields, 'notes', body.notes, false, MAX_TEXT);
+    checkString(fields, 'invoicingDetails', body.invoicingDetails, false, MAX_TEXT);
     checkClient(fields, body.clientId);
     if (Object.keys(fields).length > 0) return validationError(fields);
 
@@ -332,7 +335,7 @@ export const eventHandlers = [
       const value = body[field];
       if (value === undefined) continue;
       patch[field] =
-        field === 'additionalSalesDescription' || field === 'notes'
+        field === 'additionalSalesDescription' || field === 'notes' || field === 'invoicingDetails'
           ? blankToNull(value as string | null)
           : typeof value === 'string'
             ? value.trim()

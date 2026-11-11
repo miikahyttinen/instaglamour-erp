@@ -49,6 +49,8 @@ export interface MockEvent {
   additionalSalesCents: number;
   additionalSalesDescription: string | null;
   notes: string | null;
+  /** "Laskutustiedot" free text (owner request 2026-11-11); detail only. */
+  invoicingDetails: string | null;
   clientId: Id | null;
   offerId: Id | null;
   deletedAt: string | null;
@@ -213,6 +215,7 @@ export function toSummary(state: EventState, event: MockEvent, today = todayIso(
 export function toDetail(state: EventState, event: MockEvent): EventDetail {
   return {
     ...toSummary(state, event),
+    invoicingDetails: event.invoicingDetails ?? null,
     costLines: linesOf(state, event.id).map((l) => ({ ...l })),
     invoiceRows: invoiceRowsOf(state, event.id).map((r) => ({ ...r })),
   };
@@ -313,6 +316,8 @@ export interface NewEventInput {
   additionalSalesCents: number;
   additionalSalesDescription: string | null;
   notes: string | null;
+  /** Optional, default null. */
+  invoicingDetails?: string | null;
   clientId?: Id | null;
 }
 
@@ -376,6 +381,7 @@ export function createEvent(
     additionalSalesCents: input.additionalSalesCents,
     additionalSalesDescription: input.additionalSalesDescription,
     notes: input.notes,
+    invoicingDetails: input.invoicingDetails ?? null,
     clientId: input.clientId ?? null,
     offerId: null,
     deletedAt: null,
@@ -516,6 +522,7 @@ export type EventPatchField =
   | 'additionalSalesCents'
   | 'additionalSalesDescription'
   | 'notes'
+  | 'invoicingDetails'
   | 'clientId';
 
 export const EVENT_PATCH_FIELDS: EventPatchField[] = [
@@ -531,6 +538,7 @@ export const EVENT_PATCH_FIELDS: EventPatchField[] = [
   'additionalSalesCents',
   'additionalSalesDescription',
   'notes',
+  'invoicingDetails',
   'clientId',
 ];
 

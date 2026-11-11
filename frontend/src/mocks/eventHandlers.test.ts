@@ -57,6 +57,29 @@ describe('event mocks', () => {
     expect(history.map((e) => e.type)).toEqual(['CREATED']);
   });
 
+  it('invoicingDetails: detail only, create/PATCH trim, blank → null, > 5000 → TOO_LONG, logged (TASK-200)', async () => {
+    const event = await eventsApi.create(eventInput({ invoicingDetails: '  Ref A  ' }));
+    expect(event.invoicingDetails).toBe('Ref A');
+    const plain = await eventsApi.create(eventInput());
+    expect(plain.invoicingDetails).toBeNull();
+    const err = await expectError(eventsApi.update(event.id, { invoicingDetails: 'x'.repeat(5001) }));
+    expect(err.fields).toEqual({ invoicingDetails: 'TOO_LONG' });
+    const updated = await eventsApi.update(event.id, { invoicingDetails: 'Ref B\nLine 2' });
+    expect(updated.event.invoicingDetails).toBe('Ref B\nLine 2');
+    const cleared = await eventsApi.update(event.id, { invoicingDetails: '   ' });
+    expect(cleared.event.invoicingDetails).toBeNull();
+    const history = await eventsApi.history(event.id);
+    const changes = history
+      .filter((e) => e.type === 'UPDATED')
+      .flatMap((e) => (e.type === 'UPDATED' ? e.details.changes : []));
+    expect(changes).toEqual([
+      { field: 'invoicingDetails', from: 'Ref B\nLine 2', to: null },
+      { field: 'invoicingDetails', from: 'Ref A', to: 'Ref B\nLine 2' },
+    ]);
+    const list = await eventsApi.list({ year: YEAR });
+    expect(list.events.find((g) => g.id === event.id)).not.toHaveProperty('invoicingDetails');
+  });
+
   it('technical setup and logistics are one code or null; house technician is a boolean', async () => {
     const event = await eventsApi.create(eventInput());
     expect(event).toMatchObject({ technicalSetup: null, logistics: null, houseTechnician: false });

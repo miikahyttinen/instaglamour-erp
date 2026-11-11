@@ -372,6 +372,7 @@ const en: Resources = {
       negativeBalance: 'More has been invoiced than the total price.',
       removeTitle: 'Remove invoice row',
       removeConfirm: 'Remove the invoice row {{row}}?',
+      details: 'Invoicing details',
     },
     actions: {
       label: 'Actions',
@@ -505,6 +506,7 @@ const en: Resources = {
     additionalSalesCents: 'Additional sales',
     additionalSalesDescription: 'Additional sales description',
     notes: 'Notes',
+    invoicingDetails: 'Invoicing details',
     personId: 'Person',
     description: 'Description',
     budgetedCents: 'Budget',

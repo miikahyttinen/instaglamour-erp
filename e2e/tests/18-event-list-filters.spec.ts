@@ -394,6 +394,84 @@ test('gig statuses and "Laskutus": invoice rows, one invoicing state tag on the 
   await expect(fullTag).toHaveClass(/tag-ok-strong/);
 });
 
+// "Laskutustiedot / Invoicing details" (owner request 2026-11-11, TASK-200 / TASK-059): free text
+// on the gig (EventDetail only), a multi-line inline field in the "Laskutus" card under the invoice
+// rows — saved on blur, Esc reverts, > 5000 chars → TOO_LONG (nothing sent), logged in UPDATED;
+// plain text on a deleted gig ("–" when empty).
+test('"Laskutustiedot": inline free text under the invoice rows, persists, history, read-only when deleted', async ({ page }, testInfo) => {
+  const year = listYear(testInfo);
+  await signIn(page, undefined, { selectedYear: year });
+  const venue = `Hall ${tagOf(testInfo)}${suffix()} Details`;
+  const gig = await createEventViaApi(page, { startDate: `${year}-09-01`, venue });
+  const apiGig = async () => (await api(page).get(`/events/${gig.id}`)) as Record<string, unknown>;
+  expect((await apiGig()).invoicingDetails).toBeNull();
+
+  await page.goto(`/gigs/${gig.id}`);
+  const card = page.locator('details.event-section-invoicing');
+  const field = card.getByRole('textbox', { name: 'Laskutustiedot' });
+  await expect(field).toHaveValue('');
+  // Under the invoice rows (after the add button), above the figures.
+  const order = await card.evaluate((el) => {
+    const nodes = [...el.querySelectorAll('.invoice-add-button, .invoicing-details, .invoice-totals')];
+    return nodes.map((n) => n.className.split(' ').find((c) => ['invoice-add-button', 'invoicing-details', 'invoice-totals'].includes(c)));
+  });
+  expect(order).toEqual(['invoice-add-button', 'invoicing-details', 'invoice-totals']);
+
+  // Multi-line text, saved on blur; survives a reload.
+  await field.fill('Reference 123\nBilling address Street 1');
+  await field.blur();
+  await expect.poll(async () => (await apiGig()).invoicingDetails).toBe('Reference 123\nBilling address Street 1');
+  await page.reload();
+  await expect(field).toHaveValue('Reference 123\nBilling address Street 1');
+  await expect(page.getByRole('list', { name: 'Muutoshistoria' })).toContainText('Laskutustiedot: – → Reference 123');
+
+  // Esc reverts, nothing sent.
+  await field.click();
+  await field.press('End');
+  await field.pressSequentially(' changed');
+  await field.press('Escape');
+  await expect(field).toHaveValue('Reference 123\nBilling address Street 1');
+  await field.blur();
+  expect((await apiGig()).invoicingDetails).toBe('Reference 123\nBilling address Street 1');
+
+  // Too long: inline error, nothing sent; the API answers TOO_LONG.
+  await field.fill('x'.repeat(5001));
+  await field.blur();
+  await expect(card.locator('.invoicing-details .field-error')).toHaveText('Teksti on liian pitkä.');
+  expect((await apiGig()).invoicingDetails).toBe('Reference 123\nBilling address Street 1');
+  const res = await api(page).raw.patch(`/api/events/${gig.id}`, { data: { invoicingDetails: 'x'.repeat(5001) } });
+  expect(res.status()).toBe(400);
+  expect(((await res.json()) as { error: { fields: Record<string, string> } }).error.fields.invoicingDetails).toBe('TOO_LONG');
+  await field.focus();
+  await field.press('Escape');
+  await expect(card.locator('.invoicing-details .field-error')).toHaveCount(0);
+
+  // Not on the list summaries.
+  const list = (await api(page).get(`/events?year=${year}`)) as { events: Record<string, unknown>[] };
+  expect(list.events.find((g) => g.id === gig.id)).not.toHaveProperty('invoicingDetails');
+
+  // Phone (375) / desktop: the field fits the card, no sideways scroll.
+  await expectNoHorizontalScroll(page, 'gig page with invoicing details');
+  const fits = await card.evaluate((el) => {
+    const box = el.querySelector('.invoicing-details textarea')!.getBoundingClientRect();
+    const outer = el.getBoundingClientRect();
+    return box.left >= outer.left - 1 && box.right <= outer.right + 1;
+  });
+  expect(fits, 'invoicing details inside the card').toBe(true);
+
+  // Deleted gig: plain text, no field; an empty one shows "–".
+  await api(page).post(`/events/${gig.id}/delete`, { reason: 'Synthetic cleanup' });
+  await page.reload();
+  const readOnly = card.getByRole('group', { name: 'Laskutustiedot' });
+  await expect(readOnly).toContainText('Reference 123');
+  await expect(readOnly).toContainText('Billing address Street 1');
+  await expect(card.getByRole('textbox', { name: 'Laskutustiedot' })).toHaveCount(0);
+  const empty = await createEventViaApi(page, { startDate: `${year}-09-02`, venue: `${venue} Empty` });
+  await api(page).post(`/events/${empty.id}/delete`, { reason: 'Synthetic cleanup' });
+  await page.goto(`/gigs/${empty.id}`);
+  await expect(card.getByRole('group', { name: 'Laskutustiedot' }).locator('.muted')).toHaveText('–');
+});
+
 // Phone rows (owner requests 2026-10-31): line 1 = "Lineup STATUS ——— INVOICING total": the status
 // tag directly after the lineup name, a flexible gap, then the invoicing tag and the total together
 // at the right edge, the total last (without an invoicing tag the total is at the right edge). The
