@@ -43,3 +43,18 @@ describe('My gigs phone rows (TASK-199)', () => {
     expect(rules('.my-events-table td:empty')).toMatch(/display:\s*none/);
   });
 });
+
+describe('My gigs offers table, narrow desktop range', () => {
+  // e2e 12 ("full-width pages") checks the real widths at 600–1920 px.
+  const narrow = css.slice(css.indexOf('@container my-offers (max-width: 759.98px)'));
+
+  it('the offers section is a size container', () => {
+    expect(css).toMatch(/\.my-offers\s*\{[^}]*container:\s*my-offers\s*\/\s*inline-size/);
+  });
+
+  it('only from 600 px (phone rows untouched): hides the Tila column and lets the date wrap', () => {
+    expect(css).toMatch(/@media \(min-width: 600px\)\s*\{\s*@container my-offers \(max-width: 759\.98px\)/);
+    expect(narrow).toMatch(/\.my-offers-table \.my-offers-status\s*\{\s*display:\s*none/);
+    expect(narrow).toMatch(/\.my-offers-table \.my-events-date\s*\{\s*white-space:\s*normal/);
+  });
+});
