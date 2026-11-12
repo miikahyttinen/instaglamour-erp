@@ -60,11 +60,11 @@ test('change the sound check deduction: persists, existing lines keep theirs, a 
     await api(page).patch(`/cost-lines/${oldLine.id}`, { joinsLoadIn: false });
     expect((await vocLine(page, before.id)).loadInDeductionAppliedCents).toBe(SEED.loadInDeductionCents);
 
-    // Settings → Parametrit (between Kokoonpanot and Tietojen tuonti).
+    // Settings → Parametrit (tabs Kokoonpanot, Parametrit, Referenssit, Tietojen tuonti).
     await page.goto('/');
     await goNav(page, 'Asetukset');
     const tabs = page.getByRole('navigation', { name: 'Asetusten osiot' });
-    await expect(tabs.getByRole('link')).toHaveText(['Kokoonpanot', 'Parametrit', 'Tietojen tuonti']);
+    await expect(tabs.getByRole('link')).toHaveText(['Kokoonpanot', 'Parametrit', 'Referenssit', 'Tietojen tuonti']);
     await tabs.getByRole('link', { name: 'Parametrit' }).click();
     await expect(page).toHaveURL((url) => url.pathname === '/settings/parameters');
     await expect(field(page)).toHaveValue(fiInput(SEED.loadInDeductionCents));

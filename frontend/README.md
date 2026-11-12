@@ -502,8 +502,9 @@ offer's link is not found there either.
 - **Event page:** "Tarjouksesta / From offer: <event>" (`EventOfferLink`) when `offerId` is set.
 - Texts: `src/features/offers/i18n.ts` (`offers`, `offer`, `convert`, `newOffer`, `offerHistory`,
   code labels `offerSource`, `offerEventType`, `offerHistoryType`, `offerField`).
-- **References** (`ReferencesPage`, BR-108): `/offers/references`, reached from the "Referenssit" button
-  in the Offers page head (no menu item). One card per reference in sort order (region "Referenssi N"):
+- **References** (`ReferencesPage`, BR-108, TASK-201): the Settings tab "Referenssit / References"
+  (`/settings/references`, h2 inside the settings layout like the import tab; no button on the Offers
+  page, no menu item). The old `/offers/references` URL redirects there. One card per reference in sort order (region "Referenssi N"):
   `ReferencePhoto` thumbnail + Add / Replace photo (a `<label>` button around a file input, PNG/JPG/WebP
   ≤ 10 MB checked in `referenceImageRules.ts`; 413/415 get photo-specific texts) + Remove photo
   (confirm); inline FI quote, EN quote, author, Active switch; Move up / Move down (POST reorder with
@@ -640,8 +641,10 @@ partner status"; a 409 shows as an `alert` inside the dialog. Success notices: "
 ### Settings (`src/features/settings/`, TASK-186)
 
 - **Nav:** "Asetukset / Settings" (icon `Settings`, cog), the last menu item; `/settings` →
-  `/settings/lineups`. Tabs: **Kokoonpanot / Lineups** and **Tietojen tuonti / Data import**
-  (`/settings/import`, the page below). The old `/import` URL redirects there.
+  `/settings/lineups`. Tabs: **Kokoonpanot / Lineups**, **Parametrit / Parameters**, **Referenssit / References**
+  (`/settings/references`, `offers/ReferencesPage`; old `/offers/references` redirects) and
+  **Tietojen tuonti / Data import** (`/settings/import`, the page below; always last). The old
+  `/import` URL redirects there.
 - **Lineups list:** `GET /api/lineup-templates` (no single GET: the editor picks from the list) —
   name, status tag, line count, gig count, sum of default amounts; inactive last and muted. "Uusi
   kokoonpano" asks the name inline, `POST`s it and opens `/settings/lineups/:id`.

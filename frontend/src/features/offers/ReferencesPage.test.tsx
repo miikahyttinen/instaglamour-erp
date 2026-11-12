@@ -16,7 +16,7 @@ const item = (n: number) => screen.getByRole('region', { name: `Referenssi ${n}`
 const authors = () => db.references.references.map((r) => r.author);
 
 async function openPage() {
-  const result = renderApp('/offers/references');
+  const result = renderApp('/settings/references');
   await screen.findByRole('list', { name: 'Referenssit' });
   return result;
 }
@@ -26,16 +26,42 @@ describe('references page (UC-029 "References", BR-108)', () => {
     signInMock();
   });
 
-  it('is reached from the Offers page head, without a new menu item', async () => {
+  it('is the "Referenssit" tab of Settings, between Parametrit and Tietojen tuonti', async () => {
     installMatchMedia({ [DESKTOP_QUERY]: true });
-    const { user } = renderApp('/offers');
+    const { user } = renderApp('/settings');
     const nav = await screen.findByRole('navigation', { name: 'Päävalikko' });
     const menuCount = within(nav).getAllByRole('link').length;
-    await user.click(await screen.findByRole('link', { name: 'Referenssit' }));
-    expect(await screen.findByRole('heading', { level: 1, name: 'Referenssit' })).toBeInTheDocument();
+    const tabs = screen.getByRole('navigation', { name: 'Asetusten osiot' });
+    expect(within(tabs).getAllByRole('link').map((l) => l.textContent)).toEqual([
+      'Kokoonpanot',
+      'Parametrit',
+      'Referenssit',
+      'Tietojen tuonti',
+    ]);
+    await user.click(within(tabs).getByRole('link', { name: 'Referenssit' }));
+    expect(await screen.findByRole('heading', { level: 1, name: 'Asetukset' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 2, name: 'Referenssit' })).toBeInTheDocument();
+    await screen.findByRole('list', { name: 'Referenssit' });
+    expect(within(tabs).getByRole('link', { name: 'Referenssit' })).toHaveAttribute('aria-current', 'page');
+    expect(within(tabs).getByRole('link', { name: 'Referenssit' })).toHaveAttribute('href', '/settings/references');
     expect(within(nav).getAllByRole('link')).toHaveLength(menuCount);
-    expect(within(nav).getByRole('link', { name: 'Tarjoukset' })).toHaveAttribute('aria-current', 'page');
-    expect(screen.getByRole('link', { name: 'Tarjoukset', current: false })).toHaveAttribute('href', '/offers');
+    expect(within(nav).getByRole('link', { name: 'Asetukset' })).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('the Offers page has no References button any more', async () => {
+    renderApp('/offers');
+    expect(await screen.findByRole('heading', { level: 1, name: 'Tarjoukset' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Uusi tarjous' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Referenssit' })).toBeNull();
+  });
+
+  it('the old /offers/references URL redirects to /settings/references', async () => {
+    renderApp('/offers/references');
+    expect(await screen.findByRole('heading', { level: 1, name: 'Asetukset' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 2, name: 'Referenssit' })).toBeInTheDocument();
+    await screen.findByRole('list', { name: 'Referenssit' });
+    const tabs = screen.getByRole('navigation', { name: 'Asetusten osiot' });
+    expect(within(tabs).getByRole('link', { name: 'Referenssit' })).toHaveAttribute('aria-current', 'page');
   });
 
   it('lists every reference in order with placeholder, quotes, author and active switch', async () => {
@@ -190,8 +216,11 @@ describe('references page (UC-029 "References", BR-108)', () => {
 
   it('works in English', async () => {
     db.partners[0]!.language = 'en';
-    renderApp('/offers/references');
-    expect(await screen.findByRole('heading', { level: 1, name: 'References' })).toBeInTheDocument();
+    renderApp('/settings/references');
+    expect(await screen.findByRole('heading', { level: 1, name: 'Settings' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 2, name: 'References' })).toBeInTheDocument();
+    const tabs = screen.getByRole('navigation', { name: 'Settings sections' });
+    expect(within(tabs).getByRole('link', { name: 'References' })).toHaveAttribute('aria-current', 'page');
     const first = await screen.findByRole('region', { name: 'Reference 1' });
     expect(within(first).getByRole('textbox', { name: 'Quote (Finnish)' })).toBeInTheDocument();
     expect(within(first).getByRole('group', { name: 'Reference actions: Reference 1' })).toBeInTheDocument();

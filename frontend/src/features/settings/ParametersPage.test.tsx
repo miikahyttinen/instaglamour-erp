@@ -39,12 +39,13 @@ describe('settings: parameters tab', () => {
     db.reference.settings.loadInDeductionCents = 1000;
   });
 
-  it('is the middle tab: Kokoonpanot, Parametrit, Tietojen tuonti (import last)', async () => {
+  it('is the second tab: Kokoonpanot, Parametrit, Referenssit, Tietojen tuonti (import last)', async () => {
     renderApp('/settings/parameters');
     const tabs = await screen.findByRole('navigation', { name: 'Asetusten osiot' });
     expect(within(tabs).getAllByRole('link').map((l) => l.textContent)).toEqual([
       'Kokoonpanot',
       'Parametrit',
+      'Referenssit',
       'Tietojen tuonti',
     ]);
     expect(within(tabs).getByRole('link', { name: 'Parametrit' })).toHaveAttribute('href', '/settings/parameters');

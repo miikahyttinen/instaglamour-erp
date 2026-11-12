@@ -98,3 +98,19 @@ test('the old data import URL opens the Settings → Data import tab', async ({ 
   await expect(page.getByRole('heading', { level: 1, name: 'Asetukset' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Tietojen tuonti' })).toHaveAttribute('aria-current', 'page');
 });
+
+test('references live in Settings → Referenssit; the Offers page has no References button', async ({ page }) => {
+  await signIn(page);
+  await page.goto('/offers');
+  await expect(page.getByRole('heading', { level: 1, name: 'Tarjoukset' })).toBeVisible();
+  await expect(page.getByRole('main').getByRole('link', { name: 'Referenssit' })).toHaveCount(0);
+
+  // The old URL redirects to the settings tab.
+  await page.goto('/offers/references');
+  await expect(page).toHaveURL((url) => url.pathname === '/settings/references');
+  await expect(page.getByRole('heading', { level: 1, name: 'Asetukset' })).toBeVisible();
+  const tabs = page.getByRole('navigation', { name: 'Asetusten osiot' });
+  await expect(tabs.getByRole('link', { name: 'Referenssit' })).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByRole('heading', { level: 2, name: 'Referenssit' })).toBeAttached();
+  await expect(page.getByRole('heading', { level: 2, name: 'Uusi referenssi' })).toBeVisible();
+});
