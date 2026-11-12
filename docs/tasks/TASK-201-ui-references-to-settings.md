@@ -1,7 +1,7 @@
 # TASK-201: Move the references page into Asetukset
 
 - **owner:** ui
-- **status:** todo
+- **status:** done
 - **spec:** owner request 2026-11-12
 - **depends on:** none
 
