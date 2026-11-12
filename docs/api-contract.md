@@ -706,7 +706,13 @@ Parameters are **defined in backend code** (a registry: key, type, min/max); onl
 - Migration: nullable text column `event.invoicing_details`.
 - UI: gig page "Laskutus / Invoicing" box gets a multi-line field **"Laskutustiedot / Invoicing details"** under the invoice rows (inline edit like Notes: saves on blur, Esc reverts). Read-only on deleted gigs.
 
+## Reference photos stored in the database (owner decision 2026-11-12)
+- No API change. Reference photo bytes are stored in the database (`reference.image_data`, bytea) instead of files in `UPLOAD_DIR`, so they survive redeploys (Railway's filesystem is not persistent) and are included in DB backups. Limits and types unchanged (PNG/JPG/WebP ≤ 10 MB).
+- One-time move at backend startup (idempotent): for each reference with an `image_storage_key` and no `image_data`, read the file from `UPLOAD_DIR`; if it exists, store its bytes and clear the key; if it is missing, clear all image fields (the reference then has no photo; `imageUrl` null).
+- Image responses keep the same URLs, content type and cache behaviour (`?v=<imageVersion>`).
+
 ## Change log
+- 2026-11-12 – Reference photos stored in the DB (no API change) (PM)
 - 2026-11-11 – Event invoicingDetails free text (PM)
 - 2026-11-09 – contractDone on gigs, followUpDone on offers, GET /api/me/offers (PM)
 - 2026-11-09 – Settings parameters (registry in code, editable values); fees.load_in_deduction editable (PM)
