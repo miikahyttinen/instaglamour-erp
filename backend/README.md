@@ -59,7 +59,7 @@ outside local development.**
 | `DEV_LOGIN_ENABLED` | `true` registers `POST /api/auth/dev-login` (otherwise 404) |
 | `INVOICE_JOB_ENABLED` | Optional, default on: the automatic final invoice job ("Loppulasku", at startup and every 15 min). `false` turns it off |
 | `FRONTEND_URL` | Where the Google callback redirects (`/` or `/login?error=…`), e.g. `http://localhost:5173` |
-| `UPLOAD_DIR` | Reference photo storage (old event attachment files stay there unused), outside the repository (created at startup if missing; on Railway a volume path such as `/data/uploads`; tests use a temp dir; `npm run db:seed` copies seed photos here) |
+| `UPLOAD_DIR` | Legacy file storage, outside the repository. Reference photos are stored in the database (`reference.image_data`, TASK-060); at every startup the backend moves any older photo file still named by `reference.image_storage_key` from here into the database (idempotent; a missing file clears that photo; files are never deleted, nothing new is written). Old event attachment files stay here unused. May be missing |
 
 `GET /api/health` (no session) → `200 { "ok": true }` after a `SELECT 1`, `503 { "ok": false }` when the
 database is unreachable; used as the platform healthcheck.
@@ -317,10 +317,11 @@ src/routes/publicFreelancers.ts  public freelancer view + create PO (no session;
 src/http/publicGuard.ts  noindex/no-store headers + per-IP limit for all public routes
 src/partners/      partner status grant/revoke (UC-032): advisory-locked transaction, session revocation
 src/references/    references/testimonials (routes/references.ts, BR-108): serializer, active list for
-                   PublicOffer, photo responses (private; ?v=imageVersion cached a year, else no-cache + ETag;
-                   errors no-store; nosniff)
-src/fileStore/     UPLOAD_DIR files (reference photos): streamed upload with size limit,
-                   content sniffing (PNG/JPG/WebP), random UUID file names
+                   PublicOffer, photo responses from reference.image_data (private; ?v=imageVersion cached a
+                   year, else no-cache + ETag; errors no-store; nosniff). Queries other than the photo routes
+                   use `omit: OMIT_IMAGE_DATA` so lists never load the bytes
+src/fileStore/     multipart upload into memory with size limit, content sniffing (PNG/JPG/WebP)
+src/references/moveImagesToDb.ts  startup move of legacy UPLOAD_DIR photo files into reference.image_data
 src/budget/        budget rows + loadBudget (single source for /api/budget and the year page); rows are
                    partner-managed (routes/budgetCategories.ts), removed = active false, values kept
 src/http/errors.ts contract error format + zod → field codes (`parseInput`)

@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -667,18 +667,17 @@ describe('seed: references (TASK-018)', () => {
   const refs = () => testDb().reference.findMany({ orderBy: { sortOrder: 'asc' } });
   /** Plays the seed file's directory; photos are written here. */
   let dir: string;
-  let uploadDir: string;
 
   beforeEach(() => {
     dir = mkdtempSync(path.join(tmpdir(), 'instaglamour-test-seed-refs-'));
-    uploadDir = path.join(dir, 'uploads');
   });
   afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
   const writeFiles = (contents: Record<string, Buffer>) => {
     for (const [name, content] of Object.entries(contents)) writeFileSync(path.join(dir, name), content);
   };
-  const uploaded = () => (existsSync(uploadDir) ? readdirSync(uploadDir) : []);
+  /** The loader only reads photos: the seed directory never gains files. */
+  const filesInDir = () => readdirSync(dir).sort();
 
   it('the example seed loads 3 synthetic references without photos, in order, idempotently', async () => {
     const summary = await loadSeed(testDb(), example());
@@ -724,7 +723,7 @@ describe('seed: references (TASK-018)', () => {
     expect(await testDb().setting.count({ where: { key: { startsWith: 'offers.references' } } })).toBe(0);
   });
 
-  it('copies photos (path relative to the seed file) into UPLOAD_DIR with the sniffed type', async () => {
+  it('loads photos (path relative to the seed file) into the database with the sniffed type (TASK-060)', async () => {
     writeFiles({ 'a.png': PNG });
     const data = {
       ...example(),
@@ -733,15 +732,20 @@ describe('seed: references (TASK-018)', () => {
         { quoteFi: 'Q2', author: 'A2' },
       ],
     };
-    await loadSeed(testDb(), data, { seedDir: dir, uploadDir });
+    await loadSeed(testDb(), data, { seedDir: dir });
     const [withImage, without] = await refs();
-    expect(withImage).toMatchObject({ imageContentType: 'image/png', imageSizeBytes: PNG.length, imageUploadedAt: expect.any(Date) });
-    expect(uploaded()).toEqual([withImage!.imageStorageKey]);
-    expect(readFileSync(path.join(uploadDir, withImage!.imageStorageKey!))).toEqual(PNG);
-    expect(without!.imageStorageKey).toBeNull();
-    // A re-run copies nothing.
-    await loadSeed(testDb(), data, { seedDir: dir, uploadDir });
-    expect(uploaded()).toHaveLength(1);
+    expect(withImage).toMatchObject({
+      imageStorageKey: null,
+      imageContentType: 'image/png',
+      imageSizeBytes: PNG.length,
+      imageUploadedAt: expect.any(Date),
+    });
+    expect(Buffer.from(withImage!.imageData!)).toEqual(PNG);
+    expect(without).toMatchObject({ imageData: null, imageStorageKey: null, imageUploadedAt: null });
+    expect(filesInDir()).toEqual(['a.png']);
+    // A re-run loads nothing new.
+    await loadSeed(testDb(), data, { seedDir: dir });
+    expect(await testDb().reference.count()).toBe(2);
   });
 
   it('checks every photo before loading anything', async () => {
@@ -754,7 +758,7 @@ describe('seed: references (TASK-018)', () => {
         { quoteFi: 'Q3', author: 'A3', image: 'big.png' },
       ],
     };
-    const err = await loadSeed(testDb(), data, { seedDir: dir, uploadDir }).catch((e: unknown) => e);
+    const err = await loadSeed(testDb(), data, { seedDir: dir }).catch((e: unknown) => e);
     expect(err).toBeInstanceOf(SeedValidationError);
     expect((err as SeedValidationError).errors).toEqual([
       'references.0.image: file not found: missing.png (paths are relative to the seed file)',
@@ -762,7 +766,6 @@ describe('seed: references (TASK-018)', () => {
       'references.2.image: big.png is larger than 10 MB',
     ]);
     expect(await snapshot()).toMatchObject({ partner: 0, reference: 0 });
-    expect(uploaded()).toEqual([]);
 
     // Without the seed file's location photos can't be resolved.
     writeFiles({ 'a.png': PNG });
@@ -772,7 +775,7 @@ describe('seed: references (TASK-018)', () => {
     expect((noDir as SeedValidationError).errors[0]).toMatch(/^references\.0\.image: photos need/);
   });
 
-  it('removes copied photos again when the load fails (nothing is loaded)', async () => {
+  it('a failed load stores no photo (nothing is loaded)', async () => {
     writeFiles({ 'a.png': PNG });
     const data = { ...example(), references: [{ quoteFi: 'Q1', author: 'A1', image: 'a.png' }] };
     // A database whose transaction fails after the whole seed was applied.
@@ -787,8 +790,8 @@ describe('seed: references (TASK-018)', () => {
           }, options as { timeout: number });
       },
     });
-    await expect(loadSeed(failing, data, { seedDir: dir, uploadDir })).rejects.toThrow('synthetic failure');
-    expect(uploaded()).toEqual([]);
+    await expect(loadSeed(failing, data, { seedDir: dir })).rejects.toThrow('synthetic failure');
+    expect(filesInDir()).toEqual(['a.png']);
     expect(await snapshot()).toMatchObject({ partner: 0, reference: 0 });
   });
 

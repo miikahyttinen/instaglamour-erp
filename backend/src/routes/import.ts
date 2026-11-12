@@ -50,7 +50,7 @@ export function importRoutes(app: FastifyInstance, deps: AppDeps): void {
       if (errors.length > 0) throw invalidImport(errors);
 
       try {
-        // No seedDir / uploadDir: photos are rejected above, so the loader never reads or writes files.
+        // No seedDir: photos are rejected above, so the loader never reads files.
         const summary = await loadSeed(db, document, {
           dryRun,
           afterLoad: async (tx, summary) => {

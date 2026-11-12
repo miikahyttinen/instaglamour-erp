@@ -1,5 +1,5 @@
 /** TASK-047: single-service deployment — static frontend + SPA fallback, health, config guards. */
-import { mkdir, mkdtemp, rm, stat, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import type { FastifyInstance } from 'fastify';
@@ -7,7 +7,6 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildApp } from '../src/app.js';
 import { loadConfig } from '../src/config.js';
 import type { Db } from '../src/db.js';
-import { ensureUploadDir } from '../src/fileStore/uploadDir.js';
 import { IMMUTABLE_CACHE, NO_CACHE } from '../src/http/frontend.js';
 import { closeTestDb, createPartner, FakeGoogle, login, resetDb, TEST_DOMAIN, testApp, testConfig } from './helpers.js';
 
@@ -51,31 +50,6 @@ describe('production config guards', () => {
 
   it('HOST overrides the default', () => {
     expect(loadConfig({ ...prodEnv, HOST: '::' }).host).toBe('::');
-  });
-});
-
-describe('ensureUploadDir', () => {
-  it('creates a missing (nested) directory and is idempotent', async () => {
-    const tmp = await mkdtemp(path.join(os.tmpdir(), 'ig-upload-'));
-    try {
-      const dir = path.join(tmp, 'data', 'uploads');
-      expect(await ensureUploadDir(dir)).toBe(dir);
-      expect((await stat(dir)).isDirectory()).toBe(true);
-      await ensureUploadDir(dir);
-    } finally {
-      await rm(tmp, { recursive: true, force: true });
-    }
-  });
-
-  it('fails with a clear message when the path cannot be created', async () => {
-    const tmp = await mkdtemp(path.join(os.tmpdir(), 'ig-upload-'));
-    try {
-      const file = path.join(tmp, 'not-a-dir');
-      await writeFile(file, 'x');
-      await expect(ensureUploadDir(path.join(file, 'uploads'))).rejects.toThrow(/UPLOAD_DIR .* could not be created/);
-    } finally {
-      await rm(tmp, { recursive: true, force: true });
-    }
   });
 });
 

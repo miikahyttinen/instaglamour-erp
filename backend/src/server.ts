@@ -3,8 +3,8 @@ import type { FastifyInstance } from 'fastify';
 import { buildApp } from './app.js';
 import { loadConfig, type AppConfig } from './config.js';
 import { createDb } from './db.js';
-import { ensureUploadDir } from './fileStore/uploadDir.js';
 import { startFinalInvoiceJob } from './invoicing/finalInvoiceJob.js';
+import { moveReferenceImagesToDb } from './references/moveImagesToDb.js';
 
 /** Print one clear line (e.g. unsafe production config) instead of a stack trace, and exit. */
 function abort(err: unknown): never {
@@ -15,7 +15,6 @@ function abort(err: unknown): never {
 let config: AppConfig;
 try {
   config = loadConfig();
-  await ensureUploadDir(config.uploadDir);
 } catch (err) {
   abort(err);
 }
@@ -50,6 +49,14 @@ const shutdown = async () => {
 };
 process.on('SIGINT', () => void shutdown());
 process.on('SIGTERM', () => void shutdown());
+
+// TASK-060: move older reference photo files into the database before serving (idempotent; a
+// failure is logged and retried at the next start, it never stops the server).
+try {
+  await moveReferenceImagesToDb(db, config.uploadDir, app.log);
+} catch (err) {
+  app.log.error({ err }, 'Reference photo move into the database failed; will retry at next startup');
+}
 
 try {
   await app.listen({ port: config.port, host: config.host });

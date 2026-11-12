@@ -53,9 +53,9 @@ at once can't create duplicates. Import files contain real data: keep them out o
 | Task | `title` + owner | Inserted only if missing |
 | Hour entry | partner + `date` + `comment` | Inserted only if missing |
 | Budget row | `category` + `year` | Inserted only if missing |
-| Reference | `quoteFi` + `author` (trimmed) | Inserted only if missing, after the existing references in listed order; its photo is copied into `UPLOAD_DIR`. Partners manage references in the app, so a re-run never changes or re-adds one |
+| Reference | `quoteFi` + `author` (trimmed) | Inserted only if missing, after the existing references in listed order; its photo is stored in the database. Partners manage references in the app, so a re-run never changes or re-adds one |
 
-Nothing is ever deleted except with `--reset` (which empties the database but leaves photo files in `UPLOAD_DIR`).
+Nothing is ever deleted except with `--reset` (which empties the database, photos included; files on disk are never touched).
 
 ## Format
 
@@ -233,8 +233,8 @@ In an existing database the migration `20261007160000_references` leaves the old
 
 Photos: keep them outside git like the local seed (e.g. next to `seed.local.json` in a gitignored folder —
 check `git status`) and give the path relative to the seed file. Every photo is checked before anything is
-loaded (exists, ≤ 10 MB, PNG/JPG/WebP by content); the seed command copies them into `UPLOAD_DIR`
-(`.env`, default `../../instaglamour-uploads`).
+loaded (exists, ≤ 10 MB, PNG/JPG/WebP by content); the seed command stores them in the database
+(`reference.image_data`, TASK-060).
 
 ### Spotify link is fixed (TASK-022)
 

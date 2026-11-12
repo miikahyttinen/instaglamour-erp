@@ -108,7 +108,7 @@ export function toPublicOfferDto(offer: OfferWithRefs, references: readonly Publ
     spotifyUrl: SPOTIFY_URL,
     references: offer.showReferences
       ? references.map((r) => {
-          const version = r.imageStorageKey ? imageVersion(r) : null;
+          const version = imageVersion(r);
           return {
             id: r.id,
             quote: { fi: r.quoteFi, en: r.quoteEn },
