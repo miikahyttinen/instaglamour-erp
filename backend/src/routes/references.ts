@@ -8,20 +8,24 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import type { AppDeps } from '../app.js';
-import type { Prisma, Reference } from '../generated/prisma/client.js';
+import type { Prisma } from '../generated/prisma/client.js';
 import { flag, optionalText, requiredText } from '../events/schemas.js';
 import { inTransaction, isUuid } from '../events/store.js';
 import { AppError, notFound, parseInput, validationError } from '../http/errors.js';
 import {
   AUTHOR_MAX,
+  hasImage,
+  IMAGE_SELECT,
   MAX_REFERENCE_IMAGE_BYTES,
+  OMIT_IMAGE_DATA,
   QUOTE_MAX,
   referenceOrder,
   sendReferenceImage,
   storedImage,
   toReferenceDto,
+  type ReferenceMeta,
 } from '../references/store.js';
-import { detectImageType, UploadDir } from '../fileStore/uploadDir.js';
+import { detectImageType, receiveFile } from '../fileStore/uploadDir.js';
 
 type IdParams = { Params: { id: string } };
 
@@ -54,19 +58,19 @@ async function lockReferenceOrder(tx: Prisma.TransactionClient): Promise<void> {
 }
 
 export function referencesRoutes(app: FastifyInstance, deps: AppDeps): void {
-  const { db, config } = deps;
-  const uploads = new UploadDir(config.uploadDir);
+  const { db } = deps;
 
-  const findReference = async (id: string): Promise<Reference | null> =>
-    isUuid(id) ? db.reference.findUnique({ where: { id } }) : null;
+  // Every query here except GET image omits the photo bytes (TASK-060).
+  const findReference = async (id: string): Promise<ReferenceMeta | null> =>
+    isUuid(id) ? db.reference.findUnique({ where: { id }, omit: OMIT_IMAGE_DATA }) : null;
 
-  const requireReference = async (id: string): Promise<Reference> => {
+  const requireReference = async (id: string): Promise<ReferenceMeta> => {
     const ref = await findReference(id);
     if (!ref) throw referenceNotFound();
     return ref;
   };
 
-  const listAll = (tx: Prisma.TransactionClient | typeof db) => tx.reference.findMany({ orderBy: [...referenceOrder] });
+  const listAll = (tx: Prisma.TransactionClient | typeof db) => tx.reference.findMany({ orderBy: [...referenceOrder], omit: OMIT_IMAGE_DATA });
 
   app.get('/api/references', async () => (await listAll(db)).map(toReferenceDto));
 
@@ -83,6 +87,7 @@ export function referencesRoutes(app: FastifyInstance, deps: AppDeps): void {
           active: body.active ?? true,
           sortOrder: (last._max.sortOrder ?? -1) + 1,
         },
+        omit: OMIT_IMAGE_DATA,
       });
     });
     return reply.status(201).send(toReferenceDto(created));
@@ -98,7 +103,7 @@ export function referencesRoutes(app: FastifyInstance, deps: AppDeps): void {
     if (body.active !== undefined && body.active !== ref.active) data.active = body.active;
     if (Object.keys(data).length === 0) return toReferenceDto(ref); // no-op
     try {
-      return toReferenceDto(await db.reference.update({ where: { id: ref.id }, data }));
+      return toReferenceDto(await db.reference.update({ where: { id: ref.id }, data, omit: OMIT_IMAGE_DATA }));
     } catch (err) {
       if (isRecordNotFound(err)) throw referenceNotFound(); // deleted meanwhile
       throw err;
@@ -127,75 +132,66 @@ export function referencesRoutes(app: FastifyInstance, deps: AppDeps): void {
   });
 
   /**
-   * Set (or clear) the photo columns under a row lock and return the photo key that was replaced,
-   * so exactly the file no longer referenced is removed even when requests race.
+   * Set (or clear) the photo columns under a row lock. The bytes live in the database (TASK-060);
+   * a legacy file key is cleared too (the file itself stays on disk, nothing is written there).
    */
-  const swapImage = (id: string, image: { imageStorageKey: string; imageContentType: string; imageSizeBytes: number } | null) =>
+  const swapImage = (id: string, image: { imageData: Uint8Array<ArrayBuffer>; imageContentType: string; imageSizeBytes: number } | null) =>
     inTransaction(db, async (tx) => {
-      const locked = await tx.$queryRaw<{ key: string | null; uploadedAt: Date | null }[]>`
-        SELECT "image_storage_key" AS "key", "image_uploaded_at" AS "uploadedAt"
+      const locked = await tx.$queryRaw<{ uploadedAt: Date | null }[]>`
+        SELECT "image_uploaded_at" AS "uploadedAt"
         FROM "reference" WHERE "id" = ${id}::uuid FOR UPDATE`;
       const current = locked[0];
       if (!current) throw referenceNotFound(); // deleted meanwhile
       // Every upload gets a new, strictly later upload time = a new imageVersion (contract), even
       // when two uploads land in the same millisecond.
       const uploadedAt = new Date(Math.max(Date.now(), (current.uploadedAt?.getTime() ?? 0) + 1));
-      const updated = await tx.reference.update({
+      return tx.reference.update({
         where: { id },
         data: image
-          ? { ...image, imageUploadedAt: uploadedAt }
-          : { imageStorageKey: null, imageContentType: null, imageSizeBytes: null, imageUploadedAt: null },
+          ? { ...image, imageStorageKey: null, imageUploadedAt: uploadedAt }
+          : { imageStorageKey: null, imageData: null, imageContentType: null, imageSizeBytes: null, imageUploadedAt: null },
+        omit: OMIT_IMAGE_DATA,
       });
-      return { updated, replacedKey: current.key };
     });
 
   app.put<IdParams>('/api/references/:id/image', async (request) => {
     const ref = await requireReference(request.params.id);
-    const upload = await uploads.receive(request, {
+    const upload = await receiveFile(request, {
       maxBytes: MAX_REFERENCE_IMAGE_BYTES,
       tooLargeMessage: 'Image is larger than 10 MB',
     });
-    let result: Awaited<ReturnType<typeof swapImage>>;
-    try {
-      const contentType = detectImageType(upload.head);
-      if (!contentType) throw new AppError('UNSUPPORTED_FILE_TYPE', 'Only PNG, JPG and WebP images are allowed');
-      result = await swapImage(ref.id, {
-        imageStorageKey: upload.storageKey,
-        imageContentType: contentType,
-        imageSizeBytes: upload.sizeBytes,
-      });
-    } catch (err) {
-      await uploads.remove(upload.storageKey);
-      throw err;
-    }
-    await uploads.remove(result.replacedKey);
-    return toReferenceDto(result.updated);
+    const contentType = detectImageType(upload.data);
+    if (!contentType) throw new AppError('UNSUPPORTED_FILE_TYPE', 'Only PNG, JPG and WebP images are allowed');
+    const updated = await swapImage(ref.id, {
+      imageData: new Uint8Array(upload.data),
+      imageContentType: contentType,
+      imageSizeBytes: upload.data.byteLength,
+    });
+    return toReferenceDto(updated);
   });
 
   app.delete<IdParams>('/api/references/:id/image', async (request) => {
     const ref = await requireReference(request.params.id);
-    if (!ref.imageStorageKey) return toReferenceDto(ref); // no-op
-    const { updated, replacedKey } = await swapImage(ref.id, null);
-    await uploads.remove(replacedKey);
-    return toReferenceDto(updated);
+    if (!hasImage(ref)) return toReferenceDto(ref); // no-op
+    return toReferenceDto(await swapImage(ref.id, null));
   });
 
   app.get<IdParams>('/api/references/:id/image', async (request, reply) => {
     reply.header('Cache-Control', 'no-store'); // errors are never cached; a served photo overrides it
-    const ref = await requireReference(request.params.id);
+    const ref = isUuid(request.params.id)
+      ? await db.reference.findUnique({ where: { id: request.params.id }, select: IMAGE_SELECT })
+      : null;
+    if (!ref) throw referenceNotFound();
     const image = storedImage(ref);
-    if (!image || !(await uploads.exists(image.storageKey)))
-      throw notFound('Reference image not found');
-    return sendReferenceImage(reply, uploads, image, request);
+    if (!image) throw notFound('Reference image not found');
+    return sendReferenceImage(reply, image, request);
   });
 
   app.delete<IdParams>('/api/references/:id', async (request, reply) => {
     const ref = await requireReference(request.params.id);
-    // Hard delete (contract); the photo key is read in the same statement so the right file goes.
-    const deleted = await db.$queryRaw<{ key: string | null }[]>`
-      DELETE FROM "reference" WHERE "id" = ${ref.id}::uuid RETURNING "image_storage_key" AS "key"`;
-    if (deleted.length === 0) throw referenceNotFound(); // deleted meanwhile
-    await uploads.remove(deleted[0]!.key);
+    // Hard delete (contract), photo bytes included. A legacy file on disk is never deleted.
+    const deleted = await db.reference.deleteMany({ where: { id: ref.id } });
+    if (deleted.count === 0) throw referenceNotFound(); // deleted meanwhile
     return reply.status(204).send();
   });
 }

@@ -22,9 +22,8 @@ import type { FixedWindowRateLimiter } from '../http/rateLimit.js';
 import type { Db } from '../db.js';
 import { hashShareToken, isWellFormedShareToken, sameToken } from '../offers/shareToken.js';
 import { offerInclude, toPublicOfferDto, type OfferWithRefs } from '../offers/store.js';
-import { loadActiveReferences, sendReferenceImage, storedImage } from '../references/store.js';
+import { IMAGE_SELECT, loadActiveReferences, sendReferenceImage, storedImage } from '../references/store.js';
 import { isUuid } from '../events/store.js';
-import { UploadDir } from '../fileStore/uploadDir.js';
 
 /** The route pattern; the auth gate in app.ts lets exactly this pattern through without a session. */
 export const PUBLIC_OFFER_ROUTE = '/api/public/offers/:token';
@@ -45,8 +44,7 @@ async function findOfferByToken(db: Db, token: string): Promise<OfferWithRefs | 
 
 /** `pageLimiter`: the per-IP limiter shared with the freelancer endpoints. */
 export function publicOfferRoutes(app: FastifyInstance, deps: AppDeps, pageLimiter: FixedWindowRateLimiter): void {
-  const { db, config } = deps;
-  const uploads = new UploadDir(config.uploadDir);
+  const { db } = deps;
   const limiter = pageLimiter;
   const imageLimiter = newPublicRateLimiter();
   const offerNotFound = () => notFound('Offer not found');
@@ -66,11 +64,10 @@ export function publicOfferRoutes(app: FastifyInstance, deps: AppDeps, pageLimit
     const imageNotFound = () => notFound('Not found');
     const offer = await findOfferByToken(db, request.params.token);
     if (!offer || !offer.showReferences || !isUuid(request.params.id)) throw imageNotFound();
-    const ref = await db.reference.findUnique({ where: { id: request.params.id } });
+    const ref = await db.reference.findUnique({ where: { id: request.params.id }, select: IMAGE_SELECT });
     if (!ref || !ref.active) throw imageNotFound();
     const image = storedImage(ref);
-    if (!image || !(await uploads.exists(image.storageKey)))
-      throw imageNotFound();
-    return sendReferenceImage(reply, uploads, image, request);
+    if (!image) throw imageNotFound();
+    return sendReferenceImage(reply, image, request);
   });
 }

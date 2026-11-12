@@ -1,8 +1,9 @@
 /**
  * Reference (testimonial) endpoints (BR-108): CRUD, reorder, photo upload/replace/remove, auth.
- * Synthetic quotes only; photos are tiny fake files in a temporary UPLOAD_DIR.
+ * Synthetic quotes only; photos are tiny fake images. They are stored in the database (TASK-060);
+ * a temporary UPLOAD_DIR checks that nothing is written to disk any more.
  */
-import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readdir, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -27,6 +28,16 @@ afterEach(async () => {
 afterAll(closeTestDb);
 
 const files = async () => (await readdir(uploadDir).catch(() => [])).sort();
+/** The stored photo columns of a reference (bytes as a Buffer, or null). */
+const storedPhoto = async (id: string) => {
+  const r = await testDb().reference.findUniqueOrThrow({ where: { id } });
+  return {
+    data: r.imageData ? Buffer.from(r.imageData) : null,
+    key: r.imageStorageKey,
+    contentType: r.imageContentType,
+    sizeBytes: r.imageSizeBytes,
+  };
+};
 const list = async (): Promise<Json[]> => (await call(s, 'GET', '/api/references')).json();
 
 describe('auth', () => {
@@ -218,22 +229,32 @@ describe('photos', () => {
     ['PNG', PNG, 'image/png'],
     ['JPG', JPG, 'image/jpeg'],
     ['WebP', WEBP, 'image/webp'],
-  ])('PUT stores a %s in UPLOAD_DIR (type from content) and GET serves it', async (_label, content, type) => {
+  ])('PUT stores a %s in the database (type from content, no file written) and GET serves it', async (_label, content, type) => {
     const ref = await createReference(s);
     // The browser-declared type and name are not trusted.
     const res = await uploadImage(s, ref.id, content, { filename: 'x.gif', contentType: 'image/gif' });
     expect(res.statusCode).toBe(200);
     expect(res.json()).toStrictEqual({ ...ref, hasImage: true, imageVersion: expect.stringMatching(/^\d+$/) });
-    const stored = await files();
-    expect(stored).toHaveLength(1);
-    expect(await readFile(path.join(uploadDir, stored[0]!))).toEqual(content);
+    expect(await storedPhoto(ref.id as string)).toEqual({ data: content, key: null, contentType: type, sizeBytes: content.length });
+    expect(await files()).toEqual([]);
 
     const img = await call(s, 'GET', `/api/references/${ref.id}/image`);
     expect(img.statusCode).toBe(200);
     expect(img.headers['content-type']).toBe(type);
     expect(img.headers['x-content-type-options']).toBe('nosniff');
     expect(img.headers['cache-control']).toBe('private, no-cache');
+    expect(img.headers['content-length']).toBe(String(content.length));
+    expect(img.headers['content-disposition']).toBe('inline');
+    expect(img.headers.etag).toBe(`"${res.json().imageVersion as string}"`);
     expect(img.rawPayload).toEqual(content);
+    // Revalidation with the current ETag → 304 without a body.
+    const again = await s.app.inject({
+      method: 'GET',
+      url: `/api/references/${ref.id}/image`,
+      headers: { cookie: s.cookie, 'if-none-match': img.headers.etag as string },
+    });
+    expect(again.statusCode).toBe(304);
+    expect(again.rawPayload).toHaveLength(0);
   });
 
   it('imageVersion changes on every upload and remove; ?v= of the current version is cached long', async () => {
@@ -261,15 +282,23 @@ describe('photos', () => {
     expect([v1, v2]).not.toContain(v3);
   });
 
-  it('replacing a photo removes the old file', async () => {
+  it('replacing a photo replaces the stored bytes and type', async () => {
     const ref = await createReference(s);
     await uploadImage(s, ref.id, PNG);
-    const [first] = await files();
     await uploadImage(s, ref.id, JPG, { filename: 'b.jpg', contentType: 'image/jpeg' });
-    const after = await files();
-    expect(after).toHaveLength(1);
-    expect(after[0]).not.toBe(first);
-    expect((await call(s, 'GET', `/api/references/${ref.id}/image`)).rawPayload).toEqual(JPG);
+    expect(await storedPhoto(ref.id as string)).toMatchObject({ data: JPG, contentType: 'image/jpeg', sizeBytes: JPG.length });
+    const img = await call(s, 'GET', `/api/references/${ref.id}/image`);
+    expect(img.headers['content-type']).toBe('image/jpeg');
+    expect(img.rawPayload).toEqual(JPG);
+    expect(await files()).toEqual([]);
+  });
+
+  it('lists and edits never return the photo bytes', async () => {
+    const ref = await createReference(s);
+    await uploadImage(s, ref.id, PNG);
+    const listed = await list();
+    expect(Object.keys(listed[0]).sort()).toEqual(['active', 'author', 'hasImage', 'id', 'imageVersion', 'quoteEn', 'quoteFi', 'sortOrder']);
+    expect(JSON.stringify(listed)).not.toContain('synthetic png');
   });
 
   it(`413 FILE_TOO_LARGE over ${MAX_REFERENCE_IMAGE_BYTES} bytes (nothing kept); exactly the limit is fine`, async () => {
@@ -280,9 +309,11 @@ describe('photos', () => {
     expect(res.json().error.code).toBe('FILE_TOO_LARGE');
     expect(await files()).toEqual([]);
     expect((await list())[0].hasImage).toBe(false);
+    expect((await storedPhoto(ref.id as string)).data).toBeNull();
 
     const exact = await uploadImage(s, ref.id, big.subarray(0, MAX_REFERENCE_IMAGE_BYTES));
     expect(exact.statusCode).toBe(200);
+    expect((await storedPhoto(ref.id as string)).sizeBytes).toBe(MAX_REFERENCE_IMAGE_BYTES);
   });
 
   it.each([
@@ -293,11 +324,10 @@ describe('photos', () => {
   ])('415 UNSUPPORTED_FILE_TYPE for %s (nothing kept, old photo kept)', async (_label, content, type) => {
     const ref = await createReference(s);
     await uploadImage(s, ref.id, PNG);
-    const before = await files();
     const res = await uploadImage(s, ref.id, content, { filename: 'x.png', contentType: type });
     expect(res.statusCode).toBe(415);
     expect(res.json().error.code).toBe('UNSUPPORTED_FILE_TYPE');
-    expect(await files()).toEqual(before);
+    expect((await storedPhoto(ref.id as string)).data).toEqual(PNG);
     expect((await call(s, 'GET', `/api/references/${ref.id}/image`)).rawPayload).toEqual(PNG);
   });
 
@@ -313,13 +343,13 @@ describe('photos', () => {
     expect(await files()).toEqual([]);
   });
 
-  it('DELETE image removes the file and is a no-op without one; GET image then 404s', async () => {
+  it('DELETE image clears the stored photo and is a no-op without one; GET image then 404s', async () => {
     const ref = await createReference(s);
     await uploadImage(s, ref.id, PNG);
     const res = await call(s, 'DELETE', `/api/references/${ref.id}/image`);
     expect(res.statusCode).toBe(200);
     expect(res.json()).toStrictEqual({ ...ref, hasImage: false });
-    expect(await files()).toEqual([]);
+    expect(await storedPhoto(ref.id as string)).toEqual({ data: null, key: null, contentType: null, sizeBytes: null });
     expect((await call(s, 'DELETE', `/api/references/${ref.id}/image`)).json()).toStrictEqual({ ...ref, hasImage: false });
     expect((await call(s, 'GET', `/api/references/${ref.id}/image`)).statusCode).toBe(404);
     for (const id of [UNKNOWN_ID, 'nope']) {
@@ -328,26 +358,22 @@ describe('photos', () => {
     }
   });
 
-  it('GET image serves inactive references to partners and 404s when the file is missing', async () => {
+  it('GET image serves inactive references to partners', async () => {
     const ref = await createReference(s, { active: false });
     await uploadImage(s, ref.id, PNG);
     expect((await call(s, 'GET', `/api/references/${ref.id}/image`)).statusCode).toBe(200);
-    await rm(path.join(uploadDir, (await files())[0]!));
-    expect((await call(s, 'GET', `/api/references/${ref.id}/image`)).statusCode).toBe(404);
   });
 });
 
 describe('DELETE /api/references/{id}', () => {
-  it('hard deletes the reference and its photo file', async () => {
+  it('hard deletes the reference and its photo', async () => {
     const keep = await createReference(s, { quoteFi: 'Keep' });
     const ref = await createReference(s);
     await uploadImage(s, keep.id, JPG, { filename: 'k.jpg', contentType: 'image/jpeg' });
     await uploadImage(s, ref.id, PNG);
-    expect(await files()).toHaveLength(2);
     const res = await call(s, 'DELETE', `/api/references/${ref.id}`);
     expect(res.statusCode).toBe(204);
     expect(await testDb().reference.findUnique({ where: { id: ref.id } })).toBeNull();
-    expect(await files()).toHaveLength(1);
     expect((await call(s, 'GET', `/api/references/${keep.id}/image`)).rawPayload).toEqual(JPG);
     expect((await list()).map((r) => r.id as string)).toEqual([keep.id]);
   });

@@ -375,10 +375,12 @@ describe('GET /api/public/offers/{token}/references/{id}/image (BR-108)', () => 
     // A session does not open any of these either: the rules are the same for partners.
     await check('inactive reference with a session', token, inactive.id, { cookie: s.cookie });
 
-    // File missing on disk.
-    const stored = await testDb().reference.findUniqueOrThrow({ where: { id: withImage.id } });
-    await rm(path.join(uploadDir, stored.imageStorageKey!));
-    await check('photo file missing', token, withImage.id);
+    // A legacy photo not yet moved into the database (only a file key) is not served (TASK-060).
+    await testDb().reference.update({
+      where: { id: withImage.id },
+      data: { imageData: null, imageStorageKey: '00000000-0000-4000-8000-000000000001' },
+    });
+    await check('photo not in the database', token, withImage.id);
     await uploadImage(s, withImage.id, PNG);
     expect((await img(token, withImage.id)).statusCode).toBe(200);
 

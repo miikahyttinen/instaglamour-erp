@@ -25,9 +25,8 @@
  * and skipped (already there). Loads hold an advisory lock, so seed runs and app imports (UC-035)
  * never run at the same time; `dryRun` rolls the whole load back after counting.
  */
-import { randomUUID } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
-import { copyFile, mkdir, stat } from 'node:fs/promises';
+import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import type { Db } from '../src/db.js';
 import { dateFromIso } from '../src/domain/dates.js';
@@ -47,7 +46,7 @@ import { convertOfferInTx } from '../src/offers/store.js';
 import type { Prisma } from '../src/generated/prisma/client.js';
 import { MAX_REFERENCE_IMAGE_BYTES } from '../src/references/store.js';
 import { PARAMETER_KEYS } from '../src/settings/parameters.js';
-import { detectImageType, readHead, UploadDir, type ImageContentType } from '../src/fileStore/uploadDir.js';
+import { detectImageType, type ImageContentType } from '../src/fileStore/uploadDir.js';
 import { clientNameKey, findSeedCategory, lineupNameKey, referenceKey, validateSeed, type SeedData } from './schema.js';
 
 type Tx = Prisma.TransactionClient;
@@ -156,12 +155,10 @@ export async function emptyDatabase(tx: Tx): Promise<void> {
 }
 
 export interface LoadSeedOptions {
-  /** Empty all data first. Reference photo files already in UPLOAD_DIR are left on disk. */
+  /** Empty all data first (reference photos are rows too; files in UPLOAD_DIR are never touched). */
   reset?: boolean;
   /** Directory of the seed file: reference `image` paths are relative to it. */
   seedDir?: string;
-  /** Where reference photos are copied (UPLOAD_DIR). Required when a reference has an image. */
-  uploadDir?: string;
   /** Run the whole load, then roll it back: the summary is exact but nothing is saved. */
   dryRun?: boolean;
   /** Called inside the load transaction after the data is applied (not on a dry run), e.g. to log the import. */
@@ -175,11 +172,10 @@ class DryRunRollback extends Error {
   }
 }
 
-/** A checked reference photo from the seed file, ready to be copied. */
+/** A checked reference photo from the seed file, read into memory (stored in the database, TASK-060). */
 interface SeedImage {
-  source: string;
+  data: Uint8Array<ArrayBuffer>;
   contentType: ImageContentType;
-  sizeBytes: number;
 }
 
 /** Check every reference photo (exists, ≤ 10 MB, PNG/JPG/WebP by content) before loading anything. */
@@ -189,8 +185,8 @@ async function checkReferenceImages(data: SeedData, options: LoadSeedOptions): P
   for (const [i, r] of data.references.entries()) {
     if (r.image === undefined) continue;
     const at = `references.${i}.image`;
-    if (!options.seedDir || !options.uploadDir) {
-      errors.push(`${at}: photos need the seed file's directory and UPLOAD_DIR (load the file with the seed command)`);
+    if (!options.seedDir) {
+      errors.push(`${at}: photos need the seed file's directory (load the file with the seed command)`);
       continue;
     }
     const source = path.resolve(options.seedDir, r.image);
@@ -207,12 +203,13 @@ async function checkReferenceImages(data: SeedData, options: LoadSeedOptions): P
       errors.push(`${at}: ${r.image} is larger than 10 MB`);
       continue;
     }
-    const contentType = detectImageType(await readHead(source));
+    const data = new Uint8Array(await readFile(source));
+    const contentType = detectImageType(data);
     if (!contentType) {
       errors.push(`${at}: ${r.image} is not a PNG, JPG or WebP image`);
       continue;
     }
-    images.set(i, { source, contentType, sizeBytes });
+    images.set(i, { data, contentType });
   }
   if (errors.length > 0) throw new SeedValidationError(errors);
   return images;
@@ -223,16 +220,6 @@ export async function loadSeed(db: Db, input: unknown, options: LoadSeedOptions 
   if (!result.ok) throw new SeedValidationError(result.errors);
   const data = result.data;
   const images = await checkReferenceImages(data, options);
-  const uploads = options.uploadDir ? new UploadDir(options.uploadDir) : null;
-  /** Photos copied during this run; removed again if the transaction fails (nothing is loaded). */
-  const copied: string[] = [];
-  const copyImage = async (image: SeedImage): Promise<string> => {
-    await mkdir(uploads!.root, { recursive: true });
-    const key = randomUUID();
-    copied.push(key);
-    await copyFile(image.source, uploads!.pathOf(key));
-    return key;
-  };
 
   try {
     return await db.$transaction(
@@ -240,7 +227,7 @@ export async function loadSeed(db: Db, input: unknown, options: LoadSeedOptions 
         // Released automatically at commit / rollback.
         await tx.$executeRaw`SELECT pg_advisory_xact_lock(${SEED_LOCK_KEY})`;
         if (options.reset) await emptyDatabase(tx);
-        const summary = await applySeed(tx, data, images, copyImage);
+        const summary = await applySeed(tx, data, images);
         if (options.dryRun) throw new DryRunRollback(summary);
         await options.afterLoad?.(tx, summary);
         return summary;
@@ -248,7 +235,6 @@ export async function loadSeed(db: Db, input: unknown, options: LoadSeedOptions 
       { timeout: 120_000, maxWait: 10_000 },
     );
   } catch (err) {
-    for (const key of copied) await uploads!.remove(key);
     if (err instanceof DryRunRollback) return err.summary;
     throw err;
   }
@@ -310,7 +296,6 @@ async function applySeed(
   tx: Tx,
   data: SeedData,
   images: ReadonlyMap<number, SeedImage>,
-  copyImage: (image: SeedImage) => Promise<string>,
 ): Promise<SeedSummary> {
   const summary = emptySeedSummary();
 
@@ -617,7 +602,7 @@ async function applySeed(
     const { _max } = await tx.reference.aggregate({ _max: { sortOrder: true } });
     const image = images.get(i);
     const photo = image
-      ? { imageStorageKey: await copyImage(image), imageContentType: image.contentType, imageSizeBytes: image.sizeBytes, imageUploadedAt: new Date() }
+      ? { imageData: image.data, imageContentType: image.contentType, imageSizeBytes: image.data.byteLength, imageUploadedAt: new Date() }
       : {};
     await tx.reference.create({
       data: {

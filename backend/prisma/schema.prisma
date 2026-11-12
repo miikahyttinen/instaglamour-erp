@@ -655,8 +655,10 @@ model BudgetYear {
 
 /// A testimonial shown on offers with show_references (BR-108). Replaces the old text settings
 /// offers.references_fi / offers.references_en (those rows are left in place but no longer read).
-/// The optional photo is a file in UPLOAD_DIR, stored like the old attachments: either all four
-/// image_* columns are set or none (check constraint "reference_image_all_or_none").
+/// The optional photo's bytes are in image_data (TASK-060). image_content_type, image_size_bytes and
+/// image_uploaded_at are set exactly when there is a photo, which is then either in image_data or
+/// (only before the startup move, src/references/moveImagesToDb.ts) a file named image_storage_key in
+/// UPLOAD_DIR, never both (check constraint "reference_image_all_or_none").
 model Reference {
   id               String    @id @default(uuid()) @db.Uuid
   quoteFi          String    @map("quote_fi")
@@ -664,8 +666,10 @@ model Reference {
   author           String
   sortOrder        Int       @map("sort_order")
   active           Boolean   @default(true)
-  /// File name inside UPLOAD_DIR (random UUID); null = no photo.
+  /// Legacy: file name inside UPLOAD_DIR (random UUID) of a photo not yet moved into image_data.
   imageStorageKey  String?   @unique @map("image_storage_key")
+  /// The photo itself. Never load it in lists: queries use `omit: OMIT_IMAGE_DATA`.
+  imageData        Bytes?    @map("image_data")
   /// Sniffed from the file content: image/png, image/jpeg or image/webp.
   imageContentType String?   @map("image_content_type")
   imageSizeBytes   Int?      @map("image_size_bytes")
