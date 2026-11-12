@@ -193,7 +193,7 @@ Everything below uses placeholders — put real values only into Railway's varia
 |---|---|
 | **app** | This repository (GitHub repo or `railway up`). Build/start come from [`railway.json`](railway.json) and the root [`package.json`](package.json). |
 | **Postgres** | Railway's PostgreSQL template. |
-| **Volume** | Attached to **app**, mount path `/data`. Attachments and reference photos live in `/data/uploads`. |
+| **Volume** | Optional. Not needed since 2026-11-12: reference photos are stored in the database. Only used once, if present, to move old photo files into the database at startup. |
 
 How Railway runs it ([`railway.json`](railway.json)):
 
@@ -220,7 +220,7 @@ Node is pinned to 24 (`.nvmrc`, `engines`).
 | `AUTH_ALLOWED_DOMAIN` | `example.com` | Only verified Google accounts of this domain may sign in |
 | `AUTH_EXTRA_ALLOWED_EMAILS` | *(unset)* or `someone@example.com` | Optional: comma-separated exact addresses outside the domain allowed as if they were in it (case-insensitive); still need to be active partners. An invalid entry refuses to start |
 | `FRONTEND_URL` | `https://your-app.up.railway.app` | The app's own public URL (same origin). **Must be https** in production; also turns on `Secure` cookies |
-| `UPLOAD_DIR` | `/data/uploads` | On the volume; created at startup if missing |
+| `UPLOAD_DIR` | `/data/uploads` | Optional, legacy: where old reference photo files are read from once at startup and moved into the database (missing files → photo cleared). Not created; nothing is written there |
 | `DEV_LOGIN_ENABLED` | *(unset)* or `false` | `true` with `NODE_ENV=production` **refuses to start** |
 | `PORT` | *(set by Railway)* | Don't set it yourself |
 | `HOST` | *(unset)* | Optional override of the `0.0.0.0` default |
@@ -229,7 +229,7 @@ Node is pinned to 24 (`.nvmrc`, `engines`).
 | `VITE_AUTH_ALLOWED_DOMAIN` | `example.com` | Optional, **build time**: only the hint on the partner email field |
 
 Startup fails fast with one clear line (`Startup aborted: …`) if the configuration is unsafe or incomplete
-(dev login on, non-https `FRONTEND_URL`, missing `index.html`, `UPLOAD_DIR` not creatable, invalid variables).
+(dev login on, non-https `FRONTEND_URL`, missing `index.html`, invalid variables).
 
 ### Google OAuth
 
@@ -258,25 +258,15 @@ pg_restore --no-owner --no-privileges -d "postgresql://user:password@host.proxy.
 If the app was already deployed once (migrations created empty tables), add `--clean --if-exists`
 to `pg_restore` to replace them.
 
-Then copy the uploaded files (local `UPLOAD_DIR`, default `../instaglamour-uploads` next to the repo)
-to the volume, once the app service is running:
-
-```bash
-railway link                                   # select the project and the app service
-tar czf - -C ../instaglamour-uploads . | railway ssh -- "mkdir -p /data/uploads && tar xzf - -C /data/uploads"
-railway ssh -- ls /data/uploads | head         # check
-```
-
-Files are named by UUID storage keys, so they need no renaming. Afterwards sign in and open an event with
-attachments and an offer with reference photos to verify.
+Reference photos are part of the database, so the restore above includes them. Afterwards sign in and
+open an offer with reference photos to verify.
 
 ### Backups
 
 - **Database:** enable scheduled backups on the Postgres service (Railway → Postgres → Backups), and/or
   take your own dumps: `pg_dump -Fc "<DATABASE_PUBLIC_URL>" -f backups/railway-$(date +%F).dump`.
   Restore with `pg_restore --clean --if-exists -d "<url>" <file>`.
-- **Uploads:** back up the app's volume too (volume backups, or
-  `railway ssh -- tar czf - -C /data/uploads . > backups/uploads-$(date +%F).tgz`).
+- **Reference photos** are in the database, so database backups include them.
 - Keep backups outside the repository (`backups/` is gitignored); they contain real data.
 
 ### Check a production build locally
