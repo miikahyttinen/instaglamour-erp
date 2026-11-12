@@ -1,7 +1,7 @@
 # TASK-060: Store reference photos in the database
 
 - **owner:** backend
-- **status:** todo
+- **status:** done
 - **spec:** docs/api-contract.md "Reference photos stored in the database (owner decision 2026-11-12)"
 - **depends on:** none
 
