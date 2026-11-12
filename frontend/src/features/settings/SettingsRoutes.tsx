@@ -2,12 +2,13 @@ import { useTranslation } from 'react-i18next';
 import { Navigate, NavLink, Outlet, Route, Routes } from 'react-router-dom';
 import { PageHead } from '../../components/PageHead';
 import { DataImportPage } from '../dataImport/DataImportPage';
+import { ReferencesPage } from '../offers/ReferencesPage';
 import { LineupPage } from './LineupPage';
 import { LineupsPage } from './LineupsPage';
 import { ParametersPage } from './ParametersPage';
 import './settings.css';
 
-/** Page head + tabs (Lineups / Parameters / Data import — import stays last); they stay mounted while switching tabs. */
+/** Page head + tabs (Lineups / Parameters / References / Data import — import stays last); they stay mounted while switching tabs. */
 function SettingsLayout() {
   const { t } = useTranslation();
   return (
@@ -16,6 +17,7 @@ function SettingsLayout() {
       <nav className="settings-tabs" aria-label={t('settings.tabs.label')}>
         <NavLink to="/settings/lineups">{t('settings.tabs.lineups')}</NavLink>
         <NavLink to="/settings/parameters">{t('settings.tabs.parameters')}</NavLink>
+        <NavLink to="/settings/references">{t('settings.tabs.references')}</NavLink>
         <NavLink to="/settings/import">{t('settings.tabs.import')}</NavLink>
       </nav>
       <Outlet />
@@ -25,7 +27,7 @@ function SettingsLayout() {
 
 /**
  * /settings → /settings/lineups (default tab), /settings/lineups/:id, /settings/parameters,
- * /settings/import.
+ * /settings/references, /settings/import.
  */
 export function SettingsRoutes() {
   return (
@@ -35,6 +37,7 @@ export function SettingsRoutes() {
         <Route path="lineups" element={<LineupsPage />} />
         <Route path="lineups/:id" element={<LineupPage />} />
         <Route path="parameters" element={<ParametersPage />} />
+        <Route path="references" element={<ReferencesPage />} />
         <Route path="import" element={<DataImportPage />} />
         <Route path="*" element={<Navigate to="/settings/lineups" replace />} />
       </Route>

@@ -7,6 +7,7 @@ export const fi = {
       label: 'Asetusten osiot',
       lineups: 'Kokoonpanot',
       parameters: 'Parametrit',
+      references: 'Referenssit',
       import: 'Tietojen tuonti',
     },
     parameters: {
@@ -75,6 +76,7 @@ export const en: typeof fi = {
       label: 'Settings sections',
       lineups: 'Lineups',
       parameters: 'Parameters',
+      references: 'References',
       import: 'Data import',
     },
     parameters: {

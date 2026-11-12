@@ -1,10 +1,6 @@
-/* Reference register (/offers/references, BR-108). Tokens only. Cards stacked; inside a card the
+/* Reference register (/settings/references, BR-108). Tokens only. Cards stacked; inside a card the
    photo column sits left of the fields from 600 px, above them on phones. */
 
-.references-page .references-intro {
-  margin: 0 0 var(--space-3);
-  max-width: var(--doc-max);
-}
 .references-page .references-notice {
   margin: 0 0 var(--space-3);
 }

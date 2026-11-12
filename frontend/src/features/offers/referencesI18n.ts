@@ -1,12 +1,10 @@
-// Reference register texts (UC-029 "References", BR-108): /offers/references. Spread into
+// Reference register texts (UC-029 "References", BR-108): /settings/references. Spread into
 // fi.ts / en.ts. EN must have exactly the same keys as FI. The customer-facing section title is
 // `offerPreview.references` (offerPreviewI18n.ts).
 
 export const fi = {
   references: {
     title: 'Referenssit',
-    open: 'Referenssit',
-    back: 'Tarjoukset',
     intro:
       'Aktiiviset referenssit näkyvät tässä järjestyksessä tarjouksilla, joilla Näytä referenssit on päällä.',
     listLabel: 'Referenssit',
@@ -49,8 +47,6 @@ export const fi = {
 export const en: typeof fi = {
   references: {
     title: 'References',
-    open: 'References',
-    back: 'Offers',
     intro: 'Active references are shown in this order on offers with Show references switched on.',
     listLabel: 'References',
     item: 'Reference {{n}}',

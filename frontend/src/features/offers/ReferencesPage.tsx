@@ -1,8 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowDown, ArrowLeft, ArrowUp, ImagePlus, Trash2, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, ImagePlus, Trash2, X } from 'lucide-react';
 import { useState, type ChangeEvent, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
 import { ApiError } from '../../api/client';
 import { referencesApi } from '../../api/endpoints';
 import type { Id, Reference } from '../../api/types';
@@ -13,13 +12,11 @@ import { FieldList } from '../../components/FieldList';
 import { Field } from '../../components/fields';
 import { InlineSwitch, InlineText, InlineTextarea } from '../../components/inline';
 import { Notice } from '../../components/Notice';
-import { PageHead } from '../../components/PageHead';
 import { StatusTag } from '../../components/StatusTag';
 import { apiErrorMessage, apiFieldErrors } from '../../i18n/labels';
 import { REFERENCE_IMAGE_ACCEPT, referenceImageProblem } from './referenceImageRules';
 import { ReferencePhoto } from './ReferencePhoto';
 import { referenceKeys, useApplyReferences, useReferences } from './referenceQueries';
-import './offers.css';
 import './references.css';
 
 const QUOTE_MAX = 5000;
@@ -39,7 +36,7 @@ function photoErrorMessage(t: ReturnType<typeof useTranslation>['t'], error: unk
 }
 
 /**
- * Reference register (UC-029 "References", BR-108) at /offers/references: every field inline,
+ * Reference register (UC-029 "References", BR-108) at /settings/references (settings tab): every field inline,
  * photo upload / replace / remove, reorder with up / down, delete with confirmation, add form.
  */
 export function ReferencesPage() {
@@ -104,16 +101,10 @@ export function ReferencesPage() {
   };
 
   return (
-    <section className="page offers-page references-page">
-      <PageHead title={t('references.title')}>
-        <p className="offer-back">
-          <Link to="/offers">
-            <ArrowLeft />
-            {t('references.back')}
-          </Link>
-        </p>
-      </PageHead>
-      <p className="muted references-intro">{t('references.intro')}</p>
+    // Settings page tab "References" (/settings/references): the settings layout has the page head.
+    <div className="references-page">
+      <h2 className="visually-hidden">{t('references.title')}</h2>
+      <p className="settings-intro">{t('references.intro')}</p>
 
       {notice && (
         <Notice tone={notice.tone} role={notice.tone === 'danger' ? 'alert' : 'status'} className="references-notice">
@@ -202,7 +193,7 @@ export function ReferencesPage() {
           </div>
         </Dialog>
       )}
-    </section>
+    </div>
   );
 }
 
