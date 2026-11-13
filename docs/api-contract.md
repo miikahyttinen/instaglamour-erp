@@ -711,7 +711,14 @@ Parameters are **defined in backend code** (a registry: key, type, min/max); onl
 - One-time move at backend startup (idempotent): for each reference with an `image_storage_key` and no `image_data`, read the file from `UPLOAD_DIR`; if it exists, store its bytes and clear the key; if it is missing, clear all image fields (the reference then has no photo; `imageUrl` null).
 - Image responses keep the same URLs, content type and cache behaviour (`?v=<imageVersion>`).
 
+## Laskutus page: all invoice rows (owner request 2026-11-13)
+- **`GET /api/invoice-rows`** → 200 `[InvoiceListRow]`: every invoice row of **non-deleted** gigs (any gig status, all years), sorted: `NOT_SENT` rows first, then `SENT`; within each group newest first by `createdAt` (ties by id).
+- `InvoiceListRow = InvoiceRow + { eventStartDate, eventLineupName, eventVenue, eventStatus, clientName|null, invoicingDetails|null }` (`invoicingDetails` = the gig's "Laskutustiedot"; `auto` included as on InvoiceRow).
+- No paging on the API (the list is small); the UI pages client-side.
+- UI: new menu item **"Laskutus / Invoicing"** (`/invoicing`) after Keikat. Table, 100 rows per page (shared pager): status tag (Lähettämättä / Lähetetty, same colours as on the gig page), row created date, client, gig (date + lineup name, links to the gig page), description, amount, **Laskutustiedot** (multi-line text, truncated with full text on hover/expand). Order as the API returns it. Phone: compact two-line rows. Changing a row's status is still done on the gig page (no edit here).
+
 ## Change log
+- 2026-11-13 – GET /api/invoice-rows; Laskutus page (PM)
 - 2026-11-12 – Reference photos stored in the DB (no API change) (PM)
 - 2026-11-11 – Event invoicingDetails free text (PM)
 - 2026-11-09 – contractDone on gigs, followUpDone on offers, GET /api/me/offers (PM)
