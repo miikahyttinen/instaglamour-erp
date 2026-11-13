@@ -1,7 +1,7 @@
 # TASK-202: Laskutus page — all invoice rows
 
 - **owner:** ui
-- **status:** todo
+- **status:** done
 - **spec:** docs/api-contract.md "Laskutus page: all invoice rows (owner request 2026-11-13)"
 - **depends on:** none (MSW mocks)
 
