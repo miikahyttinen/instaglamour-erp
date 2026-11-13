@@ -592,7 +592,7 @@ export function updateEvent(
 
 /**
  * Laskutus page (`GET /api/invoice-rows`): every invoice row of non-deleted gigs (any status, all
- * years) with its gig's data; NOT_SENT first, then SENT; newest `createdAt` first, ties by id.
+ * years) with its gig's data; NOT_SENT first, then SENT; newest `createdAt` first, ties by id (ascending, like the backend).
  */
 export function listInvoiceRows(state: EventState): InvoiceListRow[] {
   const events = new Map(state.events.filter((e) => !e.deletedAt).map((e) => [e.id, e]));
@@ -603,7 +603,7 @@ export function listInvoiceRows(state: EventState): InvoiceListRow[] {
       (a, b) =>
         rank(a.status) - rank(b.status) ||
         b.createdAt.localeCompare(a.createdAt) ||
-        b.id.localeCompare(a.id),
+        a.id.localeCompare(b.id),
     )
     .map((r) => {
       const event = events.get(r.eventId)!;
