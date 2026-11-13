@@ -20,6 +20,7 @@ import type {
   CostLineUpdate,
   DevLoginRequest,
   EventCreate,
+  InvoiceListRow,
   InvoiceRowCreate,
   InvoiceRowUpdate,
   EventDetail,
@@ -180,6 +181,9 @@ export const costLinesApi = {
 
 /** Invoice rows of a gig (api-contract "Invoice rows"); every call returns the whole gig. */
 export const invoiceRowsApi = {
+  /** Laskutus page: every invoice row of non-deleted gigs, in display order (NOT_SENT first,
+   *  then SENT; newest first). Not paged by the API. */
+  list: () => apiRequest<InvoiceListRow[]>('/invoice-rows'),
   create: (eventId: Id, body: InvoiceRowCreate) =>
     apiRequest<EventDetail>(`/events/${eventId}/invoice-rows`, { method: 'POST', body }),
   update: (id: Id, body: InvoiceRowUpdate) =>

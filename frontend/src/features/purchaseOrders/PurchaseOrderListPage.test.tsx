@@ -28,7 +28,7 @@ describe('purchase order list (UC-034)', () => {
     installMatchMedia({ [TABLET_QUERY]: true, [DESKTOP_QUERY]: true });
   });
 
-  it('is in the menu after Keikat and lists every year, newest created first, with every column', async () => {
+  it('is in the menu after Keikat and Laskutus and lists every year, newest created first, with every column', async () => {
     const event = addMockEvent({ startDate: `${TEST_YEAR}-06-01`, venue: 'Venue X' });
     const second = addMockEvent({ startDate: `${TEST_YEAR}-07-15`, venue: 'Venue Y' });
     staffMockEvent(event, ['Person 1']);
@@ -47,7 +47,7 @@ describe('purchase order list (UC-034)', () => {
     const { user } = renderApp('/');
     const nav = await screen.findByRole('navigation', { name: 'Päävalikko' });
     const labels = within(nav).getAllByRole('link').map((l) => l.textContent);
-    expect(labels.indexOf('Ostotilaukset')).toBe(labels.indexOf('Keikat') + 1);
+    expect(labels.indexOf('Ostotilaukset')).toBe(labels.indexOf('Keikat') + 2);
     await user.click(within(nav).getByRole('link', { name: 'Ostotilaukset' }));
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Ostotilaukset' })).toBeInTheDocument();

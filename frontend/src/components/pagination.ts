@@ -10,6 +10,7 @@ export const EVENT_PAGE_SIZE = 100;
 export const OFFER_PAGE_SIZE = 100;
 export const CLIENT_PAGE_SIZE = 100;
 export const PEOPLE_PAGE_SIZE = 100;
+export const INVOICE_ROW_PAGE_SIZE = 100;
 
 /** URL parameter of the current page (1-based; omitted for page 1). */
 export const PAGE_PARAM = 'page';

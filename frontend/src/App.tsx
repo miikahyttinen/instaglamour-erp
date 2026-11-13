@@ -11,6 +11,7 @@ import { EventsRoutes } from './features/events/EventsRoutes';
 import { LegacyEventsRedirect } from './features/events/LegacyEventsRedirect';
 import { FreelancerPage } from './features/freelancer/FreelancerPage';
 import { HoursRoutes } from './features/hours/HoursRoutes';
+import { InvoicingPage } from './features/invoicing/InvoicingPage';
 import { OffersRoutes } from './features/offers/OffersRoutes';
 import { PublicOfferPage } from './features/offers/PublicOfferPage';
 import { PeopleRoutes } from './features/people/PeopleRoutes';
@@ -57,6 +58,7 @@ export function AppRoutes() {
         <Route path="offers/*" element={<OffersRoutes />} />
         <Route path="gigs/*" element={<EventsRoutes />} />
         <Route path="events/*" element={<LegacyEventsRedirect />} />
+        <Route path="invoicing" element={<InvoicingPage />} />
         <Route path="purchase-orders/*" element={<PurchaseOrdersRoutes />} />
         <Route path="clients/*" element={<ClientsRoutes />} />
         <Route path="people/*" element={<PeopleRoutes />} />

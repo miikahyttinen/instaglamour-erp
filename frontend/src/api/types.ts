@@ -178,6 +178,20 @@ export interface InvoiceRow {
   auto: boolean;
 }
 
+/**
+ * One row of the Laskutus page (`GET /api/invoice-rows`, api-contract "Laskutus page: all invoice
+ * rows"): an invoice row with its gig's date, lineup name, venue, status, client name and
+ * "Laskutustiedot".
+ */
+export interface InvoiceListRow extends InvoiceRow {
+  eventStartDate: IsoDate;
+  eventLineupName: string;
+  eventVenue: string;
+  eventStatus: EventStatus;
+  clientName: string | null;
+  invoicingDetails: string | null;
+}
+
 export interface InvoiceRowCreate {
   /** 1–500 chars */
   description: string;

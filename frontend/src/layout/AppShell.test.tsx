@@ -28,6 +28,7 @@ describe('app shell', () => {
     for (const [label, heading, hasYear] of [
       ['Tarjoukset', 'Tarjoukset', false],
       ['Keikat', 'Keikat 2030', true],
+      ['Laskutus', 'Laskutus', false],
       ['Ostotilaukset', 'Ostotilaukset', false],
       ['Asiakkaat', 'Asiakkaat', false],
       ['Henkilöt', 'Henkilöt', false],
@@ -364,6 +365,7 @@ describe('app shell', () => {
         'Omat keikat',
         'Tarjoukset',
         'Keikat',
+        'Laskutus',
         'Ostotilaukset',
         'Asiakkaat',
         'Henkilöt',

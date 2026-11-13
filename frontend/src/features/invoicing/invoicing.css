@@ -1,0 +1,133 @@
+/* Laskutus / Invoicing page (api-contract "Laskutus page: all invoice rows"). Full content width,
+   ExcelTable (design.md → "Excel-style tables"); tokens only. */
+
+.invoicing-page .invoicing-notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-3);
+}
+.invoicing-page .invoicing-notice p {
+  margin: 0;
+}
+
+/* ---------- Cells ---------- */
+.invoicing-table .inv-gig-link {
+  color: var(--text);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+.invoicing-table .inv-gig-link:hover {
+  text-decoration: underline;
+}
+.invoicing-table .inv-gig-date,
+.invoicing-table td.inv-col-created {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.invoicing-table .inv-gig-name {
+  font-weight: var(--fw-bold);
+}
+.invoicing-table .inv-auto {
+  margin-left: var(--space-2);
+  white-space: nowrap;
+}
+.invoicing-table td:is(.inv-col-client, .inv-col-description, .inv-col-details) {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* "Laskutustiedot": multi-line text clamped to 3 lines (2 on phones); the toggle opens it. */
+.invoicing-table .inv-details {
+  min-width: 0;
+}
+.invoicing-table .inv-details-text {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
+  margin: 0;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+.invoicing-table .inv-details-text.is-open {
+  display: block;
+  -webkit-line-clamp: unset;
+  line-clamp: none;
+  overflow: visible;
+}
+.invoicing-table .inv-details-toggle {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: var(--fs-small);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.invoicing-table .inv-details-toggle:focus-visible {
+  outline: var(--hairline) solid var(--accent);
+  outline-offset: 1px;
+}
+
+@media (min-width: 600px) {
+  .invoicing-table td.inv-col-created {
+    font-family: var(--font-mono);
+    font-size: var(--fs-label);
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+  }
+  .invoicing-table td.inv-col-details {
+    min-width: 12em;
+  }
+}
+
+/* Phone rows (< 600 px, ExcelTable compact rows): line 1 = client + status tag; line 2 = gig date ·
+   description · amount (no labels); Laskutustiedot on its own line below, clamped to 2 lines. */
+@media (max-width: 599px) {
+  .invoicing-table .data-table-cards td.inv-col-client {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  /* Only the date on phones; the lineup name stays in the link's accessible name and title. */
+  .invoicing-table .data-table-cards .inv-gig-name {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+  .invoicing-table .data-table-cards td:is(.inv-col-description, .inv-col-amount)::before {
+    content: '·';
+    font: inherit;
+    letter-spacing: normal;
+    text-transform: none;
+    color: var(--text-muted);
+  }
+  .invoicing-table .data-table-cards td.inv-col-amount {
+    color: var(--text);
+    white-space: nowrap;
+  }
+  .invoicing-table .data-table-cards td.inv-col-details {
+    display: block;
+    flex: 0 0 100%;
+    min-width: 0;
+  }
+  .invoicing-table .data-table-cards .inv-details-text {
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+  }
+  .invoicing-table .data-table-cards .inv-details-text.is-open {
+    -webkit-line-clamp: unset;
+    line-clamp: none;
+  }
+  .invoicing-table .data-table-cards .inv-details-toggle {
+    min-height: 32px;
+  }
+}

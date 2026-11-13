@@ -14,6 +14,9 @@ export const rootKeys = {
   myOffers: ['my-offers'],
   /** Event lists: ['events', 'list', query]. */
   eventLists: ['events', 'list'],
+  /** Laskutus page: ['invoice-rows'] (GET /api/invoice-rows). Refetched after every invoice row
+   *  and gig change (client, date, lineup name, Laskutustiedot, delete / restore…). */
+  invoiceRows: ['invoice-rows'],
   /** Cost lines on the person page (all years): ['people', 'cost-lines', id]. */
   personCostLines: ['people', 'cost-lines'],
   /** Client list and client pages: ['clients', …] (event counts and linked events, UC-027). */
@@ -37,9 +40,11 @@ export type YearDataChange = 'events' | 'hours' | 'budget';
 
 const affectedLists: Record<YearDataChange, readonly QueryKey[]> = {
   // Event and cost line changes: event lists, My gigs (gigs and offers: contract done), person cost lines, clients (their event
-  // lists) and offers (a deleted converted event still links from its offer) and lineups (gig counts).
+  // lists) and offers (a deleted converted event still links from its offer) and lineups (gig counts),
+  // and the Laskutus page (invoice rows and their gig's data).
   events: [
     rootKeys.eventLists,
+    rootKeys.invoiceRows,
     rootKeys.myEvents,
     rootKeys.myOffers,
     rootKeys.personCostLines,

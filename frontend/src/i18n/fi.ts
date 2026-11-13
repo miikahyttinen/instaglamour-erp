@@ -12,6 +12,7 @@ import { fi as offersFi } from '../features/offers/i18n';
 import { fi as offerPreviewFi } from '../features/offers/offerPreviewI18n';
 import { fi as referencesFi } from '../features/offers/referencesI18n';
 import { fi as purchaseOrdersFi } from '../features/purchaseOrders/i18n';
+import { fi as invoicingFi } from '../features/invoicing/i18n';
 import { fi as peopleFi } from '../features/people/i18n';
 import { fi as tasksFi } from '../features/tasks/i18n';
 import { fi as myEventsFi } from '../features/myEvents/i18n';
@@ -28,6 +29,7 @@ const fi = {
     offers: 'Tarjoukset',
     myEvents: 'Omat keikat',
     events: 'Keikat',
+    invoicing: 'Laskutus',
     purchaseOrders: 'Ostotilaukset',
     clients: 'Asiakkaat',
     people: 'Henkilöt',
@@ -79,6 +81,7 @@ const fi = {
     offers: 'Tarjoukset',
     myEvents: 'Omat keikat',
     events: 'Keikat {{year}}',
+    invoicing: 'Laskutus',
     purchaseOrders: 'Ostotilaukset',
     clients: 'Asiakkaat',
     people: 'Henkilöt',
@@ -524,6 +527,7 @@ const fi = {
   ...offersFi,
   ...referencesFi,
   myEvents: myEventsFi,
+  ...invoicingFi,
   ...purchaseOrdersFi,
   ...clientsFi,
   ...peopleFi,

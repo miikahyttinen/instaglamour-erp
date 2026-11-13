@@ -6,6 +6,7 @@ import {
   ListChecks,
   Music,
   Receipt,
+  ReceiptEuro,
   Settings,
   Users,
   Wallet,
@@ -14,7 +15,7 @@ import {
 
 export interface NavItem {
   to: string;
-  labelKey: `nav.${'offers' | 'myEvents' | 'events' | 'purchaseOrders' | 'clients' | 'people' | 'tasks' | 'hours' | 'budget' | 'settings'}`;
+  labelKey: `nav.${'offers' | 'myEvents' | 'events' | 'invoicing' | 'purchaseOrders' | 'clients' | 'people' | 'tasks' | 'hours' | 'budget' | 'settings'}`;
   icon: LucideIcon;
   end?: boolean;
 }
@@ -24,6 +25,8 @@ export const NAV_ITEMS: NavItem[] = [
   { to: '/my-gigs', labelKey: 'nav.myEvents', icon: CalendarDays },
   { to: '/offers', labelKey: 'nav.offers', icon: FileText },
   { to: '/gigs', labelKey: 'nav.events', icon: Music },
+  // Laskutus right after Keikat (TASK-202).
+  { to: '/invoicing', labelKey: 'nav.invoicing', icon: ReceiptEuro },
   { to: '/purchase-orders', labelKey: 'nav.purchaseOrders', icon: Receipt },
   { to: '/clients', labelKey: 'nav.clients', icon: Contact },
   { to: '/people', labelKey: 'nav.people', icon: Users },

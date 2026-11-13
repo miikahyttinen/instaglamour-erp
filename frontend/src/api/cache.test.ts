@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { budgetKey } from '../features/budget/queries';
 import { eventKeys } from '../features/events/queries';
 import { hoursKey } from '../features/hours/queries';
+import { invoiceRowsKey } from '../features/invoicing/queries';
 import { myEventsKey, myOffersKey } from '../features/myEvents/queries';
 import { peopleKeys } from '../features/people/queries';
 import { meKey } from '../auth/useMe';
@@ -15,6 +16,7 @@ const keys = {
   myOffers: myOffersKey,
   eventList: eventKeys.list({ year: YEAR }),
   eventDetail: eventKeys.detail('g1'),
+  invoiceRows: invoiceRowsKey,
   costLines: peopleKeys.costLines('p1'),
   peopleList: peopleKeys.list('all'),
   clientPage: ['clients', 'detail', 'c1'],
@@ -34,11 +36,12 @@ function invalidatedAfter(change: YearDataChange): Name[] {
 }
 
 describe('invalidateYearData', () => {
-  it('event and cost line changes refresh My gigs (gigs and offers), event lists, person cost lines, clients and offers', () => {
+  it('event, cost line and invoice row changes refresh My gigs (gigs and offers), event lists, the Laskutus page, person cost lines, clients and offers', () => {
     expect(invalidatedAfter('events')).toEqual([
       'myEvents',
       'myOffers',
       'eventList',
+      'invoiceRows',
       'costLines',
       'clientPage',
       'offerList',
