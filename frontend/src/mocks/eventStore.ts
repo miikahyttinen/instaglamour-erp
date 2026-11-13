@@ -22,6 +22,7 @@ import type {
   EventHistoryEntry,
   EventSummary,
   Id,
+  InvoiceListRow,
   InvoiceRow,
   IsoDate,
   LineupLine,
@@ -588,6 +589,35 @@ export function updateEvent(
 }
 
 // ---------- Invoice rows (api-contract "Invoice rows") ----------
+
+/**
+ * Laskutus page (`GET /api/invoice-rows`): every invoice row of non-deleted gigs (any status, all
+ * years) with its gig's data; NOT_SENT first, then SENT; newest `createdAt` first, ties by id (ascending, like the backend).
+ */
+export function listInvoiceRows(state: EventState): InvoiceListRow[] {
+  const events = new Map(state.events.filter((e) => !e.deletedAt).map((e) => [e.id, e]));
+  const rank = (status: InvoiceRowStatus) => (status === 'NOT_SENT' ? 0 : 1);
+  return state.invoiceRows
+    .filter((r) => events.has(r.eventId))
+    .sort(
+      (a, b) =>
+        rank(a.status) - rank(b.status) ||
+        b.createdAt.localeCompare(a.createdAt) ||
+        a.id.localeCompare(b.id),
+    )
+    .map((r) => {
+      const event = events.get(r.eventId)!;
+      return {
+        ...r,
+        eventStartDate: event.startDate,
+        eventLineupName: event.lineupName,
+        eventVenue: event.venue,
+        eventStatus: event.status,
+        clientName: state.clients.find((c) => c.id === event.clientId)?.name ?? null,
+        invoicingDetails: event.invoicingDetails,
+      };
+    });
+}
 
 /** Description of the automatic final invoice row. */
 export const FINAL_INVOICE_DESCRIPTION = 'Loppulasku';

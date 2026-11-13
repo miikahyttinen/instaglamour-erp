@@ -37,6 +37,7 @@ import {
   doubleBookingWarnings,
   EVENT_PATCH_FIELDS,
   linesOf,
+  listInvoiceRows,
   logEvent,
   nowTs,
   payCostLine,
@@ -598,6 +599,12 @@ function invoiceRowWithEvent(id: unknown): { row: InvoiceRow; event: MockEvent }
 }
 
 export const invoiceRowHandlers = [
+  // Laskutus page (api-contract "Laskutus page: all invoice rows"): no paging on the API.
+  http.get('/api/invoice-rows', () => {
+    if (!currentPartner()) return unauthenticated();
+    return HttpResponse.json(listInvoiceRows(db.events));
+  }),
+
   http.post('/api/events/:id/invoice-rows', async ({ params, request }) => {
     const me = currentPartner();
     if (!me) return unauthenticated();

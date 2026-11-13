@@ -21,12 +21,13 @@ import { busyIds, MAIN_PAGE_NAMES, mainPages, openLoaded, type BusyIds } from '.
 // on phones, the event list as one Excel-style table (TASK-144), compact cost rows by container width.
 // Read-only flows: nothing here changes the shared database.
 
-// Ten items: Asiakkaat after Keikat (TASK-015…139); Omat keikat first (replaced Vuosi, 2026-11-08), then Tarjoukset (TASK-142);
-// Ostotilaukset after Keikat (TASK-152); Asetukset last (TASK-154, TASK-186).
+// Eleven items: Asiakkaat after Keikat (TASK-015…139); Omat keikat first (replaced Vuosi, 2026-11-08), then Tarjoukset (TASK-142);
+// Laskutus right after Keikat (TASK-202), then Ostotilaukset (TASK-152); Asetukset last (TASK-154, TASK-186).
 const NAV: { label: string; path: string }[] = [
   { label: 'Omat keikat', path: '/my-gigs' },
   { label: 'Tarjoukset', path: '/offers' },
   { label: 'Keikat', path: '/gigs' },
+  { label: 'Laskutus', path: '/invoicing' },
   { label: 'Ostotilaukset', path: '/purchase-orders' },
   { label: 'Asiakkaat', path: '/clients' },
   { label: 'Henkilöt', path: '/people' },
@@ -327,6 +328,7 @@ test.describe('desktop sidebar', () => {
       });
     const pages: [string, string][] = [
       ['my gigs', '/my-gigs'],
+      ['invoicing', '/invoicing'],
       ['clients', '/clients'],
       ['client page', `/clients/${clientId}`],
       ['people', '/people'],

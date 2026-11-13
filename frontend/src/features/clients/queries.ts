@@ -11,11 +11,13 @@ export const clientKeys = {
   detail: (id: Id) => [...rootKeys.clients, 'detail', id] as const,
 };
 
-/** Client changes also change the client name shown on events (detail pages, lists, search). */
+/** Client changes also change the client name shown on events (detail pages, lists, search) and
+ *  on the Laskutus page. */
 function refreshAfterClientChange(queryClient: QueryClient) {
   return Promise.all([
     queryClient.invalidateQueries({ queryKey: clientKeys.all }),
     queryClient.invalidateQueries({ queryKey: ['events'] }),
+    queryClient.invalidateQueries({ queryKey: rootKeys.invoiceRows }),
   ]);
 }
 
