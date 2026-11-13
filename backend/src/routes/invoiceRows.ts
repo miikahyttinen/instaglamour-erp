@@ -2,16 +2,17 @@
  * Invoice row endpoints (docs/api-contract.md "Invoice rows", TASK-046; statuses per "Invoicing v3"). Every mutation returns
  * 200 EventDetail and logs INVOICE_ROW_ADDED / INVOICE_ROW_UPDATED / INVOICE_ROW_REMOVED.
  * Allowed on SOLD and CANCELLED events; a deleted event → 409 EVENT_DELETED.
+ * GET /api/invoice-rows lists every row of non-deleted events for the Laskutus page (TASK-061).
  */
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import type { AppDeps } from '../app.js';
-import { todayIso } from '../domain/dates.js';
+import { isoFromDate, todayIso } from '../domain/dates.js';
 import { INVOICE_ROW_STATUSES } from '../domain/enums.js';
 import type { Event, InvoiceRow, Prisma } from '../generated/prisma/client.js';
 import { notFound, parseInput } from '../http/errors.js';
 import { MAX_CENTS, requiredText } from '../events/schemas.js';
-import { toEventDetailDto } from '../events/serialize.js';
+import { toEventDetailDto, toInvoiceRowDto } from '../events/serialize.js';
 import { assertNotDeleted, inTransaction, isUuid, lockEvent, logHistory, requireEventDetail } from '../events/store.js';
 
 type IdParams = { Params: { id: string } };
@@ -50,6 +51,41 @@ export function invoiceRowRoutes(app: FastifyInstance, deps: AppDeps): void {
     assertNotDeleted(row.event);
     return row;
   };
+
+  // ---------------------------------------------------------------- list (TASK-061)
+  // Every row of a non-deleted event (any status, all years): NOT_SENT first, then SENT; within a
+  // group newest createdAt first, ties by id. One query (rows + event + client name).
+  app.get('/api/invoice-rows', async (request) => {
+    request.requirePartner();
+    const rows = await db.invoiceRow.findMany({
+      where: { event: { deletedAt: null } },
+      include: {
+        event: {
+          select: {
+            startDate: true,
+            lineupName: true,
+            venue: true,
+            status: true,
+            invoicingDetails: true,
+            client: { select: { name: true } },
+          },
+        },
+      },
+      orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
+    });
+    const statusRank = (status: string) => (status === 'NOT_SENT' ? 0 : 1);
+    // Array.prototype.sort is stable: the createdAt/id order holds within each status group.
+    rows.sort((a, b) => statusRank(a.status) - statusRank(b.status));
+    return rows.map(({ event, ...row }) => ({
+      ...toInvoiceRowDto(row),
+      eventStartDate: isoFromDate(event.startDate),
+      eventLineupName: event.lineupName,
+      eventVenue: event.venue,
+      eventStatus: event.status,
+      clientName: event.client?.name ?? null,
+      invoicingDetails: event.invoicingDetails,
+    }));
+  });
 
   // ---------------------------------------------------------------- add
   app.post<IdParams>('/api/events/:id/invoice-rows', async (request) => {
